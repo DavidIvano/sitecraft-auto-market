@@ -34,6 +34,7 @@ img {
 
 button,
 input,
+select,
 textarea {
   font: inherit;
 }
@@ -337,7 +338,8 @@ dd {
 }
 
 .search-bar,
-.form-panel {
+.form-panel,
+.listing-form {
   display: grid;
   gap: 14px;
 }
@@ -359,6 +361,7 @@ label {
 }
 
 input,
+select,
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -366,6 +369,67 @@ textarea {
   background: #fff;
   color: var(--text);
   padding: 12px 13px;
+}
+
+select {
+  appearance: none;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--muted) 50%),
+    linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position:
+    calc(100% - 18px) 50%,
+    calc(100% - 13px) 50%;
+  background-repeat: no-repeat;
+  background-size:
+    5px 5px,
+    5px 5px;
+  padding-right: 38px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--accent);
+  outline: 3px solid rgba(37, 99, 235, 0.12);
+}
+
+fieldset {
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 0;
+}
+
+legend {
+  margin-bottom: 18px;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.listing-form {
+  margin-top: 32px;
+}
+
+.form-section {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.form-grid {
+  display: grid;
+  gap: 16px;
+}
+
+.form-footer {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: white;
+  padding: 18px;
 }
 
 .gallery {
@@ -470,6 +534,15 @@ textarea {
 
   .form-panel {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .form-footer {
+    grid-template-columns: auto 1fr;
+    align-items: center;
   }
 }
 

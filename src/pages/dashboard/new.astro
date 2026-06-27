@@ -1,55 +1,218 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import {
+  bodyTypes,
+  carBrands,
+  carConditions,
+  colors,
+  doorCounts,
+  drivetrains,
+  fuelTypes,
+  seatCounts,
+  sellerTypes,
+  transmissions,
+} from "../../data/carOptions";
 
-const fields = [
-  { name: "title", label: "Название", type: "text" },
-  { name: "brand", label: "Марка", type: "text" },
-  { name: "model", label: "Модель", type: "text" },
-  { name: "year", label: "Год", type: "number" },
-  { name: "mileage", label: "Пробег", type: "number" },
-  { name: "fuel_type", label: "Тип топлива", type: "text" },
-  { name: "transmission", label: "Коробка передач", type: "text" },
-  { name: "price", label: "Цена", type: "number" },
-  { name: "city", label: "Город", type: "text" },
-] as const;
+const currentYear = new Date().getFullYear();
+const years = Array.from({ length: currentYear - 1980 + 1 }, (_, index) => currentYear - index);
 
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+const modelSuggestions = [
+  "A4",
+  "A6",
+  "3 Series",
+  "5 Series",
+  "C-Class",
+  "E-Class",
+  "Golf",
+  "Passat",
+  "Octavia",
+  "Corolla",
+  "Civic",
+  "Model 3",
+];
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_AUTOMARKET_API_URL;
 ---
 
 <BaseLayout title="Добавить объявление">
   <section class="section page-hero">
     <div class="container narrow">
       <p class="eyebrow">Новое объявление</p>
-      <h1>Добавить авто</h1>
-      <form class="form-panel" id="new-listing-form">
-        {fields.map((field) => (
-          <label>
-            <span>{field.label}</span>
-            <input type={field.type} name={field.name} required />
-          </label>
-        ))}
-        <label>
-          <span>Страна</span>
-          <input type="text" name="country" value="Германия" required />
-        </label>
-        <label>
-          <span>Валюта</span>
-          <input type="text" name="currency" value="EUR" required />
-        </label>
-        <label class="full-field">
-          <span>Описание</span>
-          <textarea name="description" rows="6" required></textarea>
-        </label>
-        <label class="full-field">
-          <span>Изображения</span>
-          <input type="file" name="images" accept="image/webp,image/jpeg,image/png" multiple />
-        </label>
-        <button class="button button-dark" type="submit">Сохранить черновик</button>
-        <p class="form-message" id="form-message" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
-          После настройки Xano форма будет отправлять объявление и изображения в API.
-        </p>
+      <h1>Добавить автомобиль</h1>
+      <p class="lead">
+        Заполните основные поля. Большинство характеристик можно выбрать из готовых списков.
+      </p>
+
+      <form class="listing-form" id="new-listing-form" data-api-url={xanoApiUrl}>
+        <fieldset class="form-section">
+          <legend>Автомобиль</legend>
+          <div class="form-grid">
+            <label>
+              <span>Марка автомобиля</span>
+              <select name="brand" required>
+                <option value="">Выберите марку</option>
+                {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Модель автомобиля</span>
+              <input list="car-models" type="text" name="model" placeholder="Например, Golf" required />
+              <datalist id="car-models">
+                {modelSuggestions.map((model) => <option value={model} />)}
+              </datalist>
+            </label>
+
+            <label>
+              <span>Год выпуска</span>
+              <select name="year" required>
+                <option value="">Выберите год</option>
+                {years.map((year) => <option value={year}>{year}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Цена</span>
+              <input type="number" name="price" min="0" step="1" placeholder="25000" required />
+            </label>
+
+            <label>
+              <span>Пробег</span>
+              <input type="number" name="mileage" min="0" step="1" placeholder="85000" required />
+            </label>
+
+            <label>
+              <span>Город / местоположение</span>
+              <input type="text" name="location" placeholder="Берлин" required />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Характеристики</legend>
+          <div class="form-grid">
+            <label>
+              <span>Тип кузова</span>
+              <select name="bodyType" required>
+                <option value="">Выберите тип кузова</option>
+                {bodyTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Вид топлива</span>
+              <select name="fuelType" required>
+                <option value="">Выберите топливо</option>
+                {fuelTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Коробка передач</span>
+              <select name="transmission" required>
+                <option value="">Выберите коробку</option>
+                {transmissions.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Привод</span>
+              <select name="drivetrain" required>
+                <option value="">Выберите привод</option>
+                {drivetrains.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Количество дверей</span>
+              <select name="doors" required>
+                <option value="">Выберите двери</option>
+                {doorCounts.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Количество мест</span>
+              <select name="seats" required>
+                <option value="">Выберите места</option>
+                {seatCounts.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Цвет</span>
+              <select name="color" required>
+                <option value="">Выберите цвет</option>
+                {colors.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Состояние автомобиля</span>
+              <select name="condition" required>
+                <option value="">Выберите состояние</option>
+                {carConditions.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Тип продавца</span>
+              <select name="sellerType" required>
+                <option value="">Выберите тип продавца</option>
+                {sellerTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>VIN / номер кузова</span>
+              <input type="text" name="vin" placeholder="Опционально" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Продавец</legend>
+          <div class="form-grid">
+            <label>
+              <span>Имя продавца</span>
+              <input type="text" name="sellerName" placeholder="Ваше имя" required />
+            </label>
+
+            <label>
+              <span>Телефон продавца</span>
+              <input type="tel" name="sellerPhone" placeholder="+49 ..." />
+            </label>
+
+            <label>
+              <span>Email продавца</span>
+              <input type="email" name="sellerEmail" placeholder="name@example.com" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Фото и описание</legend>
+          <div class="form-grid">
+            <label class="full-field">
+              <span>Фото автомобиля</span>
+              <input type="file" name="photos" accept="image/webp,image/jpeg,image/png" multiple />
+            </label>
+
+            <label class="full-field">
+              <span>Краткое описание</span>
+              <textarea name="description" rows="6" placeholder="Опишите состояние, историю обслуживания и важные детали"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-footer">
+          <button class="button button-dark" type="submit">Добавить объявление</button>
+          <p class="form-message" id="form-message">
+            После отправки объявление будет подготовлено к модерации.
+          </p>
+        </div>
       </form>
+
       <script>
         const authToken = window.localStorage.getItem("sitecraft_auto_market_auth_token");
         const form = document.querySelector("#new-listing-form");
@@ -59,6 +222,19 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
 
+        async function submitListing(payload: Record<string, unknown>) {
+          // TODO: replace console.log with fetch POST to Xano.
+          // Future endpoint: POST /car_listings
+          // Example:
+          // await fetch(`${API_URL}/car_listings`, {
+          //   method: "POST",
+          //   headers: { Authorization: `Bearer ${authToken}` },
+          //   body: formData,
+          // });
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+          console.log("New car listing:", payload, { apiUrl });
+        }
+
         form?.addEventListener("submit", async (event) => {
           event.preventDefault();
 
@@ -66,38 +242,49 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             return;
           }
 
-          const apiUrl = message.dataset.apiUrl;
-          const placeholderUrl = message.dataset.placeholderUrl;
+          const formData = new FormData(form);
+          const sellerPhone = String(formData.get("sellerPhone") || "").trim();
+          const sellerEmail = String(formData.get("sellerEmail") || "").trim();
 
-          if (!apiUrl || apiUrl === placeholderUrl) {
-            message.textContent = "Сначала укажи PUBLIC_XANO_API_URL в .env и Cloudflare Pages.";
+          if (!sellerPhone && !sellerEmail) {
+            message.textContent = "Укажите телефон или email продавца.";
             return;
           }
 
-          const formData = new FormData(form);
-          formData.append("status", "draft");
+          const photosInput = form.elements.namedItem("photos");
+          const photos =
+            photosInput instanceof HTMLInputElement && photosInput.files
+              ? Array.from(photosInput.files)
+              : [];
 
-          message.textContent = "Сохраняю объявление...";
+          const payload = {
+            brand: String(formData.get("brand") || ""),
+            model: String(formData.get("model") || ""),
+            year: Number(formData.get("year")),
+            price: Number(formData.get("price")),
+            mileage: Number(formData.get("mileage")),
+            location: String(formData.get("location") || ""),
+            bodyType: String(formData.get("bodyType") || ""),
+            fuelType: String(formData.get("fuelType") || ""),
+            transmission: String(formData.get("transmission") || ""),
+            drivetrain: String(formData.get("drivetrain") || ""),
+            doors: String(formData.get("doors") || ""),
+            seats: String(formData.get("seats") || ""),
+            color: String(formData.get("color") || ""),
+            condition: String(formData.get("condition") || ""),
+            sellerType: String(formData.get("sellerType") || ""),
+            vin: String(formData.get("vin") || "") || undefined,
+            sellerName: String(formData.get("sellerName") || ""),
+            sellerPhone: sellerPhone || undefined,
+            sellerEmail: sellerEmail || undefined,
+            description: String(formData.get("description") || "") || undefined,
+            photos,
+          };
 
-          try {
-            const response = await fetch(`${apiUrl}/cars`, {
-              method: "POST",
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-              },
-              body: formData,
-            });
+          await submitListing(payload);
 
-            if (!response.ok) {
-              throw new Error("Xano вернул ошибку при сохранении объявления.");
-            }
-
-            message.textContent = "Черновик создан. После следующего этапа добавим отправку на модерацию.";
-            form.reset();
-          } catch (error) {
-            console.error(error);
-            message.textContent = "Не удалось сохранить объявление. Проверь Xano API и CORS.";
-          }
+          message.textContent = "Объявление подготовлено. После проверки оно будет опубликовано.";
+          form.reset();
         });
       </script>
     </div>
