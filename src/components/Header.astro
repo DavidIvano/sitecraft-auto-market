@@ -16,6 +16,27 @@ const navItems = [
     <nav class="main-nav" aria-label="Основная навигация">
       {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
     </nav>
-    <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+    <div class="header-actions">
+      <a class="button button-light auth-link" href="/login">Войти</a>
+      <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
+      <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+    </div>
   </div>
+  <script>
+    const authLink = document.querySelector(".auth-link");
+    const authLogout = document.querySelector(".auth-logout");
+    const token = window.localStorage.getItem("sitecraft_auto_market_auth_token");
+
+    if (token && authLink instanceof HTMLAnchorElement && authLogout instanceof HTMLButtonElement) {
+      authLink.href = "/dashboard";
+      authLink.textContent = "Кабинет";
+      authLogout.hidden = false;
+    }
+
+    authLogout?.addEventListener("click", () => {
+      window.localStorage.removeItem("sitecraft_auto_market_auth_token");
+      window.localStorage.removeItem("sitecraft_auto_market_user");
+      window.location.href = "/";
+    });
+  </script>
 </header>

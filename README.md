@@ -57,6 +57,14 @@ Environment variables:
 ```txt
 PUBLIC_XANO_API_URL
 PUBLIC_SITE_URL
+PUBLIC_XANO_GOOGLE_AUTH_START_PATH
+PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
+```
+
+Google auth setup is documented in:
+
+```txt
+docs/google-auth-setup.md
 ```
 
 ## Future features

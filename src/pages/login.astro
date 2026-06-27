@@ -1,0 +1,108 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/oauth/google/init";
+---
+
+<BaseLayout title="Вход">
+  <section class="section page-hero">
+    <div class="container narrow">
+      <p class="eyebrow">Авторизация</p>
+      <h1>Войти через Google</h1>
+      <p class="lead">
+        Перед добавлением объявления нужно войти в личный кабинет. Авторизация проходит через Google и Xano.
+      </p>
+      <div class="auth-panel">
+        <button
+          class="button button-dark full-width"
+          id="google-login"
+          type="button"
+          data-api-url={xanoApiUrl}
+          data-placeholder-url={placeholderApiUrl}
+          data-start-path={googleStartPath}
+        >
+          Продолжить с Google
+        </button>
+        <p class="form-message" id="login-message">
+          Если у тебя уже есть Google OAuth для SiteCraft Agency, добавь redirect URL автомаркета в тот же Google OAuth Client.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const button = document.querySelector("#google-login");
+    const message = document.querySelector("#login-message");
+
+    const getAuthUrl = (payload: unknown) => {
+      if (typeof payload === "string") {
+        return payload;
+      }
+
+      if (payload && typeof payload === "object") {
+        const record = payload as Record<string, unknown>;
+        const value = record.authUrl ?? record.auth_url ?? record.url ?? record.redirect_url;
+
+        if (typeof value === "string") {
+          return value;
+        }
+      }
+
+      return null;
+    };
+
+    button?.addEventListener("click", async () => {
+      if (!(button instanceof HTMLButtonElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = button.dataset.apiUrl;
+      const placeholderUrl = button.dataset.placeholderUrl;
+      const startPath = button.dataset.startPath || "/oauth/google/init";
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        return;
+      }
+
+      const redirectUri = `${window.location.origin}/auth/google/callback`;
+      const authStartUrl = new URL(`${apiUrl}${startPath}`);
+      authStartUrl.searchParams.set("redirect_uri", redirectUri);
+
+      message.textContent = "Открываю Google...";
+      button.disabled = true;
+
+      try {
+        const response = await fetch(authStartUrl.toString());
+
+        if (!response.ok) {
+          throw new Error("Xano Google auth start endpoint failed");
+        }
+
+        const contentType = response.headers.get("content-type") || "";
+        const payload = contentType.includes("application/json")
+          ? await response.json()
+          : await response.text();
+        const authUrl = getAuthUrl(payload);
+
+        if (!authUrl) {
+          throw new Error("Xano did not return a Google auth URL");
+        }
+
+        const next = new URLSearchParams(window.location.search).get("next");
+
+        if (next) {
+          window.localStorage.setItem("sitecraft_auto_market_auth_next", next);
+        }
+
+        window.location.href = authUrl;
+      } catch (error) {
+        console.error(error);
+        button.disabled = false;
+        message.textContent = "Не удалось начать вход через Google. Проверь Xano endpoint для OAuth.";
+      }
+    });
+  </script>
+</BaseLayout>

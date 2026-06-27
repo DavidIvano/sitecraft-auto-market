@@ -51,8 +51,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         </p>
       </form>
       <script>
+        const authToken = window.localStorage.getItem("sitecraft_auto_market_auth_token");
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
+
+        if (!authToken) {
+          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
+        }
 
         form?.addEventListener("submit", async (event) => {
           event.preventDefault();
@@ -77,6 +82,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           try {
             const response = await fetch(`${apiUrl}/cars`, {
               method: "POST",
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
               body: formData,
             });
 
