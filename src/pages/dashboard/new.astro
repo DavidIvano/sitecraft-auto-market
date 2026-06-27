@@ -31,7 +31,7 @@ const modelSuggestions = [
   "Model 3",
 ];
 
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_AUTOMARKET_API_URL;
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Добавить объявление">
@@ -223,16 +223,46 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_AUTOMARKET_API_URL;
         }
 
         async function submitListing(payload: Record<string, unknown>) {
-          // TODO: replace console.log with fetch POST to Xano.
-          // Future endpoint: POST /car_listings
-          // Example:
-          // await fetch(`${API_URL}/car_listings`, {
-          //   method: "POST",
-          //   headers: { Authorization: `Bearer ${authToken}` },
-          //   body: formData,
-          // });
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
-          console.log("New car listing:", payload, { apiUrl });
+
+          if (!apiUrl) {
+            throw new Error("Xano API URL не настроен.");
+          }
+
+          const createResponse = await fetch(`${apiUrl}/cars`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(payload),
+          });
+
+          if (!createResponse.ok) {
+            const errorText = await createResponse.text();
+            throw new Error(errorText || "Xano не сохранил объявление.");
+          }
+
+          const createdCar = await createResponse.json();
+          const id = createdCar?.id;
+
+          if (!id) {
+            throw new Error("Xano сохранил объявление, но не вернул ID.");
+          }
+
+          const submitResponse = await fetch(`${apiUrl}/cars/${id}/submit`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+            },
+          });
+
+          if (!submitResponse.ok) {
+            const errorText = await submitResponse.text();
+            throw new Error(errorText || "Объявление сохранено, но не отправлено на модерацию.");
+          }
+
+          return submitResponse.json();
         }
 
         form?.addEventListener("submit", async (event) => {
@@ -251,40 +281,55 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_AUTOMARKET_API_URL;
             return;
           }
 
-          const photosInput = form.elements.namedItem("photos");
-          const photos =
-            photosInput instanceof HTMLInputElement && photosInput.files
-              ? Array.from(photosInput.files)
-              : [];
+          const brand = String(formData.get("brand") || "");
+          const model = String(formData.get("model") || "");
+          const year = Number(formData.get("year"));
+          const city = String(formData.get("location") || "");
 
           const payload = {
-            brand: String(formData.get("brand") || ""),
-            model: String(formData.get("model") || ""),
-            year: Number(formData.get("year")),
+            title: `${brand} ${model} ${year}`.trim(),
+            brand,
+            model,
+            year,
             price: Number(formData.get("price")),
             mileage: Number(formData.get("mileage")),
-            location: String(formData.get("location") || ""),
-            bodyType: String(formData.get("bodyType") || ""),
-            fuelType: String(formData.get("fuelType") || ""),
+            fuel_type: String(formData.get("fuelType") || ""),
             transmission: String(formData.get("transmission") || ""),
-            drivetrain: String(formData.get("drivetrain") || ""),
-            doors: String(formData.get("doors") || ""),
-            seats: String(formData.get("seats") || ""),
-            color: String(formData.get("color") || ""),
-            condition: String(formData.get("condition") || ""),
-            sellerType: String(formData.get("sellerType") || ""),
-            vin: String(formData.get("vin") || "") || undefined,
-            sellerName: String(formData.get("sellerName") || ""),
-            sellerPhone: sellerPhone || undefined,
-            sellerEmail: sellerEmail || undefined,
-            description: String(formData.get("description") || "") || undefined,
-            photos,
+            currency: "EUR",
+            city,
+            country: "Германия",
+            description:
+              [
+                String(formData.get("description") || ""),
+                `Кузов: ${String(formData.get("bodyType") || "не указан")}`,
+                `Привод: ${String(formData.get("drivetrain") || "не указан")}`,
+                `Двери: ${String(formData.get("doors") || "не указано")}`,
+                `Места: ${String(formData.get("seats") || "не указано")}`,
+                `Цвет: ${String(formData.get("color") || "не указан")}`,
+                `Состояние: ${String(formData.get("condition") || "не указано")}`,
+                `Тип продавца: ${String(formData.get("sellerType") || "не указан")}`,
+                `VIN: ${String(formData.get("vin") || "не указан")}`,
+                `Продавец: ${String(formData.get("sellerName") || "не указан")}`,
+                `Телефон: ${sellerPhone || "не указан"}`,
+                `Email: ${sellerEmail || "не указан"}`,
+              ]
+                .filter(Boolean)
+                .join("\n"),
           };
 
-          await submitListing(payload);
+          try {
+            message.textContent = "Сохраняю объявление и отправляю на модерацию...";
+            await submitListing(payload);
 
-          message.textContent = "Объявление подготовлено. После проверки оно будет опубликовано.";
-          form.reset();
+            message.textContent = "Объявление отправлено на модерацию. Оно появится в админ-панели.";
+            form.reset();
+          } catch (error) {
+            console.error(error);
+            message.textContent =
+              error instanceof Error
+                ? `Не удалось сохранить объявление: ${error.message}`
+                : "Не удалось сохранить объявление.";
+          }
         });
       </script>
     </div>
