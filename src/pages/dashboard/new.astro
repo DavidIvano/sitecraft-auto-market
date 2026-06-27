@@ -218,6 +218,17 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
 
+        function clearOldAuthAndRelogin() {
+          window.localStorage.removeItem("sitecraft_auto_market_auth_token");
+          window.localStorage.removeItem("sitecraft_auto_market_user");
+          window.localStorage.setItem("sitecraft_auto_market_auth_next", "/dashboard/new");
+          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
+        }
+
+        function isWrongTokenError(value: string) {
+          return value.includes("different object type") || value.includes("ERROR_CODE_UNAUTHORIZED");
+        }
+
         if (!authToken) {
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
@@ -240,6 +251,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           if (!createResponse.ok) {
             const errorText = await createResponse.text();
+            if (isWrongTokenError(errorText)) {
+              clearOldAuthAndRelogin();
+              throw new Error("Сессия устарела. Нужно войти через Google ещё раз.");
+            }
             throw new Error(errorText || "Xano не сохранил объявление.");
           }
 
@@ -259,6 +274,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           if (!submitResponse.ok) {
             const errorText = await submitResponse.text();
+            if (isWrongTokenError(errorText)) {
+              clearOldAuthAndRelogin();
+              throw new Error("Сессия устарела. Нужно войти через Google ещё раз.");
+            }
             throw new Error(errorText || "Объявление сохранено, но не отправлено на модерацию.");
           }
 
