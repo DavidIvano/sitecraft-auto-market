@@ -2,6 +2,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const xanoAuthApiUrl = import.meta.env.PUBLIC_XANO_AUTH_API_URL ?? xanoApiUrl;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH ?? "/oauth/google/continue";
 ---
@@ -12,7 +13,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       <p class="eyebrow">Google OAuth</p>
       <h1>Завершаю вход</h1>
       <div class="empty-state">
-        <p id="callback-message" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl} data-continue-path={googleContinuePath}>
+        <p id="callback-message" data-api-url={xanoApiUrl} data-auth-api-url={xanoAuthApiUrl} data-placeholder-url={placeholderApiUrl} data-continue-path={googleContinuePath}>
           Получаю токен авторизации от Xano.
         </p>
       </div>
@@ -48,6 +49,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       }
 
       const apiUrl = message.dataset.apiUrl;
+      const authApiUrl = message.dataset.authApiUrl || apiUrl;
       const placeholderUrl = message.dataset.placeholderUrl;
       const continuePath = message.dataset.continuePath || "/oauth/google/continue";
       const params = new URLSearchParams(window.location.search);
@@ -64,7 +66,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         return;
       }
 
-      if (!apiUrl || apiUrl === placeholderUrl) {
+      if (!authApiUrl || authApiUrl === placeholderUrl) {
         message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
         return;
       }
@@ -72,16 +74,11 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       const redirectUri = `${window.location.origin}/auth/google/callback`;
 
       try {
-        const response = await fetch(`${apiUrl}${continuePath}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            code,
-            redirect_uri: redirectUri,
-          }),
-        });
+        const continueUrl = new URL(`${authApiUrl}${continuePath}`);
+        continueUrl.searchParams.set("code", code);
+        continueUrl.searchParams.set("redirect_uri", redirectUri);
+
+        const response = await fetch(continueUrl.toString());
 
         if (!response.ok) {
           throw new Error("Xano Google auth continue endpoint failed");
@@ -89,7 +86,14 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
 
         const payload = await response.json();
         const token = getToken(payload);
-        const user = getUser(payload);
+        const user =
+          getUser(payload) ??
+          (payload && typeof payload === "object"
+            ? {
+                name: (payload as Record<string, unknown>).name,
+                email: (payload as Record<string, unknown>).email,
+              }
+            : null);
 
         if (!token) {
           throw new Error("Xano did not return auth token");

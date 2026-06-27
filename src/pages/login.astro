@@ -2,6 +2,7 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const xanoAuthApiUrl = import.meta.env.PUBLIC_XANO_AUTH_API_URL ?? xanoApiUrl;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/oauth/google/init";
 ---
@@ -20,6 +21,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
           id="google-login"
           type="button"
           data-api-url={xanoApiUrl}
+          data-auth-api-url={xanoAuthApiUrl}
           data-placeholder-url={placeholderApiUrl}
           data-start-path={googleStartPath}
         >
@@ -59,16 +61,17 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       }
 
       const apiUrl = button.dataset.apiUrl;
+      const authApiUrl = button.dataset.authApiUrl || apiUrl;
       const placeholderUrl = button.dataset.placeholderUrl;
       const startPath = button.dataset.startPath || "/oauth/google/init";
 
-      if (!apiUrl || apiUrl === placeholderUrl) {
+      if (!authApiUrl || authApiUrl === placeholderUrl) {
         message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
         return;
       }
 
       const redirectUri = `${window.location.origin}/auth/google/callback`;
-      const authStartUrl = new URL(`${apiUrl}${startPath}`);
+      const authStartUrl = new URL(`${authApiUrl}${startPath}`);
       authStartUrl.searchParams.set("redirect_uri", redirectUri);
 
       message.textContent = "Открываю Google...";

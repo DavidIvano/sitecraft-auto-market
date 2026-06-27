@@ -19,6 +19,7 @@ Required:
 
 ```txt
 PUBLIC_XANO_API_URL=https://x8ki-letl-twmt.n7.xano.io/api:jAAj839u
+PUBLIC_XANO_AUTH_API_URL=https://x8ki-letl-twmt.n7.xano.io/api:12n3UIc0
 ```
 
 Optional, only if your Xano Google OAuth endpoints use different paths:
@@ -86,32 +87,20 @@ https://sitecraft-auto-market.pages.dev/auth/google/callback?code=...
 4. The site calls:
 
 ```txt
-POST {PUBLIC_XANO_API_URL}/oauth/google/continue
-```
-
-Body:
-
-```json
-{
-  "code": "GOOGLE_CODE",
-  "redirect_uri": "https://sitecraft-auto-market.pages.dev/auth/google/callback"
-}
+GET {PUBLIC_XANO_AUTH_API_URL}/oauth/google/continue?code=...&redirect_uri=...
 ```
 
 5. Xano should return an auth token:
 
 ```json
 {
-  "authToken": "XANO_AUTH_TOKEN",
-  "user": {
-    "id": 1,
-    "email": "user@example.com",
-    "name": "User Name"
-  }
+  "token": "XANO_AUTH_TOKEN",
+  "email": "user@example.com",
+  "name": "User Name"
 }
 ```
 
-The frontend also accepts `auth_token`, `token`, or `jwt`.
+The frontend accepts `authToken`, `auth_token`, `token`, or `jwt`.
 
 ## Protecting Xano Endpoints
 
