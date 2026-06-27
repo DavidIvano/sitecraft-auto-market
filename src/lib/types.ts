@@ -4,6 +4,8 @@ export type CarListingStatus =
   | "approved"
   | "rejected"
   | "archived"
+  | "blocked"
+  | "deleted"
   | "sold";
 
 export type CarListing = {

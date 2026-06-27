@@ -1,52 +1,131 @@
 ---
-import StatusBadge from "../../components/StatusBadge.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
-const moderationItems = [
-  "Volkswagen Golf GTI 2020",
-  "Tesla Model 3 Long Range",
-  "Volvo XC60 Momentum",
-];
 ---
 
-<BaseLayout title="Модерация">
+<BaseLayout title="Админ-панель авто">
   <section class="section page-hero">
     <div class="container">
-      <p class="eyebrow">Админ</p>
-      <h1>Модерация объявлений</h1>
-      <div class="list-panel" id="mock-moderation-list">
-        {moderationItems.map((title) => (
-          <div class="list-row moderation-row">
-            <div>
-              <strong>{title}</strong>
-              <StatusBadge status="pending_review" />
-            </div>
-            <div class="row-actions">
-              <button class="button button-light" type="button">Одобрить</button>
-              <button class="button button-danger" type="button">Отклонить</button>
-            </div>
-          </div>
-        ))}
+      <div class="admin-heading">
+        <div>
+          <p class="eyebrow">Админ</p>
+          <h1>Проверка объявлений</h1>
+          <p class="lead">
+            Здесь видно, какие машины ждут модерации, какие опубликованы, отклонены,
+            заблокированы, удалены или отправлены в архив.
+          </p>
+        </div>
+        <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
       </div>
+
       <div
-        class="list-panel"
-        id="live-moderation-list"
+        class="admin-board"
+        id="admin-board"
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
-        hidden
       >
+        <div class="admin-toolbar">
+          <label>
+            Поиск
+            <input id="admin-search" type="search" placeholder="Марка, модель, город, ID" />
+          </label>
+          <label>
+            Статус
+            <select id="admin-status">
+              <option value="all">Все объявления</option>
+              <option value="pending_review">На модерации</option>
+              <option value="approved">Опубликованные</option>
+              <option value="draft">Черновики</option>
+              <option value="rejected">Отклонённые</option>
+              <option value="archived">Архив</option>
+              <option value="blocked">Заблокированные</option>
+              <option value="deleted">Удалённые</option>
+              <option value="sold">Проданные</option>
+            </select>
+          </label>
+          <button class="button button-light" id="admin-refresh" type="button">Обновить</button>
+        </div>
+
+        <div class="admin-stats" id="admin-stats" aria-label="Сводка по объявлениям"></div>
+
+        <div class="admin-list" id="admin-list">
+          <div class="empty-state">
+            Загружаю объявления из Xano...
+          </div>
+        </div>
+
+        <p class="form-message" id="admin-message"></p>
       </div>
-      <p class="form-message" id="live-moderation-message">
-        После подключения Xano здесь появится живая очередь модерации.
-      </p>
     </div>
   </section>
+
   <script>
-    const list = document.querySelector("#live-moderation-list");
-    const mockList = document.querySelector("#mock-moderation-list");
-    const message = document.querySelector("#live-moderation-message");
+    type AdminStatus =
+      | "all"
+      | "draft"
+      | "pending_review"
+      | "approved"
+      | "rejected"
+      | "archived"
+      | "blocked"
+      | "deleted"
+      | "sold";
+
+    type AdminCar = {
+      id?: number | string;
+      slug?: string;
+      title?: string;
+      brand?: string;
+      model?: string;
+      year?: number | string;
+      mileage?: number | string;
+      fuel_type?: string;
+      transmission?: string;
+      price?: number | string;
+      currency?: string;
+      city?: string;
+      country?: string;
+      description?: string;
+      status?: AdminStatus;
+      main_image_url?: string;
+      created_at?: string;
+      updated_at?: string;
+      user_id?: number | string;
+    };
+
+    const board = document.querySelector("#admin-board");
+    const list = document.querySelector("#admin-list");
+    const stats = document.querySelector("#admin-stats");
+    const message = document.querySelector("#admin-message");
+    const search = document.querySelector("#admin-search");
+    const status = document.querySelector("#admin-status");
+    const refresh = document.querySelector("#admin-refresh");
+
+    const statusLabels: Record<string, string> = {
+      all: "Все",
+      draft: "Черновики",
+      pending_review: "На модерации",
+      approved: "Опубликованные",
+      rejected: "Отклонённые",
+      archived: "Архив",
+      blocked: "Заблокированные",
+      deleted: "Удалённые",
+      sold: "Проданные",
+    };
+
+    const actionLabels: Record<string, string> = {
+      approve: "Одобрить",
+      reject: "Отклонить",
+      archive: "В архив",
+      block: "Заблокировать",
+      delete: "Удалить",
+      restore: "Вернуть",
+      sold: "Продано",
+    };
+
+    let cars: AdminCar[] = [];
 
     const escapeHtml = (value: unknown) =>
       String(value ?? "")
@@ -56,93 +135,302 @@ const moderationItems = [
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
-    const loadModeration = async () => {
-      if (!(list instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+    const formatPrice = (car: AdminCar) => {
+      const price = Number(car.price ?? 0);
+      const currency = String(car.currency || "EUR");
+
+      if (!Number.isFinite(price) || price <= 0) {
+        return "Цена не указана";
+      }
+
+      return new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency,
+        maximumFractionDigits: 0,
+      }).format(price);
+    };
+
+    const formatDate = (value: unknown) => {
+      if (!value) {
+        return "Дата не указана";
+      }
+
+      const date = new Date(String(value));
+
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+    };
+
+    const normalizeCars = (payload: unknown): AdminCar[] => {
+      if (Array.isArray(payload)) {
+        return payload;
+      }
+
+      if (payload && typeof payload === "object") {
+        const record = payload as Record<string, unknown>;
+        const possibleList = record.items ?? record.cars ?? record.data ?? record.listings;
+
+        if (Array.isArray(possibleList)) {
+          return possibleList;
+        }
+      }
+
+      return [];
+    };
+
+    const getFilteredCars = () => {
+      const selectedStatus =
+        status instanceof HTMLSelectElement ? status.value : "all";
+      const query =
+        search instanceof HTMLInputElement ? search.value.trim().toLowerCase() : "";
+
+      return cars.filter((car) => {
+        const carStatus = car.status || "draft";
+        const statusMatches = selectedStatus === "all" || carStatus === selectedStatus;
+        const haystack = [
+          car.id,
+          car.title,
+          car.brand,
+          car.model,
+          car.city,
+          car.country,
+          car.status,
+          car.year,
+        ]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
+
+        return statusMatches && (!query || haystack.includes(query));
+      });
+    };
+
+    const renderStats = () => {
+      if (!(stats instanceof HTMLElement)) {
         return;
       }
 
-      const apiUrl = list.dataset.apiUrl;
-      const placeholderUrl = list.dataset.placeholderUrl;
+      const statuses = [
+        "pending_review",
+        "approved",
+        "draft",
+        "rejected",
+        "archived",
+        "blocked",
+        "deleted",
+        "sold",
+      ];
 
-      if (!apiUrl || apiUrl === placeholderUrl) {
+      stats.innerHTML = [
+        `<button class="stat-card" type="button" data-status="all"><span>${cars.length}</span><strong>Всего</strong></button>`,
+        ...statuses.map((item) => {
+          const count = cars.filter((car) => (car.status || "draft") === item).length;
+          return `<button class="stat-card" type="button" data-status="${item}"><span>${count}</span><strong>${escapeHtml(statusLabels[item])}</strong></button>`;
+        }),
+      ].join("");
+    };
+
+    const getActions = (car: AdminCar) => {
+      const current = car.status || "draft";
+
+      if (current === "pending_review") {
+        return ["approve", "reject", "block"];
+      }
+
+      if (current === "approved") {
+        return ["archive", "block", "sold"];
+      }
+
+      if (current === "rejected" || current === "archived" || current === "blocked") {
+        return ["restore", "delete"];
+      }
+
+      if (current === "deleted") {
+        return ["restore"];
+      }
+
+      return ["approve", "reject"];
+    };
+
+    const renderList = () => {
+      if (!(list instanceof HTMLElement)) {
         return;
       }
 
-      try {
-        const response = await fetch(`${apiUrl}/admin/moderation`);
+      const filtered = getFilteredCars();
 
-        if (!response.ok) {
-          throw new Error("Failed to load moderation queue");
-        }
+      renderStats();
 
-        const cars = await response.json();
+      if (filtered.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            Нет объявлений для выбранного фильтра.
+          </div>
+        `;
+        return;
+      }
 
-        if (!Array.isArray(cars) || cars.length === 0) {
-          message.textContent = "В Xano сейчас нет объявлений на модерации.";
-          return;
-        }
+      list.innerHTML = filtered
+        .map((car) => {
+          const title = car.title || [car.brand, car.model, car.year].filter(Boolean).join(" ");
+          const image = car.main_image_url || "/favicon.svg";
+          const carStatus = car.status || "draft";
+          const actions = getActions(car);
 
-        list.innerHTML = cars
-          .map(
-            (car) => `
-              <div class="list-row moderation-row">
-                <div>
-                  <strong>${escapeHtml(car.title)}</strong>
-                  <span class="status-badge status-pending_review">На модерации</span>
+          return `
+            <article class="admin-car">
+              <img class="admin-car-image" src="${escapeHtml(image)}" alt="${escapeHtml(title || "Авто")}" loading="lazy" />
+              <div class="admin-car-main">
+                <div class="admin-car-title">
+                  <div>
+                    <span class="admin-id">ID ${escapeHtml(car.id)}</span>
+                    <h2>${escapeHtml(title || "Без названия")}</h2>
+                  </div>
+                  <span class="status-badge status-${escapeHtml(carStatus)}">${escapeHtml(statusLabels[carStatus] || carStatus)}</span>
                 </div>
-                <div class="row-actions">
-                  <button class="button button-light" type="button" data-action="approve" data-id="${escapeHtml(car.id)}">Одобрить</button>
-                  <button class="button button-danger" type="button" data-action="reject" data-id="${escapeHtml(car.id)}">Отклонить</button>
+                <dl class="admin-car-meta">
+                  <div><dt>Цена</dt><dd>${escapeHtml(formatPrice(car))}</dd></div>
+                  <div><dt>Город</dt><dd>${escapeHtml(car.city || "Не указан")}</dd></div>
+                  <div><dt>Пробег</dt><dd>${escapeHtml(car.mileage ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "Не указан")}</dd></div>
+                  <div><dt>Создано</dt><dd>${escapeHtml(formatDate(car.created_at))}</dd></div>
+                </dl>
+                <p class="admin-description">${escapeHtml(car.description || "Описание не заполнено.")}</p>
+                <div class="admin-actions">
+                  ${actions
+                    .map(
+                      (action) =>
+                        `<button class="button ${action === "delete" || action === "block" || action === "reject" ? "button-danger" : "button-light"}" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
+                    )
+                    .join("")}
+                  ${
+                    car.slug
+                      ? `<a class="button button-light" href="/cars/${escapeHtml(car.slug)}" target="_blank" rel="noreferrer">Открыть</a>`
+                      : ""
+                  }
                 </div>
               </div>
-            `,
-          )
-          .join("");
+            </article>
+          `;
+        })
+        .join("");
+    };
 
-        list.hidden = false;
-        if (mockList instanceof HTMLElement) {
-          mockList.hidden = true;
+    const loadCars = async () => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement) || !(list instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = board.dataset.apiUrl;
+      const placeholderUrl = board.dataset.placeholderUrl;
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        return;
+      }
+
+      message.textContent = "Загружаю объявления...";
+
+      try {
+        const response = await fetch(`${apiUrl}/admin/moderation?status=all`);
+
+        if (!response.ok) {
+          throw new Error(`Xano вернул ${response.status}`);
         }
-        message.textContent = "Показана живая очередь модерации из Xano.";
+
+        const payload = await response.json();
+        cars = normalizeCars(payload);
+        renderList();
+        message.textContent = `Загружено объявлений: ${cars.length}.`;
       } catch (error) {
         console.error(error);
-        message.textContent = "Не удалось загрузить очередь модерации из Xano.";
+        list.innerHTML = `
+          <div class="empty-state">
+            Не удалось загрузить админ-список. Проверь endpoint <strong>GET /admin/moderation?status=all</strong>.
+          </div>
+        `;
+        message.textContent = error instanceof Error ? error.message : "Ошибка загрузки.";
       }
     };
 
-    list?.addEventListener("click", async (event) => {
-      const target = event.target;
-
-      if (!(target instanceof HTMLButtonElement) || !(list instanceof HTMLElement)) {
+    const runAction = async (action: string, id: string) => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) {
         return;
       }
 
-      const apiUrl = list.dataset.apiUrl;
-      const action = target.dataset.action;
-      const id = target.dataset.id;
+      const apiUrl = board.dataset.apiUrl;
 
-      if (!apiUrl || !action || !id) {
+      if (!apiUrl) {
         return;
       }
 
-      target.disabled = true;
+      const endpointAction =
+        action === "restore"
+          ? "approve"
+          : action === "archive" || action === "block" || action === "delete" || action === "sold"
+            ? action
+            : action;
 
       try {
-        const response = await fetch(`${apiUrl}/admin/cars/${id}/${action}`, {
+        message.textContent = `${actionLabels[action] || "Действие"}...`;
+
+        const response = await fetch(`${apiUrl}/admin/cars/${id}/${endpointAction}`, {
           method: "PATCH",
         });
 
         if (!response.ok) {
-          throw new Error("Moderation action failed");
+          throw new Error(`Xano endpoint для действия "${actionLabels[action] || action}" пока не отвечает.`);
         }
 
-        await loadModeration();
+        await loadCars();
       } catch (error) {
         console.error(error);
-        target.disabled = false;
+        message.textContent =
+          error instanceof Error
+            ? error.message
+            : "Не удалось выполнить действие.";
+      }
+    };
+
+    search?.addEventListener("input", renderList);
+    status?.addEventListener("change", renderList);
+    refresh?.addEventListener("click", loadCars);
+
+    stats?.addEventListener("click", (event) => {
+      const target = event.target;
+      const button = target instanceof HTMLElement ? target.closest("button[data-status]") : null;
+
+      if (button instanceof HTMLButtonElement && status instanceof HTMLSelectElement) {
+        status.value = button.dataset.status || "all";
+        renderList();
       }
     });
 
-    loadModeration();
+    list?.addEventListener("click", async (event) => {
+      const target = event.target;
+      const button = target instanceof HTMLElement ? target.closest("button[data-action]") : null;
+
+      if (!(button instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      const id = button.dataset.id;
+      const action = button.dataset.action;
+
+      if (!id || !action) {
+        return;
+      }
+
+      button.disabled = true;
+      await runAction(action, id);
+      button.disabled = false;
+    });
+
+    loadCars();
   </script>
 </BaseLayout>
