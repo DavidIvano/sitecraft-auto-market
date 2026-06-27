@@ -6,6 +6,8 @@ import { mockCars } from "../../lib/mockCars";
 import { getApprovedCars } from "../../lib/xano";
 
 let cars = mockCars;
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
 try {
   const xanoCars = await getApprovedCars();
@@ -28,9 +30,97 @@ try {
 
   <section class="section">
     <div class="container">
-      <div class="cards-grid">
+      <div class="cards-grid" id="mock-cars-grid">
         {cars.map((car) => <CarCard car={car} />)}
       </div>
+      <div
+        class="cards-grid"
+        id="live-cars-grid"
+        data-api-url={xanoApiUrl}
+        data-placeholder-url={placeholderApiUrl}
+        hidden
+      >
+      </div>
+      <p class="form-message" id="live-cars-message">
+        Если Xano подключён, каталог обновится автоматически.
+      </p>
     </div>
   </section>
+  <script>
+    const grid = document.querySelector("#live-cars-grid");
+    const mockGrid = document.querySelector("#mock-cars-grid");
+    const message = document.querySelector("#live-cars-message");
+
+    const formatPrice = (price: unknown, currency: string) =>
+      new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency: currency || "EUR",
+        maximumFractionDigits: 0,
+      }).format(Number(price || 0));
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    if (grid instanceof HTMLElement && message instanceof HTMLElement) {
+      const apiUrl = grid.dataset.apiUrl;
+      const placeholderUrl = grid.dataset.placeholderUrl;
+
+      if (apiUrl && apiUrl !== placeholderUrl) {
+        fetch(`${apiUrl}/cars`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to load cars");
+            }
+
+            return response.json();
+          })
+          .then((cars) => {
+            if (!Array.isArray(cars) || cars.length === 0) {
+              message.textContent = "В Xano пока нет опубликованных объявлений, поэтому показаны demo-карточки.";
+              return;
+            }
+
+            grid.innerHTML = cars
+              .map(
+                (car) => `
+                  <article class="car-card">
+                    <a class="car-image-link" href="/cars/detail?slug=${encodeURIComponent(car.slug)}" aria-label="Смотреть ${escapeHtml(car.title)}">
+                      <img src="${escapeHtml(car.main_image_url || "/favicon.svg")}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />
+                    </a>
+                    <div class="car-card-body">
+                      <div class="car-card-top">
+                        <h3>${escapeHtml(car.title)}</h3>
+                        <span class="status-badge status-approved">Проверено модератором</span>
+                      </div>
+                      <p class="car-price">${formatPrice(car.price, car.currency)}</p>
+                      <dl class="car-meta">
+                        <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
+                        <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
+                        <div><dt>Город</dt><dd>${escapeHtml(car.city)}</dd></div>
+                      </dl>
+                      <a class="button button-light full-width" href="/cars/detail?slug=${encodeURIComponent(car.slug)}">Смотреть</a>
+                    </div>
+                  </article>
+                `,
+              )
+              .join("");
+
+            grid.hidden = false;
+            if (mockGrid instanceof HTMLElement) {
+              mockGrid.hidden = true;
+            }
+            message.textContent = "Показаны актуальные объявления из Xano.";
+          })
+          .catch((error) => {
+            console.error(error);
+            message.textContent = "Не удалось загрузить Xano-каталог, поэтому показаны demo-карточки.";
+          });
+      }
+    }
+  </script>
 </BaseLayout>

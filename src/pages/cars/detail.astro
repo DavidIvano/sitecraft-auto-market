@@ -1,0 +1,117 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+---
+
+<BaseLayout title="Автомобиль">
+  <section class="section">
+    <div class="container">
+      <div
+        id="live-car-detail"
+        data-api-url={xanoApiUrl}
+        data-placeholder-url={placeholderApiUrl}
+      >
+        <div class="empty-state">
+          <h1>Загрузка автомобиля</h1>
+          <p>Получаю данные объявления из Xano.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const root = document.querySelector("#live-car-detail");
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const formatPrice = (price: unknown, currency: string) =>
+      new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency: currency || "EUR",
+        maximumFractionDigits: 0,
+      }).format(Number(price || 0));
+
+    const renderEmpty = (title: string, text: string) => {
+      if (!(root instanceof HTMLElement)) {
+        return;
+      }
+
+      root.innerHTML = `
+        <div class="empty-state">
+          <h1>${escapeHtml(title)}</h1>
+          <p>${escapeHtml(text)}</p>
+          <a class="button button-dark" href="/cars">Вернуться в каталог</a>
+        </div>
+      `;
+    };
+
+    if (root instanceof HTMLElement) {
+      const apiUrl = root.dataset.apiUrl;
+      const placeholderUrl = root.dataset.placeholderUrl;
+      const slug = new URLSearchParams(window.location.search).get("slug");
+
+      if (!slug) {
+        renderEmpty("Автомобиль не найден", "В ссылке нет slug объявления.");
+      } else if (!apiUrl || apiUrl === placeholderUrl) {
+        renderEmpty("Xano не настроен", "Укажи PUBLIC_XANO_API_URL для загрузки живых объявлений.");
+      } else {
+        fetch(`${apiUrl}/cars/${encodeURIComponent(slug)}`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Car not found");
+            }
+
+            return response.json();
+          })
+          .then((car) => {
+            const images = Array.isArray(car.images) ? car.images : [];
+            const galleryImage = car.main_image_url || images[0]?.image_url || "/favicon.svg";
+
+            root.innerHTML = `
+              <article class="detail-grid">
+                <div class="gallery">
+                  <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
+                  <div class="gallery-strip">
+                    ${
+                      images.length > 0
+                        ? images
+                            .slice(0, 3)
+                            .map((image: { image_url?: string }) => `<span style="background-image:url('${escapeHtml(image.image_url)}');background-size:cover;background-position:center;"></span>`)
+                            .join("")
+                        : "<span></span><span></span><span></span>"
+                    }
+                  </div>
+                </div>
+                <div class="detail-panel">
+                  <span class="status-badge status-approved">Проверено модератором</span>
+                  <h1>${escapeHtml(car.title)}</h1>
+                  <p class="detail-price">${formatPrice(car.price, car.currency)}</p>
+                  <dl class="spec-grid">
+                    <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
+                    <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
+                    <div><dt>Топливо</dt><dd>${escapeHtml(car.fuel_type)}</dd></div>
+                    <div><dt>Коробка</dt><dd>${escapeHtml(car.transmission)}</dd></div>
+                    <div><dt>Город</dt><dd>${escapeHtml(car.city)}, ${escapeHtml(car.country)}</dd></div>
+                  </dl>
+                  <p>${escapeHtml(car.description)}</p>
+                  <a class="button button-dark full-width" href="/dashboard">Связаться</a>
+                </div>
+              </article>
+            `;
+          })
+          .catch((error) => {
+            console.error(error);
+            renderEmpty("Автомобиль не найден", "Объявление не опубликовано или ещё не прошло модерацию.");
+          });
+      }
+    }
+  </script>
+</BaseLayout>

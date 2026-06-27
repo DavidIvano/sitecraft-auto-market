@@ -2,6 +2,8 @@
 import StatusBadge from "../../components/StatusBadge.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const moderationItems = [
   "Volkswagen Golf GTI 2020",
   "Tesla Model 3 Long Range",
@@ -14,7 +16,7 @@ const moderationItems = [
     <div class="container">
       <p class="eyebrow">Админ</p>
       <h1>Модерация объявлений</h1>
-      <div class="list-panel">
+      <div class="list-panel" id="mock-moderation-list">
         {moderationItems.map((title) => (
           <div class="list-row moderation-row">
             <div>
@@ -28,6 +30,119 @@ const moderationItems = [
           </div>
         ))}
       </div>
+      <div
+        class="list-panel"
+        id="live-moderation-list"
+        data-api-url={xanoApiUrl}
+        data-placeholder-url={placeholderApiUrl}
+        hidden
+      >
+      </div>
+      <p class="form-message" id="live-moderation-message">
+        После подключения Xano здесь появится живая очередь модерации.
+      </p>
     </div>
   </section>
+  <script>
+    const list = document.querySelector("#live-moderation-list");
+    const mockList = document.querySelector("#mock-moderation-list");
+    const message = document.querySelector("#live-moderation-message");
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const loadModeration = async () => {
+      if (!(list instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = list.dataset.apiUrl;
+      const placeholderUrl = list.dataset.placeholderUrl;
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/admin/moderation`);
+
+        if (!response.ok) {
+          throw new Error("Failed to load moderation queue");
+        }
+
+        const cars = await response.json();
+
+        if (!Array.isArray(cars) || cars.length === 0) {
+          message.textContent = "В Xano сейчас нет объявлений на модерации.";
+          return;
+        }
+
+        list.innerHTML = cars
+          .map(
+            (car) => `
+              <div class="list-row moderation-row">
+                <div>
+                  <strong>${escapeHtml(car.title)}</strong>
+                  <span class="status-badge status-pending_review">На модерации</span>
+                </div>
+                <div class="row-actions">
+                  <button class="button button-light" type="button" data-action="approve" data-id="${escapeHtml(car.id)}">Одобрить</button>
+                  <button class="button button-danger" type="button" data-action="reject" data-id="${escapeHtml(car.id)}">Отклонить</button>
+                </div>
+              </div>
+            `,
+          )
+          .join("");
+
+        list.hidden = false;
+        if (mockList instanceof HTMLElement) {
+          mockList.hidden = true;
+        }
+        message.textContent = "Показана живая очередь модерации из Xano.";
+      } catch (error) {
+        console.error(error);
+        message.textContent = "Не удалось загрузить очередь модерации из Xano.";
+      }
+    };
+
+    list?.addEventListener("click", async (event) => {
+      const target = event.target;
+
+      if (!(target instanceof HTMLButtonElement) || !(list instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = list.dataset.apiUrl;
+      const action = target.dataset.action;
+      const id = target.dataset.id;
+
+      if (!apiUrl || !action || !id) {
+        return;
+      }
+
+      target.disabled = true;
+
+      try {
+        const response = await fetch(`${apiUrl}/admin/cars/${id}/${action}`, {
+          method: "PATCH",
+        });
+
+        if (!response.ok) {
+          throw new Error("Moderation action failed");
+        }
+
+        await loadModeration();
+      } catch (error) {
+        console.error(error);
+        target.disabled = false;
+      }
+    });
+
+    loadModeration();
+  </script>
 </BaseLayout>

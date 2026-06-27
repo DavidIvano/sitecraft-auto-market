@@ -18,6 +18,8 @@ Use this value for:
 PUBLIC_XANO_API_URL
 ```
 
+The separated copy/paste XanoScript blocks are in `docs/xano-scripts.md`.
+
 ## Tables
 
 ### car_listings
