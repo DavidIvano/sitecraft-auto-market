@@ -18,6 +18,28 @@ npm run build
 
 ## Cloudflare Pages deploy
 
+This repository includes a GitHub Actions workflow:
+
+```txt
+.github/workflows/cloudflare-pages.yml
+```
+
+On every push to `main`, GitHub builds the Astro site and deploys `dist` to Cloudflare Pages with Wrangler.
+
+Required GitHub repository secrets:
+
+```txt
+CLOUDFLARE_API_TOKEN
+CLOUDFLARE_ACCOUNT_ID
+```
+
+Recommended GitHub repository variables:
+
+```txt
+PUBLIC_XANO_API_URL
+PUBLIC_SITE_URL
+```
+
 Build command:
 
 ```sh

@@ -40,3 +40,36 @@ export async function getCarBySlug(slug: string): Promise<CarListing | null> {
 
   return response.json();
 }
+
+export async function createCarListing(formData: FormData): Promise<CarListing> {
+  if (!isApiConfigured()) {
+    throw new Error("PUBLIC_XANO_API_URL is not configured");
+  }
+
+  const response = await fetch(`${API_URL}/cars`, {
+    method: "POST",
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to create car listing");
+  }
+
+  return response.json();
+}
+
+export async function submitCarForReview(id: number): Promise<CarListing> {
+  if (!isApiConfigured()) {
+    throw new Error("PUBLIC_XANO_API_URL is not configured");
+  }
+
+  const response = await fetch(`${API_URL}/cars/${id}/submit`, {
+    method: "PATCH",
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to submit car listing");
+  }
+
+  return response.json();
+}

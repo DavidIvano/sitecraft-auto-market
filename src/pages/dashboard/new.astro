@@ -12,6 +12,9 @@ const fields = [
   { name: "price", label: "Цена", type: "number" },
   { name: "city", label: "Город", type: "text" },
 ] as const;
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
 <BaseLayout title="Добавить объявление">
@@ -19,28 +22,75 @@ const fields = [
     <div class="container narrow">
       <p class="eyebrow">Новое объявление</p>
       <h1>Добавить авто</h1>
-      <form class="form-panel">
+      <form class="form-panel" id="new-listing-form">
         {fields.map((field) => (
           <label>
             <span>{field.label}</span>
-            <input type={field.type} name={field.name} />
+            <input type={field.type} name={field.name} required />
           </label>
         ))}
+        <label>
+          <span>Страна</span>
+          <input type="text" name="country" value="Германия" required />
+        </label>
+        <label>
+          <span>Валюта</span>
+          <input type="text" name="currency" value="EUR" required />
+        </label>
         <label class="full-field">
           <span>Описание</span>
-          <textarea name="description" rows="6"></textarea>
+          <textarea name="description" rows="6" required></textarea>
         </label>
         <label class="full-field">
           <span>Изображения</span>
           <input type="file" name="images" accept="image/webp,image/jpeg,image/png" multiple />
         </label>
-        <button class="button button-dark" type="button">Сохранить черновик</button>
+        <button class="button button-dark" type="submit">Сохранить черновик</button>
+        <p class="form-message" id="form-message" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
+          После настройки Xano форма будет отправлять объявление и изображения в API.
+        </p>
       </form>
       <script>
-        // Future Xano submission:
-        // const formData = new FormData(form);
-        // formData.append("status", "pending_review");
-        // await fetch(`${PUBLIC_XANO_API_URL}/cars`, { method: "POST", body: formData });
+        const form = document.querySelector("#new-listing-form");
+        const message = document.querySelector("#form-message");
+
+        form?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) {
+            return;
+          }
+
+          const apiUrl = message.dataset.apiUrl;
+          const placeholderUrl = message.dataset.placeholderUrl;
+
+          if (!apiUrl || apiUrl === placeholderUrl) {
+            message.textContent = "Сначала укажи PUBLIC_XANO_API_URL в .env и Cloudflare Pages.";
+            return;
+          }
+
+          const formData = new FormData(form);
+          formData.append("status", "draft");
+
+          message.textContent = "Сохраняю объявление...";
+
+          try {
+            const response = await fetch(`${apiUrl}/cars`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error("Xano вернул ошибку при сохранении объявления.");
+            }
+
+            message.textContent = "Черновик создан. После следующего этапа добавим отправку на модерацию.";
+            form.reset();
+          } catch (error) {
+            console.error(error);
+            message.textContent = "Не удалось сохранить объявление. Проверь Xano API и CORS.";
+          }
+        });
       </script>
     </div>
   </section>
