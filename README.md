@@ -1,43 +1,49 @@
-# Astro Starter Kit: Minimal
+# SiteCraft Auto Market
+
+Базовая Astro-архитектура для будущей доски объявлений авто / интернет-магазина с Xano REST API, GitHub и Cloudflare Pages.
+
+## Local development
 
 ```sh
-npm create astro@latest -- --template minimal
+npm install
+cp .env.example .env
+npm run dev
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+## Build
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```sh
+npm run build
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Cloudflare Pages deploy
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Build command:
 
-Any static assets, like images, can be placed in the `public/` directory.
+```sh
+npm run build
+```
 
-## 🧞 Commands
+Build output directory:
 
-All commands are run from the root of the project, from a terminal:
+```txt
+dist
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+Environment variables:
 
-## 👀 Want to learn more?
+```txt
+PUBLIC_XANO_API_URL
+PUBLIC_SITE_URL
+```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Future features
+
+* Xano Auth
+* User dashboard
+* Image upload
+* Manual moderation
+* Public approved listings
+* Paid featured listings
+* Stripe or PayPal payment
+* SEO pages by brand, model and city

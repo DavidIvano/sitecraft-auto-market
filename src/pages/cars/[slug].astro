@@ -1,0 +1,89 @@
+---
+import StatusBadge from "../../components/StatusBadge.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { mockCars } from "../../lib/mockCars";
+import { getCarBySlug } from "../../lib/xano";
+
+export function getStaticPaths() {
+  return mockCars.map((car) => ({
+    params: { slug: car.slug },
+  }));
+}
+
+const { slug } = Astro.params;
+let car = mockCars.find((item) => item.slug === slug) ?? null;
+
+try {
+  if (slug) {
+    car = (await getCarBySlug(slug)) ?? car;
+  }
+} catch (error) {
+  console.warn(error);
+}
+
+const formatter =
+  car &&
+  new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency: car.currency,
+    maximumFractionDigits: 0,
+  });
+---
+
+<BaseLayout title={car?.title ?? "Автомобиль не найден"}>
+  <section class="section">
+    <div class="container">
+      {
+        car ? (
+          <article class="detail-grid">
+            <div class="gallery">
+              <img src={car.main_image_url} alt={car.title} />
+              <div class="gallery-strip">
+                <span />
+                <span />
+                <span />
+              </div>
+            </div>
+            <div class="detail-panel">
+              <StatusBadge status="approved" />
+              <h1>{car.title}</h1>
+              <p class="detail-price">{formatter?.format(car.price)}</p>
+              <dl class="spec-grid">
+                <div>
+                  <dt>Год</dt>
+                  <dd>{car.year}</dd>
+                </div>
+                <div>
+                  <dt>Пробег</dt>
+                  <dd>{car.mileage.toLocaleString("ru-RU")} км</dd>
+                </div>
+                <div>
+                  <dt>Топливо</dt>
+                  <dd>{car.fuel_type}</dd>
+                </div>
+                <div>
+                  <dt>Коробка</dt>
+                  <dd>{car.transmission}</dd>
+                </div>
+                <div>
+                  <dt>Город</dt>
+                  <dd>
+                    {car.city}, {car.country}
+                  </dd>
+                </div>
+              </dl>
+              <p>{car.description}</p>
+              <a class="button button-dark full-width" href="/dashboard">Связаться</a>
+            </div>
+          </article>
+        ) : (
+          <div class="empty-state">
+            <h1>Автомобиль не найден</h1>
+            <p>Объявление могло быть снято с публикации или ещё не прошло модерацию.</p>
+            <a class="button button-dark" href="/cars">Вернуться в каталог</a>
+          </div>
+        )
+      }
+    </div>
+  </section>
+</BaseLayout>

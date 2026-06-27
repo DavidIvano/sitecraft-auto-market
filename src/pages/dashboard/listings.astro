@@ -1,0 +1,29 @@
+---
+import StatusBadge from "../../components/StatusBadge.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import type { CarListingStatus } from "../../lib/types";
+
+const listings: { title: string; status: CarListingStatus }[] = [
+  { title: "BMW 530i M Sport", status: "draft" },
+  { title: "Audi Q5 Quattro", status: "pending_review" },
+  { title: "Mercedes-Benz C300", status: "approved" },
+  { title: "Porsche Macan", status: "rejected" },
+];
+---
+
+<BaseLayout title="Мои объявления">
+  <section class="section page-hero">
+    <div class="container">
+      <p class="eyebrow">Кабинет</p>
+      <h1>Мои объявления</h1>
+      <div class="list-panel">
+        {listings.map((listing) => (
+          <div class="list-row">
+            <strong>{listing.title}</strong>
+            <StatusBadge status={listing.status} />
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,33 @@
+---
+import StatusBadge from "../../components/StatusBadge.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const moderationItems = [
+  "Volkswagen Golf GTI 2020",
+  "Tesla Model 3 Long Range",
+  "Volvo XC60 Momentum",
+];
+---
+
+<BaseLayout title="Модерация">
+  <section class="section page-hero">
+    <div class="container">
+      <p class="eyebrow">Админ</p>
+      <h1>Модерация объявлений</h1>
+      <div class="list-panel">
+        {moderationItems.map((title) => (
+          <div class="list-row moderation-row">
+            <div>
+              <strong>{title}</strong>
+              <StatusBadge status="pending_review" />
+            </div>
+            <div class="row-actions">
+              <button class="button button-light" type="button">Одобрить</button>
+              <button class="button button-danger" type="button">Отклонить</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

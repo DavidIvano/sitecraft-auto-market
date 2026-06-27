@@ -1,0 +1,36 @@
+---
+import CarCard from "../../components/CarCard.astro";
+import SearchBar from "../../components/SearchBar.astro";
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { mockCars } from "../../lib/mockCars";
+import { getApprovedCars } from "../../lib/xano";
+
+let cars = mockCars;
+
+try {
+  const xanoCars = await getApprovedCars();
+  cars = xanoCars.length > 0 ? xanoCars : mockCars;
+} catch (error) {
+  console.warn(error);
+  cars = mockCars;
+}
+---
+
+<BaseLayout title="Автомобили" description="Каталог проверенных автомобилей">
+  <section class="section page-hero">
+    <div class="container">
+      <p class="eyebrow">Каталог</p>
+      <h1>Автомобили</h1>
+      <p class="lead">Фильтры уже готовы визуально, подключение поиска можно добавить на следующем этапе.</p>
+      <SearchBar />
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="cards-grid">
+        {cars.map((car) => <CarCard car={car} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

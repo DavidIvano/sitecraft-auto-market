@@ -1,0 +1,21 @@
+---
+const navItems = [
+  { href: "/", label: "Главная" },
+  { href: "/cars", label: "Авто" },
+  { href: "/sell", label: "Продать авто" },
+  { href: "/dashboard", label: "Кабинет" },
+];
+---
+
+<header class="site-header">
+  <div class="container header-inner">
+    <a class="brand" href="/" aria-label="SiteCraft Auto Market">
+      <span class="brand-mark">SC</span>
+      <span>SiteCraft Auto Market</span>
+    </a>
+    <nav class="main-nav" aria-label="Основная навигация">
+      {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
+    </nav>
+    <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+  </div>
+</header>

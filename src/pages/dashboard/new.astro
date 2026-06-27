@@ -1,0 +1,47 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const fields = [
+  { name: "title", label: "Название", type: "text" },
+  { name: "brand", label: "Марка", type: "text" },
+  { name: "model", label: "Модель", type: "text" },
+  { name: "year", label: "Год", type: "number" },
+  { name: "mileage", label: "Пробег", type: "number" },
+  { name: "fuel_type", label: "Тип топлива", type: "text" },
+  { name: "transmission", label: "Коробка передач", type: "text" },
+  { name: "price", label: "Цена", type: "number" },
+  { name: "city", label: "Город", type: "text" },
+] as const;
+---
+
+<BaseLayout title="Добавить объявление">
+  <section class="section page-hero">
+    <div class="container narrow">
+      <p class="eyebrow">Новое объявление</p>
+      <h1>Добавить авто</h1>
+      <form class="form-panel">
+        {fields.map((field) => (
+          <label>
+            <span>{field.label}</span>
+            <input type={field.type} name={field.name} />
+          </label>
+        ))}
+        <label class="full-field">
+          <span>Описание</span>
+          <textarea name="description" rows="6"></textarea>
+        </label>
+        <label class="full-field">
+          <span>Изображения</span>
+          <input type="file" name="images" accept="image/webp,image/jpeg,image/png" multiple />
+        </label>
+        <button class="button button-dark" type="button">Сохранить черновик</button>
+      </form>
+      <script>
+        // Future Xano submission:
+        // const formData = new FormData(form);
+        // formData.append("status", "pending_review");
+        // await fetch(`${PUBLIC_XANO_API_URL}/cars`, { method: "POST", body: formData });
+      </script>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,48 @@
+---
+import StatusBadge from "./StatusBadge.astro";
+import type { CarListing } from "../lib/types";
+
+type Props = {
+  car: CarListing;
+};
+
+const { car } = Astro.props;
+const formatter = new Intl.NumberFormat("ru-RU", {
+  style: "currency",
+  currency: car.currency,
+  maximumFractionDigits: 0,
+});
+---
+
+<article class="car-card">
+  <a class="car-image-link" href={`/cars/${car.slug}`} aria-label={`Смотреть ${car.title}`}>
+    <img
+      src={car.main_image_url ?? "/favicon.svg"}
+      alt={car.title}
+      class="car-image"
+      loading="lazy"
+    />
+  </a>
+  <div class="car-card-body">
+    <div class="car-card-top">
+      <h3>{car.title}</h3>
+      <StatusBadge status={car.status} />
+    </div>
+    <p class="car-price">{formatter.format(car.price)}</p>
+    <dl class="car-meta">
+      <div>
+        <dt>Год</dt>
+        <dd>{car.year}</dd>
+      </div>
+      <div>
+        <dt>Пробег</dt>
+        <dd>{car.mileage.toLocaleString("ru-RU")} км</dd>
+      </div>
+      <div>
+        <dt>Город</dt>
+        <dd>{car.city}</dd>
+      </div>
+    </dl>
+    <a class="button button-light full-width" href={`/cars/${car.slug}`}>Смотреть</a>
+  </div>
+</article>

@@ -1,0 +1,20 @@
+---
+import type { CarListingStatus } from "../lib/types";
+
+const statusLabels: Record<CarListingStatus, string> = {
+  draft: "Черновик",
+  pending_review: "На модерации",
+  approved: "Проверено модератором",
+  rejected: "Отклонено",
+  archived: "В архиве",
+  sold: "Продано",
+};
+
+type Props = {
+  status: CarListingStatus;
+};
+
+const { status } = Astro.props;
+---
+
+<span class={`status-badge status-${status}`}>{statusLabels[status]}</span>

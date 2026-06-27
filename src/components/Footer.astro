@@ -1,0 +1,20 @@
+---
+const links = [
+  { href: "/cars", label: "Авто" },
+  { href: "/sell", label: "Продать авто" },
+  { href: "/dashboard", label: "Кабинет" },
+  { href: "/admin/moderation", label: "Модерация" },
+];
+---
+
+<footer class="site-footer">
+  <div class="container footer-inner">
+    <div>
+      <strong>SiteCraft Auto Market</strong>
+      <p>Чистая основа для премиальной доски объявлений авто с Xano и Cloudflare Pages.</p>
+    </div>
+    <nav class="footer-links" aria-label="Ссылки в подвале">
+      {links.map((link) => <a href={link.href}>{link.label}</a>)}
+    </nav>
+  </div>
+</footer>

@@ -1,17 +1,65 @@
 ---
+import CarCard from "../components/CarCard.astro";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { mockCars } from "../lib/mockCars";
 
+const advantages = [
+  "Проверка объявлений",
+  "Ручная модерация",
+  "Чистые карточки",
+  "Быстрый поиск",
+];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout title="Премиальная доска объявлений авто">
+  <section class="hero section">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">SiteCraft Auto Market</p>
+        <h1>Премиальная доска объявлений авто</h1>
+        <p class="lead">
+          Простая, быстрая и аккуратная платформа для продажи автомобилей
+        </p>
+        <div class="hero-actions">
+          <a class="button button-dark" href="/cars">Смотреть авто</a>
+          <a class="button button-light" href="/sell">Продать авто</a>
+        </div>
+      </div>
+      <div class="hero-panel" aria-label="Пример объявления">
+        <img src={mockCars[0].main_image_url} alt={mockCars[0].title} />
+        <div>
+          <span>Проверено</span>
+          <strong>{mockCars[0].title}</strong>
+          <p>Отобранная карточка с ключевыми деталями без лишнего шума.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-heading">
+        <p class="eyebrow">Преимущества</p>
+        <h2>Чистая база для маркетплейса</h2>
+      </div>
+      <div class="feature-grid">
+        {advantages.map((item) => <div class="feature-card">{item}</div>)}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-heading row-heading">
+        <div>
+          <p class="eyebrow">Последние объявления</p>
+          <h2>Свежие автомобили</h2>
+        </div>
+        <a href="/cars">Все авто</a>
+      </div>
+      <div class="cards-grid">
+        {mockCars.map((car) => <CarCard car={car} />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>
