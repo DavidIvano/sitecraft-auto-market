@@ -1,5 +1,7 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Личный кабинет">
@@ -12,25 +14,42 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
         <a class="button button-light" href="/dashboard/listings">Мои объявления</a>
         <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
       </div>
-      <p class="form-message" id="dashboard-auth-message">Проверяю вход...</p>
+      <p class="form-message" id="dashboard-auth-message" data-api-url={xanoApiUrl}>Проверяю вход...</p>
     </div>
   </section>
   <script>
     const token = window.localStorage.getItem("sitecraft_auto_market_auth_token");
     const userRaw = window.localStorage.getItem("sitecraft_auto_market_user");
     const message = document.querySelector("#dashboard-auth-message");
+    const apiUrl = message instanceof HTMLElement ? message.dataset.apiUrl : "";
+
+    const clearAuthAndLogin = () => {
+      window.localStorage.removeItem("sitecraft_auto_market_auth_token");
+      window.localStorage.removeItem("sitecraft_auto_market_user");
+      window.location.href = `/login?next=${encodeURIComponent("/dashboard")}`;
+    };
 
     if (!token) {
       window.location.href = `/login?next=${encodeURIComponent("/dashboard")}`;
     } else if (message instanceof HTMLElement) {
-      try {
-        const user = userRaw ? JSON.parse(userRaw) : null;
-        message.textContent = user?.email
-          ? `Вы вошли как ${user.email}.`
-          : "Вы вошли в личный кабинет.";
-      } catch {
-        message.textContent = "Вы вошли в личный кабинет.";
-      }
+      fetch(`${apiUrl}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            clearAuthAndLogin();
+            return;
+          }
+
+          const payload = await response.json();
+          const user = payload.user ?? (userRaw ? JSON.parse(userRaw) : null);
+          message.textContent = user?.email
+            ? `Вы вошли как ${user.email}.`
+            : "Вы вошли в личный кабинет.";
+        })
+        .catch(() => {
+          clearAuthAndLogin();
+        });
     }
   </script>
 </BaseLayout>
