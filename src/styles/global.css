@@ -112,15 +112,12 @@ textarea {
   font-weight: 800;
 }
 
-.brand-mark {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
+.brand-logo {
+  width: 44px;
+  height: 44px;
   border-radius: 8px;
-  background: var(--accent-strong);
-  color: white;
-  font-size: 0.78rem;
+  box-shadow: 0 0 0 1px var(--line), 0 10px 28px rgba(37, 99, 235, 0.24);
+  object-fit: cover;
 }
 
 .main-nav,
