@@ -6,8 +6,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
 <BaseLayout title="Автомобиль">
-  <section class="section">
-    <div class="container">
+  <section class="section car-detail-section">
+    <div class="container detail-container">
       <div
         id="live-car-detail"
         data-api-url={xanoApiUrl}
@@ -111,7 +111,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               .filter(Boolean)
               .filter((value, index, array) => array.indexOf(value) === index)
               .slice(0, 5);
-            const galleryImage = galleryImages[0] || "/favicon.svg";
+            const galleryImage = galleryImages[0] || "";
             const contactHref =
               normalizePhoneHref(car.seller_phone) ||
               (car.seller_email ? `mailto:${encodeURIComponent(String(car.seller_email))}` : "");
@@ -122,26 +122,43 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                 : "Контакты не указаны";
 
             root.innerHTML = `
-              <article class="detail-grid">
-                <div class="gallery" data-gallery>
-                  <button class="gallery-main-button" type="button" data-fullscreen-image="${escapeHtml(galleryImage)}" aria-label="Открыть фото на весь экран">
-                    <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
-                  </button>
+              <article class="detail-grid car-detail-grid">
+                <div class="gallery car-slider" data-gallery>
+                  <div class="gallery-stage">
+                    ${
+                      galleryImages.length > 1
+                        ? `<button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото">‹</button>`
+                        : ""
+                    }
+                    <button class="gallery-main-button" type="button" data-fullscreen-image="${escapeHtml(galleryImage)}" aria-label="Открыть фото на весь экран">
+                      ${
+                        galleryImage
+                          ? `<img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />`
+                          : `<div class="gallery-empty">Фото в Xano не добавлено</div>`
+                      }
+                    </button>
+                    ${
+                      galleryImages.length > 1
+                        ? `<button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото">›</button>`
+                        : ""
+                    }
+                    <span class="gallery-count">${galleryImages.length > 0 ? `1 / ${galleryImages.length}` : "0 / 0"}</span>
+                  </div>
                   <div class="gallery-strip">
                     ${
                       galleryImages.length > 0
                         ? galleryImages
-                            .map((imageUrl: string) => `<button class="gallery-thumb" type="button" data-fullscreen-image="${escapeHtml(imageUrl)}" style="background-image:url('${escapeHtml(imageUrl)}');"></button>`)
+                            .map((imageUrl: string, index: number) => `<button class="gallery-thumb${index === 0 ? " is-active" : ""}" type="button" data-slide-index="${index}" style="background-image:url('${escapeHtml(imageUrl)}');"></button>`)
                             .join("")
                         : "<span></span><span></span><span></span><span></span><span></span>"
                     }
                   </div>
                 </div>
-                <div class="detail-panel">
+                <div class="detail-panel compact-detail-panel">
                   <span class="status-badge status-approved">Проверено модератором</span>
                   <h1>${escapeHtml(car.title)}</h1>
                   <p class="detail-price">${formatPrice(car.price, car.currency)}</p>
-                  <dl class="spec-grid">
+                  <dl class="spec-grid detail-spec-grid">
                     <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
                     <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
                     <div><dt>Топливо</dt><dd>${escapeHtml(car.fuel_type)}</dd></div>
@@ -149,7 +166,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                     <div><dt>Город</dt><dd>${escapeHtml(car.city)}, ${escapeHtml(car.country)}</dd></div>
                     <div><dt>Добавлено</dt><dd>${formatDate(car.created_at)}</dd></div>
                   </dl>
-                  <p>${escapeHtml(car.description)}</p>
+                  <p class="detail-description">${escapeHtml(car.description)}</p>
                   ${
                     contactHref
                       ? `<a class="button button-dark full-width" href="${contactHref}">${contactLabel}</a>`
@@ -163,33 +180,64 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               </div>
             `;
 
+            let activeSlideIndex = 0;
             const mainImage = root.querySelector(".gallery-main-button img");
             const mainButton = root.querySelector(".gallery-main-button");
+            const galleryCount = root.querySelector(".gallery-count");
+            const prevButton = root.querySelector(".gallery-prev");
+            const nextButton = root.querySelector(".gallery-next");
             const lightbox = root.querySelector("#car-lightbox");
             const lightboxImage = lightbox?.querySelector("img");
             const closeButton = lightbox?.querySelector(".lightbox-close");
 
-            root.querySelectorAll("[data-fullscreen-image]").forEach((button) => {
-              button.addEventListener("click", () => {
-                if (!(button instanceof HTMLElement)) {
-                  return;
-                }
+            const updateSlide = (nextIndex: number) => {
+              if (galleryImages.length === 0) {
+                return;
+              }
 
-                const imageUrl = button.dataset.fullscreenImage || "";
+              activeSlideIndex = (nextIndex + galleryImages.length) % galleryImages.length;
+              const imageUrl = galleryImages[activeSlideIndex];
 
-                if (mainImage instanceof HTMLImageElement) {
-                  mainImage.src = imageUrl;
-                }
+              if (mainImage instanceof HTMLImageElement) {
+                mainImage.src = imageUrl;
+              }
 
-                if (mainButton instanceof HTMLElement) {
-                  mainButton.dataset.fullscreenImage = imageUrl;
-                }
+              if (mainButton instanceof HTMLElement) {
+                mainButton.dataset.fullscreenImage = imageUrl;
+              }
 
-                if (lightbox instanceof HTMLElement && lightboxImage instanceof HTMLImageElement) {
-                  lightboxImage.src = imageUrl;
-                  lightbox.hidden = false;
+              if (galleryCount instanceof HTMLElement) {
+                galleryCount.textContent = `${activeSlideIndex + 1} / ${galleryImages.length}`;
+              }
+
+              root.querySelectorAll(".gallery-thumb").forEach((thumb) => {
+                if (thumb instanceof HTMLElement) {
+                  thumb.classList.toggle("is-active", thumb.dataset.slideIndex === String(activeSlideIndex));
                 }
               });
+            };
+
+            prevButton?.addEventListener("click", () => updateSlide(activeSlideIndex - 1));
+            nextButton?.addEventListener("click", () => updateSlide(activeSlideIndex + 1));
+
+            root.querySelectorAll(".gallery-thumb").forEach((button) => {
+              button.addEventListener("click", () => {
+                if (button instanceof HTMLElement) {
+                  updateSlide(Number(button.dataset.slideIndex || 0));
+                }
+              });
+            });
+
+            mainButton?.addEventListener("click", () => {
+              const imageUrl =
+                mainButton instanceof HTMLElement
+                  ? mainButton.dataset.fullscreenImage || galleryImages[activeSlideIndex] || ""
+                  : "";
+
+              if (imageUrl && lightbox instanceof HTMLElement && lightboxImage instanceof HTMLImageElement) {
+                lightboxImage.src = imageUrl;
+                lightbox.hidden = false;
+              }
             });
 
             closeButton?.addEventListener("click", () => {

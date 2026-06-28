@@ -87,14 +87,17 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       <div class="section-heading row-heading">
         <div>
           <p class="eyebrow">Подборки</p>
-          <h2>Быстрый старт</h2>
+          <h2>Категории авто</h2>
+        </div>
+        <div class="slider-controls" aria-label="Управление слайдером категорий">
+          <button class="slider-button" id="category-prev" type="button" aria-label="Предыдущие категории">‹</button>
+          <button class="slider-button" id="category-next" type="button" aria-label="Следующие категории">›</button>
         </div>
       </div>
-      <div class="feature-grid">
-        <a class="feature-card feature-link" href="/cars">Все опубликованные авто</a>
-        <a class="feature-card feature-link" href="/dashboard/new">Добавить объявление</a>
-        <a class="feature-card feature-link" href="/admin/moderation">Модерация</a>
-        <a class="feature-card feature-link" href="/dashboard">Мой кабинет</a>
+      <div class="category-carousel" aria-label="Категории автомобилей">
+        <div class="category-track" id="home-category-track">
+          <div class="category-loading">Загружаю категории из Xano...</div>
+        </div>
       </div>
     </div>
   </section>
@@ -132,6 +135,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const resetButton = document.querySelector("#home-reset-button");
     const searchButton = document.querySelector("#home-search-button");
     const heroImage = document.querySelector("#home-hero-image");
+    const categoryTrack = document.querySelector("#home-category-track");
+    const categoryPrev = document.querySelector("#category-prev");
+    const categoryNext = document.querySelector("#category-next");
     let allCars: Array<Record<string, unknown>> = [];
 
     const formatPrice = (price: unknown, currency: string) =>
@@ -219,6 +225,96 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       `;
     };
 
+    const categoryDefinitions = [
+      {
+        title: "Семейные",
+        text: "Практичные автомобили для города и поездок.",
+        match: (car: Record<string, unknown>) =>
+          /универсал|минивэн|suv|кроссовер|внедорожник/i.test(String(car.description || "")),
+      },
+      {
+        title: "Первые авто",
+        text: "Недорогие варианты для старта.",
+        match: (car: Record<string, unknown>) => Number(car.price || 0) > 0 && Number(car.price || 0) <= 5000,
+      },
+      {
+        title: "Премиум",
+        text: "BMW, Audi, Mercedes-Benz и другие сильные варианты.",
+        match: (car: Record<string, unknown>) =>
+          /bmw|audi|mercedes|porsche|lexus|land rover/i.test(String(car.brand || "")),
+      },
+      {
+        title: "Электро",
+        text: "Электромобили и современные гибриды.",
+        match: (car: Record<string, unknown>) => /электро|hybrid|гибрид/i.test(String(car.fuel_type || "")),
+      },
+      {
+        title: "Свежие",
+        text: "Последние опубликованные объявления.",
+        match: () => true,
+      },
+      {
+        title: "С фото",
+        text: "Объявления с загруженными изображениями.",
+        match: (car: Record<string, unknown>) => Boolean(car.main_image_url),
+      },
+    ];
+
+    const pickCategoryCar = (
+      cars: Array<Record<string, unknown>>,
+      match: (car: Record<string, unknown>) => boolean,
+    ) => cars.find((car) => match(car) && Boolean(car.main_image_url)) || cars.find((car) => match(car)) || cars[0];
+
+    const renderCategories = (cars: Array<Record<string, unknown>>) => {
+      if (!(categoryTrack instanceof HTMLElement)) {
+        return;
+      }
+
+      if (cars.length === 0) {
+        categoryTrack.innerHTML = `<div class="category-loading">Категории появятся после публикации объявлений.</div>`;
+        return;
+      }
+
+      categoryTrack.innerHTML = categoryDefinitions
+        .map((category) => {
+          const car = pickCategoryCar(cars, category.match);
+          const imageUrl = String(car?.main_image_url || "");
+          const meta = car
+            ? `${escapeHtml(car.brand)} ${escapeHtml(car.model)} · ${formatPrice(car.price, String(car.currency || "EUR"))}`
+            : "Смотреть объявления";
+
+          return `
+            <a class="category-slide" href="/cars" aria-label="${escapeHtml(category.title)}">
+              ${
+                imageUrl
+                  ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />`
+                  : `<div class="category-slide-empty">Фото в Xano не добавлено</div>`
+              }
+              <div class="category-slide-body">
+                <h3>${escapeHtml(category.title)}</h3>
+                <p>${escapeHtml(category.text)}</p>
+                <span>${meta}</span>
+              </div>
+            </a>
+          `;
+        })
+        .join("");
+    };
+
+    const scrollCategories = (direction: number) => {
+      if (!(categoryTrack instanceof HTMLElement)) {
+        return;
+      }
+
+      categoryTrack.scrollBy({
+        left: direction * Math.max(260, categoryTrack.clientWidth * 0.8),
+        behavior: "smooth",
+      });
+    };
+
+    categoryPrev?.addEventListener("click", () => scrollCategories(-1));
+    categoryNext?.addEventListener("click", () => scrollCategories(1));
+
     const applyHeroImage = (cars: Array<Record<string, unknown>>) => {
       const firstCarWithImage = cars.find((car) => Boolean(car.main_image_url));
 
@@ -299,6 +395,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
             allCars = newestFirst(cars);
             applyHeroImage(allCars);
+            renderCategories(allCars);
             renderCars(allCars);
           })
           .catch((error) => {
