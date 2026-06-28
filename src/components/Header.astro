@@ -34,6 +34,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     const clearAuth = () => {
       window.localStorage.removeItem("sitecraft_auto_market_auth_token");
       window.localStorage.removeItem("sitecraft_auto_market_user");
+
+      if (authLink instanceof HTMLAnchorElement) {
+        authLink.href = "/login";
+        authLink.textContent = "Войти";
+      }
+
+      if (authLogout instanceof HTMLButtonElement) {
+        authLogout.hidden = true;
+      }
     };
 
     if (token && authLink instanceof HTMLAnchorElement && authLogout instanceof HTMLButtonElement) {
