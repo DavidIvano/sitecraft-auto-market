@@ -456,22 +456,76 @@ legend {
   background: white;
 }
 
+.gallery-main-button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+  padding: 0;
+}
+
 .gallery img {
+  display: block;
+  width: 100%;
   aspect-ratio: 16 / 11;
+  object-fit: cover;
 }
 
 .gallery-strip {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 10px;
   padding-top: 10px;
 }
 
-.gallery-strip span {
+.gallery-strip span,
+.gallery-thumb {
   display: block;
   height: 72px;
+  border: 0;
   border-radius: 8px;
   background: #e5e7eb;
+  background-position: center;
+  background-size: cover;
+  cursor: zoom-in;
+  padding: 0;
+}
+
+.lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: grid;
+  place-items: center;
+  background: rgba(17, 24, 39, 0.92);
+  padding: 24px;
+}
+
+.lightbox[hidden] {
+  display: none;
+}
+
+.lightbox img {
+  max-width: min(100%, 1180px);
+  max-height: 86vh;
+  border-radius: 8px;
+  object-fit: contain;
+}
+
+.lightbox-close {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  width: 44px;
+  height: 44px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  font-size: 2rem;
+  line-height: 1;
 }
 
 .spec-grid {
@@ -899,6 +953,10 @@ legend {
   .mini-meta,
   .admin-car-meta {
     grid-template-columns: 1fr;
+  }
+
+  .gallery-strip {
+    grid-template-columns: repeat(3, 1fr);
   }
 
   .form-section,

@@ -28,6 +28,18 @@ const formatter =
     currency: car.currency,
     maximumFractionDigits: 0,
   });
+
+const cleanPhone = car?.seller_phone?.replace(/[^\d+]/g, "") ?? "";
+const contactHref = cleanPhone
+  ? `tel:${cleanPhone}`
+  : car?.seller_email
+    ? `mailto:${car.seller_email}`
+    : "";
+const contactLabel = car?.seller_phone
+  ? `Связаться: ${car.seller_phone}`
+  : car?.seller_email
+    ? `Написать: ${car.seller_email}`
+    : "Контакты не указаны";
 ---
 
 <BaseLayout title={car?.title ?? "Автомобиль не найден"}>
@@ -37,7 +49,9 @@ const formatter =
         car ? (
           <article class="detail-grid">
             <div class="gallery">
-              <img src={car.main_image_url} alt={car.title} />
+              <button class="gallery-main-button" type="button" data-static-lightbox-open aria-label="Открыть фото на весь экран">
+                <img src={car.main_image_url} alt={car.title} />
+              </button>
               <div class="gallery-strip">
                 <span />
                 <span />
@@ -73,7 +87,17 @@ const formatter =
                 </div>
               </dl>
               <p>{car.description}</p>
-              <a class="button button-dark full-width" href="/dashboard">Связаться</a>
+              {
+                contactHref ? (
+                  <a class="button button-dark full-width" href={contactHref}>{contactLabel}</a>
+                ) : (
+                  <button class="button button-dark full-width" type="button" disabled>{contactLabel}</button>
+                )
+              }
+            </div>
+            <div class="lightbox" id="static-car-lightbox" hidden>
+              <button class="lightbox-close" type="button" aria-label="Закрыть фото">×</button>
+              <img src={car.main_image_url} alt={car.title} />
             </div>
           </article>
         ) : (
@@ -86,4 +110,27 @@ const formatter =
       }
     </div>
   </section>
+  <script>
+    const openButton = document.querySelector("[data-static-lightbox-open]");
+    const lightbox = document.querySelector("#static-car-lightbox");
+    const closeButton = lightbox?.querySelector(".lightbox-close");
+
+    openButton?.addEventListener("click", () => {
+      if (lightbox instanceof HTMLElement) {
+        lightbox.hidden = false;
+      }
+    });
+
+    closeButton?.addEventListener("click", () => {
+      if (lightbox instanceof HTMLElement) {
+        lightbox.hidden = true;
+      }
+    });
+
+    lightbox?.addEventListener("click", (event) => {
+      if (event.target === lightbox && lightbox instanceof HTMLElement) {
+        lightbox.hidden = true;
+      }
+    });
+  </script>
 </BaseLayout>

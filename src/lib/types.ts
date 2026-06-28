@@ -22,6 +22,9 @@ export type CarListing = {
   currency: string;
   city: string;
   country: string;
+  seller_name?: string;
+  seller_phone?: string;
+  seller_email?: string;
   description: string;
   status: CarListingStatus;
   main_image_url?: string;

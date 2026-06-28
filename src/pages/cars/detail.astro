@@ -39,6 +39,11 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         maximumFractionDigits: 0,
       }).format(Number(price || 0));
 
+    const normalizePhoneHref = (phone: unknown) => {
+      const cleanPhone = String(phone ?? "").replace(/[^\d+]/g, "");
+      return cleanPhone ? `tel:${cleanPhone}` : "";
+    };
+
     const renderEmpty = (title: string, text: string) => {
       if (!(root instanceof HTMLElement)) {
         return;
@@ -73,20 +78,36 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           })
           .then((car) => {
             const images = Array.isArray(car.images) ? car.images : [];
-            const galleryImage = car.main_image_url || images[0]?.image_url || "/favicon.svg";
+            const galleryImages = [
+              car.main_image_url,
+              ...images.map((image: { image_url?: string }) => image.image_url),
+            ]
+              .filter(Boolean)
+              .filter((value, index, array) => array.indexOf(value) === index)
+              .slice(0, 5);
+            const galleryImage = galleryImages[0] || "/favicon.svg";
+            const contactHref =
+              normalizePhoneHref(car.seller_phone) ||
+              (car.seller_email ? `mailto:${encodeURIComponent(String(car.seller_email))}` : "");
+            const contactLabel = car.seller_phone
+              ? `Связаться: ${escapeHtml(car.seller_phone)}`
+              : car.seller_email
+                ? `Написать: ${escapeHtml(car.seller_email)}`
+                : "Контакты не указаны";
 
             root.innerHTML = `
               <article class="detail-grid">
-                <div class="gallery">
-                  <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
+                <div class="gallery" data-gallery>
+                  <button class="gallery-main-button" type="button" data-fullscreen-image="${escapeHtml(galleryImage)}" aria-label="Открыть фото на весь экран">
+                    <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
+                  </button>
                   <div class="gallery-strip">
                     ${
-                      images.length > 0
-                        ? images
-                            .slice(0, 3)
-                            .map((image: { image_url?: string }) => `<span style="background-image:url('${escapeHtml(image.image_url)}');background-size:cover;background-position:center;"></span>`)
+                      galleryImages.length > 0
+                        ? galleryImages
+                            .map((imageUrl: string) => `<button class="gallery-thumb" type="button" data-fullscreen-image="${escapeHtml(imageUrl)}" style="background-image:url('${escapeHtml(imageUrl)}');"></button>`)
                             .join("")
-                        : "<span></span><span></span><span></span>"
+                        : "<span></span><span></span><span></span><span></span><span></span>"
                     }
                   </div>
                 </div>
@@ -102,10 +123,59 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                     <div><dt>Город</dt><dd>${escapeHtml(car.city)}, ${escapeHtml(car.country)}</dd></div>
                   </dl>
                   <p>${escapeHtml(car.description)}</p>
-                  <a class="button button-dark full-width" href="/dashboard">Связаться</a>
+                  ${
+                    contactHref
+                      ? `<a class="button button-dark full-width" href="${contactHref}">${contactLabel}</a>`
+                      : `<button class="button button-dark full-width" type="button" disabled>${contactLabel}</button>`
+                  }
                 </div>
               </article>
+              <div class="lightbox" id="car-lightbox" hidden>
+                <button class="lightbox-close" type="button" aria-label="Закрыть фото">×</button>
+                <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
+              </div>
             `;
+
+            const mainImage = root.querySelector(".gallery-main-button img");
+            const mainButton = root.querySelector(".gallery-main-button");
+            const lightbox = root.querySelector("#car-lightbox");
+            const lightboxImage = lightbox?.querySelector("img");
+            const closeButton = lightbox?.querySelector(".lightbox-close");
+
+            root.querySelectorAll("[data-fullscreen-image]").forEach((button) => {
+              button.addEventListener("click", () => {
+                if (!(button instanceof HTMLElement)) {
+                  return;
+                }
+
+                const imageUrl = button.dataset.fullscreenImage || "";
+
+                if (mainImage instanceof HTMLImageElement) {
+                  mainImage.src = imageUrl;
+                }
+
+                if (mainButton instanceof HTMLElement) {
+                  mainButton.dataset.fullscreenImage = imageUrl;
+                }
+
+                if (lightbox instanceof HTMLElement && lightboxImage instanceof HTMLImageElement) {
+                  lightboxImage.src = imageUrl;
+                  lightbox.hidden = false;
+                }
+              });
+            });
+
+            closeButton?.addEventListener("click", () => {
+              if (lightbox instanceof HTMLElement) {
+                lightbox.hidden = true;
+              }
+            });
+
+            lightbox?.addEventListener("click", (event) => {
+              if (event.target === lightbox && lightbox instanceof HTMLElement) {
+                lightbox.hidden = true;
+              }
+            });
           })
           .catch((error) => {
             console.error(error);

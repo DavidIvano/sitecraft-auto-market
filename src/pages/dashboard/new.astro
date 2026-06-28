@@ -195,7 +195,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           <div class="form-grid">
             <label class="full-field">
               <span>Фото автомобиля</span>
-              <input type="file" name="photos" accept="image/webp,image/jpeg,image/png" multiple />
+              <input type="file" name="photos" accept="image/webp,image/jpeg,image/png" multiple data-max-files="5" />
             </label>
 
             <label class="full-field">
@@ -219,6 +219,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const authToken = getAuthToken();
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
+        const photoInput = document.querySelector('input[name="photos"]');
 
         function clearOldAuthAndRelogin() {
           clearAuth();
@@ -270,6 +271,20 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         }
 
         validateAuthToken();
+
+        photoInput?.addEventListener("change", () => {
+          if (!(photoInput instanceof HTMLInputElement) || !(message instanceof HTMLElement)) {
+            return;
+          }
+
+          const maxFiles = Number(photoInput.dataset.maxFiles || 5);
+          const files = Array.from(photoInput.files || []);
+
+          if (files.length > maxFiles) {
+            photoInput.value = "";
+            message.textContent = `Можно загрузить максимум ${maxFiles} фото. Выберите до ${maxFiles} изображений.`;
+          }
+        });
 
         async function submitListing(payload: FormData) {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
@@ -352,6 +367,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           payload.set("currency", "EUR");
           payload.set("city", city);
           payload.set("country", "Германия");
+          payload.set("seller_name", String(formData.get("sellerName") || "").trim());
+          payload.set("seller_phone", sellerPhone);
+          payload.set("seller_email", sellerEmail);
           payload.set(
             "description",
             [
@@ -372,7 +390,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               .join("\n"),
           );
 
-          formData.getAll("photos").forEach((file) => {
+          const photoFiles = formData.getAll("photos").filter((file) => file instanceof File && file.size > 0);
+
+          if (photoFiles.length > 5) {
+            message.textContent = "Можно загрузить максимум 5 фото.";
+            return;
+          }
+
+          photoFiles.forEach((file) => {
             if (file instanceof File && file.size > 0) {
               payload.append("photos", file);
             }
