@@ -1,0 +1,154 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+---
+
+<BaseLayout title="Регистрация">
+  <section class="section page-hero">
+    <div class="container narrow">
+      <p class="eyebrow">Регистрация</p>
+      <h1>Создать аккаунт</h1>
+      <p class="lead">
+        Зарегистрируйтесь по email и паролю. Этот аккаунт будет использовать ту же таблицу пользователей, что и Google-вход.
+      </p>
+
+      <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
+        <form class="form-panel" id="register-form">
+          <label class="full-field">
+            <span>Имя</span>
+            <input type="text" name="name" autocomplete="name" required />
+          </label>
+
+          <label class="full-field">
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+
+          <label class="full-field">
+            <span>Пароль</span>
+            <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+          </label>
+
+          <label class="full-field">
+            <span>Повторите пароль</span>
+            <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+          </label>
+
+          <button class="button button-dark full-width" type="submit">Создать аккаунт</button>
+          <p class="form-message">
+            Уже есть аккаунт? <a href="/login">Войти</a>
+          </p>
+          <p class="form-message" id="register-message">
+            Пароль должен быть не короче 8 символов, с буквами и цифрами.
+          </p>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { consumeNext, setAuthToken, setAuthUser } from "../lib/authClient";
+
+    const form = document.querySelector("#register-form");
+    const message = document.querySelector("#register-message");
+
+    const getToken = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      const record = payload as Record<string, unknown>;
+      const token = record.authToken ?? record.auth_token ?? record.token ?? record.jwt;
+
+      return typeof token === "string" ? token : null;
+    };
+
+    const getUser = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      const record = payload as Record<string, unknown>;
+      return record.user ?? record.me ?? record.authUser ?? null;
+    };
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const panel = form.closest(".auth-panel");
+      const apiUrl = panel instanceof HTMLElement ? panel.dataset.apiUrl : "";
+      const placeholderUrl = panel instanceof HTMLElement ? panel.dataset.placeholderUrl : "";
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        return;
+      }
+
+      const formData = new FormData(form);
+      const password = String(formData.get("password") || "");
+      const passwordConfirm = String(formData.get("passwordConfirm") || "");
+
+      if (password !== passwordConfirm) {
+        message.textContent = "Пароли не совпадают.";
+        return;
+      }
+
+      const payload = {
+        name: String(formData.get("name") || "").trim(),
+        email: String(formData.get("email") || "").trim().toLowerCase(),
+        password,
+      };
+
+      try {
+        message.textContent = "Создаю аккаунт...";
+
+        const response = await fetch(`${apiUrl}/auth/register`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const result = contentType.includes("application/json")
+          ? await response.json()
+          : await response.text();
+
+        if (!response.ok) {
+          const details =
+            result && typeof result === "object"
+              ? ((result as Record<string, unknown>).message ?? (result as Record<string, unknown>).code)
+              : result;
+
+          throw new Error(typeof details === "string" && details ? details : "Не удалось создать аккаунт.");
+        }
+
+        const token = getToken(result);
+        const user = getUser(result);
+
+        if (!token) {
+          throw new Error("Xano не вернул authToken.");
+        }
+
+        setAuthToken(token);
+
+        if (user) {
+          setAuthUser(user);
+        }
+
+        const next = new URLSearchParams(window.location.search).get("next") || consumeNext("/dashboard");
+        message.textContent = "Аккаунт создан. Открываю кабинет...";
+        window.location.href = next;
+      } catch (error) {
+        message.textContent =
+          error instanceof Error ? error.message : "Не удалось создать аккаунт.";
+      }
+    });
+  </script>
+</BaseLayout>

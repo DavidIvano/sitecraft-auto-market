@@ -356,6 +356,7 @@ dd {
 
 .search-bar,
 .form-panel,
+.auth-panel,
 .listing-form {
   display: grid;
   gap: 14px;
@@ -625,6 +626,37 @@ legend {
 .form-panel {
   grid-template-columns: 1fr;
   padding: 22px;
+}
+
+.auth-panel {
+  margin-top: 28px;
+}
+
+.auth-panel .form-panel {
+  margin-top: 0;
+}
+
+.auth-panel a {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.auth-divider {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  height: 1px;
+  background: var(--line);
 }
 
 .full-field {

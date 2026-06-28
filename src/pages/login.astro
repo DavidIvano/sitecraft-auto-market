@@ -11,13 +11,34 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
   <section class="section page-hero">
     <div class="container narrow">
       <p class="eyebrow">Авторизация</p>
-      <h1>Войти через Google</h1>
+      <h1>Войти в кабинет</h1>
       <p class="lead">
-        Перед добавлением объявления нужно войти в личный кабинет. Авторизация проходит через Google и Xano.
+        Войдите через Google или по email и паролю. Оба способа открывают один и тот же личный кабинет.
       </p>
-      <div class="auth-panel">
+
+      <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
+        <form class="form-panel" id="password-login-form">
+          <label class="full-field">
+            <span>Email</span>
+            <input type="email" name="email" autocomplete="email" required />
+          </label>
+
+          <label class="full-field">
+            <span>Пароль</span>
+            <input type="password" name="password" autocomplete="current-password" required />
+          </label>
+
+          <button class="button button-dark full-width" type="submit">Войти по email</button>
+          <p class="form-message">
+            Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+          </p>
+          <p class="form-message" id="password-login-message">Введите email и пароль.</p>
+        </form>
+
+        <div class="auth-divider"><span>или</span></div>
+
         <button
-          class="button button-dark full-width"
+          class="button button-light full-width"
           id="google-login"
           type="button"
           data-api-url={xanoApiUrl}
@@ -35,10 +56,38 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
   </section>
 
   <script>
-    import { AUTH_DEBUG_KEY, rememberNext } from "../lib/authClient";
+    import {
+      AUTH_DEBUG_KEY,
+      consumeNext,
+      rememberNext,
+      setAuthToken,
+      setAuthUser,
+    } from "../lib/authClient";
 
     const button = document.querySelector("#google-login");
     const message = document.querySelector("#login-message");
+    const passwordForm = document.querySelector("#password-login-form");
+    const passwordMessage = document.querySelector("#password-login-message");
+
+    const getToken = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      const record = payload as Record<string, unknown>;
+      const token = record.authToken ?? record.auth_token ?? record.token ?? record.jwt;
+
+      return typeof token === "string" ? token : null;
+    };
+
+    const getUser = (payload: unknown) => {
+      if (!payload || typeof payload !== "object") {
+        return null;
+      }
+
+      const record = payload as Record<string, unknown>;
+      return record.user ?? record.me ?? record.authUser ?? null;
+    };
 
     const getAuthUrl = (payload: unknown) => {
       if (typeof payload === "string") {
@@ -113,6 +162,74 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         console.error(error);
         button.disabled = false;
         message.textContent = "Не удалось начать вход через Google. Проверь Xano endpoint для OAuth.";
+      }
+    });
+
+    passwordForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!(passwordForm instanceof HTMLFormElement) || !(passwordMessage instanceof HTMLElement)) {
+        return;
+      }
+
+      const panel = passwordForm.closest(".auth-panel");
+      const apiUrl = panel instanceof HTMLElement ? panel.dataset.apiUrl : "";
+      const placeholderUrl = panel instanceof HTMLElement ? panel.dataset.placeholderUrl : "";
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        passwordMessage.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        return;
+      }
+
+      const formData = new FormData(passwordForm);
+      const payload = {
+        email: String(formData.get("email") || "").trim().toLowerCase(),
+        password: String(formData.get("password") || ""),
+      };
+
+      try {
+        passwordMessage.textContent = "Проверяю пароль...";
+
+        const response = await fetch(`${apiUrl}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(payload),
+        });
+        const contentType = response.headers.get("content-type") || "";
+        const result = contentType.includes("application/json")
+          ? await response.json()
+          : await response.text();
+
+        if (!response.ok) {
+          const details =
+            result && typeof result === "object"
+              ? ((result as Record<string, unknown>).message ?? (result as Record<string, unknown>).code)
+              : result;
+
+          throw new Error(typeof details === "string" && details ? details : "Неверный email или пароль.");
+        }
+
+        const token = getToken(result);
+        const user = getUser(result);
+
+        if (!token) {
+          throw new Error("Xano не вернул authToken.");
+        }
+
+        setAuthToken(token);
+
+        if (user) {
+          setAuthUser(user);
+        }
+
+        const next = new URLSearchParams(window.location.search).get("next") || consumeNext("/dashboard");
+        passwordMessage.textContent = "Вход выполнен. Открываю кабинет...";
+        window.location.href = next;
+      } catch (error) {
+        passwordMessage.textContent =
+          error instanceof Error ? error.message : "Не удалось войти по email.";
       }
     });
   </script>
