@@ -9,9 +9,25 @@ let cars = mockCars;
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
+const toTimestamp = (value?: string | number) => {
+  if (!value) {
+    return 0;
+  }
+
+  const date =
+    typeof value === "number" || /^\d+$/.test(String(value))
+      ? new Date(Number(value))
+      : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? 0 : date.getTime();
+};
+
 try {
   const xanoCars = await getApprovedCars();
-  cars = xanoCars.length > 0 ? xanoCars : mockCars;
+  cars =
+    xanoCars.length > 0
+      ? [...xanoCars].sort((left, right) => toTimestamp(right.created_at) - toTimestamp(left.created_at))
+      : mockCars;
 } catch (error) {
   console.warn(error);
   cars = mockCars;
@@ -66,6 +82,39 @@ try {
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
+    const toDate = (value: unknown) => {
+      if (!value) {
+        return null;
+      }
+
+      const stringValue = String(value);
+      const date = typeof value === "number" || /^\d+$/.test(stringValue)
+        ? new Date(Number(value))
+        : new Date(stringValue);
+
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const formatDate = (value: unknown) => {
+      const date = toDate(value);
+
+      if (!date) {
+        return "дата уточняется";
+      }
+
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+    };
+
+    const newestFirst = (cars: Array<Record<string, unknown>>) =>
+      [...cars].sort((left, right) => {
+        const leftTime = toDate(left.created_at)?.getTime() ?? 0;
+        const rightTime = toDate(right.created_at)?.getTime() ?? 0;
+        return rightTime - leftTime;
+      });
+
     if (grid instanceof HTMLElement && message instanceof HTMLElement) {
       const apiUrl = grid.dataset.apiUrl;
       const placeholderUrl = grid.dataset.placeholderUrl;
@@ -85,7 +134,7 @@ try {
               return;
             }
 
-            grid.innerHTML = cars
+            grid.innerHTML = newestFirst(cars)
               .map(
                 (car) => `
                   <article class="car-card">
@@ -98,6 +147,7 @@ try {
                         <span class="status-badge status-approved">Проверено модератором</span>
                       </div>
                       <p class="car-price">${formatPrice(car.price, car.currency)}</p>
+                      <p class="car-date">Добавлено: ${formatDate(car.created_at)}</p>
                       <dl class="car-meta">
                         <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
                         <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>

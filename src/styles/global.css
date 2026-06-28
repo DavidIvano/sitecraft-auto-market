@@ -291,6 +291,13 @@ textarea {
   font-weight: 900;
 }
 
+.car-date {
+  margin: -4px 0 14px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 750;
+}
+
 .car-meta,
 .spec-grid {
   margin: 0 0 18px;

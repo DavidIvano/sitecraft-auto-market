@@ -39,6 +39,32 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         maximumFractionDigits: 0,
       }).format(Number(price || 0));
 
+    const toDate = (value: unknown) => {
+      if (!value) {
+        return null;
+      }
+
+      const stringValue = String(value);
+      const date = typeof value === "number" || /^\d+$/.test(stringValue)
+        ? new Date(Number(value))
+        : new Date(stringValue);
+
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const formatDate = (value: unknown) => {
+      const date = toDate(value);
+
+      if (!date) {
+        return "дата уточняется";
+      }
+
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+    };
+
     const normalizePhoneHref = (phone: unknown) => {
       const cleanPhone = String(phone ?? "").replace(/[^\d+]/g, "");
       return cleanPhone ? `tel:${cleanPhone}` : "";
@@ -121,6 +147,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                     <div><dt>Топливо</dt><dd>${escapeHtml(car.fuel_type)}</dd></div>
                     <div><dt>Коробка</dt><dd>${escapeHtml(car.transmission)}</dd></div>
                     <div><dt>Город</dt><dd>${escapeHtml(car.city)}, ${escapeHtml(car.country)}</dd></div>
+                    <div><dt>Добавлено</dt><dd>${formatDate(car.created_at)}</dd></div>
                   </dl>
                   <p>${escapeHtml(car.description)}</p>
                   ${

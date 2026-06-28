@@ -29,8 +29,8 @@ export type CarListing = {
   status: CarListingStatus;
   main_image_url?: string;
   images?: CarListingImage[];
-  created_at?: string;
-  updated_at?: string;
+  created_at?: string | number;
+  updated_at?: string | number;
 };
 
 export type XanoFileMetadata = {
@@ -53,5 +53,5 @@ export type CarListingImage = {
   image_url: string;
   sort_order: number;
   is_main: boolean;
-  created_at?: string;
+  created_at?: string | number;
 };

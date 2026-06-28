@@ -3,6 +3,9 @@ import CarCard from "../components/CarCard.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
 import { mockCars } from "../lib/mockCars";
 
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+
 const advantages = [
   "Проверка объявлений",
   "Ручная модерация",
@@ -57,9 +60,136 @@ const advantages = [
         </div>
         <a href="/cars">Все авто</a>
       </div>
-      <div class="cards-grid">
+      <div class="cards-grid" id="home-mock-cars-grid">
         {mockCars.map((car) => <CarCard car={car} />)}
       </div>
+      <div
+        class="cards-grid"
+        id="home-live-cars-grid"
+        data-api-url={xanoApiUrl}
+        data-placeholder-url={placeholderApiUrl}
+        hidden
+      >
+      </div>
+      <p class="form-message" id="home-live-cars-message">
+        Загружаю самые свежие объявления из Xano.
+      </p>
     </div>
   </section>
+
+  <script>
+    const liveGrid = document.querySelector("#home-live-cars-grid");
+    const mockGrid = document.querySelector("#home-mock-cars-grid");
+    const message = document.querySelector("#home-live-cars-message");
+
+    const formatPrice = (price: unknown, currency: string) =>
+      new Intl.NumberFormat("ru-RU", {
+        style: "currency",
+        currency: currency || "EUR",
+        maximumFractionDigits: 0,
+      }).format(Number(price || 0));
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const toDate = (value: unknown) => {
+      if (!value) {
+        return null;
+      }
+
+      const stringValue = String(value);
+      const date = typeof value === "number" || /^\d+$/.test(stringValue)
+        ? new Date(Number(value))
+        : new Date(stringValue);
+
+      return Number.isNaN(date.getTime()) ? null : date;
+    };
+
+    const formatDate = (value: unknown) => {
+      const date = toDate(value);
+
+      if (!date) {
+        return "дата уточняется";
+      }
+
+      return new Intl.DateTimeFormat("ru-RU", {
+        dateStyle: "medium",
+        timeStyle: "short",
+      }).format(date);
+    };
+
+    const newestFirst = (cars: Array<Record<string, unknown>>) =>
+      [...cars].sort((left, right) => {
+        const leftTime = toDate(left.created_at)?.getTime() ?? 0;
+        const rightTime = toDate(right.created_at)?.getTime() ?? 0;
+        return rightTime - leftTime;
+      });
+
+    const renderCarCard = (car: Record<string, unknown>) => {
+      const slug = encodeURIComponent(String(car.slug ?? ""));
+      const title = escapeHtml(car.title);
+
+      return `
+        <article class="car-card">
+          <a class="car-image-link" href="/cars/detail?slug=${slug}" aria-label="Смотреть ${title}">
+            <img src="${escapeHtml(car.main_image_url || "/favicon.svg")}" alt="${title}" class="car-image" loading="lazy" />
+          </a>
+          <div class="car-card-body">
+            <div class="car-card-top">
+              <h3>${title}</h3>
+              <span class="status-badge status-approved">Проверено модератором</span>
+            </div>
+            <p class="car-price">${formatPrice(car.price, String(car.currency || "EUR"))}</p>
+            <p class="car-date">Добавлено: ${formatDate(car.created_at)}</p>
+            <dl class="car-meta">
+              <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
+              <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
+              <div><dt>Город</dt><dd>${escapeHtml(car.city)}</dd></div>
+            </dl>
+            <a class="button button-light full-width" href="/cars/detail?slug=${slug}">Смотреть</a>
+          </div>
+        </article>
+      `;
+    };
+
+    if (liveGrid instanceof HTMLElement && message instanceof HTMLElement) {
+      const apiUrl = liveGrid.dataset.apiUrl;
+      const placeholderUrl = liveGrid.dataset.placeholderUrl;
+
+      if (apiUrl && apiUrl !== placeholderUrl) {
+        fetch(`${apiUrl}/cars`)
+          .then((response) => {
+            if (!response.ok) {
+              throw new Error("Failed to load latest cars");
+            }
+
+            return response.json();
+          })
+          .then((cars) => {
+            if (!Array.isArray(cars) || cars.length === 0) {
+              message.textContent = "В Xano пока нет опубликованных объявлений, поэтому показаны demo-карточки.";
+              return;
+            }
+
+            liveGrid.innerHTML = newestFirst(cars).slice(0, 6).map(renderCarCard).join("");
+            liveGrid.hidden = false;
+
+            if (mockGrid instanceof HTMLElement) {
+              mockGrid.hidden = true;
+            }
+
+            message.textContent = "Показаны самые новые опубликованные объявления.";
+          })
+          .catch((error) => {
+            console.error(error);
+            message.textContent = "Не удалось загрузить Xano, поэтому показаны demo-карточки.";
+          });
+      }
+    }
+  </script>
 </BaseLayout>

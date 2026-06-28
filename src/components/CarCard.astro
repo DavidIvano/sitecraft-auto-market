@@ -12,6 +12,27 @@ const formatter = new Intl.NumberFormat("ru-RU", {
   currency: car.currency,
   maximumFractionDigits: 0,
 });
+
+const toDate = (value?: string | number) => {
+  if (!value) {
+    return null;
+  }
+
+  const date =
+    typeof value === "number" || /^\d+$/.test(String(value))
+      ? new Date(Number(value))
+      : new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const createdAt = toDate(car.created_at);
+const createdAtLabel = createdAt
+  ? new Intl.DateTimeFormat("ru-RU", {
+      dateStyle: "medium",
+      timeStyle: "short",
+    }).format(createdAt)
+  : "дата уточняется";
 ---
 
 <article class="car-card">
@@ -29,6 +50,7 @@ const formatter = new Intl.NumberFormat("ru-RU", {
       <StatusBadge status={car.status} />
     </div>
     <p class="car-price">{formatter.format(car.price)}</p>
+    <p class="car-date">Добавлено: {createdAtLabel}</p>
     <dl class="car-meta">
       <div>
         <dt>Год</dt>
