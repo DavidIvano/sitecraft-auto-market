@@ -26,9 +26,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   </section>
 
   <script>
-    const TOKEN_KEY = "sitecraft_auto_market_auth_token";
-    const USER_KEY = "sitecraft_auto_market_user";
-    const DEBUG_KEY = "sitecraft_auto_market_auth_debug";
+    import { clearAuth, getAuthToken, getAuthUser } from "../../lib/authClient";
 
     const message = document.querySelector("#auth-check-message");
     const output = document.querySelector("#auth-check-output");
@@ -40,25 +38,19 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       }
     };
 
-    const clearAuth = () => {
-      window.localStorage.removeItem(TOKEN_KEY);
-      window.localStorage.removeItem(USER_KEY);
-      window.localStorage.removeItem(DEBUG_KEY);
-    };
-
     async function checkAuth() {
       if (!(message instanceof HTMLElement)) {
         return;
       }
 
       const apiUrl = message.dataset.apiUrl;
-      const token = window.localStorage.getItem(TOKEN_KEY);
-      const user = window.localStorage.getItem(USER_KEY);
+      const token = getAuthToken();
+      const user = getAuthUser();
 
       const lines = [
         `Xano API: ${apiUrl || "не настроен"}`,
         `Токен в браузере: ${token ? `есть (${token.length} символов)` : "нет"}`,
-        `Пользователь в браузере: ${user || "нет"}`,
+        `Пользователь в браузере: ${user ? JSON.stringify(user) : "нет"}`,
       ];
 
       if (!apiUrl) {

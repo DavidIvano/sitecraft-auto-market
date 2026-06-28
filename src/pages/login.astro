@@ -35,6 +35,8 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
   </section>
 
   <script>
+    import { AUTH_DEBUG_KEY, rememberNext } from "../lib/authClient";
+
     const button = document.querySelector("#google-login");
     const message = document.querySelector("#login-message");
 
@@ -99,11 +101,11 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         const next = currentParams.get("next");
 
         if (next) {
-          window.localStorage.setItem("sitecraft_auto_market_auth_next", next);
+          rememberNext(next);
         }
 
         if (debugMode) {
-          window.localStorage.setItem("sitecraft_auto_market_auth_debug", "1");
+          window.localStorage.setItem(AUTH_DEBUG_KEY, "1");
         }
 
         window.location.href = authUrl;

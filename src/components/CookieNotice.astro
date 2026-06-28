@@ -1,0 +1,32 @@
+<div class="cookie-notice" id="cookie-notice" hidden>
+  <div>
+    <strong>Cookie и приватность</strong>
+    <p>
+      Мы используем только необходимые cookie: для входа в кабинет, сохранения сессии и запоминания этого уведомления.
+      Аналитики и рекламных cookie сейчас нет.
+    </p>
+  </div>
+  <div class="cookie-actions">
+    <a class="button button-light" href="/privacy">Подробнее</a>
+    <button class="button button-dark" type="button" id="cookie-accept">Понятно</button>
+  </div>
+</div>
+
+<script>
+  import { acceptCookieNotice, hasCookieNotice } from "../lib/authClient";
+
+  const notice = document.querySelector("#cookie-notice");
+  const acceptButton = document.querySelector("#cookie-accept");
+
+  if (notice instanceof HTMLElement && !hasCookieNotice()) {
+    notice.hidden = false;
+  }
+
+  acceptButton?.addEventListener("click", () => {
+    acceptCookieNotice();
+
+    if (notice instanceof HTMLElement) {
+      notice.hidden = true;
+    }
+  });
+</script>

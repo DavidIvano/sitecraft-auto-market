@@ -1,0 +1,234 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout title="Редактировать объявление">
+  <section class="section page-hero">
+    <div class="container narrow">
+      <p class="eyebrow">Кабинет</p>
+      <h1>Редактировать объявление</h1>
+      <p class="lead">Изменения сохраняются в вашем объявлении. Если объявление уже опубликовано, после правки его можно снова отправить на модерацию.</p>
+
+      <form class="listing-form" id="edit-listing-form" data-api-url={xanoApiUrl}>
+        <fieldset class="form-section">
+          <legend>Основное</legend>
+          <div class="form-grid">
+            <label class="full-field">
+              <span>Название</span>
+              <input type="text" name="title" required />
+            </label>
+
+            <label>
+              <span>Марка</span>
+              <input type="text" name="brand" required />
+            </label>
+
+            <label>
+              <span>Модель</span>
+              <input type="text" name="model" required />
+            </label>
+
+            <label>
+              <span>Год</span>
+              <input type="number" name="year" min="1900" max="2100" required />
+            </label>
+
+            <label>
+              <span>Цена</span>
+              <input type="number" name="price" min="0" step="1" required />
+            </label>
+
+            <label>
+              <span>Пробег</span>
+              <input type="number" name="mileage" min="0" step="1" required />
+            </label>
+
+            <label>
+              <span>Город</span>
+              <input type="text" name="city" required />
+            </label>
+
+            <label>
+              <span>Страна</span>
+              <input type="text" name="country" />
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section">
+          <legend>Характеристики</legend>
+          <div class="form-grid">
+            <label>
+              <span>Топливо</span>
+              <input type="text" name="fuel_type" required />
+            </label>
+
+            <label>
+              <span>Коробка</span>
+              <input type="text" name="transmission" required />
+            </label>
+
+            <label class="full-field">
+              <span>Описание</span>
+              <textarea name="description" rows="8"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <div class="form-footer">
+          <button class="button button-dark" type="submit">Сохранить изменения</button>
+          <p class="form-message" id="edit-listing-message">Загружаю объявление...</p>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    import { clearAuth, getAuthToken } from "../../../lib/authClient";
+
+    const token = getAuthToken();
+    const form = document.querySelector("#edit-listing-form");
+    const message = document.querySelector("#edit-listing-message");
+    const id = new URLSearchParams(window.location.search).get("id");
+
+    const fields = [
+      "title",
+      "brand",
+      "model",
+      "year",
+      "price",
+      "mileage",
+      "city",
+      "country",
+      "fuel_type",
+      "transmission",
+      "description",
+    ];
+
+    function requireLogin() {
+      clearAuth();
+      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+    }
+
+    function setMessage(value: string) {
+      if (message instanceof HTMLElement) {
+        message.textContent = value;
+      }
+    }
+
+    function fillForm(car: Record<string, unknown>) {
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+
+      fields.forEach((field) => {
+        const input = form.elements.namedItem(field);
+
+        if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
+          input.value = String(car[field] ?? "");
+        }
+      });
+    }
+
+    async function loadListing() {
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+
+      const apiUrl = form.dataset.apiUrl;
+
+      if (!id) {
+        setMessage("Не найден ID объявления в адресе страницы.");
+        return;
+      }
+
+      if (!token) {
+        requireLogin();
+        return;
+      }
+
+      const response = await fetch(`${apiUrl}/dashboard/listings`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        requireLogin();
+        return;
+      }
+
+      const cars = await response.json();
+      const car = Array.isArray(cars)
+        ? cars.find((item) => String(item.id) === id)
+        : null;
+
+      if (!car) {
+        setMessage("Это объявление не найдено в вашем кабинете.");
+        return;
+      }
+
+      fillForm(car);
+      setMessage("Объявление загружено. Можно редактировать.");
+    }
+
+    async function saveListing(payload: Record<string, unknown>) {
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+
+      const apiUrl = form.dataset.apiUrl;
+      const response = await fetch(`${apiUrl}/dashboard/listings/${id}`, {
+        method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (response.status === 404) {
+        throw new Error("В Xano ещё нужен endpoint PATCH /dashboard/listings/{id}.");
+      }
+
+      if (!response.ok) {
+        const details = await response.text();
+        throw new Error(details || "Xano не сохранил изменения.");
+      }
+    }
+
+    form?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      if (!(form instanceof HTMLFormElement)) {
+        return;
+      }
+
+      const data = new FormData(form);
+      const payload = Object.fromEntries(
+        fields.map((field) => {
+          const rawValue = data.get(field);
+          const value = ["year", "price", "mileage"].includes(field)
+            ? Number(rawValue || 0)
+            : String(rawValue || "").trim();
+
+          return [field, value];
+        }),
+      );
+
+      try {
+        setMessage("Сохраняю изменения...");
+        await saveListing(payload);
+        setMessage("Изменения сохранены.");
+      } catch (error) {
+        setMessage(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
+      }
+    });
+
+    loadListing().catch(() => {
+      setMessage("Не удалось загрузить объявление.");
+    });
+  </script>
+</BaseLayout>

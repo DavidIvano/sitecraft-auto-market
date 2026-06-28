@@ -30,9 +30,30 @@ const listings: { title: string; status: CarListingStatus }[] = [
     </div>
   </section>
   <script>
-    const token = window.localStorage.getItem("sitecraft_auto_market_auth_token");
+    import { clearAuth, getAuthToken } from "../../lib/authClient";
+
+    const token = getAuthToken();
     const list = document.querySelector("#dashboard-listings");
     const message = document.querySelector("#dashboard-listings-message");
+
+    const statusLabels: Record<string, string> = {
+      draft: "Черновик",
+      pending_review: "На модерации",
+      approved: "Опубликовано",
+      rejected: "Отклонено",
+      archived: "Архив",
+      blocked: "Заблокировано",
+      deleted: "Удалено",
+      sold: "Продано",
+    };
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
 
     if (!token) {
       window.location.href = `/login?next=${encodeURIComponent("/dashboard/listings")}`;
@@ -44,8 +65,7 @@ const listings: { title: string; status: CarListingStatus }[] = [
       })
         .then(async (response) => {
           if (!response.ok) {
-            window.localStorage.removeItem("sitecraft_auto_market_auth_token");
-            window.localStorage.removeItem("sitecraft_auto_market_user");
+            clearAuth();
             window.location.href = `/login?next=${encodeURIComponent("/dashboard/listings")}`;
             return;
           }
@@ -61,9 +81,19 @@ const listings: { title: string; status: CarListingStatus }[] = [
           list.innerHTML = cars
             .map(
               (car) => `
-                <div class="list-row">
-                  <strong>${String(car.title ?? "Без названия")}</strong>
-                  <span class="status-badge status-${String(car.status ?? "draft")}">${String(car.status ?? "draft")}</span>
+                <div class="list-row dashboard-listing-row">
+                  <div>
+                    <strong>${escapeHtml(car.title ?? "Без названия")}</strong>
+                    <dl class="mini-meta">
+                      <div><dt>Город</dt><dd>${escapeHtml(car.city ?? "-")}</dd></div>
+                      <div><dt>Цена</dt><dd>${escapeHtml(car.price ?? "-")} ${escapeHtml(car.currency ?? "EUR")}</dd></div>
+                      <div><dt>ID</dt><dd>${escapeHtml(car.id)}</dd></div>
+                    </dl>
+                  </div>
+                  <div class="row-actions">
+                    <span class="status-badge status-${escapeHtml(car.status ?? "draft")}">${escapeHtml(statusLabels[String(car.status ?? "draft")] ?? car.status ?? "draft")}</span>
+                    <a class="button button-light" href="/dashboard/listings/edit?id=${encodeURIComponent(String(car.id))}">Редактировать</a>
+                  </div>
                 </div>
               `,
             )

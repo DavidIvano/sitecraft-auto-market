@@ -8,8 +8,8 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   <section class="section page-hero">
     <div class="container narrow">
       <p class="eyebrow">Кабинет</p>
-      <h1>Здесь будет личный кабинет пользователя</h1>
-      <p class="lead">Позже здесь появятся авторизация Xano, управление объявлениями и загрузка изображений.</p>
+      <h1>Личный кабинет продавца</h1>
+      <p class="lead">Здесь собраны ваши объявления, статусы модерации и быстрые действия.</p>
       <div class="hero-actions">
         <a class="button button-light" href="/dashboard/listings">Мои объявления</a>
         <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
@@ -18,14 +18,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     </div>
   </section>
   <script>
-    const token = window.localStorage.getItem("sitecraft_auto_market_auth_token");
-    const userRaw = window.localStorage.getItem("sitecraft_auto_market_user");
+    import { clearAuth, getAuthToken, getAuthUser } from "../../lib/authClient";
+
+    const token = getAuthToken();
+    const userRaw = getAuthUser();
     const message = document.querySelector("#dashboard-auth-message");
     const apiUrl = message instanceof HTMLElement ? message.dataset.apiUrl : "";
 
     const clearAuthAndLogin = () => {
-      window.localStorage.removeItem("sitecraft_auto_market_auth_token");
-      window.localStorage.removeItem("sitecraft_auto_market_user");
+      clearAuth();
       window.location.href = `/login?next=${encodeURIComponent("/dashboard")}`;
     };
 
@@ -42,7 +43,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
 
           const payload = await response.json();
-          const user = payload.user ?? (userRaw ? JSON.parse(userRaw) : null);
+          const user = payload.user ?? userRaw;
           message.textContent = user?.email
             ? `Вы вошли как ${user.email}.`
             : "Вы вошли в личный кабинет.";

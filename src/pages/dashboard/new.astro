@@ -214,14 +214,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       </form>
 
       <script>
-        const authToken = window.localStorage.getItem("sitecraft_auto_market_auth_token");
+        import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
+
+        const authToken = getAuthToken();
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
 
         function clearOldAuthAndRelogin() {
-          window.localStorage.removeItem("sitecraft_auto_market_auth_token");
-          window.localStorage.removeItem("sitecraft_auto_market_user");
-          window.localStorage.setItem("sitecraft_auto_market_auth_next", "/dashboard/new");
+          clearAuth();
+          rememberNext("/dashboard/new");
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
 

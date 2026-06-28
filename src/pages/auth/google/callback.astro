@@ -27,6 +27,14 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
   </section>
 
   <script>
+    import {
+      AUTH_DEBUG_KEY,
+      clearAuth,
+      consumeNext,
+      setAuthToken,
+      setAuthUser,
+    } from "../../../lib/authClient";
+
     const message = document.querySelector("#callback-message");
     const debugOutput = document.querySelector("#callback-debug");
     const callbackActions = document.querySelector("#callback-actions");
@@ -80,7 +88,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const error = params.get("error");
-      const debugMode = window.localStorage.getItem("sitecraft_auto_market_auth_debug") === "1";
+      const debugMode = window.localStorage.getItem(AUTH_DEBUG_KEY) === "1";
 
       if (debugMode) {
         addDebug("Debug mode: on");
@@ -165,11 +173,11 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
           throw new Error("Xano did not return auth token");
         }
 
-        window.localStorage.setItem("sitecraft_auto_market_auth_token", token);
+        setAuthToken(token);
         addDebug("Auth token: saved");
 
         if (user) {
-          window.localStorage.setItem("sitecraft_auto_market_user", JSON.stringify(user));
+          setAuthUser(user);
           addDebug("User: saved");
         }
 
@@ -184,17 +192,15 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         addDebug(`Auth check response: ${authMeText}`);
 
         if (!authMeResponse.ok) {
-          window.localStorage.removeItem("sitecraft_auto_market_auth_token");
-          window.localStorage.removeItem("sitecraft_auto_market_user");
+          clearAuth();
           throw new Error(`Xano auth/me не принял токен: ${authMeText}`);
         }
 
-        const next = window.localStorage.getItem("sitecraft_auto_market_auth_next") || "/dashboard";
-        window.localStorage.removeItem("sitecraft_auto_market_auth_next");
+        const next = consumeNext("/dashboard");
         addDebug(`Next page: ${next}`);
 
         if (debugMode) {
-          window.localStorage.removeItem("sitecraft_auto_market_auth_debug");
+          window.localStorage.removeItem(AUTH_DEBUG_KEY);
           message.textContent = "Вход выполнен. Токен сохранен и проверен.";
           return;
         }

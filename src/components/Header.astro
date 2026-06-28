@@ -25,16 +25,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     </div>
   </div>
   <script>
+    import { clearAuth, getAuthToken } from "../lib/authClient";
+
     const authLink = document.querySelector(".auth-link");
     const authLogout = document.querySelector(".auth-logout");
     const header = document.querySelector(".site-header");
-    const token = window.localStorage.getItem("sitecraft_auto_market_auth_token");
+    const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
 
-    const clearAuth = () => {
-      window.localStorage.removeItem("sitecraft_auto_market_auth_token");
-      window.localStorage.removeItem("sitecraft_auto_market_user");
-
+    const resetHeader = () => {
+      clearAuth();
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/login";
         authLink.textContent = "Войти";
@@ -51,7 +51,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       })
         .then((response) => {
           if (!response.ok) {
-            clearAuth();
+            resetHeader();
             return;
           }
 
@@ -60,7 +60,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           authLogout.hidden = false;
         })
         .catch(() => {
-          clearAuth();
+          resetHeader();
         });
     }
 
