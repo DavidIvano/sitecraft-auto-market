@@ -1,0 +1,112 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout title="Проверка входа">
+  <section class="section page-hero">
+    <div class="container narrow">
+      <p class="eyebrow">Диагностика</p>
+      <h1>Проверка входа</h1>
+      <p class="lead">
+        Эта страница показывает, сохранен ли токен входа и принимает ли его Xano.
+      </p>
+
+      <div class="empty-state">
+        <p id="auth-check-message" data-api-url={xanoApiUrl}>Проверяю вход...</p>
+        <pre class="debug-output" id="auth-check-output"></pre>
+        <div class="auth-check-actions">
+          <a class="button button-dark" href="/login?next=/auth/check&debug=1">Войти через Google с проверкой</a>
+          <a class="button button-light" href="/dashboard/new">Добавить объявление</a>
+          <button class="button button-light" type="button" id="clear-auth">Очистить вход</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    const TOKEN_KEY = "sitecraft_auto_market_auth_token";
+    const USER_KEY = "sitecraft_auto_market_user";
+    const DEBUG_KEY = "sitecraft_auto_market_auth_debug";
+
+    const message = document.querySelector("#auth-check-message");
+    const output = document.querySelector("#auth-check-output");
+    const clearButton = document.querySelector("#clear-auth");
+
+    const writeOutput = (value: string) => {
+      if (output instanceof HTMLElement) {
+        output.textContent = value;
+      }
+    };
+
+    const clearAuth = () => {
+      window.localStorage.removeItem(TOKEN_KEY);
+      window.localStorage.removeItem(USER_KEY);
+      window.localStorage.removeItem(DEBUG_KEY);
+    };
+
+    async function checkAuth() {
+      if (!(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = message.dataset.apiUrl;
+      const token = window.localStorage.getItem(TOKEN_KEY);
+      const user = window.localStorage.getItem(USER_KEY);
+
+      const lines = [
+        `Xano API: ${apiUrl || "не настроен"}`,
+        `Токен в браузере: ${token ? `есть (${token.length} символов)` : "нет"}`,
+        `Пользователь в браузере: ${user || "нет"}`,
+      ];
+
+      if (!apiUrl) {
+        message.textContent = "Xano API URL не настроен.";
+        writeOutput(lines.join("\n"));
+        return;
+      }
+
+      if (!token) {
+        message.textContent = "Вы сейчас не авторизованы.";
+        writeOutput(lines.join("\n"));
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const body = await response.text();
+
+        lines.push(`GET /auth/me status: ${response.status}`);
+        lines.push(`GET /auth/me response: ${body}`);
+
+        if (response.ok) {
+          message.textContent = "Вход работает. Xano принял токен.";
+        } else {
+          message.textContent = "Токен сохранен, но Xano его не принимает.";
+        }
+      } catch (error) {
+        const details = error instanceof Error ? error.message : "Неизвестная ошибка";
+        lines.push(`Ошибка проверки: ${details}`);
+        message.textContent = "Не удалось проверить вход.";
+      }
+
+      writeOutput(lines.join("\n"));
+    }
+
+    clearButton?.addEventListener("click", () => {
+      clearAuth();
+      writeOutput("Вход очищен. Теперь нажмите «Войти через Google с проверкой».");
+
+      if (message instanceof HTMLElement) {
+        message.textContent = "Данные входа удалены.";
+      }
+    });
+
+    checkAuth();
+  </script>
+</BaseLayout>

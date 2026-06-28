@@ -16,12 +16,37 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         <p id="callback-message" data-api-url={xanoApiUrl} data-auth-api-url={xanoAuthApiUrl} data-placeholder-url={placeholderApiUrl} data-continue-path={googleContinuePath}>
           Получаю токен авторизации от Xano.
         </p>
+        <pre class="debug-output" id="callback-debug" hidden></pre>
+        <p class="form-message" id="callback-actions" hidden>
+          <a href="/auth/check">Проверить вход</a>
+          <span> · </span>
+          <a href="/dashboard/new">Открыть добавление объявления</a>
+        </p>
       </div>
     </div>
   </section>
 
   <script>
     const message = document.querySelector("#callback-message");
+    const debugOutput = document.querySelector("#callback-debug");
+    const callbackActions = document.querySelector("#callback-actions");
+    const debugLines: string[] = [];
+
+    const showDebug = () => {
+      if (debugOutput instanceof HTMLElement) {
+        debugOutput.hidden = false;
+        debugOutput.textContent = debugLines.join("\n");
+      }
+
+      if (callbackActions instanceof HTMLElement) {
+        callbackActions.hidden = false;
+      }
+    };
+
+    const addDebug = (line: string) => {
+      debugLines.push(line);
+      showDebug();
+    };
 
     const getToken = (payload: unknown) => {
       if (!payload || typeof payload !== "object") {
@@ -55,23 +80,34 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       const params = new URLSearchParams(window.location.search);
       const code = params.get("code");
       const error = params.get("error");
+      const debugMode = window.localStorage.getItem("sitecraft_auto_market_auth_debug") === "1";
+
+      if (debugMode) {
+        addDebug("Debug mode: on");
+      }
 
       if (error) {
         message.textContent = `Google вернул ошибку: ${error}`;
+        addDebug(`Google error: ${error}`);
         return;
       }
 
       if (!code) {
         message.textContent = "В callback URL нет параметра code.";
+        addDebug("Google code: missing");
         return;
       }
 
       if (!authApiUrl || authApiUrl === placeholderUrl) {
         message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        addDebug("Xano API URL: missing");
         return;
       }
 
       const redirectUri = `${window.location.origin}/auth/google/callback`;
+      addDebug(`Google code: received (${code.length} chars)`);
+      addDebug(`Continue endpoint: ${authApiUrl}${continuePath}`);
+      addDebug(`Redirect URI: ${redirectUri}`);
 
       try {
         const continueUrl = new URL(`${authApiUrl}${continuePath}`);
@@ -83,6 +119,24 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         const payload = contentType.includes("application/json")
           ? await response.json()
           : await response.text();
+        const safePayload =
+          typeof payload === "string"
+            ? payload
+            : JSON.stringify(
+                Object.fromEntries(
+                  Object.entries(payload).map(([key, value]) => [
+                    key,
+                    ["authToken", "auth_token", "token", "jwt"].includes(key)
+                      ? "[received]"
+                      : value,
+                  ]),
+                ),
+                null,
+                2,
+              );
+
+        addDebug(`Continue status: ${response.status}`);
+        addDebug(`Continue response: ${safePayload}`);
 
         if (!response.ok) {
           const details =
@@ -112,13 +166,38 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         }
 
         window.localStorage.setItem("sitecraft_auto_market_auth_token", token);
+        addDebug("Auth token: saved");
 
         if (user) {
           window.localStorage.setItem("sitecraft_auto_market_user", JSON.stringify(user));
+          addDebug("User: saved");
+        }
+
+        const authMeResponse = await fetch(`${apiUrl}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+        const authMeText = await authMeResponse.text();
+
+        addDebug(`Auth check status: ${authMeResponse.status}`);
+        addDebug(`Auth check response: ${authMeText}`);
+
+        if (!authMeResponse.ok) {
+          window.localStorage.removeItem("sitecraft_auto_market_auth_token");
+          window.localStorage.removeItem("sitecraft_auto_market_user");
+          throw new Error(`Xano auth/me не принял токен: ${authMeText}`);
         }
 
         const next = window.localStorage.getItem("sitecraft_auto_market_auth_next") || "/dashboard";
         window.localStorage.removeItem("sitecraft_auto_market_auth_next");
+        addDebug(`Next page: ${next}`);
+
+        if (debugMode) {
+          window.localStorage.removeItem("sitecraft_auto_market_auth_debug");
+          message.textContent = "Вход выполнен. Токен сохранен и проверен.";
+          return;
+        }
 
         message.textContent = "Вход выполнен. Перехожу в кабинет...";
         window.location.href = next;
@@ -126,6 +205,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         console.error(error);
         const details = error instanceof Error ? error.message : "Проверь Xano continue endpoint.";
         message.textContent = `Не удалось завершить вход через Google. Xano ответил: ${details}`;
+        addDebug(`Final error: ${details}`);
       }
     };
 

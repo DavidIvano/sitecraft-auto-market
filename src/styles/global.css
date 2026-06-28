@@ -637,6 +637,27 @@ legend {
   font-size: 0.95rem;
 }
 
+.debug-output {
+  overflow: auto;
+  max-height: 340px;
+  margin: 18px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #111827;
+  color: #e5e7eb;
+  font-size: 0.86rem;
+  line-height: 1.55;
+  padding: 16px;
+  white-space: pre-wrap;
+}
+
+.auth-check-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
 .site-footer {
   margin-top: 56px;
   border-top: 1px solid var(--line);
