@@ -23,7 +23,15 @@ const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
     <meta name="viewport" content="width=device-width" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
     <title>{pageTitle}</title>
+    <script is:inline>
+      (() => {
+        const savedTheme = localStorage.getItem("sitecraft-theme");
+        const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = savedTheme || systemTheme;
+      })();
+    </script>
   </head>
   <body>
     <Header />

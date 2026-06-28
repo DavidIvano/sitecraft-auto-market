@@ -1,40 +1,100 @@
 ---
-import CarCard from "../components/CarCard.astro";
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { mockCars } from "../lib/mockCars";
+import { carBrands, fuelTypes, transmissions } from "../data/carOptions";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
-
-const advantages = [
-  "Проверка объявлений",
-  "Ручная модерация",
-  "Чистые карточки",
-  "Быстрый поиск",
-];
 ---
 
 <BaseLayout title="Премиальная доска объявлений авто">
-  <section class="hero section">
-    <div class="container hero-grid">
-      <div class="hero-copy">
+  <section class="market-hero">
+    <div class="market-hero-media" aria-hidden="true">
+      <img id="home-hero-image" alt="" hidden />
+    </div>
+    <div class="container market-hero-inner">
+      <div class="market-hero-copy">
         <p class="eyebrow">SiteCraft Auto Market</p>
-        <h1>Премиальная доска объявлений авто</h1>
-        <p class="lead">
-          Простая, быстрая и аккуратная платформа для продажи автомобилей
-        </p>
-        <div class="hero-actions">
-          <a class="button button-dark" href="/cars">Смотреть авто</a>
-          <a class="button button-light" href="/sell">Продать авто</a>
+        <h1>Найди свой автомобиль</h1>
+        <p class="lead">Свежие объявления из Xano, ручная модерация и быстрый подбор по главным параметрам.</p>
+      </div>
+
+      <div
+        class="home-search-panel"
+        id="home-search-panel"
+        data-api-url={xanoApiUrl}
+        data-placeholder-url={placeholderApiUrl}
+      >
+        <div class="search-tabs" aria-label="Категория транспорта">
+          <button class="search-tab is-active" type="button">Авто</button>
+          <button class="search-tab" type="button">Электро</button>
+          <button class="search-tab" type="button">Премиум</button>
+        </div>
+        <form class="market-search" id="home-search-form">
+          <label>
+            Марка
+            <select name="brand">
+              <option value="">Неважно</option>
+              {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
+            </select>
+          </label>
+          <label>
+            Модель
+            <input name="model" type="search" placeholder="Например, A4" />
+          </label>
+          <label>
+            Цена до
+            <input name="price" type="number" min="0" step="100" placeholder="4000" />
+          </label>
+          <label>
+            Год от
+            <input name="year" type="number" min="1950" max="2030" placeholder="2018" />
+          </label>
+          <label>
+            Пробег до
+            <input name="mileage" type="number" min="0" step="1000" placeholder="150000" />
+          </label>
+          <label>
+            Топливо
+            <select name="fuel">
+              <option value="">Неважно</option>
+              {fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}
+            </select>
+          </label>
+          <label>
+            Трансмиссия
+            <select name="transmission">
+              <option value="">Неважно</option>
+              {transmissions.map((transmission) => <option value={transmission}>{transmission}</option>)}
+            </select>
+          </label>
+          <label>
+            Город
+            <input name="city" type="search" placeholder="Берлин" />
+          </label>
+          <div class="search-actions">
+            <button class="button button-accent" id="home-search-button" type="submit">
+              Смотреть объявления
+            </button>
+            <button class="button button-ghost" id="home-reset-button" type="button">Сбросить</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="section home-categories">
+    <div class="container">
+      <div class="section-heading row-heading">
+        <div>
+          <p class="eyebrow">Подборки</p>
+          <h2>Быстрый старт</h2>
         </div>
       </div>
-      <div class="hero-panel" aria-label="Пример объявления">
-        <img src={mockCars[0].main_image_url} alt={mockCars[0].title} />
-        <div>
-          <span>Проверено</span>
-          <strong>{mockCars[0].title}</strong>
-          <p>Отобранная карточка с ключевыми деталями без лишнего шума.</p>
-        </div>
+      <div class="feature-grid">
+        <a class="feature-card feature-link" href="/cars">Все опубликованные авто</a>
+        <a class="feature-card feature-link" href="/dashboard/new">Добавить объявление</a>
+        <a class="feature-card feature-link" href="/admin/moderation">Модерация</a>
+        <a class="feature-card feature-link" href="/dashboard">Мой кабинет</a>
       </div>
     </div>
   </section>
@@ -42,45 +102,37 @@ const advantages = [
   <section class="section">
     <div class="container">
       <div class="section-heading">
-        <p class="eyebrow">Преимущества</p>
-        <h2>Чистая база для маркетплейса</h2>
-      </div>
-      <div class="feature-grid">
-        {advantages.map((item) => <div class="feature-card">{item}</div>)}
-      </div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container">
-      <div class="section-heading row-heading">
         <div>
           <p class="eyebrow">Последние объявления</p>
           <h2>Свежие автомобили</h2>
+          <p class="section-subtitle">Показываются только опубликованные машины из Xano. Demo-изображения на главной больше не используются.</p>
         </div>
         <a href="/cars">Все авто</a>
-      </div>
-      <div class="cards-grid" id="home-mock-cars-grid">
-        {mockCars.map((car) => <CarCard car={car} />)}
       </div>
       <div
         class="cards-grid"
         id="home-live-cars-grid"
-        data-api-url={xanoApiUrl}
-        data-placeholder-url={placeholderApiUrl}
         hidden
       >
       </div>
-      <p class="form-message" id="home-live-cars-message">
-        Загружаю самые свежие объявления из Xano.
-      </p>
+      <div class="empty-state" id="home-loading-state">
+        <h3>Загружаю свежие автомобили</h3>
+        <p>Получаю последние опубликованные объявления и фотографии из Xano.</p>
+      </div>
+      <p class="form-message" id="home-live-cars-message"></p>
     </div>
   </section>
 
   <script>
     const liveGrid = document.querySelector("#home-live-cars-grid");
-    const mockGrid = document.querySelector("#home-mock-cars-grid");
+    const loadingState = document.querySelector("#home-loading-state");
     const message = document.querySelector("#home-live-cars-message");
+    const searchPanel = document.querySelector("#home-search-panel");
+    const searchForm = document.querySelector("#home-search-form");
+    const resetButton = document.querySelector("#home-reset-button");
+    const searchButton = document.querySelector("#home-search-button");
+    const heroImage = document.querySelector("#home-hero-image");
+    let allCars: Array<Record<string, unknown>> = [];
 
     const formatPrice = (price: unknown, currency: string) =>
       new Intl.NumberFormat("ru-RU", {
@@ -130,6 +182,16 @@ const advantages = [
         return rightTime - leftTime;
       });
 
+    const carImageMarkup = (car: Record<string, unknown>) => {
+      const imageUrl = String(car.main_image_url || "");
+
+      if (!imageUrl) {
+        return `<div class="car-image car-image-empty">Фото в Xano не добавлено</div>`;
+      }
+
+      return `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />`;
+    };
+
     const renderCarCard = (car: Record<string, unknown>) => {
       const slug = encodeURIComponent(String(car.slug ?? ""));
       const title = escapeHtml(car.title);
@@ -137,7 +199,7 @@ const advantages = [
       return `
         <article class="car-card">
           <a class="car-image-link" href="/cars/detail?slug=${slug}" aria-label="Смотреть ${title}">
-            <img src="${escapeHtml(car.main_image_url || "/favicon.svg")}" alt="${title}" class="car-image" loading="lazy" />
+            ${carImageMarkup(car)}
           </a>
           <div class="car-card-body">
             <div class="car-card-top">
@@ -157,9 +219,65 @@ const advantages = [
       `;
     };
 
-    if (liveGrid instanceof HTMLElement && message instanceof HTMLElement) {
-      const apiUrl = liveGrid.dataset.apiUrl;
-      const placeholderUrl = liveGrid.dataset.placeholderUrl;
+    const applyHeroImage = (cars: Array<Record<string, unknown>>) => {
+      const firstCarWithImage = cars.find((car) => Boolean(car.main_image_url));
+
+      if (heroImage instanceof HTMLImageElement && firstCarWithImage?.main_image_url) {
+        heroImage.src = String(firstCarWithImage.main_image_url);
+        heroImage.hidden = false;
+      }
+    };
+
+    const matchesFilters = (car: Record<string, unknown>, formData: FormData) => {
+      const brand = String(formData.get("brand") || "").toLowerCase();
+      const model = String(formData.get("model") || "").toLowerCase();
+      const fuel = String(formData.get("fuel") || "").toLowerCase();
+      const transmission = String(formData.get("transmission") || "").toLowerCase();
+      const city = String(formData.get("city") || "").toLowerCase();
+      const maxPrice = Number(formData.get("price") || 0);
+      const minYear = Number(formData.get("year") || 0);
+      const maxMileage = Number(formData.get("mileage") || 0);
+
+      return (
+        (!brand || String(car.brand || "").toLowerCase() === brand) &&
+        (!model || String(car.model || "").toLowerCase().includes(model)) &&
+        (!fuel || String(car.fuel_type || "").toLowerCase() === fuel) &&
+        (!transmission || String(car.transmission || "").toLowerCase() === transmission) &&
+        (!city || String(car.city || "").toLowerCase().includes(city)) &&
+        (!maxPrice || Number(car.price || 0) <= maxPrice) &&
+        (!minYear || Number(car.year || 0) >= minYear) &&
+        (!maxMileage || Number(car.mileage || 0) <= maxMileage)
+      );
+    };
+
+    const renderCars = (cars: Array<Record<string, unknown>>, filtered = false) => {
+      if (!(liveGrid instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const orderedCars = newestFirst(cars);
+      liveGrid.innerHTML = orderedCars.slice(0, filtered ? 12 : 6).map(renderCarCard).join("");
+      liveGrid.hidden = orderedCars.length === 0;
+
+      if (loadingState instanceof HTMLElement) {
+        loadingState.hidden = true;
+      }
+
+      if (orderedCars.length === 0) {
+        message.textContent = filtered
+          ? "По этим фильтрам пока нет опубликованных объявлений."
+          : "В Xano пока нет опубликованных объявлений.";
+        return;
+      }
+
+      message.textContent = filtered
+        ? `Найдено объявлений: ${orderedCars.length}.`
+        : "Показаны самые новые опубликованные объявления.";
+    };
+
+    if (searchPanel instanceof HTMLElement && message instanceof HTMLElement) {
+      const apiUrl = searchPanel.dataset.apiUrl;
+      const placeholderUrl = searchPanel.dataset.placeholderUrl;
 
       if (apiUrl && apiUrl !== placeholderUrl) {
         fetch(`${apiUrl}/cars`)
@@ -172,24 +290,58 @@ const advantages = [
           })
           .then((cars) => {
             if (!Array.isArray(cars) || cars.length === 0) {
-              message.textContent = "В Xano пока нет опубликованных объявлений, поэтому показаны demo-карточки.";
+              if (loadingState instanceof HTMLElement) {
+                loadingState.hidden = true;
+              }
+              message.textContent = "В Xano пока нет опубликованных объявлений.";
               return;
             }
 
-            liveGrid.innerHTML = newestFirst(cars).slice(0, 6).map(renderCarCard).join("");
-            liveGrid.hidden = false;
-
-            if (mockGrid instanceof HTMLElement) {
-              mockGrid.hidden = true;
-            }
-
-            message.textContent = "Показаны самые новые опубликованные объявления.";
+            allCars = newestFirst(cars);
+            applyHeroImage(allCars);
+            renderCars(allCars);
           })
           .catch((error) => {
             console.error(error);
-            message.textContent = "Не удалось загрузить Xano, поэтому показаны demo-карточки.";
+            if (loadingState instanceof HTMLElement) {
+              loadingState.hidden = true;
+            }
+            message.textContent = "Не удалось загрузить Xano. Проверь CORS и endpoint GET /cars.";
           });
+      } else {
+        if (loadingState instanceof HTMLElement) {
+          loadingState.hidden = true;
+        }
+        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
       }
     }
+
+    searchForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+
+      if (!(searchForm instanceof HTMLFormElement)) {
+        return;
+      }
+
+      const formData = new FormData(searchForm);
+      const filteredCars = allCars.filter((car) => matchesFilters(car, formData));
+      renderCars(filteredCars, true);
+
+      if (searchButton instanceof HTMLButtonElement) {
+        searchButton.textContent = `Показать: ${filteredCars.length}`;
+      }
+    });
+
+    resetButton?.addEventListener("click", () => {
+      if (searchForm instanceof HTMLFormElement) {
+        searchForm.reset();
+      }
+
+      if (searchButton instanceof HTMLButtonElement) {
+        searchButton.textContent = "Смотреть объявления";
+      }
+
+      renderCars(allCars);
+    });
   </script>
 </BaseLayout>
