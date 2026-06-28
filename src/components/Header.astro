@@ -15,17 +15,30 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       <img class="brand-logo" src="/sitecraft-logo.png" alt="" width="44" height="44" decoding="async" />
       <span>SiteCraft Auto Market</span>
     </a>
-    <nav class="main-nav" aria-label="Основная навигация">
-      {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
-    </nav>
-    <div class="header-actions">
-      <button class="theme-toggle" type="button" aria-label="Переключить тему" title="Переключить тему">
-        <span class="theme-toggle-icon" aria-hidden="true">●</span>
-        <span class="theme-toggle-text">Тема</span>
-      </button>
-      <a class="button button-light auth-link" href="/login">Войти</a>
-      <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
-      <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+    <button
+      class="menu-toggle"
+      type="button"
+      aria-label="Открыть меню"
+      aria-controls="site-header-menu"
+      aria-expanded="false"
+    >
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+      <span aria-hidden="true"></span>
+    </button>
+    <div class="header-menu" id="site-header-menu">
+      <nav class="main-nav" aria-label="Основная навигация">
+        {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
+      </nav>
+      <div class="header-actions">
+        <button class="theme-toggle" type="button" aria-label="Переключить тему" title="Переключить тему">
+          <span class="theme-toggle-icon" aria-hidden="true">●</span>
+          <span class="theme-toggle-text">Тема</span>
+        </button>
+        <a class="button button-light auth-link" href="/login">Войти</a>
+        <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
+        <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+      </div>
     </div>
   </div>
   <script>
@@ -33,10 +46,31 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
     const authLink = document.querySelector(".auth-link");
     const authLogout = document.querySelector(".auth-logout");
+    const menu = document.querySelector(".header-menu");
+    const menuToggle = document.querySelector(".menu-toggle");
     const themeToggle = document.querySelector(".theme-toggle");
     const header = document.querySelector(".site-header");
     const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
+
+    const setMenuOpen = (isOpen: boolean) => {
+      if (!(menu instanceof HTMLElement) || !(menuToggle instanceof HTMLButtonElement)) {
+        return;
+      }
+
+      menu.classList.toggle("is-open", isOpen);
+      menuToggle.classList.toggle("is-open", isOpen);
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+      menuToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
+    };
+
+    menuToggle?.addEventListener("click", () => {
+      setMenuOpen(!(menu instanceof HTMLElement && menu.classList.contains("is-open")));
+    });
+
+    menu?.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", () => setMenuOpen(false));
+    });
 
     const updateThemeButton = () => {
       if (!(themeToggle instanceof HTMLButtonElement)) {
