@@ -271,7 +271,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
         validateAuthToken();
 
-        async function submitListing(payload: Record<string, unknown>) {
+        async function submitListing(payload: FormData) {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
 
           if (!apiUrl) {
@@ -282,9 +282,8 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             method: "POST",
             headers: {
               Authorization: `Bearer ${authToken}`,
-              "Content-Type": "application/json",
             },
-            body: JSON.stringify(payload),
+            body: payload,
           });
 
           if (!createResponse.ok) {
@@ -341,36 +340,43 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           const year = Number(formData.get("year"));
           const city = String(formData.get("location") || "");
 
-          const payload = {
-            title: `${brand} ${model} ${year}`.trim(),
-            brand,
-            model,
-            year,
-            price: Number(formData.get("price")),
-            mileage: Number(formData.get("mileage")),
-            fuel_type: String(formData.get("fuelType") || ""),
-            transmission: String(formData.get("transmission") || ""),
-            currency: "EUR",
-            city,
-            country: "Германия",
-            description:
-              [
-                String(formData.get("description") || ""),
-                `Кузов: ${String(formData.get("bodyType") || "не указан")}`,
-                `Привод: ${String(formData.get("drivetrain") || "не указан")}`,
-                `Двери: ${String(formData.get("doors") || "не указано")}`,
-                `Места: ${String(formData.get("seats") || "не указано")}`,
-                `Цвет: ${String(formData.get("color") || "не указан")}`,
-                `Состояние: ${String(formData.get("condition") || "не указано")}`,
-                `Тип продавца: ${String(formData.get("sellerType") || "не указан")}`,
-                `VIN: ${String(formData.get("vin") || "не указан")}`,
-                `Продавец: ${String(formData.get("sellerName") || "не указан")}`,
-                `Телефон: ${sellerPhone || "не указан"}`,
-                `Email: ${sellerEmail || "не указан"}`,
-              ]
-                .filter(Boolean)
-                .join("\n"),
-          };
+          const payload = new FormData();
+          payload.set("title", `${brand} ${model} ${year}`.trim());
+          payload.set("brand", brand);
+          payload.set("model", model);
+          payload.set("year", String(year));
+          payload.set("price", String(Number(formData.get("price"))));
+          payload.set("mileage", String(Number(formData.get("mileage"))));
+          payload.set("fuel_type", String(formData.get("fuelType") || ""));
+          payload.set("transmission", String(formData.get("transmission") || ""));
+          payload.set("currency", "EUR");
+          payload.set("city", city);
+          payload.set("country", "Германия");
+          payload.set(
+            "description",
+            [
+              String(formData.get("description") || ""),
+              `Кузов: ${String(formData.get("bodyType") || "не указан")}`,
+              `Привод: ${String(formData.get("drivetrain") || "не указан")}`,
+              `Двери: ${String(formData.get("doors") || "не указано")}`,
+              `Места: ${String(formData.get("seats") || "не указано")}`,
+              `Цвет: ${String(formData.get("color") || "не указан")}`,
+              `Состояние: ${String(formData.get("condition") || "не указано")}`,
+              `Тип продавца: ${String(formData.get("sellerType") || "не указан")}`,
+              `VIN: ${String(formData.get("vin") || "не указан")}`,
+              `Продавец: ${String(formData.get("sellerName") || "не указан")}`,
+              `Телефон: ${sellerPhone || "не указан"}`,
+              `Email: ${sellerEmail || "не указан"}`,
+            ]
+              .filter(Boolean)
+              .join("\n"),
+          );
+
+          formData.getAll("photos").forEach((file) => {
+            if (file instanceof File && file.size > 0) {
+              payload.append("photos", file);
+            }
+          });
 
           try {
             message.textContent = "Сохраняю объявление и отправляю на модерацию...";
