@@ -234,6 +234,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           return "Xano endpoint создания объявления всё ещё настроен на старую таблицу авторизации. В Xano для POST /cars, PATCH /cars/{id}/submit и GET /dashboard/listings нужно поставить auth = automarket_users.";
         }
 
+        function getXanoListingError(value: string) {
+          if (value.includes("car.user_id") || value.includes("Unable to locate var")) {
+            return "Объявление создано как черновик, но Xano не может отправить его на модерацию: в live-таблице car_listings нет поля user_id. Добавь поле user_id со связью на automarket_users, затем сохрани таблицу и endpoint.";
+          }
+
+          return value;
+        }
+
         if (!authToken) {
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
@@ -306,7 +314,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             if (isWrongTokenError(errorText)) {
               throw new Error(getAuthObjectError());
             }
-            throw new Error(errorText || "Объявление сохранено, но не отправлено на модерацию.");
+            throw new Error(getXanoListingError(errorText) || "Объявление сохранено, но не отправлено на модерацию.");
           }
 
           return submitResponse.json();
