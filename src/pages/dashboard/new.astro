@@ -233,6 +233,31 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
 
+        async function validateAuthToken() {
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+
+          if (!authToken || !apiUrl) {
+            clearOldAuthAndRelogin();
+            return;
+          }
+
+          try {
+            const response = await fetch(`${apiUrl}/auth/me`, {
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+            });
+
+            if (!response.ok) {
+              clearOldAuthAndRelogin();
+            }
+          } catch {
+            clearOldAuthAndRelogin();
+          }
+        }
+
+        validateAuthToken();
+
         async function submitListing(payload: Record<string, unknown>) {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
 
