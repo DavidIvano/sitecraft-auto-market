@@ -230,6 +230,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           return value.includes("different object type") || value.includes("ERROR_CODE_UNAUTHORIZED");
         }
 
+        function getAuthObjectError() {
+          return "Xano endpoint создания объявления всё ещё настроен на старую таблицу авторизации. В Xano для POST /cars, PATCH /cars/{id}/submit и GET /dashboard/listings нужно поставить auth = automarket_users.";
+        }
+
         if (!authToken) {
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
@@ -278,8 +282,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           if (!createResponse.ok) {
             const errorText = await createResponse.text();
             if (isWrongTokenError(errorText)) {
-              clearOldAuthAndRelogin();
-              throw new Error("Сессия устарела. Нужно войти через Google ещё раз.");
+              throw new Error(getAuthObjectError());
             }
             throw new Error(errorText || "Xano не сохранил объявление.");
           }
@@ -301,8 +304,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           if (!submitResponse.ok) {
             const errorText = await submitResponse.text();
             if (isWrongTokenError(errorText)) {
-              clearOldAuthAndRelogin();
-              throw new Error("Сессия устарела. Нужно войти через Google ещё раз.");
+              throw new Error(getAuthObjectError());
             }
             throw new Error(errorText || "Объявление сохранено, но не отправлено на модерацию.");
           }

@@ -55,6 +55,9 @@ const listings: { title: string; status: CarListingStatus }[] = [
         .replaceAll('"', "&quot;")
         .replaceAll("'", "&#039;");
 
+    const isAuthObjectError = (value: string) =>
+      value.includes("different object type") || value.includes("ERROR_CODE_UNAUTHORIZED");
+
     if (!token) {
       window.location.href = `/login?next=${encodeURIComponent("/dashboard/listings")}`;
     } else if (list instanceof HTMLElement && message instanceof HTMLElement) {
@@ -62,9 +65,17 @@ const listings: { title: string; status: CarListingStatus }[] = [
 
       fetch(`${apiUrl}/dashboard/listings`, {
         headers: { Authorization: `Bearer ${token}` },
-      })
+        })
         .then(async (response) => {
           if (!response.ok) {
+            const errorText = await response.text();
+
+            if (isAuthObjectError(errorText)) {
+              message.textContent =
+                "Xano endpoint GET /dashboard/listings всё ещё настроен на старую таблицу авторизации. Нужно поставить auth = automarket_users.";
+              return;
+            }
+
             clearAuth();
             window.location.href = `/login?next=${encodeURIComponent("/dashboard/listings")}`;
             return;
