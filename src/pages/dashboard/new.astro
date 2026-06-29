@@ -218,7 +218,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <label class="photo-dropzone" for="photo-input" data-photo-dropzone>
                 <span class="photo-dropzone-icon">+</span>
                 <strong>Перетащите фото сюда или выберите файлы</strong>
-                <small>PNG, JPG или WEBP. Первое изображение будет главным.</small>
+                <small>AVIF, PNG, JPG или WEBP. Первое изображение будет главным.</small>
               </label>
               <div class="photo-preview-toolbar">
                 <span id="photo-count">0 / 5 фото</span>
@@ -422,6 +422,40 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           photoUrls.clear();
           syncPhotoInput();
           renderPhotoPreview();
+        }
+
+        async function convertImageToJpeg(file: File, index: number) {
+          const bitmap = await createImageBitmap(file);
+          const maxSize = 1920;
+          const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+          const width = Math.max(1, Math.round(bitmap.width * scale));
+          const height = Math.max(1, Math.round(bitmap.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const context = canvas.getContext("2d");
+          if (!context) {
+            bitmap.close();
+            throw new Error("Браузер не смог подготовить изображение к загрузке.");
+          }
+
+          context.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close();
+
+          const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, "image/jpeg", 0.88);
+          });
+
+          if (!blob) {
+            throw new Error("Не удалось конвертировать изображение перед отправкой.");
+          }
+
+          const safeName = file.name.replace(/\.[^.]+$/, "") || `car-photo-${index + 1}`;
+          return new File([blob], `${safeName}.jpg`, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
         }
 
         function updateModelsForBrand() {
@@ -648,13 +682,18 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
-          photoFiles.forEach((file) => {
-            if (file instanceof File && file.size > 0) {
-              payload.append("photos", file);
-            }
-          });
-
           try {
+            if (photoFiles.length > 0) {
+              setMessage("Подготавливаю фото к загрузке...");
+            }
+
+            for (const [index, file] of photoFiles.entries()) {
+              if (file instanceof File && file.size > 0) {
+                const uploadFile = await convertImageToJpeg(file, index);
+                payload.append("photos", uploadFile);
+              }
+            }
+
             setMessage("Сохраняю объявление и отправляю на модерацию...");
             await submitListing(payload);
 
