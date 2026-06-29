@@ -2,16 +2,52 @@
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import CookieNotice from "../components/CookieNotice.astro";
-import { SITE_DESCRIPTION, SITE_NAME } from "../lib/config";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
 import "../styles/global.css";
 
 type Props = {
   title?: string;
   description?: string;
+  canonicalPath?: string;
+  image?: string;
+  jsonLd?: Record<string, unknown> | Record<string, unknown>[];
 };
 
-const { title = SITE_NAME, description = SITE_DESCRIPTION } = Astro.props;
+const {
+  title = SITE_NAME,
+  description = SITE_DESCRIPTION,
+  canonicalPath,
+  image = "/sitecraft-logo.png",
+  jsonLd,
+} = Astro.props;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
+const siteUrl = SITE_URL || "https://sitecraft-auto-market.pages.dev";
+const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
+const imageUrl = new URL(image, siteUrl).toString();
+const defaultSchemaItems = [
+  {
+    "@context": "https://schema.org",
+    "@type": "Organization",
+    name: "SiteCraft Agency",
+    url: "https://sitecraft.agency",
+    logo: new URL("/sitecraft-logo.png", siteUrl).toString(),
+  },
+  {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: SITE_NAME,
+    url: siteUrl,
+    potentialAction: {
+      "@type": "SearchAction",
+      target: `${new URL("/cars", siteUrl).toString()}?q={search_term_string}`,
+      "query-input": "required name=search_term_string",
+    },
+  },
+];
+const schemaItems = [
+  ...defaultSchemaItems,
+  ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
+];
 ---
 
 <!doctype html>
@@ -25,7 +61,23 @@ const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta property="og:site_name" content={SITE_NAME} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:image" content={imageUrl} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={imageUrl} />
     <title>{pageTitle}</title>
+    {
+      schemaItems.map((item) => (
+        <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />
+      ))
+    }
     <script is:inline>
       (() => {
         const savedTheme = localStorage.getItem("sitecraft-theme");

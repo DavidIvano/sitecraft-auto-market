@@ -204,7 +204,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
       return `
         <article class="car-card">
-          <a class="car-image-link" href="/cars/detail?slug=${slug}" aria-label="Смотреть ${title}">
+          <a class="car-image-link" href="/cars/${slug}" aria-label="Смотреть ${title}">
             ${carImageMarkup(car)}
           </a>
           <div class="car-card-body">
@@ -219,7 +219,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
               <div><dt>Город</dt><dd>${escapeHtml(car.city)}</dd></div>
             </dl>
-            <a class="button button-light full-width" href="/cars/detail?slug=${slug}">Смотреть</a>
+            <a class="button button-light full-width" href="/cars/${slug}">Смотреть</a>
           </div>
         </article>
       `;

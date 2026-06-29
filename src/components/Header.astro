@@ -52,6 +52,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     const header = document.querySelector(".site-header");
     const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
+    let lastScrollY = window.scrollY;
 
     const setMenuOpen = (isOpen: boolean) => {
       if (!(menu instanceof HTMLElement) || !(menuToggle instanceof HTMLButtonElement)) {
@@ -130,5 +131,22 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       clearAuth();
       window.location.href = "/";
     });
+
+    window.addEventListener(
+      "scroll",
+      () => {
+        if (!(header instanceof HTMLElement)) {
+          return;
+        }
+
+        const currentScrollY = window.scrollY;
+        const isMenuOpen = menu instanceof HTMLElement && menu.classList.contains("is-open");
+        const isScrollingDown = currentScrollY > lastScrollY;
+
+        header.classList.toggle("is-hidden", isScrollingDown && currentScrollY > 120 && !isMenuOpen);
+        lastScrollY = currentScrollY;
+      },
+      { passive: true },
+    );
   </script>
 </header>

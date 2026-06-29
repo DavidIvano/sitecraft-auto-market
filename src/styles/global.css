@@ -85,6 +85,11 @@ textarea {
   border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(16px);
+  transition: transform 220ms ease;
+}
+
+.site-header.is-hidden {
+  transform: translateY(-110%);
 }
 
 .header-inner,

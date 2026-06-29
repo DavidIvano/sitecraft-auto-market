@@ -37,12 +37,18 @@ const createdAtLabel = createdAt
 
 <article class="car-card">
   <a class="car-image-link" href={`/cars/${car.slug}`} aria-label={`Смотреть ${car.title}`}>
-    <img
-      src={car.main_image_url ?? "/favicon.svg"}
-      alt={car.title}
-      class="car-image"
-      loading="lazy"
-    />
+    {
+      car.main_image_url ? (
+        <img
+          src={car.main_image_url}
+          alt={car.title}
+          class="car-image"
+          loading="lazy"
+        />
+      ) : (
+        <div class="car-image car-image-empty">Фото в Xano не добавлено</div>
+      )
+    }
   </a>
   <div class="car-card-body">
     <div class="car-card-top">

@@ -2,12 +2,14 @@
 import CarCard from "../../components/CarCard.astro";
 import SearchBar from "../../components/SearchBar.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { mockCars } from "../../lib/mockCars";
 import { getApprovedCars } from "../../lib/xano";
+import { SITE_URL } from "../../lib/config";
+import type { CarListing } from "../../lib/types";
 
-let cars = mockCars;
+let cars: CarListing[] = [];
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+const siteUrl = SITE_URL || "https://sitecraft-auto-market.pages.dev";
 
 const toTimestamp = (value?: string | number) => {
   if (!value) {
@@ -24,53 +26,67 @@ const toTimestamp = (value?: string | number) => {
 
 try {
   const xanoCars = await getApprovedCars();
-  cars =
-    xanoCars.length > 0
-      ? [...xanoCars].sort((left, right) => toTimestamp(right.created_at) - toTimestamp(left.created_at))
-      : mockCars;
+  cars = [...xanoCars].sort((left, right) => toTimestamp(right.created_at) - toTimestamp(left.created_at));
 } catch (error) {
   console.warn(error);
-  cars = mockCars;
 }
+
+const collectionSchema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: "Автомобили",
+  description: "Каталог опубликованных автомобилей SiteCraft Auto Market",
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: cars.map((car, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: new URL(`/cars/${car.slug}`, siteUrl).toString(),
+      name: car.title,
+    })),
+  },
+};
 ---
 
-<BaseLayout title="Автомобили" description="Каталог проверенных автомобилей">
+<BaseLayout
+  title="Автомобили"
+  description="Каталог проверенных автомобилей SiteCraft Auto Market"
+  canonicalPath="/cars"
+  jsonLd={collectionSchema}
+>
   <section class="section page-hero">
     <div class="container">
       <p class="eyebrow">Каталог</p>
       <h1>Автомобили</h1>
-      <p class="lead">Фильтры уже готовы визуально, подключение поиска можно добавить на следующем этапе.</p>
+      <p class="lead">Свежие опубликованные объявления из Xano без повторов и demo-карточек.</p>
       <SearchBar />
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <div class="cards-grid" id="mock-cars-grid">
-        {cars.map((car) => <CarCard car={car} />)}
-      </div>
       <div
         class="cards-grid"
         id="live-cars-grid"
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
-        hidden
       >
+        {cars.map((car) => <CarCard car={car} />)}
       </div>
       <p class="form-message" id="live-cars-message">
-        Если Xano подключён, каталог обновится автоматически.
+        {cars.length > 0 ? "Показаны актуальные объявления из Xano." : "Загружаю каталог из Xano..."}
       </p>
     </div>
   </section>
+
   <script>
     const grid = document.querySelector("#live-cars-grid");
-    const mockGrid = document.querySelector("#mock-cars-grid");
     const message = document.querySelector("#live-cars-message");
 
-    const formatPrice = (price: unknown, currency: string) =>
+    const formatPrice = (price: unknown, currency: unknown) =>
       new Intl.NumberFormat("ru-RU", {
         style: "currency",
-        currency: currency || "EUR",
+        currency: String(currency || "EUR"),
         maximumFractionDigits: 0,
       }).format(Number(price || 0));
 
@@ -115,6 +131,14 @@ try {
         return rightTime - leftTime;
       });
 
+    const renderCarImage = (car: Record<string, unknown>) => {
+      if (car.main_image_url) {
+        return `<img src="${escapeHtml(car.main_image_url)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />`;
+      }
+
+      return `<div class="car-image car-image-empty">Фото в Xano не добавлено</div>`;
+    };
+
     if (grid instanceof HTMLElement && message instanceof HTMLElement) {
       const apiUrl = grid.dataset.apiUrl;
       const placeholderUrl = grid.dataset.placeholderUrl;
@@ -130,16 +154,19 @@ try {
           })
           .then((cars) => {
             if (!Array.isArray(cars) || cars.length === 0) {
-              message.textContent = "В Xano пока нет опубликованных объявлений, поэтому показаны demo-карточки.";
+              grid.innerHTML = "";
+              message.textContent = "В Xano пока нет опубликованных объявлений.";
               return;
             }
 
             grid.innerHTML = newestFirst(cars)
-              .map(
-                (car) => `
+              .map((car) => {
+                const slug = String(car.slug || "");
+
+                return `
                   <article class="car-card">
-                    <a class="car-image-link" href="/cars/detail?slug=${encodeURIComponent(car.slug)}" aria-label="Смотреть ${escapeHtml(car.title)}">
-                      <img src="${escapeHtml(car.main_image_url || "/favicon.svg")}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />
+                    <a class="car-image-link" href="/cars/${encodeURIComponent(slug)}" aria-label="Смотреть ${escapeHtml(car.title)}">
+                      ${renderCarImage(car)}
                     </a>
                     <div class="car-card-body">
                       <div class="car-card-top">
@@ -153,22 +180,20 @@ try {
                         <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
                         <div><dt>Город</dt><dd>${escapeHtml(car.city)}</dd></div>
                       </dl>
-                      <a class="button button-light full-width" href="/cars/detail?slug=${encodeURIComponent(car.slug)}">Смотреть</a>
+                      <a class="button button-light full-width" href="/cars/${encodeURIComponent(slug)}">Смотреть</a>
                     </div>
                   </article>
-                `,
-              )
+                `;
+              })
               .join("");
 
-            grid.hidden = false;
-            if (mockGrid instanceof HTMLElement) {
-              mockGrid.hidden = true;
-            }
             message.textContent = "Показаны актуальные объявления из Xano.";
           })
           .catch((error) => {
             console.error(error);
-            message.textContent = "Не удалось загрузить Xano-каталог, поэтому показаны demo-карточки.";
+            message.textContent = grid.children.length > 0
+              ? "Показаны объявления, загруженные во время последней публикации сайта."
+              : "Не удалось загрузить Xano-каталог.";
           });
       }
     }
