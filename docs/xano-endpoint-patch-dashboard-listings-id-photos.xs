@@ -70,15 +70,21 @@ query "dashboard/listings/{id}" verb=PATCH {
     conditional {
       if ($input.replace_photos == "true") {
         db.query car_listing_images {
-          where = $db.car_listing_images.car_listing_id == $input.id
+          where = (($db.car_listing_images.car_listing_id == $input.id) && ($db.car_listing_images.is_deleted != true))
           return = {type: "list"}
         } as $old_images
 
         foreach ($old_images) {
           each as $old_image {
-            db.delete car_listing_images {
+            db.edit car_listing_images {
               field_name = "id"
               field_value = $old_image.id
+              data = {
+                updated_at : "now"
+                is_deleted: true
+                deleted_at: "now"
+                is_main   : false
+              }
             } as $deleted_image
           }
         }
@@ -100,9 +106,15 @@ query "dashboard/listings/{id}" verb=PATCH {
 
             conditional {
               if ($image_to_delete != null && $image_to_delete.car_listing_id == $input.id) {
-                db.delete car_listing_images {
+                db.edit car_listing_images {
                   field_name = "id"
                   field_value = $image_to_delete.id
+                  data = {
+                    updated_at : "now"
+                    is_deleted: true
+                    deleted_at: "now"
+                    is_main   : false
+                  }
                 } as $deleted_image
               }
             }
@@ -112,7 +124,7 @@ query "dashboard/listings/{id}" verb=PATCH {
     }
 
     db.query car_listing_images {
-      where = $db.car_listing_images.car_listing_id == $input.id
+      where = (($db.car_listing_images.car_listing_id == $input.id) && ($db.car_listing_images.is_deleted != true))
       sort = {car_listing_images.sort_order: "asc"}
       return = {type: "list"}
     } as $existing_images
@@ -141,6 +153,7 @@ query "dashboard/listings/{id}" verb=PATCH {
                     image_url      : $image_metadata.url
                     sort_order     : $sort_order
                     is_main        : false
+                    is_deleted     : false
                   }
                 } as $image_row
 
@@ -155,7 +168,7 @@ query "dashboard/listings/{id}" verb=PATCH {
     }
 
     db.query car_listing_images {
-      where = $db.car_listing_images.car_listing_id == $input.id
+      where = (($db.car_listing_images.car_listing_id == $input.id) && ($db.car_listing_images.is_deleted != true))
       sort = {car_listing_images.sort_order: "asc"}
       return = {type: "list"}
     } as $images
@@ -182,7 +195,7 @@ query "dashboard/listings/{id}" verb=PATCH {
     }
 
     db.query car_listing_images {
-      where = $db.car_listing_images.car_listing_id == $input.id
+      where = (($db.car_listing_images.car_listing_id == $input.id) && ($db.car_listing_images.is_deleted != true))
       sort = {car_listing_images.sort_order: "asc"}
       return = {type: "list"}
     } as $images

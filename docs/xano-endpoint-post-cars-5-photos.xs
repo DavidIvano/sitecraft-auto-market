@@ -80,11 +80,13 @@ query cars verb=POST {
                 db.add car_listing_images {
                   data = {
                     created_at     : "now"
+                    updated_at     : "now"
                     car_listing_id : $car.id
                     image          : $image_metadata
                     image_url      : $image_metadata.url
                     sort_order     : $sort_order
                     is_main        : $sort_order == 0
+                    is_deleted     : false
                   }
                 } as $image_row
 
@@ -112,7 +114,7 @@ query cars verb=POST {
     }
 
     db.query car_listing_images {
-      where = $db.car_listing_images.car_listing_id == $car.id
+      where = (($db.car_listing_images.car_listing_id == $car.id) && ($db.car_listing_images.is_deleted != true))
       sort = {car_listing_images.sort_order: "asc"}
       return = {type: "list"}
     } as $images
