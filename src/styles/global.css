@@ -799,6 +799,26 @@ legend {
   margin-top: 32px;
 }
 
+.new-listing-hero .lead {
+  max-width: 760px;
+}
+
+.listing-form-enhanced {
+  gap: 0;
+}
+
+.listing-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 22px;
+  align-items: start;
+}
+
+.listing-main-column {
+  display: grid;
+  gap: 16px;
+}
+
 .form-section {
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -807,8 +827,45 @@ legend {
   padding: 22px;
 }
 
+.form-section-highlight {
+  border-color: color-mix(in srgb, var(--accent) 35%, var(--line));
+}
+
+.section-heading {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.section-heading h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.section-heading p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+
+.section-step {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 8px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 900;
+}
+
 .form-grid {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -819,6 +876,218 @@ legend {
   border-radius: 8px;
   background: var(--card);
   padding: 18px;
+}
+
+.listing-side-panel {
+  position: sticky;
+  top: 92px;
+}
+
+.side-panel-card {
+  display: grid;
+  gap: 16px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+  padding: 20px;
+}
+
+.side-panel-card h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.publish-checklist {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  color: var(--muted);
+  list-style: none;
+}
+
+.publish-checklist li {
+  position: relative;
+  padding-left: 20px;
+  line-height: 1.45;
+}
+
+.publish-checklist li::before {
+  position: absolute;
+  top: 0.6em;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--accent);
+  content: "";
+}
+
+.button-small {
+  width: auto;
+  min-height: 0;
+  padding: 8px 11px;
+  font-size: 0.86rem;
+}
+
+.photo-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.photo-uploader {
+  display: grid;
+  gap: 12px;
+}
+
+.photo-dropzone {
+  display: grid;
+  place-items: center;
+  min-height: 190px;
+  border: 1.5px dashed color-mix(in srgb, var(--accent) 42%, var(--line));
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 11%, transparent), transparent 55%),
+    var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  padding: 24px;
+  text-align: center;
+  transition:
+    border-color 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.photo-dropzone:hover,
+.photo-dropzone.is-dragging {
+  border-color: var(--accent);
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--accent) 18%, transparent), transparent 60%),
+    var(--input-bg);
+  transform: translateY(-1px);
+}
+
+.photo-dropzone-icon {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 2rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.photo-dropzone strong {
+  margin-top: 14px;
+  font-size: 1.05rem;
+}
+
+.photo-dropzone small {
+  max-width: 360px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.photo-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.photo-preview-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.photo-empty-state {
+  grid-column: 1 / -1;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--muted);
+  padding: 18px;
+  text-align: center;
+}
+
+.photo-preview-card {
+  position: relative;
+  overflow: hidden;
+  min-height: 142px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-strong);
+  cursor: grab;
+}
+
+.photo-preview-card:active {
+  cursor: grabbing;
+}
+
+.photo-preview-card.is-main {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+}
+
+.photo-preview-card img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 142px;
+  object-fit: cover;
+}
+
+.photo-preview-actions {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.78);
+  color: #fff;
+  padding: 7px 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.photo-preview-buttons {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+}
+
+.photo-preview-actions button {
+  display: grid;
+  min-width: 24px;
+  height: 24px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 8px;
 }
 
 .gallery {
@@ -1411,6 +1680,28 @@ legend {
 }
 
 @media (max-width: 980px) {
+  .listing-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-side-panel {
+    position: static;
+  }
+
+  .side-panel-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .side-panel-card .button,
+  .side-panel-card .form-message {
+    grid-column: 1 / -1;
+  }
+
+  .photo-preview-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .header-inner {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
@@ -1496,6 +1787,18 @@ legend {
 }
 
 @media (max-width: 680px) {
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .side-panel-card {
+    grid-template-columns: 1fr;
+  }
+
+  .photo-preview-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .main-nav,
   .header-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1575,6 +1878,19 @@ legend {
   .legal-panel,
   .empty-state {
     padding: 18px;
+  }
+
+  .section-heading {
+    gap: 10px;
+  }
+
+  .photo-dropzone {
+    min-height: 160px;
+    padding: 18px;
+  }
+
+  .photo-preview-grid {
+    grid-template-columns: 1fr;
   }
 
   .button {

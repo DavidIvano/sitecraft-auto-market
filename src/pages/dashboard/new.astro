@@ -8,6 +8,7 @@ import {
   doorCounts,
   drivetrains,
   fuelTypes,
+  carModelsByBrand,
   seatCounts,
   sellerTypes,
   transmissions,
@@ -16,40 +17,34 @@ import {
 const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1980 + 1 }, (_, index) => currentYear - index);
 
-const modelSuggestions = [
-  "A4",
-  "A6",
-  "3 Series",
-  "5 Series",
-  "C-Class",
-  "E-Class",
-  "Golf",
-  "Passat",
-  "Octavia",
-  "Corolla",
-  "Civic",
-  "Model 3",
-];
-
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Добавить объявление">
-  <section class="section page-hero">
-    <div class="container narrow">
+  <section class="section page-hero new-listing-hero">
+    <div class="container">
       <p class="eyebrow">Новое объявление</p>
       <h1>Добавить автомобиль</h1>
       <p class="lead">
-        Заполните основные поля. Большинство характеристик можно выбрать из готовых списков.
+        Заполните основные данные, добавьте до пяти фото и перетащите их в нужном порядке.
+        Первое фото станет главным в карточке и на странице автомобиля.
       </p>
 
-      <form class="listing-form" id="new-listing-form" data-api-url={xanoApiUrl}>
-        <fieldset class="form-section">
-          <legend>Автомобиль</legend>
+      <form class="listing-form listing-form-enhanced" id="new-listing-form" data-api-url={xanoApiUrl}>
+        <div class="listing-workspace">
+          <div class="listing-main-column">
+        <fieldset class="form-section form-section-highlight">
+          <div class="section-heading">
+            <span class="section-step">1</span>
+            <div>
+              <h2>Автомобиль</h2>
+              <p>Сначала выберите марку. После этого появятся только модели этой марки.</p>
+            </div>
+          </div>
           <div class="form-grid">
             <label>
               <span>Марка автомобиля</span>
-              <select name="brand" required>
+              <select name="brand" required data-brand-select>
                 <option value="">Выберите марку</option>
                 {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
               </select>
@@ -57,10 +52,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
             <label>
               <span>Модель автомобиля</span>
-              <input list="car-models" type="text" name="model" placeholder="Например, Golf" required />
-              <datalist id="car-models">
-                {modelSuggestions.map((model) => <option value={model} />)}
-              </datalist>
+              <select name="model" required data-model-select disabled>
+                <option value="">Сначала выберите марку</option>
+              </select>
             </label>
 
             <label>
@@ -89,7 +83,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         </fieldset>
 
         <fieldset class="form-section">
-          <legend>Характеристики</legend>
+          <div class="section-heading">
+            <span class="section-step">2</span>
+            <div>
+              <h2>Характеристики</h2>
+              <p>Эти параметры помогают покупателю быстро понять, подходит ли автомобиль.</p>
+            </div>
+          </div>
           <div class="form-grid">
             <label>
               <span>Тип кузова</span>
@@ -171,7 +171,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         </fieldset>
 
         <fieldset class="form-section">
-          <legend>Продавец</legend>
+          <div class="section-heading">
+            <span class="section-step">3</span>
+            <div>
+              <h2>Продавец</h2>
+              <p>Кнопка «Связаться» будет использовать телефон, если он указан, иначе email.</p>
+            </div>
+          </div>
           <div class="form-grid">
             <label>
               <span>Имя продавца</span>
@@ -190,13 +196,38 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           </div>
         </fieldset>
 
-        <fieldset class="form-section">
-          <legend>Фото и описание</legend>
+        <fieldset class="form-section photo-form-section">
+          <div class="section-heading">
+            <span class="section-step">4</span>
+            <div>
+              <h2>Фото и описание</h2>
+              <p>До 5 изображений. Перетащите карточки, чтобы выбрать главное фото первым.</p>
+            </div>
+          </div>
           <div class="form-grid">
-            <label class="full-field">
-              <span>Фото автомобиля</span>
-              <input type="file" name="photos" accept="image/webp,image/jpeg,image/png" multiple data-max-files="5" />
-            </label>
+            <div class="full-field photo-uploader" data-photo-uploader>
+              <input
+                class="photo-input"
+                id="photo-input"
+                type="file"
+                name="photos"
+                accept="image/webp,image/jpeg,image/png"
+                multiple
+                data-max-files="5"
+              />
+              <label class="photo-dropzone" for="photo-input" data-photo-dropzone>
+                <span class="photo-dropzone-icon">+</span>
+                <strong>Перетащите фото сюда или выберите файлы</strong>
+                <small>PNG, JPG или WEBP. Первое изображение будет главным.</small>
+              </label>
+              <div class="photo-preview-toolbar">
+                <span id="photo-count">0 / 5 фото</span>
+                <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить фото</button>
+              </div>
+              <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
+                <div class="photo-empty-state">Пока фото не выбраны.</div>
+              </div>
+            </div>
 
             <label class="full-field">
               <span>Краткое описание</span>
@@ -204,14 +235,28 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             </label>
           </div>
         </fieldset>
+          </div>
 
-        <div class="form-footer">
-          <button class="button button-dark" type="submit">Добавить объявление</button>
-          <p class="form-message" id="form-message">
-            После отправки объявление будет подготовлено к модерации.
-          </p>
+          <aside class="listing-side-panel" aria-label="Проверка объявления">
+            <div class="side-panel-card">
+              <p class="eyebrow">Публикация</p>
+              <h2>Проверьте перед отправкой</h2>
+              <ul class="publish-checklist">
+                <li>Марка и модель выбраны правильно.</li>
+                <li>Главное фото стоит первым.</li>
+                <li>Телефон или email заполнен.</li>
+                <li>Описание без лишних личных данных.</li>
+              </ul>
+              <button class="button button-dark full-width" type="submit">Добавить объявление</button>
+              <p class="form-message" id="form-message">
+                После отправки объявление будет подготовлено к модерации.
+              </p>
+            </div>
+          </aside>
         </div>
       </form>
+
+      <script is:inline type="application/json" id="car-model-data" set:html={JSON.stringify(carModelsByBrand)} />
 
       <script>
         import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
@@ -220,6 +265,18 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
         const photoInput = document.querySelector('input[name="photos"]');
+        const photoDropzone = document.querySelector("[data-photo-dropzone]");
+        const photoPreviewGrid = document.querySelector("#photo-preview-grid");
+        const photoCount = document.querySelector("#photo-count");
+        const photoClear = document.querySelector("#photo-clear");
+        const brandSelect = document.querySelector("[data-brand-select]");
+        const modelSelect = document.querySelector("[data-model-select]");
+        const modelDataElement = document.querySelector("#car-model-data");
+        const carModelsByBrand = modelDataElement?.textContent
+          ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
+          : {};
+        const selectedPhotos: File[] = [];
+        const photoUrls = new Map<File, string>();
 
         function clearOldAuthAndRelogin() {
           clearAuth();
@@ -241,6 +298,144 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
 
           return value;
+        }
+
+        function setMessage(value: string) {
+          if (message instanceof HTMLElement) {
+            message.textContent = value;
+          }
+        }
+
+        function escapeHtml(value: string) {
+          return value
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+        }
+
+        function syncPhotoInput() {
+          if (!(photoInput instanceof HTMLInputElement)) {
+            return;
+          }
+
+          const transfer = new DataTransfer();
+          selectedPhotos.forEach((file) => transfer.items.add(file));
+          photoInput.files = transfer.files;
+        }
+
+        function renderPhotoPreview() {
+          if (!(photoPreviewGrid instanceof HTMLElement)) {
+            return;
+          }
+
+          const maxFiles = photoInput instanceof HTMLInputElement ? Number(photoInput.dataset.maxFiles || 5) : 5;
+
+          if (photoCount instanceof HTMLElement) {
+            photoCount.textContent = `${selectedPhotos.length} / ${maxFiles} фото`;
+          }
+
+          if (photoClear instanceof HTMLButtonElement) {
+            photoClear.hidden = selectedPhotos.length === 0;
+          }
+
+          if (selectedPhotos.length === 0) {
+            photoPreviewGrid.innerHTML = `<div class="photo-empty-state">Пока фото не выбраны.</div>`;
+            return;
+          }
+
+          photoPreviewGrid.innerHTML = selectedPhotos
+            .map((file, index) => {
+              let url = photoUrls.get(file);
+
+              if (!url) {
+                url = URL.createObjectURL(file);
+                photoUrls.set(file, url);
+              }
+
+              return `
+                <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
+                  <img src="${url}" alt="Фото ${index + 1}" />
+                  <div class="photo-preview-actions">
+                    <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
+                    <div class="photo-preview-buttons">
+                      ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
+                      <button type="button" aria-label="Удалить фото ${index + 1}" data-remove-photo="${index}">×</button>
+                    </div>
+                  </div>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        function setPhotoFiles(files: File[]) {
+          if (!(photoInput instanceof HTMLInputElement)) {
+            return;
+          }
+
+          const maxFiles = Number(photoInput.dataset.maxFiles || 5);
+          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+          const remainingSlots = Math.max(maxFiles - selectedPhotos.length, 0);
+          const nextFiles = imageFiles.slice(0, remainingSlots);
+
+          selectedPhotos.push(...nextFiles);
+
+          if (imageFiles.length > remainingSlots) {
+            setMessage(`Можно загрузить максимум ${maxFiles} фото. Лишние изображения не добавлены.`);
+          }
+
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function movePhoto(fromIndex: number, toIndex: number) {
+          if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= selectedPhotos.length || toIndex >= selectedPhotos.length) {
+            return;
+          }
+
+          const [file] = selectedPhotos.splice(fromIndex, 1);
+          selectedPhotos.splice(toIndex, 0, file);
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function removePhoto(index: number) {
+          const [file] = selectedPhotos.splice(index, 1);
+
+          if (file) {
+            const url = photoUrls.get(file);
+            if (url) {
+              URL.revokeObjectURL(url);
+            }
+            photoUrls.delete(file);
+          }
+
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function clearPhotos() {
+          selectedPhotos.splice(0, selectedPhotos.length);
+          photoUrls.forEach((url) => URL.revokeObjectURL(url));
+          photoUrls.clear();
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function updateModelsForBrand() {
+          if (!(brandSelect instanceof HTMLSelectElement) || !(modelSelect instanceof HTMLSelectElement)) {
+            return;
+          }
+
+          const brand = brandSelect.value;
+          const models = carModelsByBrand[brand] || [];
+
+          modelSelect.innerHTML = brand
+            ? `<option value="">Выберите модель</option>${models.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("")}`
+            : `<option value="">Сначала выберите марку</option>`;
+          modelSelect.disabled = !brand;
         }
 
         if (!authToken) {
@@ -272,17 +467,72 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
         validateAuthToken();
 
+        brandSelect?.addEventListener("change", updateModelsForBrand);
+
         photoInput?.addEventListener("change", () => {
-          if (!(photoInput instanceof HTMLInputElement) || !(message instanceof HTMLElement)) {
+          if (photoInput instanceof HTMLInputElement) {
+            setPhotoFiles(Array.from(photoInput.files || []));
+          }
+        });
+
+        photoClear?.addEventListener("click", clearPhotos);
+
+        photoDropzone?.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.add("is-dragging");
+          }
+        });
+
+        photoDropzone?.addEventListener("dragleave", () => {
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.remove("is-dragging");
+          }
+        });
+
+        photoDropzone?.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const dragEvent = event as DragEvent;
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.remove("is-dragging");
+          }
+
+          setPhotoFiles(Array.from(dragEvent.dataTransfer?.files || []));
+        });
+
+        photoPreviewGrid?.addEventListener("dragstart", (event) => {
+          const dragEvent = event as DragEvent;
+          const card = event.target instanceof HTMLElement ? event.target.closest("[data-photo-index]") : null;
+
+          if (card instanceof HTMLElement && dragEvent.dataTransfer) {
+            dragEvent.dataTransfer.setData("text/plain", card.dataset.photoIndex || "0");
+          }
+        });
+
+        photoPreviewGrid?.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        });
+
+        photoPreviewGrid?.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const dragEvent = event as DragEvent;
+          const target = event.target instanceof HTMLElement ? event.target.closest("[data-photo-index]") : null;
+          const fromIndex = Number(dragEvent.dataTransfer?.getData("text/plain") || -1);
+          const toIndex = target instanceof HTMLElement ? Number(target.dataset.photoIndex || -1) : -1;
+          movePhoto(fromIndex, toIndex);
+        });
+
+        photoPreviewGrid?.addEventListener("click", (event) => {
+          const button = event.target instanceof HTMLElement ? event.target.closest("[data-remove-photo]") : null;
+          const makeMainButton = event.target instanceof HTMLElement ? event.target.closest("[data-make-main-photo]") : null;
+
+          if (makeMainButton instanceof HTMLElement) {
+            movePhoto(Number(makeMainButton.dataset.makeMainPhoto || -1), 0);
             return;
           }
 
-          const maxFiles = Number(photoInput.dataset.maxFiles || 5);
-          const files = Array.from(photoInput.files || []);
-
-          if (files.length > maxFiles) {
-            photoInput.value = "";
-            message.textContent = `Можно загрузить максимум ${maxFiles} фото. Выберите до ${maxFiles} изображений.`;
+          if (button instanceof HTMLElement) {
+            removePhoto(Number(button.dataset.removePhoto || -1));
           }
         });
 
@@ -341,12 +591,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
+          syncPhotoInput();
           const formData = new FormData(form);
           const sellerPhone = String(formData.get("sellerPhone") || "").trim();
           const sellerEmail = String(formData.get("sellerEmail") || "").trim();
 
           if (!sellerPhone && !sellerEmail) {
-            message.textContent = "Укажите телефон или email продавца.";
+            setMessage("Укажите телефон или email продавца.");
             return;
           }
 
@@ -390,10 +641,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               .join("\n"),
           );
 
-          const photoFiles = formData.getAll("photos").filter((file) => file instanceof File && file.size > 0);
+          const photoFiles = [...selectedPhotos];
 
           if (photoFiles.length > 5) {
-            message.textContent = "Можно загрузить максимум 5 фото.";
+            setMessage("Можно загрузить максимум 5 фото.");
             return;
           }
 
@@ -404,17 +655,20 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           });
 
           try {
-            message.textContent = "Сохраняю объявление и отправляю на модерацию...";
+            setMessage("Сохраняю объявление и отправляю на модерацию...");
             await submitListing(payload);
 
-            message.textContent = "Объявление отправлено на модерацию. Оно появится в админ-панели.";
+            setMessage("Объявление отправлено на модерацию. Оно появится в админ-панели.");
             form.reset();
+            clearPhotos();
+            updateModelsForBrand();
           } catch (error) {
             console.error(error);
-            message.textContent =
+            setMessage(
               error instanceof Error
                 ? `Не удалось сохранить объявление: ${error.message}`
-                : "Не удалось сохранить объявление.";
+                : "Не удалось сохранить объявление.",
+            );
           }
         });
       </script>
