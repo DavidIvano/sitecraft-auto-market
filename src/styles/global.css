@@ -38,6 +38,11 @@
   box-sizing: border-box;
 }
 
+html {
+  min-width: 320px;
+  -webkit-text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -46,6 +51,12 @@ body {
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
   line-height: 1.6;
+}
+
+body,
+main {
+  min-width: 0;
+  overflow-x: clip;
 }
 
 a {
@@ -66,7 +77,7 @@ textarea {
 }
 
 .container {
-  width: min(100% - 32px, 1180px);
+  width: min(100% - clamp(20px, 4vw, 48px), 1180px);
   margin-inline: auto;
 }
 
@@ -193,14 +204,16 @@ textarea {
 
 .button {
   display: inline-flex;
-  min-height: 44px;
+  min-height: 42px;
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
   border-radius: 8px;
-  padding: 0 18px;
+  padding: 0 15px;
   cursor: pointer;
   font-weight: 700;
+  line-height: 1.15;
+  text-align: center;
 }
 
 .button-dark {
@@ -1997,5 +2010,320 @@ legend {
 
   .button {
     width: 100%;
+  }
+}
+
+/* Fluid responsive polish */
+:where(
+  .car-card,
+  .car-card-body,
+  .detail-panel,
+  .compact-detail-panel,
+  .form-section,
+  .side-panel-card,
+  .empty-state,
+  .list-panel,
+  .admin-car,
+  .category-slide,
+  .photo-preview-card,
+  .legal-panel,
+  .form-message
+) {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+:where(h1, h2, h3, p, a, span, dt, dd, li, label, input, select, textarea, button) {
+  min-width: 0;
+}
+
+.section {
+  padding: clamp(34px, 5vw, 56px) 0;
+}
+
+.page-hero {
+  padding-bottom: clamp(24px, 4vw, 44px);
+}
+
+.page-hero h1,
+.hero-copy h1 {
+  max-width: min(100%, 760px);
+  font-size: clamp(2.25rem, 5.3vw, 4.25rem);
+  letter-spacing: 0;
+}
+
+.new-listing-hero .lead {
+  max-width: 62ch;
+  font-size: clamp(1rem, 1.35vw, 1.12rem);
+}
+
+.listing-form {
+  margin-top: clamp(22px, 3vw, 32px);
+}
+
+.listing-workspace {
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 300px);
+  gap: clamp(18px, 2.4vw, 28px);
+}
+
+.listing-main-column {
+  gap: clamp(14px, 2vw, 20px);
+}
+
+.form-section,
+.side-panel-card {
+  border-radius: 12px;
+  padding: clamp(16px, 2vw, 22px);
+}
+
+.form-section {
+  box-shadow: 0 14px 34px rgba(30, 64, 175, 0.08);
+}
+
+.section-heading {
+  margin-bottom: clamp(14px, 2vw, 20px);
+}
+
+.section-heading h2 {
+  font-size: clamp(1.05rem, 1.55vw, 1.22rem);
+}
+
+.section-heading p {
+  max-width: 68ch;
+}
+
+.section-step {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+.form-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+  gap: clamp(12px, 1.5vw, 16px);
+}
+
+label {
+  gap: 6px;
+  font-size: 0.86rem;
+}
+
+input,
+select,
+textarea {
+  min-height: 42px;
+  padding: 10px 12px;
+  line-height: 1.25;
+}
+
+textarea {
+  resize: vertical;
+}
+
+.side-panel-card {
+  gap: 13px;
+}
+
+.side-panel-card h2 {
+  font-size: clamp(1.08rem, 1.6vw, 1.2rem);
+  line-height: 1.22;
+}
+
+.publish-checklist {
+  gap: 8px;
+  font-size: 0.92rem;
+}
+
+.side-panel-card .form-message {
+  max-height: 9.5rem;
+  overflow: auto;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-strong) 54%, transparent);
+  padding: 10px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.button-small,
+.car-card .button,
+.side-panel-card .button {
+  min-height: 38px;
+  padding-inline: 12px;
+  font-size: 0.9rem;
+}
+
+.photo-dropzone {
+  min-height: clamp(142px, 17vw, 180px);
+  padding: clamp(16px, 2vw, 24px);
+}
+
+.photo-dropzone-icon {
+  width: 46px;
+  height: 46px;
+  font-size: 1.75rem;
+}
+
+.photo-preview-grid,
+.existing-photo-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 7.5rem), 1fr));
+}
+
+.photo-preview-card,
+.photo-preview-card img {
+  min-height: 118px;
+}
+
+.cards-grid {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15.5rem), 1fr));
+  gap: clamp(16px, 2vw, 24px);
+  align-items: stretch;
+}
+
+.car-card {
+  display: grid;
+  align-content: start;
+  border-radius: 12px;
+  box-shadow: 0 16px 38px rgba(30, 64, 175, 0.1);
+}
+
+.car-image {
+  aspect-ratio: 1 / 0.76;
+}
+
+.car-card-body {
+  display: grid;
+  gap: 10px;
+  padding: clamp(14px, 1.6vw, 18px);
+}
+
+.car-card-top {
+  gap: 8px;
+}
+
+.car-card h3 {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: clamp(1rem, 1.4vw, 1.12rem);
+  line-height: 1.22;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.car-price {
+  margin: 0;
+  font-size: clamp(1.28rem, 2vw, 1.55rem);
+  line-height: 1.05;
+}
+
+.car-date {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.35;
+}
+
+.car-meta {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.car-meta dd {
+  font-size: clamp(0.9rem, 1.25vw, 1rem);
+  line-height: 1.25;
+}
+
+.status-badge {
+  max-width: 100%;
+  padding: 5px 9px;
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.market-search {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+  gap: clamp(12px, 1.5vw, 16px);
+}
+
+.category-slide {
+  flex-basis: clamp(220px, 28vw, 300px);
+  min-height: 245px;
+}
+
+.category-slide img,
+.category-slide-empty {
+  height: 132px;
+}
+
+.category-slide-body {
+  padding: 14px;
+}
+
+@media (max-width: 1180px) {
+  .listing-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .listing-side-panel {
+    position: static;
+  }
+
+  .side-panel-card {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+  }
+
+  .side-panel-card .button,
+  .side-panel-card .form-message {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .page-hero h1,
+  .hero-copy h1 {
+    font-size: clamp(2rem, 11vw, 3rem);
+  }
+
+  .lead {
+    font-size: 1rem;
+  }
+
+  .cards-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 14.5rem), 1fr));
+  }
+
+  .car-meta {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .side-panel-card {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    width: min(100% - 18px, 1180px);
+  }
+
+  .form-section,
+  .side-panel-card,
+  .legal-panel,
+  .empty-state {
+    padding: 15px;
+  }
+
+  .section-heading {
+    gap: 9px;
+  }
+
+  .car-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .photo-preview-grid,
+  .existing-photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
