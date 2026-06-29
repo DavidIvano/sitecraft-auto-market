@@ -795,6 +795,37 @@ textarea:focus {
   outline: 3px solid rgba(37, 99, 235, 0.12);
 }
 
+.password-field {
+  position: relative;
+  display: block;
+}
+
+.password-field input {
+  padding-right: 92px;
+}
+
+.password-toggle {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--bg-strong) 64%, var(--card));
+  color: var(--accent);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 900;
+  line-height: 1;
+  padding: 0 10px;
+  transform: translateY(-50%);
+}
+
+.password-toggle:hover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
 fieldset {
   min-width: 0;
   margin: 0;

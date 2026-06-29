@@ -28,12 +28,18 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
           <label class="full-field">
             <span>Пароль</span>
-            <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+            <span class="password-field">
+              <input type="password" name="password" autocomplete="new-password" minlength="8" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
+            </span>
           </label>
 
           <label class="full-field">
             <span>Повторите пароль</span>
-            <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+            <span class="password-field">
+              <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
+            </span>
           </label>
 
           <button class="button button-dark full-width" type="submit">Создать аккаунт</button>
@@ -54,6 +60,26 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const form = document.querySelector("#register-form");
     const message = document.querySelector("#register-message");
 
+    document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        if (!(toggle instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const field = toggle.closest(".password-field");
+        const input = field?.querySelector("input");
+
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        const isHidden = input.type === "password";
+        input.type = isHidden ? "text" : "password";
+        toggle.textContent = isHidden ? "Скрыть" : "Показать";
+        toggle.setAttribute("aria-label", isHidden ? "Скрыть пароль" : "Показать пароль");
+      });
+    });
+
     const getToken = (payload: unknown) => {
       if (!payload || typeof payload !== "object") {
         return null;
@@ -72,6 +98,20 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
       const record = payload as Record<string, unknown>;
       return record.user ?? record.me ?? record.authUser ?? null;
+    };
+
+    const getFriendlyRegisterError = (error: unknown) => {
+      const value = String(error || "");
+
+      if (value.toLowerCase().includes("duplicate")) {
+        return "Этот email уже зарегистрирован. Нажмите «Войти» и используйте этот email или Google-вход.";
+      }
+
+      if (value.toLowerCase().includes("password")) {
+        return "Пароль должен быть не короче 8 символов и содержать буквы и цифры.";
+      }
+
+      return value || "Не удалось создать аккаунт.";
     };
 
     form?.addEventListener("submit", async (event) => {
@@ -146,8 +186,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         message.textContent = "Аккаунт создан. Открываю кабинет...";
         window.location.href = next;
       } catch (error) {
-        message.textContent =
-          error instanceof Error ? error.message : "Не удалось создать аккаунт.";
+        message.textContent = getFriendlyRegisterError(error instanceof Error ? error.message : error);
       }
     });
   </script>

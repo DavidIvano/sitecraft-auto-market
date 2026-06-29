@@ -16,7 +16,7 @@ query "dashboard/listings/{id}" verb=PATCH {
     text country?=Германия filters=trim
     text seller_name? filters=trim
     text seller_phone? filters=trim
-    email? seller_email filters=trim|lower
+    email seller_email? filters=trim|lower
     text description? filters=trim
     text replace_photos? filters=trim
     text delete_image_ids? filters=trim

@@ -16,14 +16,14 @@ query cars verb=POST {
     text country?="Германия" filters=trim
     text seller_name? filters=trim
     text seller_phone? filters=trim
-    email? seller_email filters=trim|lower
+    email seller_email? filters=trim|lower
     text description? filters=trim
     file[] photos?
-    file? photo_1
-    file? photo_2
-    file? photo_3
-    file? photo_4
-    file? photo_5
+    file photo_1?
+    file photo_2?
+    file photo_3?
+    file photo_4?
+    file photo_5?
   }
 
   stack {

@@ -25,7 +25,10 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
 
           <label class="full-field">
             <span>Пароль</span>
-            <input type="password" name="password" autocomplete="current-password" required />
+            <span class="password-field">
+              <input type="password" name="password" autocomplete="current-password" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
+            </span>
           </label>
 
           <button class="button button-dark full-width" type="submit">Войти по email</button>
@@ -68,6 +71,26 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
     const message = document.querySelector("#login-message");
     const passwordForm = document.querySelector("#password-login-form");
     const passwordMessage = document.querySelector("#password-login-message");
+
+    document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        if (!(toggle instanceof HTMLButtonElement)) {
+          return;
+        }
+
+        const field = toggle.closest(".password-field");
+        const input = field?.querySelector("input");
+
+        if (!(input instanceof HTMLInputElement)) {
+          return;
+        }
+
+        const isHidden = input.type === "password";
+        input.type = isHidden ? "text" : "password";
+        toggle.textContent = isHidden ? "Скрыть" : "Показать";
+        toggle.setAttribute("aria-label", isHidden ? "Скрыть пароль" : "Показать пароль");
+      });
+    });
 
     const getToken = (payload: unknown) => {
       if (!payload || typeof payload !== "object") {
