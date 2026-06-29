@@ -32,6 +32,7 @@ export async function GET() {
     { path: "/sell", priority: "0.7", changefreq: "weekly" },
     { path: "/login", priority: "0.3", changefreq: "monthly" },
     { path: "/register", priority: "0.3", changefreq: "monthly" },
+    { path: "/support", priority: "0.3", changefreq: "monthly" },
     { path: "/privacy", priority: "0.2", changefreq: "yearly" },
   ];
 

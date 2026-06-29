@@ -25,6 +25,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         id="admin-board"
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
+        hidden
       >
         <div class="admin-toolbar">
           <label>
@@ -58,10 +59,16 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
         <p class="form-message" id="admin-message"></p>
       </div>
+
+      <div class="empty-state" id="admin-access-message">
+        Проверяю доступ к модерации...
+      </div>
     </div>
   </section>
 
   <script>
+    import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
+
     type AdminStatus =
       | "all"
       | "draft"
@@ -95,13 +102,28 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       user_id?: number | string;
     };
 
+    type AuthMeResponse = {
+      user?: {
+        id?: number | string;
+        email?: string;
+        name?: string;
+        role?: string;
+      };
+    };
+
     const board = document.querySelector("#admin-board");
+    const accessMessage = document.querySelector("#admin-access-message");
     const list = document.querySelector("#admin-list");
     const stats = document.querySelector("#admin-stats");
     const message = document.querySelector("#admin-message");
     const search = document.querySelector("#admin-search");
     const status = document.querySelector("#admin-status");
     const refresh = document.querySelector("#admin-refresh");
+    const adminToken = getAuthToken();
+    const allowedAdminEmails = new Set([
+      "ivanovdavid19@gmail.com",
+      "ivanovdavid119@gmail.com",
+    ]);
 
     const statusLabels: Record<string, string> = {
       all: "Все",
@@ -126,6 +148,82 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     };
 
     let cars: AdminCar[] = [];
+
+    const redirectToLogin = () => {
+      clearAuth();
+      rememberNext("/admin/moderation");
+      window.location.href = `/login?next=${encodeURIComponent("/admin/moderation")}`;
+    };
+
+    const redirectToSupport = () => {
+      window.location.href = "/support";
+    };
+
+    const setAccessMessage = (value: string) => {
+      if (accessMessage instanceof HTMLElement) {
+        accessMessage.textContent = value;
+      }
+    };
+
+    const isAdminUser = (user?: AuthMeResponse["user"]) => {
+      const email = String(user?.email || "").trim().toLowerCase();
+      const role = String(user?.role || "").trim().toLowerCase();
+
+      return role === "admin" || allowedAdminEmails.has(email);
+    };
+
+    const requireAdminAccess = async () => {
+      if (!(board instanceof HTMLElement)) {
+        return false;
+      }
+
+      const apiUrl = board.dataset.apiUrl;
+      const placeholderUrl = board.dataset.placeholderUrl;
+
+      if (!apiUrl || apiUrl === placeholderUrl) {
+        setAccessMessage("Xano API URL не настроен.");
+        return false;
+      }
+
+      if (!adminToken) {
+        redirectToLogin();
+        return false;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        if (response.status === 401 || response.status === 403) {
+          redirectToLogin();
+          return false;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Xano auth/me вернул ${response.status}`);
+        }
+
+        const payload = (await response.json()) as AuthMeResponse;
+
+        if (!isAdminUser(payload.user)) {
+          redirectToSupport();
+          return false;
+        }
+
+        board.hidden = false;
+        if (accessMessage instanceof HTMLElement) {
+          accessMessage.hidden = true;
+        }
+        return true;
+      } catch (error) {
+        console.error(error);
+        setAccessMessage("Не удалось проверить доступ к админ-панели. Попробуйте войти ещё раз.");
+        return false;
+      }
+    };
 
     const escapeHtml = (value: unknown) =>
       String(value ?? "")
@@ -337,7 +435,11 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       message.textContent = "Загружаю объявления...";
 
       try {
-        const response = await fetch(`${apiUrl}/admin/moderation?status=all`);
+        const response = await fetch(`${apiUrl}/admin/moderation?status=all`, {
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
 
         if (!response.ok) {
           throw new Error(`Xano вернул ${response.status}`);
@@ -381,6 +483,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
         const response = await fetch(`${apiUrl}/admin/cars/${id}/${endpointAction}`, {
           method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
         });
 
         if (!response.ok) {
@@ -431,6 +536,10 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       button.disabled = false;
     });
 
-    loadCars();
+    requireAdminAccess().then((hasAccess) => {
+      if (hasAccess) {
+        loadCars();
+      }
+    });
   </script>
 </BaseLayout>
