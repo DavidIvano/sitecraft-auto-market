@@ -31,10 +31,6 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
       </nav>
       <div class="header-actions">
-        <button class="theme-toggle" type="button" aria-label="Переключить тему" title="Переключить тему">
-          <span class="theme-toggle-icon" aria-hidden="true">●</span>
-          <span class="theme-toggle-text">Тема</span>
-        </button>
         <a class="button button-light auth-link" href="/login">Войти</a>
         <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
         <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
@@ -48,7 +44,6 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     const authLogout = document.querySelector(".auth-logout");
     const menu = document.querySelector(".header-menu");
     const menuToggle = document.querySelector(".menu-toggle");
-    const themeToggle = document.querySelector(".theme-toggle");
     const header = document.querySelector(".site-header");
     const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
@@ -71,29 +66,6 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
     menu?.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => setMenuOpen(false));
-    });
-
-    const updateThemeButton = () => {
-      if (!(themeToggle instanceof HTMLButtonElement)) {
-        return;
-      }
-
-      const theme = document.documentElement.dataset.theme || "light";
-      themeToggle.setAttribute("aria-label", theme === "dark" ? "Включить светлую тему" : "Включить тёмную тему");
-      const text = themeToggle.querySelector(".theme-toggle-text");
-      if (text) {
-        text.textContent = theme === "dark" ? "Тёмная" : "Светлая";
-      }
-    };
-
-    updateThemeButton();
-
-    themeToggle?.addEventListener("click", () => {
-      const currentTheme = document.documentElement.dataset.theme || "light";
-      const nextTheme = currentTheme === "dark" ? "light" : "dark";
-      document.documentElement.dataset.theme = nextTheme;
-      localStorage.setItem("sitecraft-theme", nextTheme);
-      updateThemeButton();
     });
 
     const resetHeader = () => {

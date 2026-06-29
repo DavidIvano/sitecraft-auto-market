@@ -1,234 +1,693 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
+import {
+  carBrands,
+  carModelsByBrand,
+  fuelTypes,
+  transmissions,
+} from "../../../data/carOptions";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Редактировать объявление">
-  <section class="section page-hero">
-    <div class="container narrow">
+  <section class="section page-hero new-listing-hero">
+    <div class="container">
       <p class="eyebrow">Кабинет</p>
       <h1>Редактировать объявление</h1>
-      <p class="lead">Изменения сохраняются в вашем объявлении. Если объявление уже опубликовано, после правки его можно снова отправить на модерацию.</p>
+      <p class="lead">
+        Обновите данные, замените фотографии или удалите лишние. После правки объявление можно
+        снова отправить на модерацию.
+      </p>
 
-      <form class="listing-form" id="edit-listing-form" data-api-url={xanoApiUrl}>
-        <fieldset class="form-section">
-          <legend>Основное</legend>
-          <div class="form-grid">
-            <label class="full-field">
-              <span>Название</span>
-              <input type="text" name="title" required />
-            </label>
+      <form class="listing-form listing-form-enhanced" id="edit-listing-form" data-api-url={xanoApiUrl}>
+        <div class="listing-workspace">
+          <div class="listing-main-column">
+            <fieldset class="form-section form-section-highlight">
+              <div class="section-heading">
+                <span class="section-step">1</span>
+                <div>
+                  <h2>Автомобиль</h2>
+                  <p>Марка, модель, год, цена и основные параметры объявления.</p>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label class="full-field">
+                  <span>Название</span>
+                  <input type="text" name="title" required />
+                </label>
 
-            <label>
-              <span>Марка</span>
-              <input type="text" name="brand" required />
-            </label>
+                <label>
+                  <span>Марка</span>
+                  <select name="brand" required data-brand-select>
+                    <option value="">Выберите марку</option>
+                    {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
+                  </select>
+                </label>
 
-            <label>
-              <span>Модель</span>
-              <input type="text" name="model" required />
-            </label>
+                <label>
+                  <span>Модель</span>
+                  <select name="model" required data-model-select>
+                    <option value="">Выберите модель</option>
+                  </select>
+                </label>
 
-            <label>
-              <span>Год</span>
-              <input type="number" name="year" min="1900" max="2100" required />
-            </label>
+                <label>
+                  <span>Год</span>
+                  <input type="number" name="year" min="1900" max="2100" required />
+                </label>
 
-            <label>
-              <span>Цена</span>
-              <input type="number" name="price" min="0" step="1" required />
-            </label>
+                <label>
+                  <span>Цена</span>
+                  <input type="number" name="price" min="0" step="1" required />
+                </label>
 
-            <label>
-              <span>Пробег</span>
-              <input type="number" name="mileage" min="0" step="1" required />
-            </label>
+                <label>
+                  <span>Пробег</span>
+                  <input type="number" name="mileage" min="0" step="1" required />
+                </label>
 
-            <label>
-              <span>Город</span>
-              <input type="text" name="city" required />
-            </label>
+                <label>
+                  <span>Город</span>
+                  <input type="text" name="city" required />
+                </label>
 
-            <label>
-              <span>Страна</span>
-              <input type="text" name="country" />
-            </label>
+                <label>
+                  <span>Страна</span>
+                  <input type="text" name="country" />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section">
+              <div class="section-heading">
+                <span class="section-step">2</span>
+                <div>
+                  <h2>Характеристики и контакты</h2>
+                  <p>Эти данные видит покупатель на странице автомобиля.</p>
+                </div>
+              </div>
+              <div class="form-grid">
+                <label>
+                  <span>Топливо</span>
+                  <select name="fuel_type" required>
+                    <option value="">Выберите топливо</option>
+                    {fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Коробка</span>
+                  <select name="transmission" required>
+                    <option value="">Выберите коробку</option>
+                    {transmissions.map((transmission) => <option value={transmission}>{transmission}</option>)}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Имя продавца</span>
+                  <input type="text" name="seller_name" />
+                </label>
+
+                <label>
+                  <span>Телефон</span>
+                  <input type="tel" name="seller_phone" />
+                </label>
+
+                <label class="full-field">
+                  <span>Email</span>
+                  <input type="email" name="seller_email" />
+                </label>
+
+                <label class="full-field">
+                  <span>Описание</span>
+                  <textarea name="description" rows="8"></textarea>
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset class="form-section photo-form-section">
+              <div class="section-heading">
+                <span class="section-step">3</span>
+                <div>
+                  <h2>Фотографии</h2>
+                  <p>Можно оставить текущие фото, удалить отдельные или заменить набор новыми фото.</p>
+                </div>
+              </div>
+              <div class="form-grid">
+                <div class="full-field">
+                  <label class="theme-switch">
+                    <input class="theme-switch-input" type="checkbox" name="replace_photos" value="1" />
+                    <span class="theme-switch-track" aria-hidden="true">
+                      <span class="theme-switch-thumb"></span>
+                    </span>
+                    <span class="theme-switch-text">Заменить все текущие фото новыми</span>
+                  </label>
+                </div>
+
+                <div class="full-field">
+                  <span class="form-message">Текущие фотографии</span>
+                  <div class="existing-photo-grid" id="existing-photo-grid">
+                    <div class="photo-empty-state">Загружаю фото объявления...</div>
+                  </div>
+                </div>
+
+                <div class="full-field photo-uploader" data-photo-uploader>
+                  <input
+                    class="photo-input"
+                    id="edit-photo-input"
+                    type="file"
+                    name="photos"
+                    accept="image/avif,image/webp,image/jpeg,image/png"
+                    multiple
+                    data-max-files="5"
+                  />
+                  <label class="photo-dropzone" for="edit-photo-input" data-photo-dropzone>
+                    <span class="photo-dropzone-icon">+</span>
+                    <strong>Перетащите новые фото сюда или выберите файлы</strong>
+                    <small>До 5 изображений. Первое выбранное фото станет главным после сохранения.</small>
+                  </label>
+                  <div class="photo-preview-toolbar">
+                    <span id="photo-count">0 / 5 новых фото</span>
+                    <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить новые фото</button>
+                  </div>
+                  <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
+                    <div class="photo-empty-state">Новые фото пока не выбраны.</div>
+                  </div>
+                </div>
+              </div>
+            </fieldset>
           </div>
-        </fieldset>
 
-        <fieldset class="form-section">
-          <legend>Характеристики</legend>
-          <div class="form-grid">
-            <label>
-              <span>Топливо</span>
-              <input type="text" name="fuel_type" required />
-            </label>
-
-            <label>
-              <span>Коробка</span>
-              <input type="text" name="transmission" required />
-            </label>
-
-            <label class="full-field">
-              <span>Описание</span>
-              <textarea name="description" rows="8"></textarea>
-            </label>
-          </div>
-        </fieldset>
-
-        <div class="form-footer">
-          <button class="button button-dark" type="submit">Сохранить изменения</button>
-          <p class="form-message" id="edit-listing-message">Загружаю объявление...</p>
+          <aside class="listing-side-panel" aria-label="Сохранение объявления">
+            <div class="side-panel-card">
+              <p class="eyebrow">Публикация</p>
+              <h2>Сохранение</h2>
+              <ul class="publish-checklist">
+                <li>После редактирования объявление лучше снова проверить модератором.</li>
+                <li>Для фото Xano должен поддерживать PATCH endpoint редактирования объявления.</li>
+                <li>Максимум 5 фотографий на объявление.</li>
+              </ul>
+              <a class="edit-current-link" id="public-car-link" href="/cars" target="_blank" rel="noreferrer" hidden>Открыть опубликованную страницу</a>
+              <button class="button button-light full-width" type="submit" data-action="save">Сохранить черновик</button>
+              <button class="button button-dark full-width" type="submit" data-action="submit">Сохранить и отправить на модерацию</button>
+              <p class="form-message" id="edit-listing-message">Загружаю объявление...</p>
+            </div>
+          </aside>
         </div>
       </form>
+
+      <script is:inline type="application/json" id="car-model-data" set:html={JSON.stringify(carModelsByBrand)} />
+
+      <script>
+        import { clearAuth, getAuthToken } from "../../../lib/authClient";
+
+        const token = getAuthToken();
+        const form = document.querySelector("#edit-listing-form");
+        const message = document.querySelector("#edit-listing-message");
+        const existingPhotoGrid = document.querySelector("#existing-photo-grid");
+        const photoInput = document.querySelector("#edit-photo-input");
+        const photoDropzone = document.querySelector("[data-photo-dropzone]");
+        const photoPreviewGrid = document.querySelector("#photo-preview-grid");
+        const photoCount = document.querySelector("#photo-count");
+        const photoClear = document.querySelector("#photo-clear");
+        const brandSelect = document.querySelector("[data-brand-select]");
+        const modelSelect = document.querySelector("[data-model-select]");
+        const publicCarLink = document.querySelector("#public-car-link");
+        const modelDataElement = document.querySelector("#car-model-data");
+        const carModelsByBrand = modelDataElement?.textContent
+          ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
+          : {};
+        const id = new URLSearchParams(window.location.search).get("id");
+        const selectedPhotos: File[] = [];
+        const photoUrls = new Map<File, string>();
+        const deletedImageIds = new Set<number>();
+        let currentCar: Record<string, unknown> | null = null;
+
+        const fields = [
+          "title",
+          "brand",
+          "model",
+          "year",
+          "price",
+          "mileage",
+          "city",
+          "country",
+          "fuel_type",
+          "transmission",
+          "seller_name",
+          "seller_phone",
+          "seller_email",
+          "description",
+        ];
+
+        function requireLogin() {
+          clearAuth();
+          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        }
+
+        function setMessage(value: string) {
+          if (message instanceof HTMLElement) {
+            message.textContent = value;
+          }
+        }
+
+        function escapeHtml(value: unknown) {
+          return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+        }
+
+        function updateModelsForBrand(selectedModel = "") {
+          if (!(brandSelect instanceof HTMLSelectElement) || !(modelSelect instanceof HTMLSelectElement)) {
+            return;
+          }
+
+          const brand = brandSelect.value;
+          const models = carModelsByBrand[brand] || [];
+
+          modelSelect.innerHTML = brand
+            ? `<option value="">Выберите модель</option>${models.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("")}`
+            : `<option value="">Сначала выберите марку</option>`;
+          modelSelect.disabled = !brand;
+          modelSelect.value = selectedModel;
+        }
+
+        function fillForm(car: Record<string, unknown>) {
+          if (!(form instanceof HTMLFormElement)) {
+            return;
+          }
+
+          fields.forEach((field) => {
+            const input = form.elements.namedItem(field);
+
+            if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement || input instanceof HTMLSelectElement) {
+              input.value = String(car[field] ?? "");
+            }
+          });
+
+          updateModelsForBrand(String(car.model ?? ""));
+
+          if (publicCarLink instanceof HTMLAnchorElement && car.slug) {
+            publicCarLink.href = `/cars/${encodeURIComponent(String(car.slug))}`;
+            publicCarLink.hidden = false;
+          }
+        }
+
+        function renderExistingPhotos() {
+          if (!(existingPhotoGrid instanceof HTMLElement)) {
+            return;
+          }
+
+          const images = Array.isArray(currentCar?.images) ? currentCar.images as Array<Record<string, unknown>> : [];
+          const visibleImages = images.filter((image) => !deletedImageIds.has(Number(image.id)));
+
+          if (visibleImages.length === 0) {
+            existingPhotoGrid.innerHTML = `<div class="photo-empty-state">У объявления пока нет сохранённых фото.</div>`;
+            return;
+          }
+
+          existingPhotoGrid.innerHTML = visibleImages
+            .map((image, index) => `
+              <article class="existing-photo-card">
+                <img src="${escapeHtml(image.image_url)}" alt="Фото ${index + 1}" loading="lazy" />
+                <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
+                <button class="button button-light button-small full-width" type="button" data-delete-image-id="${escapeHtml(image.id)}">Удалить</button>
+              </article>
+            `)
+            .join("");
+        }
+
+        function syncPhotoInput() {
+          if (!(photoInput instanceof HTMLInputElement)) {
+            return;
+          }
+
+          const transfer = new DataTransfer();
+          selectedPhotos.forEach((file) => transfer.items.add(file));
+          photoInput.files = transfer.files;
+        }
+
+        function renderPhotoPreview() {
+          if (!(photoPreviewGrid instanceof HTMLElement)) {
+            return;
+          }
+
+          const maxFiles = photoInput instanceof HTMLInputElement ? Number(photoInput.dataset.maxFiles || 5) : 5;
+
+          if (photoCount instanceof HTMLElement) {
+            photoCount.textContent = `${selectedPhotos.length} / ${maxFiles} новых фото`;
+          }
+
+          if (photoClear instanceof HTMLButtonElement) {
+            photoClear.hidden = selectedPhotos.length === 0;
+          }
+
+          if (selectedPhotos.length === 0) {
+            photoPreviewGrid.innerHTML = `<div class="photo-empty-state">Новые фото пока не выбраны.</div>`;
+            return;
+          }
+
+          photoPreviewGrid.innerHTML = selectedPhotos
+            .map((file, index) => {
+              let url = photoUrls.get(file);
+
+              if (!url) {
+                url = URL.createObjectURL(file);
+                photoUrls.set(file, url);
+              }
+
+              return `
+                <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
+                  <img src="${url}" alt="Новое фото ${index + 1}" />
+                  <div class="photo-preview-actions">
+                    <span>${index === 0 ? "Новое главное" : `Новое фото ${index + 1}`}</span>
+                    <div class="photo-preview-buttons">
+                      ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
+                      <button type="button" data-remove-photo="${index}">×</button>
+                    </div>
+                  </div>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        function setPhotoFiles(files: File[]) {
+          if (!(photoInput instanceof HTMLInputElement)) {
+            return;
+          }
+
+          const maxFiles = Number(photoInput.dataset.maxFiles || 5);
+          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+          const remainingSlots = Math.max(maxFiles - selectedPhotos.length, 0);
+          selectedPhotos.push(...imageFiles.slice(0, remainingSlots));
+
+          if (imageFiles.length > remainingSlots) {
+            setMessage(`Можно загрузить максимум ${maxFiles} новых фото. Лишние изображения не добавлены.`);
+          }
+
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function movePhoto(fromIndex: number, toIndex: number) {
+          if (fromIndex === toIndex || fromIndex < 0 || toIndex < 0 || fromIndex >= selectedPhotos.length || toIndex >= selectedPhotos.length) {
+            return;
+          }
+
+          const [file] = selectedPhotos.splice(fromIndex, 1);
+          selectedPhotos.splice(toIndex, 0, file);
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function removePhoto(index: number) {
+          const [file] = selectedPhotos.splice(index, 1);
+
+          if (file) {
+            const url = photoUrls.get(file);
+            if (url) {
+              URL.revokeObjectURL(url);
+            }
+            photoUrls.delete(file);
+          }
+
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        function clearPhotos() {
+          selectedPhotos.splice(0, selectedPhotos.length);
+          photoUrls.forEach((url) => URL.revokeObjectURL(url));
+          photoUrls.clear();
+          syncPhotoInput();
+          renderPhotoPreview();
+        }
+
+        async function convertImageToJpeg(file: File, index: number) {
+          const bitmap = await createImageBitmap(file);
+          const maxSize = 1920;
+          const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
+          const width = Math.max(1, Math.round(bitmap.width * scale));
+          const height = Math.max(1, Math.round(bitmap.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+
+          const context = canvas.getContext("2d");
+          if (!context) {
+            bitmap.close();
+            throw new Error("Браузер не смог подготовить изображение к загрузке.");
+          }
+
+          context.drawImage(bitmap, 0, 0, width, height);
+          bitmap.close();
+
+          const blob = await new Promise<Blob | null>((resolve) => {
+            canvas.toBlob(resolve, "image/jpeg", 0.88);
+          });
+
+          if (!blob) {
+            throw new Error("Не удалось конвертировать изображение перед отправкой.");
+          }
+
+          const safeName = file.name.replace(/\.[^.]+$/, "") || `edit-photo-${index + 1}`;
+          return new File([blob], `${safeName}.jpg`, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+        }
+
+        async function loadListing() {
+          if (!(form instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const apiUrl = form.dataset.apiUrl;
+
+          if (!id) {
+            setMessage("Не найден ID объявления в адресе страницы.");
+            return;
+          }
+
+          if (!token) {
+            requireLogin();
+            return;
+          }
+
+          const response = await fetch(`${apiUrl}/dashboard/listings`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            requireLogin();
+            return;
+          }
+
+          const cars = await response.json();
+          const car = Array.isArray(cars)
+            ? cars.find((item) => String(item.id) === id)
+            : null;
+
+          if (!car) {
+            setMessage("Это объявление не найдено в вашем кабинете.");
+            return;
+          }
+
+          currentCar = car;
+          fillForm(car);
+          renderExistingPhotos();
+          setMessage("Объявление загружено. Можно редактировать.");
+        }
+
+        async function saveListing(payload: FormData) {
+          if (!(form instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const apiUrl = form.dataset.apiUrl;
+          const response = await fetch(`${apiUrl}/dashboard/listings/${id}`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            body: payload,
+          });
+
+          if (response.status === 404) {
+            throw new Error("В Xano ещё нужен endpoint PATCH /dashboard/listings/{id} с поддержкой multipart/form-data и photos.");
+          }
+
+          if (!response.ok) {
+            const details = await response.text();
+            throw new Error(details || "Xano не сохранил изменения.");
+          }
+
+          return response.json().catch(() => null);
+        }
+
+        async function submitForReview() {
+          if (!(form instanceof HTMLFormElement) || !id) {
+            return;
+          }
+
+          const apiUrl = form.dataset.apiUrl;
+          const response = await fetch(`${apiUrl}/cars/${id}/submit`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+          });
+
+          if (!response.ok) {
+            const details = await response.text();
+            throw new Error(details || "Изменения сохранены, но объявление не отправилось на модерацию.");
+          }
+        }
+
+        brandSelect?.addEventListener("change", () => updateModelsForBrand());
+
+        existingPhotoGrid?.addEventListener("click", (event) => {
+          const button = event.target instanceof HTMLElement ? event.target.closest("[data-delete-image-id]") : null;
+
+          if (button instanceof HTMLElement) {
+            deletedImageIds.add(Number(button.dataset.deleteImageId));
+            renderExistingPhotos();
+            setMessage("Фото будет удалено после сохранения изменений.");
+          }
+        });
+
+        photoInput?.addEventListener("change", () => {
+          if (photoInput instanceof HTMLInputElement) {
+            setPhotoFiles(Array.from(photoInput.files || []));
+          }
+        });
+
+        photoClear?.addEventListener("click", clearPhotos);
+
+        photoDropzone?.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.add("is-dragging");
+          }
+        });
+
+        photoDropzone?.addEventListener("dragleave", () => {
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.remove("is-dragging");
+          }
+        });
+
+        photoDropzone?.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const dragEvent = event as DragEvent;
+          if (photoDropzone instanceof HTMLElement) {
+            photoDropzone.classList.remove("is-dragging");
+          }
+
+          setPhotoFiles(Array.from(dragEvent.dataTransfer?.files || []));
+        });
+
+        photoPreviewGrid?.addEventListener("dragstart", (event) => {
+          const dragEvent = event as DragEvent;
+          const card = event.target instanceof HTMLElement ? event.target.closest("[data-photo-index]") : null;
+
+          if (card instanceof HTMLElement && dragEvent.dataTransfer) {
+            dragEvent.dataTransfer.setData("text/plain", card.dataset.photoIndex || "0");
+          }
+        });
+
+        photoPreviewGrid?.addEventListener("dragover", (event) => {
+          event.preventDefault();
+        });
+
+        photoPreviewGrid?.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const dragEvent = event as DragEvent;
+          const target = event.target instanceof HTMLElement ? event.target.closest("[data-photo-index]") : null;
+          const fromIndex = Number(dragEvent.dataTransfer?.getData("text/plain") || -1);
+          const toIndex = target instanceof HTMLElement ? Number(target.dataset.photoIndex || -1) : -1;
+          movePhoto(fromIndex, toIndex);
+        });
+
+        photoPreviewGrid?.addEventListener("click", (event) => {
+          const removeButton = event.target instanceof HTMLElement ? event.target.closest("[data-remove-photo]") : null;
+          const makeMainButton = event.target instanceof HTMLElement ? event.target.closest("[data-make-main-photo]") : null;
+
+          if (makeMainButton instanceof HTMLElement) {
+            movePhoto(Number(makeMainButton.dataset.makeMainPhoto || -1), 0);
+            return;
+          }
+
+          if (removeButton instanceof HTMLElement) {
+            removePhoto(Number(removeButton.dataset.removePhoto || -1));
+          }
+        });
+
+        form?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          if (!(form instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const submitter = (event as SubmitEvent).submitter;
+          const shouldSubmit = submitter instanceof HTMLElement && submitter.dataset.action === "submit";
+          const data = new FormData(form);
+          const payload = new FormData();
+
+          fields.forEach((field) => {
+            const rawValue = data.get(field);
+            const value = ["year", "price", "mileage"].includes(field)
+              ? String(Number(rawValue || 0))
+              : String(rawValue || "").trim();
+
+            payload.set(field, value);
+          });
+
+          payload.set("delete_image_ids", JSON.stringify([...deletedImageIds]));
+          payload.set("replace_photos", data.get("replace_photos") ? "true" : "false");
+
+          try {
+            if (selectedPhotos.length > 0) {
+              setMessage("Подготавливаю новые фото...");
+            }
+
+            for (const [index, file] of selectedPhotos.entries()) {
+              if (file instanceof File && file.size > 0) {
+                payload.append("photos", await convertImageToJpeg(file, index));
+              }
+            }
+
+            setMessage("Сохраняю изменения...");
+            await saveListing(payload);
+
+            if (shouldSubmit) {
+              setMessage("Отправляю объявление на модерацию...");
+              await submitForReview();
+              setMessage("Изменения сохранены, объявление отправлено на модерацию.");
+            } else {
+              setMessage("Изменения сохранены.");
+            }
+
+            clearPhotos();
+            deletedImageIds.clear();
+            await loadListing();
+          } catch (error) {
+            setMessage(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
+          }
+        });
+
+        loadListing().catch(() => {
+          setMessage("Не удалось загрузить объявление.");
+        });
+      </script>
     </div>
   </section>
-
-  <script>
-    import { clearAuth, getAuthToken } from "../../../lib/authClient";
-
-    const token = getAuthToken();
-    const form = document.querySelector("#edit-listing-form");
-    const message = document.querySelector("#edit-listing-message");
-    const id = new URLSearchParams(window.location.search).get("id");
-
-    const fields = [
-      "title",
-      "brand",
-      "model",
-      "year",
-      "price",
-      "mileage",
-      "city",
-      "country",
-      "fuel_type",
-      "transmission",
-      "description",
-    ];
-
-    function requireLogin() {
-      clearAuth();
-      window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-    }
-
-    function setMessage(value: string) {
-      if (message instanceof HTMLElement) {
-        message.textContent = value;
-      }
-    }
-
-    function fillForm(car: Record<string, unknown>) {
-      if (!(form instanceof HTMLFormElement)) {
-        return;
-      }
-
-      fields.forEach((field) => {
-        const input = form.elements.namedItem(field);
-
-        if (input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement) {
-          input.value = String(car[field] ?? "");
-        }
-      });
-    }
-
-    async function loadListing() {
-      if (!(form instanceof HTMLFormElement)) {
-        return;
-      }
-
-      const apiUrl = form.dataset.apiUrl;
-
-      if (!id) {
-        setMessage("Не найден ID объявления в адресе страницы.");
-        return;
-      }
-
-      if (!token) {
-        requireLogin();
-        return;
-      }
-
-      const response = await fetch(`${apiUrl}/dashboard/listings`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        requireLogin();
-        return;
-      }
-
-      const cars = await response.json();
-      const car = Array.isArray(cars)
-        ? cars.find((item) => String(item.id) === id)
-        : null;
-
-      if (!car) {
-        setMessage("Это объявление не найдено в вашем кабинете.");
-        return;
-      }
-
-      fillForm(car);
-      setMessage("Объявление загружено. Можно редактировать.");
-    }
-
-    async function saveListing(payload: Record<string, unknown>) {
-      if (!(form instanceof HTMLFormElement)) {
-        return;
-      }
-
-      const apiUrl = form.dataset.apiUrl;
-      const response = await fetch(`${apiUrl}/dashboard/listings/${id}`, {
-        method: "PATCH",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (response.status === 404) {
-        throw new Error("В Xano ещё нужен endpoint PATCH /dashboard/listings/{id}.");
-      }
-
-      if (!response.ok) {
-        const details = await response.text();
-        throw new Error(details || "Xano не сохранил изменения.");
-      }
-    }
-
-    form?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-
-      if (!(form instanceof HTMLFormElement)) {
-        return;
-      }
-
-      const data = new FormData(form);
-      const payload = Object.fromEntries(
-        fields.map((field) => {
-          const rawValue = data.get(field);
-          const value = ["year", "price", "mileage"].includes(field)
-            ? Number(rawValue || 0)
-            : String(rawValue || "").trim();
-
-          return [field, value];
-        }),
-      );
-
-      try {
-        setMessage("Сохраняю изменения...");
-        await saveListing(payload);
-        setMessage("Изменения сохранены.");
-      } catch (error) {
-        setMessage(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
-      }
-    });
-
-    loadListing().catch(() => {
-      setMessage("Не удалось загрузить объявление.");
-    });
-  </script>
 </BaseLayout>

@@ -279,12 +279,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         .map((category) => {
           const car = pickCategoryCar(cars, category.match);
           const imageUrl = String(car?.main_image_url || "");
+          const slug = car?.slug ? `/cars/${encodeURIComponent(String(car.slug))}` : "/cars";
           const meta = car
             ? `${escapeHtml(car.brand)} ${escapeHtml(car.model)} · ${formatPrice(car.price, String(car.currency || "EUR"))}`
             : "Смотреть объявления";
 
           return `
-            <a class="category-slide" href="/cars" aria-label="${escapeHtml(category.title)}">
+            <a class="category-slide" href="${slug}" aria-label="${escapeHtml(category.title)}">
               ${
                 imageUrl
                   ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />`

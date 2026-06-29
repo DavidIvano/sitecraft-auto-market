@@ -17,9 +17,44 @@ const links = [
         <a href="https://sitecraft.agency" target="_blank" rel="noopener noreferrer">SiteCraft Agency</a>
         {" "}для премиальной доски объявлений авто.
       </p>
+      <p>
+        Поддержка и запросы по данным:{" "}
+        <a href="mailto:support@sitecraft.agency">support@sitecraft.agency</a>
+      </p>
     </div>
-    <nav class="footer-links" aria-label="Ссылки в подвале">
-      {links.map((link) => <a href={link.href}>{link.label}</a>)}
-    </nav>
+    <div class="footer-side">
+      <nav class="footer-links" aria-label="Ссылки в подвале">
+        {links.map((link) => <a href={link.href}>{link.label}</a>)}
+      </nav>
+      <label class="theme-switch">
+        <input class="theme-switch-input" type="checkbox" aria-label="Включить тёмную тему" />
+        <span class="theme-switch-track" aria-hidden="true">
+          <span class="theme-switch-thumb"></span>
+        </span>
+        <span class="theme-switch-text">Тёмная тема</span>
+      </label>
+    </div>
   </div>
+  <script>
+    const footerThemeSwitch = document.querySelector(".site-footer .theme-switch-input");
+
+    const syncFooterThemeSwitch = () => {
+      if (footerThemeSwitch instanceof HTMLInputElement) {
+        footerThemeSwitch.checked = (document.documentElement.dataset.theme || "light") === "dark";
+      }
+    };
+
+    syncFooterThemeSwitch();
+
+    footerThemeSwitch?.addEventListener("change", () => {
+      if (!(footerThemeSwitch instanceof HTMLInputElement)) {
+        return;
+      }
+
+      const nextTheme = footerThemeSwitch.checked ? "dark" : "light";
+      document.documentElement.dataset.theme = nextTheme;
+      localStorage.setItem("sitecraft-theme", nextTheme);
+      syncFooterThemeSwitch();
+    });
+  </script>
 </footer>

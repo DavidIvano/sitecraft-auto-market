@@ -1576,6 +1576,99 @@ legend {
   color: var(--muted);
 }
 
+.site-footer a {
+  color: var(--accent);
+  font-weight: 800;
+}
+
+.footer-side {
+  display: grid;
+  justify-items: end;
+  gap: 16px;
+}
+
+.theme-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.theme-switch-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+
+.theme-switch-track {
+  position: relative;
+  display: inline-flex;
+  width: 52px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--bg-strong);
+  padding: 3px;
+  transition:
+    background 180ms ease,
+    border-color 180ms ease;
+}
+
+.theme-switch-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--card);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.18);
+  transition: transform 180ms ease;
+}
+
+.theme-switch-input:checked + .theme-switch-track {
+  border-color: color-mix(in srgb, var(--accent) 70%, var(--line));
+  background: var(--accent);
+}
+
+.theme-switch-input:checked + .theme-switch-track .theme-switch-thumb {
+  transform: translateX(22px);
+}
+
+.existing-photo-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.existing-photo-card {
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bg-strong);
+}
+
+.existing-photo-card img {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+}
+
+.existing-photo-card span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 800;
+  padding: 8px;
+}
+
+.edit-current-link {
+  color: var(--accent);
+  font-weight: 800;
+}
+
 @media (min-width: 720px) {
   .hero-copy h1,
   .page-hero h1 {
@@ -1779,6 +1872,11 @@ legend {
     width: 100%;
   }
 
+  .footer-side {
+    width: 100%;
+    justify-items: start;
+  }
+
   .header-action,
   .header-actions .button,
   .theme-toggle {
@@ -1891,6 +1989,10 @@ legend {
 
   .photo-preview-grid {
     grid-template-columns: 1fr;
+  }
+
+  .existing-photo-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .button {
