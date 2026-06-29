@@ -58,7 +58,7 @@ const collectionSchema = {
     <div class="container">
       <p class="eyebrow">Каталог</p>
       <h1>Автомобили</h1>
-      <p class="lead">Свежие опубликованные объявления из Xano без повторов и demo-карточек.</p>
+      <p class="lead">Свежие проверенные объявления с фотографиями, ценами и быстрым поиском по главным параметрам.</p>
       <SearchBar />
     </div>
   </section>
@@ -73,8 +73,8 @@ const collectionSchema = {
       >
         {cars.map((car) => <CarCard car={car} />)}
       </div>
-      <p class="form-message" id="live-cars-message">
-        {cars.length > 0 ? "Показаны актуальные объявления из Xano." : "Загружаю каталог из Xano..."}
+      <p class="form-message" id="live-cars-message" hidden>
+        {cars.length > 0 ? "" : "Загружаю каталог автомобилей..."}
       </p>
     </div>
   </section>
@@ -136,7 +136,7 @@ const collectionSchema = {
         return `<img src="${escapeHtml(car.main_image_url)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />`;
       }
 
-      return `<div class="car-image car-image-empty">Фото в Xano не добавлено</div>`;
+      return `<div class="car-image car-image-empty">Фото пока не добавлено</div>`;
     };
 
     if (grid instanceof HTMLElement && message instanceof HTMLElement) {
@@ -147,7 +147,7 @@ const collectionSchema = {
         fetch(`${apiUrl}/cars`)
           .then((response) => {
             if (!response.ok) {
-              throw new Error("Failed to load cars");
+              throw new Error("cars load failed");
             }
 
             return response.json();
@@ -155,7 +155,8 @@ const collectionSchema = {
           .then((cars) => {
             if (!Array.isArray(cars) || cars.length === 0) {
               grid.innerHTML = "";
-              message.textContent = "В Xano пока нет опубликованных объявлений.";
+              message.textContent = "Пока нет опубликованных объявлений.";
+              message.hidden = false;
               return;
             }
 
@@ -187,13 +188,15 @@ const collectionSchema = {
               })
               .join("");
 
-            message.textContent = "Показаны актуальные объявления из Xano.";
+            message.textContent = "";
+            message.hidden = true;
           })
           .catch((error) => {
             console.error(error);
             message.textContent = grid.children.length > 0
-              ? "Показаны объявления, загруженные во время последней публикации сайта."
-              : "Не удалось загрузить Xano-каталог.";
+              ? ""
+              : "Не удалось загрузить каталог. Попробуйте обновить страницу.";
+            message.hidden = message.textContent === "";
           });
       }
     }

@@ -10,11 +10,11 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
 <BaseLayout title="Завершение входа">
   <section class="section page-hero">
     <div class="container narrow">
-      <p class="eyebrow">Google OAuth</p>
+      <p class="eyebrow">Google</p>
       <h1>Завершаю вход</h1>
       <div class="empty-state">
         <p id="callback-message" data-api-url={xanoApiUrl} data-auth-api-url={xanoAuthApiUrl} data-placeholder-url={placeholderApiUrl} data-continue-path={googleContinuePath}>
-          Получаю токен авторизации от Xano.
+          Завершаю вход через Google.
         </p>
         <pre class="debug-output" id="callback-debug" hidden></pre>
         <p class="form-message" id="callback-actions" hidden>
@@ -34,6 +34,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       setAuthToken,
       setAuthUser,
     } from "../../../lib/authClient";
+    import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
 
     const message = document.querySelector("#callback-message");
     const debugOutput = document.querySelector("#callback-debug");
@@ -95,27 +96,27 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
       }
 
       if (error) {
-        message.textContent = `Google вернул ошибку: ${error}`;
+        message.textContent = "Google не подтвердил вход. Попробуйте ещё раз.";
         addDebug(`Google error: ${error}`);
         return;
       }
 
       if (!code) {
-        message.textContent = "В callback URL нет параметра code.";
+        message.textContent = "Не удалось получить подтверждение от Google. Попробуйте войти ещё раз.";
         addDebug("Google code: missing");
         return;
       }
 
       if (!authApiUrl || authApiUrl === placeholderUrl) {
-        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
-        addDebug("Xano API URL: missing");
+        message.textContent = "Вход временно недоступен. Попробуйте позже.";
+        addDebug("Auth API URL: missing");
         return;
       }
 
       const redirectUri = `${window.location.origin}/auth/google/callback`;
       addDebug(`Google code: received (${code.length} chars)`);
-      addDebug(`Continue endpoint: ${authApiUrl}${continuePath}`);
-      addDebug(`Redirect URI: ${redirectUri}`);
+      addDebug(`Проверка входа: ${authApiUrl}${continuePath}`);
+      addDebug(`Адрес возврата: ${redirectUri}`);
 
       try {
         const continueUrl = new URL(`${authApiUrl}${continuePath}`);
@@ -155,7 +156,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
           throw new Error(
             typeof details === "string" && details
               ? details
-              : "Xano Google auth continue endpoint failed",
+              : "google continue failed",
           );
         }
 
@@ -170,7 +171,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
             : null);
 
         if (!token) {
-          throw new Error("Xano did not return auth token");
+          throw new Error("auth token missing");
         }
 
         setAuthToken(token);
@@ -193,7 +194,7 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
 
         if (!authMeResponse.ok) {
           clearAuth();
-          throw new Error(`Xano auth/me не принял токен: ${authMeText}`);
+          throw new Error(authMeText);
         }
 
         const next = consumeNext("/dashboard");
@@ -209,9 +210,11 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
         window.location.href = next;
       } catch (error) {
         console.error(error);
-        const details = error instanceof Error ? error.message : "Проверь Xano continue endpoint.";
-        message.textContent = `Не удалось завершить вход через Google. Xano ответил: ${details}`;
-        addDebug(`Final error: ${details}`);
+        const details = getFriendlyErrorMessage(error, "Не удалось завершить вход через Google. Попробуйте ещё раз.");
+        message.textContent = details.startsWith("Не удалось")
+          ? details
+          : `Не удалось завершить вход через Google. ${details}`;
+        addDebug(`Final error: ${error instanceof Error ? error.message : String(error)}`);
       }
     };
 

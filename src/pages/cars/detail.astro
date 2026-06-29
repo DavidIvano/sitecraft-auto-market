@@ -15,7 +15,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       >
         <div class="empty-state">
           <h1>Загрузка автомобиля</h1>
-          <p>Получаю данные объявления из Xano.</p>
+          <p>Загружаю данные автомобиля.</p>
         </div>
       </div>
     </div>
@@ -94,7 +94,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       if (!slug) {
         renderEmpty("Автомобиль не найден", "В ссылке нет slug объявления.");
       } else if (!apiUrl || apiUrl === placeholderUrl) {
-        renderEmpty("Xano не настроен", "Укажи PUBLIC_XANO_API_URL для загрузки живых объявлений.");
+        renderEmpty("Сервис временно недоступен", "Попробуйте открыть объявление немного позже.");
       } else {
         fetch(`${apiUrl}/cars/${encodeURIComponent(slug)}`)
           .then((response) => {
@@ -145,7 +145,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                       ${
                         galleryImage
                           ? `<img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />`
-                          : `<div class="gallery-empty">Фото в Xano не добавлено</div>`
+                          : `<div class="gallery-empty">Фото пока не добавлено</div>`
                       }
                     </button>
                     ${

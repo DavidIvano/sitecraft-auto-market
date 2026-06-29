@@ -41,6 +41,7 @@
 html {
   min-width: 320px;
   -webkit-text-size-adjust: 100%;
+  scroll-behavior: smooth;
 }
 
 body {
@@ -62,6 +63,9 @@ main {
 a {
   color: inherit;
   text-decoration: none;
+  transition:
+    color 180ms ease,
+    opacity 180ms ease;
 }
 
 img {
@@ -96,7 +100,10 @@ textarea {
   border-bottom: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
   background: color-mix(in srgb, var(--bg) 88%, transparent);
   backdrop-filter: blur(16px);
-  transition: transform 220ms ease;
+  transition:
+    transform 220ms ease,
+    background 220ms ease,
+    border-color 220ms ease;
 }
 
 .site-header.is-hidden {
@@ -127,6 +134,13 @@ textarea {
 .brand {
   font-weight: 800;
   min-width: 0;
+  transition:
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.brand:hover {
+  transform: translateY(-1px);
 }
 
 .brand-logo {
@@ -214,6 +228,21 @@ textarea {
   font-weight: 700;
   line-height: 1.15;
   text-align: center;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    box-shadow 180ms ease,
+    color 180ms ease,
+    transform 180ms ease;
+}
+
+.button:hover {
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.16);
+  transform: translateY(-1px);
+}
+
+.button:active {
+  transform: translateY(0);
 }
 
 .button-dark {
@@ -251,6 +280,15 @@ textarea {
   cursor: pointer;
   padding: 0 14px;
   font-weight: 800;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.theme-toggle:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .theme-toggle-icon {
@@ -318,6 +356,7 @@ textarea {
   max-width: 760px;
   margin-bottom: 48px;
   text-shadow: 0 18px 50px rgba(0, 0, 0, 0.34);
+  animation: premium-rise 520ms ease both;
 }
 
 .market-hero-copy h1 {
@@ -338,6 +377,7 @@ textarea {
   background: color-mix(in srgb, var(--card) 94%, transparent);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26);
   color: var(--text);
+  animation: premium-rise 620ms ease 80ms both;
 }
 
 .search-tabs {
@@ -355,6 +395,10 @@ textarea {
   color: var(--muted);
   cursor: pointer;
   font-weight: 900;
+  transition:
+    color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease;
 }
 
 .search-tab:last-child {
@@ -408,6 +452,15 @@ textarea {
   cursor: pointer;
   font-size: 1.4rem;
   font-weight: 900;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.slider-button:hover {
+  border-color: var(--accent);
+  transform: translateY(-1px);
 }
 
 .category-carousel {
@@ -434,6 +487,16 @@ textarea {
   background: var(--card);
   box-shadow: var(--shadow);
   scroll-snap-align: start;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.category-slide:hover {
+  border-color: color-mix(in srgb, var(--accent) 58%, var(--line));
+  box-shadow: 0 24px 58px rgba(37, 99, 235, 0.16);
+  transform: translateY(-3px);
 }
 
 .category-slide img,
@@ -603,6 +666,7 @@ textarea {
   border-radius: 8px;
   background: var(--card);
   box-shadow: var(--shadow);
+  animation: premium-rise 420ms ease both;
 }
 
 .hero-panel {
@@ -673,6 +737,24 @@ textarea {
 
 .car-card {
   overflow: hidden;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.car-card:hover {
+  border-color: color-mix(in srgb, var(--accent) 52%, var(--line));
+  box-shadow: 0 24px 58px rgba(37, 99, 235, 0.16);
+  transform: translateY(-3px);
+}
+
+.car-image {
+  transition: transform 360ms ease;
+}
+
+.car-card:hover .car-image {
+  transform: scale(1.025);
 }
 
 .car-image-link {
@@ -822,6 +904,11 @@ textarea {
   background: var(--input-bg);
   color: var(--text);
   padding: 12px 13px;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
 }
 
 select {
@@ -844,6 +931,7 @@ select:focus,
 textarea:focus {
   border-color: var(--accent);
   outline: 3px solid rgba(37, 99, 235, 0.12);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.08);
 }
 
 .password-field {
@@ -870,6 +958,10 @@ textarea:focus {
   line-height: 1;
   padding: 0 10px;
   transform: translateY(-50%);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
 }
 
 .password-toggle:hover {
@@ -920,6 +1012,7 @@ legend {
   background: var(--card);
   box-shadow: var(--shadow);
   padding: 22px;
+  animation: premium-rise 420ms ease both;
 }
 
 .form-section-highlight {
@@ -986,6 +1079,7 @@ legend {
   background: var(--card);
   box-shadow: var(--shadow);
   padding: 20px;
+  animation: premium-rise 480ms ease both;
 }
 
 .side-panel-card h2 {
@@ -1128,6 +1222,14 @@ legend {
   border-radius: 8px;
   background: var(--bg-strong);
   cursor: grab;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.photo-preview-card:hover {
+  transform: translateY(-2px);
 }
 
 .photo-preview-card:active {
@@ -1253,6 +1355,16 @@ legend {
   padding: 0 0 0.12em;
   text-align: center;
   transform: translateY(-50%);
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.gallery-nav:hover {
+  border-color: color-mix(in srgb, white 62%, transparent);
+  background: rgba(3, 7, 18, 0.82);
+  transform: translateY(-50%) scale(1.04);
 }
 
 .gallery-prev {
@@ -1300,6 +1412,18 @@ legend {
 
 .gallery-thumb.is-active {
   border-color: var(--accent);
+}
+
+.gallery-thumb {
+  transition:
+    border-color 180ms ease,
+    opacity 180ms ease,
+    transform 180ms ease;
+}
+
+.gallery-thumb:hover {
+  opacity: 0.9;
+  transform: translateY(-1px);
 }
 
 .compact-detail-panel {
@@ -1359,6 +1483,7 @@ legend {
   max-height: 86vh;
   border-radius: 8px;
   object-fit: contain;
+  animation: premium-zoom 220ms ease both;
 }
 
 .lightbox-close,
@@ -1379,6 +1504,16 @@ legend {
   line-height: 1;
   padding: 0 0 0.08em;
   text-align: center;
+  transition:
+    background-color 180ms ease,
+    border-color 180ms ease,
+    transform 180ms ease;
+}
+
+.lightbox-close:hover {
+  border-color: rgba(255, 255, 255, 0.48);
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.04);
 }
 
 .lightbox-close {
@@ -1391,6 +1526,12 @@ legend {
   border-radius: 999px;
   background: rgba(3, 7, 18, 0.58);
   transform: translateY(-50%);
+}
+
+.lightbox-nav:hover {
+  border-color: rgba(255, 255, 255, 0.48);
+  background: rgba(3, 7, 18, 0.78);
+  transform: translateY(-50%) scale(1.04);
 }
 
 .lightbox-prev {
@@ -1488,6 +1629,16 @@ legend {
   cursor: pointer;
   padding: 14px;
   text-align: left;
+  transition:
+    border-color 180ms ease,
+    box-shadow 180ms ease,
+    transform 180ms ease;
+}
+
+.stat-card:hover {
+  border-color: var(--accent);
+  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.12);
+  transform: translateY(-2px);
 }
 
 .stat-card span {
@@ -2455,5 +2606,40 @@ textarea {
   .photo-preview-grid,
   .existing-photo-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@keyframes premium-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes premium-zoom {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.001ms !important;
   }
 }

@@ -51,9 +51,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         >
           Продолжить с Google
         </button>
-        <p class="form-message" id="login-message">
-          Если у тебя уже есть Google OAuth для SiteCraft Agency, добавь redirect URL автомаркета в тот же Google OAuth Client.
-        </p>
+        <p class="form-message" id="login-message" hidden></p>
       </div>
     </div>
   </section>
@@ -66,6 +64,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       setAuthToken,
       setAuthUser,
     } from "../lib/authClient";
+    import { getFriendlyErrorMessage } from "../lib/errorMessages";
 
     const button = document.querySelector("#google-login");
     const message = document.querySelector("#login-message");
@@ -140,7 +139,8 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       const startPath = button.dataset.startPath || "/oauth/google/init";
 
       if (!authApiUrl || authApiUrl === placeholderUrl) {
-        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        message.hidden = false;
+        message.textContent = "Вход временно недоступен. Попробуйте позже.";
         return;
       }
 
@@ -150,6 +150,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       const currentParams = new URLSearchParams(window.location.search);
       const debugMode = currentParams.get("debug") === "1";
 
+      message.hidden = false;
       message.textContent = "Открываю Google...";
       button.disabled = true;
 
@@ -157,7 +158,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         const response = await fetch(authStartUrl.toString());
 
         if (!response.ok) {
-          throw new Error("Xano Google auth start endpoint failed");
+          throw new Error("google auth failed");
         }
 
         const contentType = response.headers.get("content-type") || "";
@@ -167,7 +168,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         const authUrl = getAuthUrl(payload);
 
         if (!authUrl) {
-          throw new Error("Xano did not return a Google auth URL");
+          throw new Error("google auth url missing");
         }
 
         const next = currentParams.get("next");
@@ -184,7 +185,8 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       } catch (error) {
         console.error(error);
         button.disabled = false;
-        message.textContent = "Не удалось начать вход через Google. Проверь Xano endpoint для OAuth.";
+        message.hidden = false;
+        message.textContent = getFriendlyErrorMessage(error, "Не удалось начать вход через Google. Попробуйте ещё раз.");
       }
     });
 
@@ -200,7 +202,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       const placeholderUrl = panel instanceof HTMLElement ? panel.dataset.placeholderUrl : "";
 
       if (!apiUrl || apiUrl === placeholderUrl) {
-        passwordMessage.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        passwordMessage.textContent = "Вход временно недоступен. Попробуйте позже.";
         return;
       }
 
@@ -238,7 +240,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         const user = getUser(result);
 
         if (!token) {
-          throw new Error("Xano не вернул authToken.");
+          throw new Error("auth token missing");
         }
 
         setAuthToken(token);
@@ -252,7 +254,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         window.location.href = next;
       } catch (error) {
         passwordMessage.textContent =
-          error instanceof Error ? error.message : "Не удалось войти по email.";
+          getFriendlyErrorMessage(error, "Не удалось войти по email. Проверьте данные и попробуйте снова.");
       }
     });
   </script>

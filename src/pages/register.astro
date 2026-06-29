@@ -11,7 +11,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       <p class="eyebrow">Регистрация</p>
       <h1>Создать аккаунт</h1>
       <p class="lead">
-        Зарегистрируйтесь по email и паролю. Этот аккаунт будет использовать ту же таблицу пользователей, что и Google-вход.
+        Создайте кабинет, чтобы добавлять автомобили, сохранять объявления и управлять публикациями.
       </p>
 
       <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
@@ -56,6 +56,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
   <script>
     import { consumeNext, setAuthToken, setAuthUser } from "../lib/authClient";
+    import { getFriendlyErrorMessage } from "../lib/errorMessages";
 
     const form = document.querySelector("#register-form");
     const message = document.querySelector("#register-message");
@@ -111,7 +112,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return "Пароль должен быть не короче 8 символов и содержать буквы и цифры.";
       }
 
-      return value || "Не удалось создать аккаунт.";
+      return getFriendlyErrorMessage(value, "Не удалось создать аккаунт. Проверьте данные и попробуйте снова.");
     };
 
     form?.addEventListener("submit", async (event) => {
@@ -126,7 +127,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const placeholderUrl = panel instanceof HTMLElement ? panel.dataset.placeholderUrl : "";
 
       if (!apiUrl || apiUrl === placeholderUrl) {
-        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        message.textContent = "Регистрация временно недоступна. Попробуйте позже.";
         return;
       }
 
@@ -173,7 +174,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         const user = getUser(result);
 
         if (!token) {
-          throw new Error("Xano не вернул authToken.");
+          throw new Error("auth token missing");
         }
 
         setAuthToken(token);

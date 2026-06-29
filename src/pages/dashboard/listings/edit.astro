@@ -193,7 +193,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <h2>Сохранение</h2>
               <ul class="publish-checklist">
                 <li>После редактирования объявление лучше снова проверить модератором.</li>
-                <li>Для фото Xano должен поддерживать PATCH endpoint редактирования объявления.</li>
+                <li>После замены фото проверьте порядок изображений.</li>
                 <li>Максимум 5 фотографий на объявление.</li>
               </ul>
               <a class="edit-current-link" id="public-car-link" href="/cars" target="_blank" rel="noreferrer" hidden>Открыть опубликованную страницу</a>
@@ -210,6 +210,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
       <script>
         import { clearAuth, getAuthToken } from "../../../lib/authClient";
+        import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
 
         const token = getAuthToken();
         const form = document.querySelector("#edit-listing-form");
@@ -571,12 +572,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           });
 
           if (response.status === 404) {
-            throw new Error("В Xano ещё нужен endpoint PATCH /dashboard/listings/{id} с поддержкой multipart/form-data и photos.");
+            throw new Error("edit route missing");
           }
 
           if (!response.ok) {
             const details = await response.text();
-            throw new Error(details || "Xano не сохранил изменения.");
+            throw new Error(details || "listing update failed");
           }
 
           return response.json().catch(() => null);
@@ -739,12 +740,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             deletedImageIds.clear();
             await loadListing();
           } catch (error) {
-            setMessage(error instanceof Error ? error.message : "Не удалось сохранить изменения.");
+            setMessage(getFriendlyErrorMessage(error, "Не удалось сохранить изменения. Проверьте данные и попробуйте ещё раз."));
           }
         });
 
-        loadListing().catch(() => {
-          setMessage("Не удалось загрузить объявление.");
+        loadListing().catch((error) => {
+          setMessage(getFriendlyErrorMessage(error, "Не удалось загрузить объявление. Попробуйте обновить страницу."));
         });
       </script>
     </div>

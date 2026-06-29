@@ -10,14 +10,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       <p class="eyebrow">Диагностика</p>
       <h1>Проверка входа</h1>
       <p class="lead">
-        Эта страница показывает, сохранен ли токен входа и принимает ли его Xano.
+        Эта страница помогает проверить, активен ли вход в личный кабинет.
       </p>
 
       <div class="empty-state">
         <p id="auth-check-message" data-api-url={xanoApiUrl}>Проверяю вход...</p>
         <pre class="debug-output" id="auth-check-output"></pre>
         <div class="auth-check-actions">
-          <a class="button button-dark" href="/login?next=/auth/check&debug=1">Войти через Google с проверкой</a>
+          <a class="button button-dark" href="/login?next=/auth/check&debug=1">Войти через Google</a>
           <a class="button button-light" href="/dashboard/new">Добавить объявление</a>
           <button class="button button-light" type="button" id="clear-auth">Очистить вход</button>
         </div>
@@ -48,13 +48,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       const user = getAuthUser();
 
       const lines = [
-        `Xano API: ${apiUrl || "не настроен"}`,
+        `Сервис входа: ${apiUrl ? "настроен" : "не настроен"}`,
         `Токен в браузере: ${token ? `есть (${token.length} символов)` : "нет"}`,
         `Пользователь в браузере: ${user ? JSON.stringify(user) : "нет"}`,
       ];
 
       if (!apiUrl) {
-        message.textContent = "Xano API URL не настроен.";
+        message.textContent = "Сервис входа временно недоступен.";
         writeOutput(lines.join("\n"));
         return;
       }
@@ -77,9 +77,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         lines.push(`GET /auth/me response: ${body}`);
 
         if (response.ok) {
-          message.textContent = "Вход работает. Xano принял токен.";
+          message.textContent = "Вход работает.";
         } else {
-          message.textContent = "Токен сохранен, но Xano его не принимает.";
+          message.textContent = "Сессия входа устарела. Войдите ещё раз.";
         }
       } catch (error) {
         const details = error instanceof Error ? error.message : "Неизвестная ошибка";

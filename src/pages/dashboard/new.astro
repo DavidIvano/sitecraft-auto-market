@@ -269,6 +269,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
       <script>
         import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
+        import { getFriendlyErrorMessage } from "../../lib/errorMessages";
 
         const authToken = getAuthToken();
         const form = document.querySelector("#new-listing-form");
@@ -304,12 +305,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         }
 
         function getAuthObjectError() {
-          return "Xano endpoint создания объявления всё ещё настроен на старую таблицу авторизации. В Xano для POST /cars, PATCH /cars/{id}/submit и GET /dashboard/listings нужно поставить auth = automarket_users.";
+          return "Сессия входа устарела. Войдите в кабинет ещё раз.";
         }
 
         function getXanoListingError(value: string) {
           if (value.includes("car.user_id") || value.includes("Unable to locate var")) {
-            return "Объявление создано как черновик, но Xano не может отправить его на модерацию: в live-таблице car_listings нет поля user_id. Добавь поле user_id со связью на automarket_users, затем сохрани таблицу и endpoint.";
+            return "Объявление сохранено, но не отправилось на модерацию. Попробуйте позже.";
           }
 
           return value;
@@ -604,7 +605,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
 
           if (!apiUrl) {
-            throw new Error("Xano API URL не настроен.");
+            throw new Error("api url missing");
           }
 
           const createResponse = await fetch(`${apiUrl}/cars`, {
@@ -620,14 +621,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             if (isWrongTokenError(errorText)) {
               throw new Error(getAuthObjectError());
             }
-            throw new Error(errorText || "Xano не сохранил объявление.");
+            throw new Error(errorText || "listing create failed");
           }
 
           const createdCar = await createResponse.json();
           const id = createdCar?.id;
 
           if (!id) {
-            throw new Error("Xano сохранил объявление, но не вернул ID.");
+            throw new Error("Объявление сохранено, но сервер не вернул номер объявления.");
           }
 
           const submitResponse = await fetch(`${apiUrl}/cars/${id}/submit`, {
@@ -737,11 +738,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             updateEngineVolumesForFuel();
           } catch (error) {
             console.error(error);
-            setMessage(
-              error instanceof Error
-                ? `Не удалось сохранить объявление: ${error.message}`
-                : "Не удалось сохранить объявление.",
-            );
+            setMessage(getFriendlyErrorMessage(error, "Не удалось сохранить объявление. Проверьте данные и попробуйте ещё раз."));
           }
         });
       </script>

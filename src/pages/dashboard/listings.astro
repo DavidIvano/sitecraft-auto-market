@@ -31,6 +31,7 @@ const listings: { title: string; status: CarListingStatus }[] = [
   </section>
   <script>
     import { clearAuth, getAuthToken } from "../../lib/authClient";
+    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
 
     const token = getAuthToken();
     const list = document.querySelector("#dashboard-listings");
@@ -71,8 +72,7 @@ const listings: { title: string; status: CarListingStatus }[] = [
             const errorText = await response.text();
 
             if (isAuthObjectError(errorText)) {
-              message.textContent =
-                "Xano endpoint GET /dashboard/listings всё ещё настроен на старую таблицу авторизации. Нужно поставить auth = automarket_users.";
+              message.textContent = "Сессия входа устарела. Войдите в кабинет ещё раз.";
               return;
             }
 
@@ -111,8 +111,8 @@ const listings: { title: string; status: CarListingStatus }[] = [
             .join("");
           message.textContent = `Загружено объявлений: ${cars.length}.`;
         })
-        .catch(() => {
-          message.textContent = "Не удалось загрузить объявления.";
+        .catch((error) => {
+          message.textContent = getFriendlyErrorMessage(error, "Не удалось загрузить объявления. Попробуйте обновить страницу.");
         });
     }
   </script>

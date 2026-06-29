@@ -53,7 +53,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
         <div class="admin-list" id="admin-list">
           <div class="empty-state">
-            Загружаю объявления из Xano...
+            Загружаю объявления...
           </div>
         </div>
 
@@ -181,7 +181,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const placeholderUrl = board.dataset.placeholderUrl;
 
       if (!apiUrl || apiUrl === placeholderUrl) {
-        setAccessMessage("Xano API URL не настроен.");
+        setAccessMessage("Сервис временно недоступен. Попробуйте позже.");
         return false;
       }
 
@@ -203,7 +203,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         }
 
         if (!response.ok) {
-          throw new Error(`Xano auth/me вернул ${response.status}`);
+          throw new Error(`auth check failed ${response.status}`);
         }
 
         const payload = (await response.json()) as AuthMeResponse;
@@ -428,7 +428,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const placeholderUrl = board.dataset.placeholderUrl;
 
       if (!apiUrl || apiUrl === placeholderUrl) {
-        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        message.textContent = "Сервис временно недоступен. Попробуйте позже.";
         return;
       }
 
@@ -442,7 +442,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         });
 
         if (!response.ok) {
-          throw new Error(`Xano вернул ${response.status}`);
+          throw new Error(`moderation load failed ${response.status}`);
         }
 
         const payload = await response.json();
@@ -453,10 +453,10 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         console.error(error);
         list.innerHTML = `
           <div class="empty-state">
-            Не удалось загрузить админ-список. Проверь endpoint <strong>GET /admin/moderation?status=all</strong>.
+            Не удалось загрузить список объявлений. Попробуйте обновить страницу.
           </div>
         `;
-        message.textContent = error instanceof Error ? error.message : "Ошибка загрузки.";
+        message.textContent = "Не удалось загрузить объявления.";
       }
     };
 
@@ -489,16 +489,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         });
 
         if (!response.ok) {
-          throw new Error(`Xano endpoint для действия "${actionLabels[action] || action}" пока не отвечает.`);
+          throw new Error(`action failed`);
         }
 
         await loadCars();
       } catch (error) {
         console.error(error);
-        message.textContent =
-          error instanceof Error
-            ? error.message
-            : "Не удалось выполнить действие.";
+        message.textContent = "Не удалось выполнить действие. Попробуйте позже.";
       }
     };
 

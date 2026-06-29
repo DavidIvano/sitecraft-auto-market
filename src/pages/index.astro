@@ -15,7 +15,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       <div class="market-hero-copy">
         <p class="eyebrow">SiteCraft Auto Market</p>
         <h1>Найди свой автомобиль</h1>
-        <p class="lead">Свежие объявления из Xano, ручная модерация и быстрый подбор по главным параметрам.</p>
+        <p class="lead">Свежие проверенные автомобили, ручная модерация и быстрый подбор по главным параметрам.</p>
       </div>
 
       <div
@@ -96,7 +96,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       </div>
       <div class="category-carousel" aria-label="Категории автомобилей">
         <div class="category-track" id="home-category-track">
-          <div class="category-loading">Загружаю категории из Xano...</div>
+          <div class="category-loading">Подбираю категории автомобилей...</div>
         </div>
       </div>
     </div>
@@ -108,7 +108,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         <div>
           <p class="eyebrow">Последние объявления</p>
           <h2>Свежие автомобили</h2>
-          <p class="section-subtitle">Показываются только опубликованные машины из Xano. Demo-изображения на главной больше не используются.</p>
+          <p class="section-subtitle">Последние опубликованные автомобили с актуальными фотографиями и контактами продавцов.</p>
         </div>
         <a href="/cars">Все авто</a>
       </div>
@@ -120,7 +120,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       </div>
       <div class="empty-state" id="home-loading-state">
         <h3>Загружаю свежие автомобили</h3>
-        <p>Получаю последние опубликованные объявления и фотографии из Xano.</p>
+        <p>Подбираю последние опубликованные объявления.</p>
       </div>
       <p class="form-message" id="home-live-cars-message"></p>
     </div>
@@ -192,7 +192,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const imageUrl = String(car.main_image_url || "");
 
       if (!imageUrl) {
-        return `<div class="car-image car-image-empty">Фото в Xano не добавлено</div>`;
+        return `<div class="car-image car-image-empty">Фото пока не добавлено</div>`;
       }
 
       return `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />`;
@@ -289,7 +289,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               ${
                 imageUrl
                   ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />`
-                  : `<div class="category-slide-empty">Фото в Xano не добавлено</div>`
+                  : `<div class="category-slide-empty">Фото пока не добавлено</div>`
               }
               <div class="category-slide-body">
                 <h3>${escapeHtml(category.title)}</h3>
@@ -363,7 +363,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       if (orderedCars.length === 0) {
         message.textContent = filtered
           ? "По этим фильтрам пока нет опубликованных объявлений."
-          : "В Xano пока нет опубликованных объявлений.";
+          : "Пока нет опубликованных объявлений.";
         return;
       }
 
@@ -380,7 +380,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         fetch(`${apiUrl}/cars`)
           .then((response) => {
             if (!response.ok) {
-              throw new Error("Failed to load latest cars");
+              throw new Error("latest cars load failed");
             }
 
             return response.json();
@@ -390,7 +390,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               if (loadingState instanceof HTMLElement) {
                 loadingState.hidden = true;
               }
-              message.textContent = "В Xano пока нет опубликованных объявлений.";
+              message.textContent = "Пока нет опубликованных объявлений.";
               return;
             }
 
@@ -404,13 +404,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             if (loadingState instanceof HTMLElement) {
               loadingState.hidden = true;
             }
-            message.textContent = "Не удалось загрузить Xano. Проверь CORS и endpoint GET /cars.";
+            message.textContent = "Не удалось загрузить объявления. Попробуйте обновить страницу.";
           });
       } else {
         if (loadingState instanceof HTMLElement) {
           loadingState.hidden = true;
         }
-        message.textContent = "Сначала укажи PUBLIC_XANO_API_URL.";
+        message.textContent = "Сервис временно недоступен. Попробуйте позже.";
       }
     }
 
