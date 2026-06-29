@@ -11,9 +11,9 @@ query cars verb=POST {
     text fuel_type filters=trim
     text transmission filters=trim
     decimal price
-    text currency?=EUR filters=trim|upper
+    text currency?="EUR" filters=trim|upper
     text city filters=trim
-    text country?=Германия filters=trim
+    text country?="Германия" filters=trim
     text seller_name? filters=trim
     text seller_phone? filters=trim
     email? seller_email filters=trim|lower
@@ -57,12 +57,20 @@ query cars verb=POST {
         seller_email   : $input.seller_email
         description    : $input.description
         status         : "draft"
-        main_image_url : null
+        main_image_url : ""
       }
     } as $car
 
     var $sort_order {
       value = 0
+    }
+
+    var $file_base_url {
+      value = "https://x8ki-letl-twmt.n7.xano.io"
+    }
+
+    var $image_url {
+      value = ""
     }
 
     conditional {
@@ -77,13 +85,17 @@ query cars verb=POST {
                   filename = "car-listing-image.jpg"
                 } as $image_metadata
 
+                var.update $image_url {
+                  value = $file_base_url|concat:$image_metadata.path
+                }
+
                 db.add car_listing_images {
                   data = {
                     created_at     : "now"
                     updated_at     : "now"
                     car_listing_id : $car.id
                     image          : $image_metadata
-                    image_url      : $image_metadata.url
+                    image_url      : $image_url
                     sort_order     : $sort_order
                     is_main        : $sort_order == 0
                     is_deleted     : false
@@ -97,7 +109,7 @@ query cars verb=POST {
                       field_value = $car.id
                       data = {
                         updated_at     : "now"
-                        main_image_url : $image_metadata.url
+                        main_image_url : $image_url
                       }
                     } as $car
                   }
