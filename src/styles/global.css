@@ -1017,9 +1017,11 @@ legend {
 }
 
 .photo-dropzone-icon {
-  display: grid;
+  display: inline-flex;
   width: 52px;
   height: 52px;
+  align-items: center;
+  justify-content: center;
   place-items: center;
   border-radius: 999px;
   background: var(--accent);
@@ -1027,6 +1029,7 @@ legend {
   font-size: 2rem;
   font-weight: 800;
   line-height: 1;
+  padding-bottom: 0.08em;
 }
 
 .photo-dropzone strong {
@@ -2193,6 +2196,7 @@ textarea {
   width: 46px;
   height: 46px;
   font-size: 1.75rem;
+  padding-bottom: 0.08em;
 }
 
 .photo-preview-grid,
