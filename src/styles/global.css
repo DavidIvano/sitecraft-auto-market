@@ -508,6 +508,57 @@ textarea {
   width: min(100% - 32px, 1040px);
 }
 
+.breadcrumbs {
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+}
+
+.breadcrumbs-inner {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 800;
+  white-space: nowrap;
+  scrollbar-width: none;
+}
+
+.breadcrumbs-inner::-webkit-scrollbar {
+  display: none;
+}
+
+.breadcrumbs a {
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.breadcrumbs a:hover {
+  color: var(--accent);
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--text);
+}
+
+.breadcrumb-separator {
+  color: color-mix(in srgb, var(--muted) 58%, transparent);
+}
+
+.live-detail-breadcrumbs {
+  border: 0;
+  background: transparent;
+  margin-bottom: 18px;
+}
+
+.live-detail-breadcrumbs .breadcrumbs-inner {
+  width: auto;
+  min-height: 0;
+  padding: 0;
+}
+
 .car-detail-section {
   padding-top: 34px;
 }
@@ -1185,17 +1236,22 @@ legend {
   position: absolute;
   top: 50%;
   z-index: 2;
-  display: grid;
+  display: inline-flex;
   width: 42px;
   height: 42px;
-  place-items: center;
+  align-items: center;
+  justify-content: center;
   border: 1px solid color-mix(in srgb, white 36%, transparent);
   border-radius: 999px;
   background: rgba(3, 7, 18, 0.66);
   color: white;
   cursor: pointer;
-  font-size: 2rem;
+  font-family: Arial, sans-serif;
+  font-size: 2.05rem;
+  font-weight: 700;
   line-height: 1;
+  padding: 0 0 0.12em;
+  text-align: center;
   transform: translateY(-50%);
 }
 
@@ -1287,8 +1343,9 @@ legend {
   position: fixed;
   inset: 0;
   z-index: 100;
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: rgba(17, 24, 39, 0.92);
   padding: 24px;
 }
@@ -1304,19 +1361,57 @@ legend {
   object-fit: contain;
 }
 
-.lightbox-close {
+.lightbox-close,
+.lightbox-nav {
   position: fixed;
-  top: 18px;
-  right: 18px;
   width: 44px;
   height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(255, 255, 255, 0.28);
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.12);
   color: white;
   cursor: pointer;
+  font-family: Arial, sans-serif;
   font-size: 2rem;
   line-height: 1;
+  padding: 0 0 0.08em;
+  text-align: center;
+}
+
+.lightbox-close {
+  top: 18px;
+  right: 18px;
+}
+
+.lightbox-nav {
+  top: 50%;
+  border-radius: 999px;
+  background: rgba(3, 7, 18, 0.58);
+  transform: translateY(-50%);
+}
+
+.lightbox-prev {
+  left: clamp(14px, 4vw, 42px);
+}
+
+.lightbox-next {
+  right: clamp(14px, 4vw, 42px);
+}
+
+.lightbox-count {
+  position: fixed;
+  left: 50%;
+  bottom: 22px;
+  border-radius: 999px;
+  background: rgba(3, 7, 18, 0.68);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 900;
+  padding: 8px 12px;
+  transform: translateX(-50%);
 }
 
 .spec-grid {

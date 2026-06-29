@@ -5,7 +5,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Автомобиль">
+<BaseLayout title="Автомобиль" breadcrumbs={[]}>
   <section class="section car-detail-section">
     <div class="container detail-container">
       <div
@@ -124,6 +124,15 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                 : "Контакты не указаны";
 
             root.innerHTML = `
+              <nav class="breadcrumbs live-detail-breadcrumbs" aria-label="Хлебные крошки">
+                <div class="breadcrumbs-inner">
+                  <a href="/">Главная</a>
+                  <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                  <a href="/cars">Авто</a>
+                  <span class="breadcrumb-separator" aria-hidden="true">/</span>
+                  <span aria-current="page">${escapeHtml(car.title)}</span>
+                </div>
+              </nav>
               <article class="detail-grid car-detail-grid">
                 <div class="gallery car-slider" data-gallery>
                   <div class="gallery-stage">
@@ -178,6 +187,15 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               </article>
               <div class="lightbox" id="car-lightbox" hidden>
                 <button class="lightbox-close" type="button" aria-label="Закрыть фото">×</button>
+                ${
+                  galleryImages.length > 1
+                    ? `
+                      <button class="lightbox-nav lightbox-prev" type="button" aria-label="Предыдущее фото">‹</button>
+                      <button class="lightbox-nav lightbox-next" type="button" aria-label="Следующее фото">›</button>
+                      <span class="lightbox-count">1 / ${galleryImages.length}</span>
+                    `
+                    : ""
+                }
                 <img src="${escapeHtml(galleryImage)}" alt="${escapeHtml(car.title)}" />
               </div>
             `;
@@ -191,6 +209,19 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             const lightbox = root.querySelector("#car-lightbox");
             const lightboxImage = lightbox?.querySelector("img");
             const closeButton = lightbox?.querySelector(".lightbox-close");
+            const lightboxPrevButton = lightbox?.querySelector(".lightbox-prev");
+            const lightboxNextButton = lightbox?.querySelector(".lightbox-next");
+            const lightboxCount = lightbox?.querySelector(".lightbox-count");
+
+            const updateLightbox = () => {
+              if (lightboxImage instanceof HTMLImageElement) {
+                lightboxImage.src = galleryImages[activeSlideIndex] || lightboxImage.src;
+              }
+
+              if (lightboxCount instanceof HTMLElement) {
+                lightboxCount.textContent = `${activeSlideIndex + 1} / ${galleryImages.length}`;
+              }
+            };
 
             const updateSlide = (nextIndex: number) => {
               if (galleryImages.length === 0) {
@@ -212,6 +243,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                 galleryCount.textContent = `${activeSlideIndex + 1} / ${galleryImages.length}`;
               }
 
+              updateLightbox();
+
               root.querySelectorAll(".gallery-thumb").forEach((thumb) => {
                 if (thumb instanceof HTMLElement) {
                   thumb.classList.toggle("is-active", thumb.dataset.slideIndex === String(activeSlideIndex));
@@ -221,6 +254,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
             prevButton?.addEventListener("click", () => updateSlide(activeSlideIndex - 1));
             nextButton?.addEventListener("click", () => updateSlide(activeSlideIndex + 1));
+            lightboxPrevButton?.addEventListener("click", () => updateSlide(activeSlideIndex - 1));
+            lightboxNextButton?.addEventListener("click", () => updateSlide(activeSlideIndex + 1));
 
             root.querySelectorAll(".gallery-thumb").forEach((button) => {
               button.addEventListener("click", () => {
@@ -237,7 +272,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                   : "";
 
               if (imageUrl && lightbox instanceof HTMLElement && lightboxImage instanceof HTMLImageElement) {
-                lightboxImage.src = imageUrl;
+                updateLightbox();
                 lightbox.hidden = false;
               }
             });
@@ -251,6 +286,24 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             lightbox?.addEventListener("click", (event) => {
               if (event.target === lightbox && lightbox instanceof HTMLElement) {
                 lightbox.hidden = true;
+              }
+            });
+
+            document.addEventListener("keydown", (event) => {
+              if (!(lightbox instanceof HTMLElement) || lightbox.hidden) {
+                return;
+              }
+
+              if (event.key === "Escape") {
+                lightbox.hidden = true;
+              }
+
+              if (event.key === "ArrowLeft") {
+                updateSlide(activeSlideIndex - 1);
+              }
+
+              if (event.key === "ArrowRight") {
+                updateSlide(activeSlideIndex + 1);
               }
             });
           })

@@ -11,6 +11,7 @@ type Props = {
   canonicalPath?: string;
   image?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
+  breadcrumbs?: Array<{ href?: string; label: string }>;
 };
 
 const {
@@ -19,11 +20,53 @@ const {
   canonicalPath,
   image = "/sitecraft-logo.png",
   jsonLd,
+  breadcrumbs,
 } = Astro.props;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://sitecraft-auto-market.pages.dev";
 const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
 const imageUrl = new URL(image, siteUrl).toString();
+const labelBySegment: Record<string, string> = {
+  admin: "Админ",
+  auth: "Авторизация",
+  cars: "Авто",
+  dashboard: "Кабинет",
+  detail: "Автомобиль",
+  edit: "Редактирование",
+  google: "Google",
+  listings: "Мои объявления",
+  login: "Вход",
+  moderation: "Модерация",
+  new: "Новое объявление",
+  privacy: "Конфиденциальность",
+  register: "Регистрация",
+  sell: "Продать авто",
+  support: "Поддержка",
+};
+const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
+const generatedBreadcrumbs =
+  pathname === "/"
+    ? []
+    : [
+        { href: "/", label: "Главная" },
+        ...pathname
+          .split("/")
+          .filter(Boolean)
+          .map((segment, index, segments) => {
+            const href = `/${segments.slice(0, index + 1).join("/")}`;
+            const isLast = index === segments.length - 1;
+            const label =
+              isLast && title && title !== SITE_NAME
+                ? title
+                : labelBySegment[segment] || decodeURIComponent(segment).replaceAll("-", " ");
+
+            return {
+              href: isLast ? undefined : href,
+              label,
+            };
+          }),
+      ];
+const pageBreadcrumbs = breadcrumbs ?? generatedBreadcrumbs;
 const defaultSchemaItems = [
   {
     "@context": "https://schema.org",
@@ -89,6 +132,20 @@ const schemaItems = [
   <body>
     <Header />
     <main>
+      {
+        pageBreadcrumbs.length > 0 && (
+          <nav class="breadcrumbs" aria-label="Хлебные крошки">
+            <div class="container breadcrumbs-inner">
+              {pageBreadcrumbs.map((item, index) => (
+                <>
+                  {item.href ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}
+                  {index < pageBreadcrumbs.length - 1 && <span class="breadcrumb-separator" aria-hidden="true">/</span>}
+                </>
+              ))}
+            </div>
+          </nav>
+        )
+      }
       <slot />
     </main>
     <Footer />

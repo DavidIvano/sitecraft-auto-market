@@ -7,6 +7,7 @@ import {
   colors,
   doorCounts,
   drivetrains,
+  engineVolumeOptionsByFuel,
   fuelTypes,
   carModelsByBrand,
   seatCounts,
@@ -101,9 +102,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
             <label>
               <span>Вид топлива</span>
-              <select name="fuelType" required>
+              <select name="fuelType" required data-fuel-select>
                 <option value="">Выберите топливо</option>
                 {fuelTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
+            <label>
+              <span>Объем двигателя</span>
+              <select name="engineVolume" data-engine-volume-select disabled>
+                <option value="">Сначала выберите топливо</option>
               </select>
             </label>
 
@@ -257,6 +265,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       </form>
 
       <script is:inline type="application/json" id="car-model-data" set:html={JSON.stringify(carModelsByBrand)} />
+      <script is:inline type="application/json" id="engine-volume-data" set:html={JSON.stringify(engineVolumeOptionsByFuel)} />
 
       <script>
         import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
@@ -271,9 +280,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const photoClear = document.querySelector("#photo-clear");
         const brandSelect = document.querySelector("[data-brand-select]");
         const modelSelect = document.querySelector("[data-model-select]");
+        const fuelSelect = document.querySelector("[data-fuel-select]");
+        const engineVolumeSelect = document.querySelector("[data-engine-volume-select]");
         const modelDataElement = document.querySelector("#car-model-data");
+        const engineVolumeDataElement = document.querySelector("#engine-volume-data");
         const carModelsByBrand = modelDataElement?.textContent
           ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
+          : {};
+        const engineVolumeOptionsByFuel = engineVolumeDataElement?.textContent
+          ? JSON.parse(engineVolumeDataElement.textContent) as Record<string, string[]>
           : {};
         const selectedPhotos: File[] = [];
         const photoUrls = new Map<File, string>();
@@ -472,6 +487,20 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           modelSelect.disabled = !brand;
         }
 
+        function updateEngineVolumesForFuel() {
+          if (!(fuelSelect instanceof HTMLSelectElement) || !(engineVolumeSelect instanceof HTMLSelectElement)) {
+            return;
+          }
+
+          const fuel = fuelSelect.value;
+          const volumes = engineVolumeOptionsByFuel[fuel] || [];
+
+          engineVolumeSelect.innerHTML = fuel
+            ? `<option value="">Выберите объем</option>${volumes.map((volume) => `<option value="${escapeHtml(volume)}">${escapeHtml(volume)}</option>`).join("")}`
+            : `<option value="">Сначала выберите топливо</option>`;
+          engineVolumeSelect.disabled = !fuel || volumes.length === 0;
+        }
+
         if (!authToken) {
           window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
         }
@@ -502,6 +531,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         validateAuthToken();
 
         brandSelect?.addEventListener("change", updateModelsForBrand);
+        fuelSelect?.addEventListener("change", updateEngineVolumesForFuel);
 
         photoInput?.addEventListener("change", () => {
           if (photoInput instanceof HTMLInputElement) {
@@ -660,6 +690,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             [
               String(formData.get("description") || ""),
               `Кузов: ${String(formData.get("bodyType") || "не указан")}`,
+              `Объем двигателя: ${String(formData.get("engineVolume") || "не указан")}`,
               `Привод: ${String(formData.get("drivetrain") || "не указан")}`,
               `Двери: ${String(formData.get("doors") || "не указано")}`,
               `Места: ${String(formData.get("seats") || "не указано")}`,
@@ -703,6 +734,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             form.reset();
             clearPhotos();
             updateModelsForBrand();
+            updateEngineVolumesForFuel();
           } catch (error) {
             console.error(error);
             setMessage(

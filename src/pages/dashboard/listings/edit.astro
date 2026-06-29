@@ -3,6 +3,7 @@ import BaseLayout from "../../../layouts/BaseLayout.astro";
 import {
   carBrands,
   carModelsByBrand,
+  engineVolumeOptionsByFuel,
   fuelTypes,
   transmissions,
 } from "../../../data/carOptions";
@@ -90,9 +91,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <div class="form-grid">
                 <label>
                   <span>Топливо</span>
-                  <select name="fuel_type" required>
+                  <select name="fuel_type" required data-fuel-select>
                     <option value="">Выберите топливо</option>
                     {fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}
+                  </select>
+                </label>
+
+                <label>
+                  <span>Объем двигателя</span>
+                  <select name="engine_volume" data-engine-volume-select disabled>
+                    <option value="">Сначала выберите топливо</option>
                   </select>
                 </label>
 
@@ -198,6 +206,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       </form>
 
       <script is:inline type="application/json" id="car-model-data" set:html={JSON.stringify(carModelsByBrand)} />
+      <script is:inline type="application/json" id="engine-volume-data" set:html={JSON.stringify(engineVolumeOptionsByFuel)} />
 
       <script>
         import { clearAuth, getAuthToken } from "../../../lib/authClient";
@@ -213,10 +222,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const photoClear = document.querySelector("#photo-clear");
         const brandSelect = document.querySelector("[data-brand-select]");
         const modelSelect = document.querySelector("[data-model-select]");
+        const fuelSelect = document.querySelector("[data-fuel-select]");
+        const engineVolumeSelect = document.querySelector("[data-engine-volume-select]");
         const publicCarLink = document.querySelector("#public-car-link");
         const modelDataElement = document.querySelector("#car-model-data");
+        const engineVolumeDataElement = document.querySelector("#engine-volume-data");
         const carModelsByBrand = modelDataElement?.textContent
           ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
+          : {};
+        const engineVolumeOptionsByFuel = engineVolumeDataElement?.textContent
+          ? JSON.parse(engineVolumeDataElement.textContent) as Record<string, string[]>
           : {};
         const id = new URLSearchParams(window.location.search).get("id");
         const selectedPhotos: File[] = [];
@@ -276,6 +291,40 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           modelSelect.value = selectedModel;
         }
 
+        function getEngineVolumeFromDescription(description: unknown) {
+          const match = String(description ?? "").match(/^Объем двигателя:\s*(.+)$/im);
+          return match?.[1]?.trim() || "";
+        }
+
+        function setEngineVolumeInDescription(description: string, engineVolume: string) {
+          const cleanDescription = description.trim();
+
+          if (!engineVolume) {
+            return cleanDescription;
+          }
+
+          if (/^Объем двигателя:/im.test(cleanDescription)) {
+            return cleanDescription.replace(/^Объем двигателя:.*$/im, `Объем двигателя: ${engineVolume}`);
+          }
+
+          return [cleanDescription, `Объем двигателя: ${engineVolume}`].filter(Boolean).join("\n");
+        }
+
+        function updateEngineVolumesForFuel(selectedVolume = "") {
+          if (!(fuelSelect instanceof HTMLSelectElement) || !(engineVolumeSelect instanceof HTMLSelectElement)) {
+            return;
+          }
+
+          const fuel = fuelSelect.value;
+          const volumes = engineVolumeOptionsByFuel[fuel] || [];
+
+          engineVolumeSelect.innerHTML = fuel
+            ? `<option value="">Выберите объем</option>${volumes.map((volume) => `<option value="${escapeHtml(volume)}">${escapeHtml(volume)}</option>`).join("")}`
+            : `<option value="">Сначала выберите топливо</option>`;
+          engineVolumeSelect.disabled = !fuel || volumes.length === 0;
+          engineVolumeSelect.value = selectedVolume;
+        }
+
         function fillForm(car: Record<string, unknown>) {
           if (!(form instanceof HTMLFormElement)) {
             return;
@@ -290,6 +339,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           });
 
           updateModelsForBrand(String(car.model ?? ""));
+          updateEngineVolumesForFuel(getEngineVolumeFromDescription(car.description));
 
           if (publicCarLink instanceof HTMLAnchorElement && car.slug) {
             publicCarLink.href = `/cars/${encodeURIComponent(String(car.slug))}`;
@@ -552,6 +602,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         }
 
         brandSelect?.addEventListener("change", () => updateModelsForBrand());
+        fuelSelect?.addEventListener("change", () => updateEngineVolumesForFuel());
 
         existingPhotoGrid?.addEventListener("click", (event) => {
           const button = event.target instanceof HTMLElement ? event.target.closest("[data-delete-image-id]") : null;
@@ -648,7 +699,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               ? String(Number(rawValue || 0))
               : String(rawValue || "").trim();
 
-            payload.set(field, value);
+            payload.set(
+              field,
+              field === "description"
+                ? setEngineVolumeInDescription(value, String(data.get("engine_volume") || "").trim())
+                : value,
+            );
           });
 
           payload.set("delete_image_ids", JSON.stringify([...deletedImageIds]));
