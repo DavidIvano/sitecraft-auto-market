@@ -87,7 +87,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     if (root instanceof HTMLElement) {
       const apiUrl = root.dataset.apiUrl;
       const placeholderUrl = root.dataset.placeholderUrl;
-      const slug = new URLSearchParams(window.location.search).get("slug");
+      const slugFromQuery = new URLSearchParams(window.location.search).get("slug");
+      const slugFromPath = window.location.pathname.match(/^\/cars\/([^/]+)\/?$/)?.[1];
+      const slug = slugFromQuery || (slugFromPath && slugFromPath !== "detail" ? decodeURIComponent(slugFromPath) : "");
 
       if (!slug) {
         renderEmpty("Автомобиль не найден", "В ссылке нет slug объявления.");
