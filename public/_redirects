@@ -1,2 +1,2 @@
-/cars/detail /cars/detail 200
-/cars/* /cars/detail 200
+/cars/detail /cars/detail/ 200
+/cars/* /cars/detail/ 200
