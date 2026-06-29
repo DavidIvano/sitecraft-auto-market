@@ -691,6 +691,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               if (file instanceof File && file.size > 0) {
                 const uploadFile = await convertImageToJpeg(file, index);
                 payload.append("photos", uploadFile);
+                payload.set(`photo_${index + 1}`, uploadFile);
               }
             }
 

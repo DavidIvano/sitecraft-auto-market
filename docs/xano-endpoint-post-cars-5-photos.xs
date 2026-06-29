@@ -19,6 +19,11 @@ query cars verb=POST {
     email? seller_email filters=trim|lower
     text description? filters=trim
     file[] photos?
+    file? photo_1
+    file? photo_2
+    file? photo_3
+    file? photo_4
+    file? photo_5
   }
 
   stack {
@@ -74,7 +79,171 @@ query cars verb=POST {
     }
 
     conditional {
-      if ($input.photos != null) {
+      if ($input.photo_1 != null) {
+        storage.create_image {
+          access = "public"
+          value = $input.photo_1
+          filename = "car-listing-image-1.jpg"
+        } as $image_metadata
+
+        var.update $image_url {
+          value = $file_base_url|concat:$image_metadata.path
+        }
+
+        db.add car_listing_images {
+          data = {
+            created_at     : "now"
+            updated_at     : "now"
+            car_listing_id : $car.id
+            image          : $image_metadata
+            image_url      : $image_url
+            sort_order     : $sort_order
+            is_main        : true
+            is_deleted     : false
+          }
+        } as $image_row
+
+        db.edit car_listings {
+          field_name = "id"
+          field_value = $car.id
+          data = {
+            updated_at     : "now"
+            main_image_url : $image_url
+          }
+        } as $car
+
+        var.update $sort_order {
+          value = $sort_order + 1
+        }
+      }
+    }
+
+    conditional {
+      if ($input.photo_2 != null) {
+        storage.create_image {
+          access = "public"
+          value = $input.photo_2
+          filename = "car-listing-image-2.jpg"
+        } as $image_metadata
+
+        var.update $image_url {
+          value = $file_base_url|concat:$image_metadata.path
+        }
+
+        db.add car_listing_images {
+          data = {
+            created_at     : "now"
+            updated_at     : "now"
+            car_listing_id : $car.id
+            image          : $image_metadata
+            image_url      : $image_url
+            sort_order     : $sort_order
+            is_main        : false
+            is_deleted     : false
+          }
+        } as $image_row
+
+        var.update $sort_order {
+          value = $sort_order + 1
+        }
+      }
+    }
+
+    conditional {
+      if ($input.photo_3 != null) {
+        storage.create_image {
+          access = "public"
+          value = $input.photo_3
+          filename = "car-listing-image-3.jpg"
+        } as $image_metadata
+
+        var.update $image_url {
+          value = $file_base_url|concat:$image_metadata.path
+        }
+
+        db.add car_listing_images {
+          data = {
+            created_at     : "now"
+            updated_at     : "now"
+            car_listing_id : $car.id
+            image          : $image_metadata
+            image_url      : $image_url
+            sort_order     : $sort_order
+            is_main        : false
+            is_deleted     : false
+          }
+        } as $image_row
+
+        var.update $sort_order {
+          value = $sort_order + 1
+        }
+      }
+    }
+
+    conditional {
+      if ($input.photo_4 != null) {
+        storage.create_image {
+          access = "public"
+          value = $input.photo_4
+          filename = "car-listing-image-4.jpg"
+        } as $image_metadata
+
+        var.update $image_url {
+          value = $file_base_url|concat:$image_metadata.path
+        }
+
+        db.add car_listing_images {
+          data = {
+            created_at     : "now"
+            updated_at     : "now"
+            car_listing_id : $car.id
+            image          : $image_metadata
+            image_url      : $image_url
+            sort_order     : $sort_order
+            is_main        : false
+            is_deleted     : false
+          }
+        } as $image_row
+
+        var.update $sort_order {
+          value = $sort_order + 1
+        }
+      }
+    }
+
+    conditional {
+      if ($input.photo_5 != null) {
+        storage.create_image {
+          access = "public"
+          value = $input.photo_5
+          filename = "car-listing-image-5.jpg"
+        } as $image_metadata
+
+        var.update $image_url {
+          value = $file_base_url|concat:$image_metadata.path
+        }
+
+        db.add car_listing_images {
+          data = {
+            created_at     : "now"
+            updated_at     : "now"
+            car_listing_id : $car.id
+            image          : $image_metadata
+            image_url      : $image_url
+            sort_order     : $sort_order
+            is_main        : false
+            is_deleted     : false
+          }
+        } as $image_row
+
+        var.update $sort_order {
+          value = $sort_order + 1
+        }
+      }
+    }
+
+    conditional {
+      if (($sort_order == 0) && ($input.photos != null)) {
         foreach ($input.photos) {
           each as $photo {
             conditional {
