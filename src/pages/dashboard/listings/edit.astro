@@ -11,7 +11,7 @@ import {
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Редактировать объявление">
+<BaseLayout title="Редактировать объявление" noindex>
   <section class="section page-hero new-listing-hero">
     <div class="container">
       <p class="eyebrow">Кабинет</p>
@@ -168,15 +168,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                     name="photos"
                     accept="image/avif,image/webp,image/jpeg,image/png"
                     multiple
-                    data-max-files="5"
+                    data-max-files="8"
                   />
                   <label class="photo-dropzone" for="edit-photo-input" data-photo-dropzone>
                     <span class="photo-dropzone-icon">+</span>
                     <strong>Перетащите новые фото сюда или выберите файлы</strong>
-                    <small>До 5 изображений. Первое выбранное фото станет главным после сохранения.</small>
+                    <small>До 8 изображений. Первое выбранное фото станет главным после сохранения.</small>
                   </label>
                   <div class="photo-preview-toolbar">
-                    <span id="photo-count">0 / 5 новых фото</span>
+                    <span id="photo-count">0 / 8 новых фото</span>
                     <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить новые фото</button>
                   </div>
                   <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
@@ -194,7 +194,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <ul class="publish-checklist">
                 <li>После редактирования объявление лучше снова проверить модератором.</li>
                 <li>После замены фото проверьте порядок изображений.</li>
-                <li>Максимум 5 фотографий на объявление.</li>
+                <li>Максимум 8 фотографий на объявление.</li>
               </ul>
               <a class="edit-current-link" id="public-car-link" href="/cars" target="_blank" rel="noreferrer" hidden>Открыть опубликованную страницу</a>
               <button class="button button-light full-width" type="submit" data-action="save">Сохранить черновик</button>
@@ -209,8 +209,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       <script is:inline type="application/json" id="engine-volume-data" set:html={JSON.stringify(engineVolumeOptionsByFuel)} />
 
       <script>
-        import { clearAuth, getAuthToken } from "../../../lib/authClient";
+        import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../../lib/authClient";
         import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
+        import { formatBytes } from "../../../lib/imageCompression";
+        import { uploadListingImages } from "../../../lib/listingImageUpload";
 
         const token = getAuthToken();
         const form = document.querySelector("#edit-listing-form");
@@ -258,8 +260,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         ];
 
         function requireLogin() {
-          clearAuth();
-          window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+          redirectToLogin(window.location.pathname + window.location.search);
         }
 
         function setMessage(value: string) {
@@ -364,7 +365,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           existingPhotoGrid.innerHTML = visibleImages
             .map((image, index) => `
               <article class="existing-photo-card">
-                <img src="${escapeHtml(image.image_url)}" alt="Фото ${index + 1}" loading="lazy" />
+                <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-group="edit-existing" data-lightbox-src="${escapeHtml(image.image_url)}" data-lightbox-alt="Фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
+                  <img src="${escapeHtml(image.image_url)}" alt="Фото ${index + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                  <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                </button>
                 <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
                 <button class="button button-light button-small full-width" type="button" data-delete-image-id="${escapeHtml(image.id)}">Удалить</button>
               </article>
@@ -387,7 +391,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
-          const maxFiles = photoInput instanceof HTMLInputElement ? Number(photoInput.dataset.maxFiles || 5) : 5;
+          const maxFiles = photoInput instanceof HTMLInputElement ? Number(photoInput.dataset.maxFiles || 8) : 8;
 
           if (photoCount instanceof HTMLElement) {
             photoCount.textContent = `${selectedPhotos.length} / ${maxFiles} новых фото`;
@@ -413,9 +417,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
               return `
                 <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
-                  <img src="${url}" alt="Новое фото ${index + 1}" />
+                  <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="edit-new" data-lightbox-src="${url}" data-lightbox-alt="Новое фото ${index + 1}" aria-label="Увеличить новое фото ${index + 1}">
+                    <img src="${url}" alt="Новое фото ${index + 1}" />
+                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                  </button>
                   <div class="photo-preview-actions">
                     <span>${index === 0 ? "Новое главное" : `Новое фото ${index + 1}`}</span>
+                    <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
                     <div class="photo-preview-buttons">
                       ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
                       <button type="button" data-remove-photo="${index}">×</button>
@@ -432,7 +440,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
-          const maxFiles = Number(photoInput.dataset.maxFiles || 5);
+          const maxFiles = Number(photoInput.dataset.maxFiles || 8);
           const imageFiles = files.filter((file) => file.type.startsWith("image/"));
           const remainingSlots = Math.max(maxFiles - selectedPhotos.length, 0);
           selectedPhotos.push(...imageFiles.slice(0, remainingSlots));
@@ -479,40 +487,6 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           renderPhotoPreview();
         }
 
-        async function convertImageToJpeg(file: File, index: number) {
-          const bitmap = await createImageBitmap(file);
-          const maxSize = 1920;
-          const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-          const width = Math.max(1, Math.round(bitmap.width * scale));
-          const height = Math.max(1, Math.round(bitmap.height * scale));
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-
-          const context = canvas.getContext("2d");
-          if (!context) {
-            bitmap.close();
-            throw new Error("Браузер не смог подготовить изображение к загрузке.");
-          }
-
-          context.drawImage(bitmap, 0, 0, width, height);
-          bitmap.close();
-
-          const blob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, "image/jpeg", 0.88);
-          });
-
-          if (!blob) {
-            throw new Error("Не удалось конвертировать изображение перед отправкой.");
-          }
-
-          const safeName = file.name.replace(/\.[^.]+$/, "") || `edit-photo-${index + 1}`;
-          return new File([blob], `${safeName}.jpg`, {
-            type: "image/jpeg",
-            lastModified: Date.now(),
-          });
-        }
-
         async function loadListing() {
           if (!(form instanceof HTMLFormElement)) {
             return;
@@ -536,8 +510,17 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             },
           });
 
+          if (response.status === 401) {
+            if (await isSessionConfirmedExpired(apiUrl, token)) {
+              requireLogin();
+              return;
+            }
+            setMessage("Вход сохранён, но сервис временно отклонил запрос. Попробуйте ещё раз.");
+            return;
+          }
+
           if (!response.ok) {
-            requireLogin();
+            setMessage("Не удалось загрузить объявление. Попробуйте обновить страницу позже.");
             return;
           }
 
@@ -712,17 +695,21 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           payload.set("replace_photos", data.get("replace_photos") ? "true" : "false");
 
           try {
-            if (selectedPhotos.length > 0) {
-              setMessage("Подготавливаю новые фото...");
-            }
+            let uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }> = [];
 
-            for (const [index, file] of selectedPhotos.entries()) {
-              if (file instanceof File && file.size > 0) {
-                const uploadFile = await convertImageToJpeg(file, index);
-                payload.append("photos", uploadFile);
-                payload.append("photos[]", uploadFile);
-                payload.set(`photo_${index + 1}`, uploadFile);
-              }
+            if (selectedPhotos.length > 0) {
+              setMessage("Сжимаю и загружаю новые фото в хранилище...");
+              uploadedImages = await uploadListingImages(selectedPhotos, {
+                onProgress: (progressMessage) => setMessage(progressMessage),
+              });
+
+              const imageUrls = uploadedImages.map((image) => image.url);
+              const imageKeys = uploadedImages.map((image) => image.key);
+              payload.set("new_image_urls", JSON.stringify(imageUrls));
+              payload.set("new_image_keys", JSON.stringify(imageKeys));
+              payload.set("image_urls", JSON.stringify(imageUrls));
+              payload.set("image_keys", JSON.stringify(imageKeys));
+              payload.set("r2_images", JSON.stringify(uploadedImages));
             }
 
             setMessage("Сохраняю изменения...");

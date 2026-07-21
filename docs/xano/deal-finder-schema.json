@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SiteCraft Deal Finder Xano schema",
+  "version": "2026-07-17",
+  "tables": {
+    "deal_finder_searches": {
+      "xano_table_id": 868287,
+      "primary_source": "kleinanzeigen_agent",
+      "fields": ["user_id", "name", "platform", "source_type", "source_config", "brand", "model", "price_min", "price_max", "year_min", "year_max", "mileage_min", "mileage_max", "fuel_types", "transmissions", "location_id", "location_name", "category_id", "postal_code", "radius_km", "required_keywords", "excluded_keywords", "picture_required", "seller_types", "sync_enabled", "sync_interval_minutes", "is_active"],
+      "indexes": ["user_id", "is_active", "platform", "source_type", "sync_enabled"]
+    },
+    "deal_finder_emails": {
+      "xano_table_id": 868285,
+      "status": "optional_future_only",
+      "fields": ["gmail_message_id", "gmail_thread_id", "sender", "recipient", "subject", "received_at", "body_html", "body_text", "processing_status", "content_hash"],
+      "indexes": ["gmail_message_id unique", "processing_status", "received_at", "content_hash"]
+    },
+    "deal_finder_listings": {
+      "xano_table_id": 868288,
+      "fields": ["user_id", "search_id", "email_id", "platform", "external_id", "source_url", "title", "description", "price", "currency", "brand", "model", "year", "mileage", "fuel_type", "transmission", "power_kw", "power_hp", "city", "postal_code", "source_image_url", "source_images", "image_status", "first_seen_at", "last_seen_at", "source_status", "user_status", "is_new", "is_saved", "is_viewed", "is_hidden", "content_hash", "data_level", "provider_detail_loaded", "provider_detail_fetched_at", "raw_data"],
+      "indexes": ["user_id+platform+external_id unique (a0a993c6)", "user_id", "search_id", "source_status", "user_status", "first_seen_at", "is_saved", "is_hidden"]
+    },
+    "deal_finder_analyses": {
+      "xano_table_id": 868289,
+      "status_values": ["pending", "processing", "completed", "failed", "cancelled", "superseded"],
+      "recommendation_values": ["HOT_DEAL", "CONTACT_NOW", "REVIEW", "WATCH", "SKIP", "INSUFFICIENT_DATA"],
+      "fields": ["user_id", "listing_id", "status", "analysis_version", "model", "input_hash", "listing_content_hash", "input_snapshot", "deal_score", "risk_score", "liquidity_score", "data_quality_score", "confidence_score", "positive_signals", "negative_signals", "missing_information", "known_defects", "recommended_questions", "recommendation", "ai_summary", "provider_response_id", "input_tokens", "output_tokens", "total_tokens", "estimated_cost", "started_at", "completed_at", "failed_at", "error_code", "retry_count"],
+      "legacy_nullable_fields": ["analysis_status", "model_used", "market_price_low", "market_price_average", "market_price_high", "repair_cost_low", "repair_cost_high", "potential_profit_low", "potential_profit_high", "discount_percent", "analyzed_at", "error_message"],
+      "indexes": ["user_id", "listing_id+created_at", "status+created_at", "input_hash+analysis_version", "deal_score", "recommendation", "completed_at"]
+    },
+    "deal_finder_sync_logs": {
+      "xano_table_id": 868286,
+      "fields": ["job_type", "status", "listings_found", "listings_created", "listings_updated", "duplicates_found", "listings_removed", "error_message", "metadata", "started_at", "finished_at"],
+      "indexes": ["job_type", "status", "created_at"]
+    }
+  }
+}

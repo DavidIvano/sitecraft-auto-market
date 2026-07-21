@@ -1,0 +1,25 @@
+<dialog class="image-lightbox" id="site-image-lightbox" aria-label="Просмотр фотографий автомобиля" aria-modal="true">
+  <div class="image-lightbox-shell">
+    <header class="image-lightbox-toolbar">
+      <div class="image-lightbox-zoom-controls" aria-label="Масштаб фотографии">
+        <button type="button" data-lightbox-zoom-out aria-label="Уменьшить фотографию">−</button>
+        <output data-lightbox-zoom-value aria-live="polite">100%</output>
+        <button type="button" data-lightbox-zoom-in aria-label="Увеличить фотографию">＋</button>
+      </div>
+      <button class="image-lightbox-close" type="button" data-lightbox-close aria-label="Закрыть просмотр">×</button>
+    </header>
+
+    <div class="image-lightbox-stage">
+      <button class="image-lightbox-nav image-lightbox-prev" type="button" data-lightbox-prev aria-label="Предыдущая фотография">‹</button>
+      <div class="image-lightbox-viewport" data-lightbox-viewport>
+        <img data-lightbox-image alt="" decoding="async" referrerpolicy="no-referrer" draggable="false" />
+      </div>
+      <button class="image-lightbox-nav image-lightbox-next" type="button" data-lightbox-next aria-label="Следующая фотография">›</button>
+    </div>
+
+    <footer class="image-lightbox-footer">
+      <div class="image-lightbox-thumbnails" data-lightbox-thumbnails aria-label="Фотографии автомобиля"></div>
+      <output class="image-lightbox-count" data-lightbox-count aria-live="polite">1 / 1</output>
+    </footer>
+  </div>
+</dialog>

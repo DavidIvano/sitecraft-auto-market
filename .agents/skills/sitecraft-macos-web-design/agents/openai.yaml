@@ -1,0 +1,4 @@
+interface:
+  display_name: "SiteCraft macOS Web Design"
+  short_description: "Apple-inspired UI rules for SiteCraft"
+  default_prompt: "Audit and improve SiteCraft Auto Market with the local macOS-inspired Astro design system while preserving business logic."

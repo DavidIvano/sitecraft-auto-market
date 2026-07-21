@@ -1,404 +1,396 @@
 ---
 import StatusBadge from "../../components/StatusBadge.astro";
+import CarCard from "../../components/CarCard.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { SITE_URL } from "../../lib/config";
-import { getApprovedCars, getCarBySlug } from "../../lib/xano";
+import { getCarCardImageUrl, getCarDetailImageUrls } from "../../lib/imageUrls";
+import { isDisplayValue, maskVin, sanitizePublicDescription } from "../../lib/listingFields";
+import { getStoredAiScores, hasStoredAiAnalysis, parseAiPayload } from "../../lib/aiScores";
+import { formatCount, formatFirstRegistration, formatImportantDetail, formatOwnersCount, formatSellerType, formatTuvDetail } from "../../lib/listingDisplay";
+import { getApprovedCars, getCarBySlug, getSellerListingsBySlug, XanoPublicApiError } from "../../lib/xano";
+import { API_ROUTES } from "../../lib/apiRoutes";
 import type { CarListing } from "../../lib/types";
+import { isPublicListing } from "../../lib/listingStatus";
+import { isValidPublicCarSlug } from "../../lib/publicCar";
 
-/**
- * Получаем список публичных slug через GET /cars,
- * а полные данные каждого автомобиля — через GET /cars/{slug}.
- *
- * Это важно, потому что общий список может возвращать сокращённые
- * записи без description, images и других detail-полей.
- */
-export async function getStaticPaths() {
-  try {
-    const summaries = await getApprovedCars();
+export const prerender = false;
 
-    const paths: Array<{
-      params: { slug: string };
-      props: { car: CarListing };
-    }> = [];
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("X-Robots-Tag", "index, follow");
 
-    for (const summary of summaries) {
-      const slug =
-        typeof summary?.slug === "string"
-          ? summary.slug.trim()
-          : "";
-
-      if (!slug) {
-        console.warn("Пропущено объявление без корректного slug", {
-          id: summary?.id,
-        });
-
-        continue;
-      }
-
-      try {
-        const fullCar = await getCarBySlug(slug);
-
-        if (!fullCar) {
-          console.warn(`Полное объявление не найдено: ${slug}`);
-          continue;
-        }
-
-        paths.push({
-          params: { slug },
-          props: { car: fullCar },
-        });
-      } catch (error) {
-        console.warn(
-          `Не удалось загрузить полное объявление: ${slug}`,
-          error,
-        );
-      }
-    }
-
-    return paths;
-  } catch (error) {
-    console.warn(
-      "Не удалось получить список автомобилей для статической сборки",
-      error,
-    );
-
-    return [];
-  }
+const rawSlug = typeof Astro.params.slug === "string" ? Astro.params.slug.trim() : "";
+let slug = rawSlug;
+try {
+  slug = decodeURIComponent(rawSlug).trim();
+} catch {
+  slug = "";
 }
 
-const { car: rawCar } = Astro.props as { car: CarListing };
+if (!isValidPublicCarSlug(slug)) {
+  Astro.response.status = 404;
+  return Astro.rewrite("/404");
+}
 
-/**
- * Xano является внешним источником данных.
- * TypeScript-типы не гарантируют наличие полей в фактическом JSON,
- * поэтому перед использованием значения нормализуются.
- */
-const raw = rawCar as unknown as Record<string, unknown>;
+let car: CarListing | null = null;
+try {
+  car = await getCarBySlug(slug);
+} catch (error) {
+  Astro.response.status = error instanceof XanoPublicApiError ? error.status : 503;
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return Astro.rewrite("/service-unavailable");
+}
 
-const toText = (
-  value: unknown,
-  fallback = "",
-): string => {
-  if (value === null || value === undefined) {
-    return fallback;
-  }
+if (!car || !isPublicListing(car)) {
+  Astro.response.status = 404;
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return Astro.rewrite("/404");
+}
 
-  const normalized = String(value).trim();
-  return normalized || fallback;
+const getDescriptionFieldFromListing = (listing: CarListing, label: string) => {
+  const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
+  const match = String(listing.description ?? "").match(expression);
+  return match?.[1]?.trim() || "";
+};
+const getListingBodyType = (listing: CarListing) =>
+  listing.body_type || getDescriptionFieldFromListing(listing, "Кузов");
+const getRelatedScore = (currentCar: CarListing, candidate: CarListing) => {
+  let score = 0;
+  if (candidate.brand === currentCar.brand) score += 5;
+  if (candidate.model === currentCar.model) score += 3;
+  if (getListingBodyType(candidate) && getListingBodyType(candidate) === getListingBodyType(currentCar)) score += 3;
+  if (candidate.fuel_type === currentCar.fuel_type) score += 1;
+  if (candidate.city === currentCar.city) score += 1;
+  return score;
 };
 
-const toNumber = (
-  value: unknown,
-  fallback = 0,
-): number => {
-  if (typeof value === "number" && Number.isFinite(value)) {
-    return value;
-  }
+const [sellerResult, relatedResult] = await Promise.allSettled([
+  getSellerListingsBySlug(slug),
+  getApprovedCars(),
+]);
+const sellerCars = (sellerResult.status === "fulfilled"
+  ? sellerResult.value
+  : car.seller_listings || [])
+  .filter((candidate) => candidate.slug !== car.slug && isPublicListing(candidate))
+  .slice(0, 6);
+const sellerSlugs = new Set(sellerCars.map((candidate) => candidate.slug));
+const relatedCars = (relatedResult.status === "fulfilled" ? relatedResult.value : [])
+  .filter((candidate) => candidate.slug !== car.slug && !sellerSlugs.has(candidate.slug) && isPublicListing(candidate))
+  .map((candidate) => ({ car: candidate, score: getRelatedScore(car, candidate) }))
+  .filter((item) => item.score > 0)
+  .sort((left, right) => right.score - left.score)
+  .slice(0, 6)
+  .map((item) => item.car);
 
-  if (typeof value === "string") {
-    const normalized = value
-      .trim()
-      .replace(/\s+/g, "")
-      .replace(",", ".");
-
-    const parsed = Number(normalized);
-
-    if (Number.isFinite(parsed)) {
-      return parsed;
-    }
-  }
-
-  return fallback;
-};
-
-const toRecord = (
-  value: unknown,
-): Record<string, unknown> => {
-  return value &&
-    typeof value === "object" &&
-    !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-};
-
-const title = toText(raw.title, "Автомобиль");
-const slug = toText(raw.slug);
-const brand = toText(raw.brand, "Не указано");
-const model = toText(raw.model, "Не указано");
-
-const year = Math.trunc(toNumber(raw.year));
-const price = toNumber(raw.price);
-
-/**
- * Поддерживается как canonical mileage,
- * так и возможное старое поле «пробег».
- */
-const mileage = Math.max(
-  0,
-  Math.trunc(
-    toNumber(
-      raw.mileage ??
-        raw["пробег"],
-    ),
-  ),
-);
-
-const fuelType = toText(
-  raw.fuel_type,
-  "Не указано",
-);
-
-const transmission = toText(
-  raw.transmission,
-  "Не указано",
-);
-
-const city = toText(raw.city);
-const country = toText(raw.country);
-
-const locationLabel =
-  [city, country].filter(Boolean).join(", ") ||
-  "Не указано";
-
-const rawCurrency = toText(
-  raw.currency,
-  "EUR",
-).toUpperCase();
-
-const currency = /^[A-Z]{3}$/.test(rawCurrency)
-  ? rawCurrency
-  : "EUR";
-
-const safeCarDescription =
-  typeof raw.description === "string"
-    ? raw.description.trim()
-    : "";
-
-const status = toText(
-  raw.status,
-  "approved",
-) as CarListing["status"];
-
-const siteUrl =
-  SITE_URL ||
-  "https://sitecraft-auto-market.pages.dev";
-
-const carUrl = new URL(
-  `/cars/${encodeURIComponent(slug)}`,
-  siteUrl,
-).toString();
-
+const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const carUrl = new URL(`/cars/${car.slug}`, siteUrl).toString();
 const formatter = new Intl.NumberFormat("ru-RU", {
   style: "currency",
-  currency,
+  currency: car.currency || "EUR",
   maximumFractionDigits: 0,
 });
 
-const toDate = (
-  value?: string | number | null,
-): Date | null => {
-  if (
-    value === null ||
-    value === undefined ||
-    value === ""
-  ) {
+const toDate = (value?: string | number) => {
+  if (!value) {
     return null;
   }
 
-  const stringValue = String(value);
-
   const date =
-    typeof value === "number" ||
-    /^\d+$/.test(stringValue)
+    typeof value === "number" || /^\d+$/.test(String(value))
       ? new Date(Number(value))
-      : new Date(stringValue);
+      : new Date(value);
 
-  return Number.isNaN(date.getTime())
-    ? null
-    : date;
+  return Number.isNaN(date.getTime()) ? null : date;
 };
 
-const createdAt = toDate(
-  raw.created_at as string | number | null,
-);
-
+const createdAt = toDate(car.created_at);
 const createdAtLabel = createdAt
   ? new Intl.DateTimeFormat("ru-RU", {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(createdAt)
-  : "Дата уточняется";
+  : "дата уточняется";
 
-/**
- * Нормализация фотографий.
- */
-const imageRecords = Array.isArray(raw.images)
-  ? raw.images
-  : [];
+const listingGalleryImages = getCarDetailImageUrls(car).slice(0, 8);
+const galleryImages = listingGalleryImages.length > 0
+  ? listingGalleryImages
+  : ["/deal-finder-placeholder.svg"];
+const galleryImage = galleryImages[0] ?? "";
+const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
+const sellerTypeLabel = car.seller_type === "dealer" ? "Дилер" : "Частный продавец";
+const staticSeller = car.seller && typeof car.seller === "object" ? car.seller : null;
+const staticSellerName = String(staticSeller?.name || "").trim() || "Продавец автомобиля";
+const staticSellerType = String(staticSeller?.type || "").trim() === "dealer" ? "Дилер" : sellerTypeLabel;
+const staticSellerCity = String(staticSeller?.city || car.city || "").trim();
+const staticSellerCount = Number(staticSeller?.active_listings_count) || 0;
+const cleanSeoText = (value: unknown) => String(value ?? "")
+  .split(/\r?\n/)
+  .filter((line) => !/^(телефон|email|e-mail|продавец|vin)\s*:/i.test(line.trim()))
+  .join(" ")
+  .replace(/\s+/g, " ")
+  .trim();
+const safeCarDescription = typeof car.description === "string" ? car.description.trim() : "";
+const seoDescriptionText = cleanSeoText(safeCarDescription);
+const fallbackSeoTitle = `${car.brand} ${car.model} ${car.year} купить в ${car.city}`.replace(/\s+/g, " ").trim();
+const fallbackSeoDescription = `${car.brand} ${car.model}, ${car.year}, ${car.fuel_type}, ${car.transmission}, пробег ${car.mileage.toLocaleString("ru-RU")} км, цена ${formatter.format(car.price)}.${seoDescriptionText ? ` ${seoDescriptionText}` : ""}`.slice(0, 260);
+const pageTitle = String(car.seo_title || "").trim() || fallbackSeoTitle || car.title;
+const description = String(car.seo_description || "").trim() || fallbackSeoDescription;
 
-const nestedImageUrls = imageRecords
-  .map((image) => {
-    const record = toRecord(image);
+const parseJsonObject = parseAiPayload;
 
-    return toText(
-      record.image_url ??
-        record.url,
-    );
-  })
-  .filter(Boolean);
+const parseTextList = (value: unknown) => {
+  if (!value) {
+    return [] as string[];
+  }
 
-const directImageUrls = Array.isArray(
-  raw.image_urls,
-)
-  ? raw.image_urls
-      .map((value) => toText(value))
-      .filter(Boolean)
-  : [];
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
 
-const galleryImages = [
-  toText(raw.main_image_url),
-  toText(raw.cover_image_url),
-  ...directImageUrls,
-  ...nestedImageUrls,
-]
-  .filter(Boolean)
-  .filter(
-    (value, index, array) =>
-      array.indexOf(value) === index,
-  )
-  .slice(0, 12);
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        return parsed.map((item) => String(item).trim()).filter(Boolean);
+      }
+    } catch {
+      return value
+        .split(/\n|;/)
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+  }
 
-const galleryImage =
-  galleryImages[0] ?? "";
+  return [];
+};
 
-/**
- * Контакты могут находиться либо в верхнеуровневых полях,
- * либо в seller.contact из detail endpoint.
- */
-const seller = toRecord(raw.seller);
-const sellerContact = toRecord(
-  seller.contact,
+const aiAnalysis = parseJsonObject(car.ai_analysis);
+const aiPayload = parseJsonObject(car.ai_payload);
+const getDescriptionField = (labels: string | string[]) => {
+  const availableLabels = Array.isArray(labels) ? labels : [labels];
+  for (const label of availableLabels) {
+    const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const match = String(car.description || "").match(new RegExp(`^${escapedLabel}:\\s*(.+)$`, "im"));
+    const value = match?.[1]?.trim() || "";
+    if (value && !/^(не указан|не указана|не указано|нет)$/i.test(value)) return value;
+  }
+  return "";
+};
+const firstDetailValue = (...values: unknown[]) =>
+  values.map((value) => String(value ?? "").trim()).find((value) => value && !/^(не указан|не указана|не указано|нет)$/i.test(value)) || "";
+const registrationValue = firstDetailValue(
+  car.first_registration_date,
+  car.first_registration,
+  getDescriptionField(["Дата первой регистрации", "Первая регистрация"]),
 );
-
-const sellerPhone = toText(
-  raw.seller_phone,
+const ownerCountValue = firstDetailValue(
+  car.owners_count,
+  car.owner_count,
+  getDescriptionField(["Количество владельцев", "Владельцы"]),
 );
-
-const sellerEmail = toText(
-  raw.seller_email,
+const visibleOwnerCount = formatOwnersCount(ownerCountValue);
+const legacyTuvHuValue = firstDetailValue(
+  car.tuv_hu,
+  car.tuv_until,
+  car.hu_until,
+  aiPayload.tuv_hu,
+  aiAnalysis.tuv_hu,
+  getDescriptionField(["TÜV/HU", "TÜV", "HU"]),
 );
+const tuvHuValue = legacyTuvHuValue || formatTuvDetail(car.has_valid_tuv, car.tuv_valid_until);
+const vinMasked = firstDetailValue(car.vin_masked, maskVin(car.vin));
+const conditionValue = firstDetailValue(car.vehicle_condition, car.condition, getDescriptionField(["Состояние автомобиля", "Состояние"]));
+const sellerTypeValue = formatSellerType(car.seller_type || staticSeller?.type);
+const quickSpecItems = [
+  { label: "Год", value: Number(car.year) > 0 ? String(car.year) : "" },
+  { label: "Пробег", value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "" },
+  { label: "Топливо", value: firstDetailValue(car.fuel_type) },
+  { label: "Коробка", value: firstDetailValue(car.transmission) },
+  { label: "Город", value: firstDetailValue(car.city) },
+  { label: "Состояние", value: formatImportantDetail(conditionValue) },
+  ...(registrationValue ? [{ label: "Первая регистрация", value: formatFirstRegistration(registrationValue) }] : []),
+  ...(((car.has_valid_tuv !== null && car.has_valid_tuv !== undefined) || Boolean(legacyTuvHuValue)) ? [{ label: "TÜV / HU", value: tuvHuValue }] : []),
+].filter((item) => isDisplayValue(item.value));
+const detailGroups = [
+  {
+    title: "Основные данные",
+    items: [
+      { label: "Тип транспорта", value: formatImportantDetail(firstDetailValue(car.vehicle_type, getDescriptionField("Тип транспорта"))) },
+      { label: "Марка", value: firstDetailValue(car.brand) },
+      { label: "Модель", value: firstDetailValue(car.model) },
+      { label: "Год выпуска", value: Number(car.year) > 0 ? String(car.year) : "" },
+      { label: "Первая регистрация", value: registrationValue ? formatFirstRegistration(registrationValue) : "Не указано продавцом" },
+      { label: "Состояние", value: formatImportantDetail(conditionValue) },
+      { label: "Тип продавца", value: formatImportantDetail(sellerTypeValue) },
+    ],
+  },
+  {
+    title: "Цена и местоположение",
+    items: [
+      { label: "Цена", value: Number(car.price) > 0 ? formatter.format(car.price) : "" },
+      { label: "Валюта", value: firstDetailValue(car.currency) },
+      { label: "Город", value: firstDetailValue(car.city) },
+      { label: "Страна", value: formatImportantDetail(firstDetailValue(car.country)) },
+    ],
+  },
+  {
+    title: "Двигатель и трансмиссия",
+    items: [
+      { label: "Топливо", value: formatImportantDetail(firstDetailValue(car.fuel_type)) },
+      { label: "Объём двигателя", value: formatImportantDetail(firstDetailValue(car.engine_volume, getDescriptionField(["Объём двигателя", "Объем двигателя"]))) },
+      { label: "Коробка", value: formatImportantDetail(firstDetailValue(car.transmission)) },
+      { label: "Привод", value: formatImportantDetail(firstDetailValue(car.drivetrain, getDescriptionField("Привод"))) },
+    ],
+  },
+  {
+    title: "Кузов и вместимость",
+    items: [
+      { label: "Кузов", value: formatImportantDetail(firstDetailValue(car.body_type, getDescriptionField("Кузов"))) },
+      { label: "Цвет", value: formatImportantDetail(firstDetailValue(car.color, getDescriptionField("Цвет"))) },
+      { label: "Двери", value: formatImportantDetail(formatCount(firstDetailValue(car.doors, getDescriptionField("Двери")), "door")) },
+      { label: "Места", value: formatImportantDetail(formatCount(firstDetailValue(car.seats, getDescriptionField("Места")), "seat")) },
+    ],
+  },
+  {
+    title: "Пробег и история",
+    items: [
+      { label: "Пробег", value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "" },
+      { label: "Владельцы", value: visibleOwnerCount || "Не указано продавцом" },
+      { label: "TÜV / HU", value: tuvHuValue },
+      { label: "VIN", value: vinMasked },
+      { label: "Дата публикации", value: createdAtLabel },
+      { label: "Дата обновления", value: car.updated_at && String(car.updated_at) !== String(car.created_at) ? (toDate(car.updated_at) ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(toDate(car.updated_at)!) : "") : "" },
+    ],
+  },
+].map((group) => ({
+  ...group,
+  items: group.items.filter((item) => isDisplayValue(item.value)),
+})).filter((group) => group.items.length > 0);
+const embeddedDetailLabels = [
+  "Тип транспорта", "Кузов", "Объём двигателя", "Объем двигателя", "Привод", "Двери", "Места", "Цвет",
+  "Количество владельцев", "Владельцы", "Дата первой регистрации", "Первая регистрация", "Состояние автомобиля",
+  "Состояние", "Тип продавца", "TÜV/HU", "TÜV", "HU", "VIN", "Продавец", "Телефон", "Email", "E-mail",
+];
+const detailDescription = sanitizePublicDescription(car.description)
+  .split(/\r?\n/)
+  .filter((line) => !embeddedDetailLabels.some((label) => line.trim().toLocaleLowerCase("ru-RU").startsWith(`${label.toLocaleLowerCase("ru-RU")}:`)))
+  .join("\n")
+  .trim();
+const imageAltTexts = parseTextList(car.image_alt_texts);
+const storedAiScores = getStoredAiScores(car as Record<string, unknown>);
+const aiScore = storedAiScores.listingQualityScore;
+const photoScore = storedAiScores.photoQualityScore;
+const trustScore = storedAiScores.trustScore;
+const aiRecommendations = parseTextList(car.ai_recommendations ?? aiAnalysis.recommendations);
+const aiWarnings = parseTextList(car.ai_warnings ?? aiAnalysis.warnings);
+const aiMissingFields = parseTextList(car.ai_missing_fields ?? aiAnalysis.missing_fields);
+const hasAiAnalysis = hasStoredAiAnalysis(car as Record<string, unknown>);
+const detailNormalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
+const detailMileage = Number(car.mileage || 0);
+const detailYear = Number(car.year || 0);
+const detailAge = Number.isFinite(detailYear) && detailYear > 0 ? Math.max(1, new Date().getFullYear() - detailYear) : 0;
+const explicitAiHighlights = parseTextList(car.ai_highlights ?? aiPayload.ai_highlights ?? aiPayload.highlights);
+const heuristicAiHighlights = [
+  car.fuel_type ? `Топливо: ${car.fuel_type}` : "",
+  car.transmission ? `Коробка: ${car.transmission}` : "",
+  car.body_type ? `Кузов: ${car.body_type}` : "",
+  trustScore !== null && trustScore >= 80 ? "Хорошая заполненность объявления" : "",
+  trustScore !== null && trustScore < 60 ? "Данные требуют уточнения" : "",
+  detailAge > 0 && detailMileage > 0 && detailMileage / detailAge < 12000 && detailMileage < 180000 ? "Низкий пробег по данным объявления" : "",
+  detailNormalizeText(car.fuel_type) === "дизель" ? "Экономичный дизель" : "",
+];
+const aiHighlights = [...new Set([...explicitAiHighlights, ...heuristicAiHighlights].map((item) => item.trim()).filter(Boolean))].slice(0, 7);
+const listingViewPayload = {
+  car_id: car.id,
+  slug: car.slug,
+  title: car.title,
+  brand: car.brand,
+  model: car.model,
+  body_type: car.body_type,
+  fuel_type: car.fuel_type,
+  price: car.price,
+  city: car.city,
+};
+const normalizeComparable = (value: unknown) => String(value || "").trim().toLowerCase();
+const getSimilarityDetails = (candidate: CarListing) => {
+  const reasons: string[] = [];
+  let score = 0;
 
-const nestedContactHref = toText(
-  sellerContact.href,
-);
+  if (normalizeComparable(candidate.brand) === normalizeComparable(car.brand)) {
+    score += 3;
+    reasons.push("Та же марка");
+  }
 
-const safeNestedContactHref =
-  /^(tel:|mailto:)/i.test(
-    nestedContactHref,
-  )
-    ? nestedContactHref
-    : "";
+  if (normalizeComparable(candidate.body_type) && normalizeComparable(candidate.body_type) === normalizeComparable(car.body_type)) {
+    score += 2;
+    reasons.push("Похожий кузов");
+  }
 
-const cleanPhone = sellerPhone.replace(
-  /[^\d+]/g,
-  "",
-);
+  if (normalizeComparable(candidate.fuel_type) === normalizeComparable(car.fuel_type)) {
+    score += 2;
+    reasons.push("То же топливо");
+  }
 
-const contactHref = cleanPhone
-  ? `tel:${cleanPhone}`
-  : sellerEmail
-    ? `mailto:${sellerEmail}`
-    : safeNestedContactHref;
+  if (normalizeComparable(candidate.city) === normalizeComparable(car.city)) {
+    score += 1;
+    reasons.push("Тот же город");
+  }
 
-const contactLabel = sellerPhone
-  ? `Связаться: ${sellerPhone}`
-  : sellerEmail
-    ? `Написать: ${sellerEmail}`
-    : contactHref.startsWith("mailto:")
-      ? "Написать продавцу"
-      : contactHref.startsWith("tel:")
-        ? "Позвонить продавцу"
-        : "Контакты не указаны";
+  if (Math.abs(Number(candidate.year || 0) - Number(car.year || 0)) <= 3) {
+    score += 1;
+    reasons.push("Похожий год");
+  }
 
-/**
- * Безопасная SEO-обработка.
- *
- * String(value ?? "") гарантирует, что .split()
- * никогда не будет вызван у undefined или null.
- */
-const cleanSeoText = (
-  value: unknown,
-): string =>
-  String(value ?? "")
-    .split(/\r?\n/)
-    .filter(
-      (line) =>
-        !/^(телефон|email|e-mail|продавец|vin)\s*:/i.test(
-          line.trim(),
-        ),
-    )
-    .join(" ")
-    .replace(/\s+/g, " ")
-    .trim();
+  if (Number(candidate.price || 0) > 0 && Number(car.price || 0) > 0) {
+    const priceRatio = Math.abs(Number(candidate.price) - Number(car.price)) / Math.max(Number(car.price), 1);
+    if (priceRatio <= 0.2) {
+      score += 2;
+      reasons.push("Похожий бюджет");
+    }
+  }
 
-const seoDescriptionText =
-  cleanSeoText(safeCarDescription);
-
-const mileageText =
-  mileage > 0
-    ? `${mileage.toLocaleString("ru-RU")} км`
-    : "пробег не указан";
-
-const yearText =
-  year > 0
-    ? String(year)
-    : "год не указан";
-
-const description = [
-  `${title}: ${formatter.format(price)}`,
-  yearText,
-  mileageText,
-  locationLabel,
-  seoDescriptionText,
-]
-  .filter(Boolean)
-  .join(", ")
-  .slice(0, 260);
+  return {
+    car: candidate,
+    score,
+    reason: reasons[0] || "Похожее объявление",
+  };
+};
+const similarCars = relatedCars
+  .map(getSimilarityDetails)
+  .filter((item) => item.score > 0)
+  .sort((left, right) => right.score - left.score)
+  .slice(0, 6);
 
 const carSchema = {
   "@context": "https://schema.org",
   "@type": "Vehicle",
-  name: title,
+  name: car.title,
   url: carUrl,
-  image: galleryImages,
+  ...(listingGalleryImages.length > 0 ? { image: listingGalleryImages } : {}),
   brand: {
     "@type": "Brand",
-    name: brand,
+    name: car.brand,
   },
-  model,
-  ...(year > 0
-    ? {
-        vehicleModelDate: String(year),
-      }
-    : {}),
-  ...(mileage > 0
-    ? {
-        mileageFromOdometer: {
-          "@type": "QuantitativeValue",
-          value: mileage,
-          unitCode: "KMT",
-        },
-      }
-    : {}),
-  fuelType,
-  vehicleTransmission: transmission,
+  model: car.model,
+  vehicleModelDate: String(car.year),
+  mileageFromOdometer: {
+    "@type": "QuantitativeValue",
+    value: car.mileage,
+    unitCode: "KMT",
+  },
+  fuelType: car.fuel_type,
+  vehicleTransmission: car.transmission,
+  ...(car.body_type ? { bodyType: car.body_type } : {}),
+  ...(car.color ? { color: car.color } : {}),
+  ...(isDisplayValue(car.seats) ? { seatingCapacity: Number(car.seats) || String(car.seats) } : {}),
+  ...(isDisplayValue(car.doors) ? { numberOfDoors: Number(car.doors) || String(car.doors) } : {}),
+  ...(car.drivetrain ? { driveWheelConfiguration: car.drivetrain } : {}),
   description,
   offers: {
     "@type": "Offer",
-    price,
-    priceCurrency: currency,
-    availability:
-      "https://schema.org/InStock",
+    price: car.price,
+    priceCurrency: car.currency,
+    availability: isSold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
     url: carUrl,
   },
 };
@@ -417,15 +409,12 @@ const breadcrumbSchema = {
       "@type": "ListItem",
       position: 2,
       name: "Автомобили",
-      item: new URL(
-        "/cars",
-        siteUrl,
-      ).toString(),
+      item: new URL("/cars", siteUrl).toString(),
     },
     {
       "@type": "ListItem",
       position: 3,
-      name: title,
+      name: car.title,
       item: carUrl,
     },
   ],
@@ -433,554 +422,475 @@ const breadcrumbSchema = {
 ---
 
 <BaseLayout
-  title={title}
+  title={pageTitle}
   description={description}
-  canonicalPath={`/cars/${slug}`}
+  canonicalPath={`/cars/${car.slug}`}
   image={galleryImage || "/sitecraft-logo.png"}
   jsonLd={[carSchema, breadcrumbSchema]}
 >
   <section class="section car-detail-section">
     <div class="container detail-container">
-      <article class="detail-grid car-detail-grid">
-        <div
-          class="gallery car-slider"
-          data-gallery
-        >
+      <article class:list={["detail-grid", "car-detail-grid", isSold && "car-detail-sold"]}>
+        <div class="gallery car-slider" data-gallery>
           <div class="gallery-stage">
             {
               galleryImages.length > 1 && (
-                <button
-                  class="gallery-nav gallery-prev"
-                  type="button"
-                  aria-label="Предыдущее фото"
-                >
-                  ‹
-                </button>
+                <button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото">‹</button>
               )
             }
-
             <button
-              class="gallery-main-button"
+              class="gallery-main-button vehicle-image-trigger"
               type="button"
-              data-static-lightbox-open
+              data-lightbox-trigger
+              data-lightbox-src={galleryImage}
+              data-lightbox-sources={JSON.stringify(galleryImages)}
+              data-lightbox-alt={car.title}
               aria-label="Открыть фото на весь экран"
-              disabled={!galleryImage}
             >
               {
-                galleryImage ? (
-                  <img
-                    src={galleryImage}
-                    alt={title}
-                    decoding="async"
-                  />
-                ) : (
-                  <div class="gallery-empty">
-                    Фото пока не добавлено
-                  </div>
-                )
+                <img src={galleryImage} alt={imageAltTexts[0] || car.title} decoding="async" />
               }
             </button>
-
             {
               galleryImages.length > 1 && (
-                <button
-                  class="gallery-nav gallery-next"
-                  type="button"
-                  aria-label="Следующее фото"
-                >
-                  ›
-                </button>
+                <button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото">›</button>
               )
             }
-
-            <span
-              class="gallery-count"
-              aria-live="polite"
-            >
-              {
-                galleryImages.length > 0
-                  ? `1 / ${galleryImages.length}`
-                  : "0 / 0"
-              }
-            </span>
+            <span class="gallery-count">{`1 / ${galleryImages.length}`}</span>
           </div>
-
-          <div
-            class="gallery-strip"
-            aria-label="Фотографии автомобиля"
-          >
+          <div class="gallery-strip">
             {
-              galleryImages.length > 0 ? (
-                galleryImages.map(
-                  (imageUrl, index) => (
-                    <button
-                      class={`gallery-thumb${
-                        index === 0
-                          ? " is-active"
-                          : ""
-                      }`}
-                      type="button"
-                      data-slide-index={index}
-                      data-image-url={imageUrl}
-                      aria-label={`Открыть фото ${
-                        index + 1
-                      }`}
-                      aria-current={
-                        index === 0
-                          ? "true"
-                          : undefined
-                      }
-                    >
-                      <img
-                        src={imageUrl}
-                        alt={`${title}, фото ${
-                          index + 1
-                        }`}
-                        loading={
-                          index === 0
-                            ? "eager"
-                            : "lazy"
-                        }
-                        decoding="async"
-                      />
-                    </button>
-                  ),
-                )
-              ) : (
-                <>
-                  <span />
-                  <span />
-                  <span />
-                </>
-              )
+              galleryImages.map((imageUrl, index) => (
+                  <button
+                    class={`gallery-thumb${index === 0 ? " is-active" : ""}`}
+                    type="button"
+                    data-slide-index={index}
+                    data-slide-src={imageUrl}
+                    aria-label={`Фото ${index + 1}`}
+                    aria-pressed={index === 0 ? "true" : "false"}
+                  >
+                    <img
+                      src={imageUrl}
+                      alt={imageAltTexts[index] || `${car.title}, фото ${index + 1}`}
+                      loading="lazy"
+                      decoding="async"
+                    />
+                  </button>
+                ))
             }
           </div>
         </div>
-
         <div class="detail-panel compact-detail-panel">
-          <StatusBadge status={status} />
-
-          <h1>{title}</h1>
-
-          <p class="detail-price">
-            {formatter.format(price)}
-          </p>
-
-          <dl class="spec-grid detail-spec-grid">
-            <div>
-              <dt>Год</dt>
-              <dd>
-                {year > 0 ? year : "Не указан"}
-              </dd>
-            </div>
-
-            <div>
-              <dt>Пробег</dt>
-              <dd>
-                {
-                  mileage > 0
-                    ? `${mileage.toLocaleString(
-                        "ru-RU",
-                      )} км`
-                    : "Не указан"
-                }
-              </dd>
-            </div>
-
-            <div>
-              <dt>Топливо</dt>
-              <dd>{fuelType}</dd>
-            </div>
-
-            <div>
-              <dt>Коробка</dt>
-              <dd>{transmission}</dd>
-            </div>
-
-            <div>
-              <dt>Город</dt>
-              <dd>{locationLabel}</dd>
-            </div>
-
-            <div>
-              <dt>Добавлено</dt>
-              <dd>{createdAtLabel}</dd>
-            </div>
+          <StatusBadge status={car.status} />
+          {isSold && <span class="sold-detail-badge">Автомобиль продан</span>}
+          <h1>{car.title}</h1>
+          <p class="detail-price">{formatter.format(car.price)}</p>
+          <dl class="spec-grid detail-spec-grid detail-quick-spec-grid">
+            {quickSpecItems.map((item) => (
+              <div>
+                <dt>{item.label}</dt>
+                <dd>{item.value}</dd>
+              </div>
+            ))}
           </dl>
-
-          <p class="detail-description">
-            {
-              safeCarDescription ||
-              "Продавец пока не добавил описание автомобиля."
-            }
-          </p>
-
-          {
-            contactHref ? (
-              <a
-                class="button button-dark full-width"
-                href={contactHref}
-              >
-                {contactLabel}
-              </a>
-            ) : (
-              <button
-                class="button button-dark full-width"
-                type="button"
-                disabled
-              >
-                {contactLabel}
-              </button>
-            )
-          }
-        </div>
-
-        <div
-          class="lightbox"
-          id="static-car-lightbox"
-          hidden
-          role="dialog"
-          aria-modal="true"
-          aria-label="Просмотр фотографий автомобиля"
-        >
-          <button
-            class="lightbox-close"
-            type="button"
-            aria-label="Закрыть фото"
-          >
-            ×
-          </button>
-
-          {
-            galleryImages.length > 1 && (
-              <>
-                <button
-                  class="lightbox-nav lightbox-prev"
-                  type="button"
-                  aria-label="Предыдущее фото"
-                >
-                  ‹
-                </button>
-
-                <button
-                  class="lightbox-nav lightbox-next"
-                  type="button"
-                  aria-label="Следующее фото"
-                >
-                  ›
-                </button>
-
-                <span
-                  class="lightbox-count"
-                  aria-live="polite"
-                >
-                  {`1 / ${galleryImages.length}`}
-                </span>
-              </>
-            )
-          }
-
-          {
-            galleryImage && (
-              <img
-                src={galleryImage}
-                alt={title}
-                decoding="async"
-              />
-            )
-          }
+          <a class="button button-primary full-width detail-contact-jump" href="#seller-information">Связаться с продавцом</a>
         </div>
       </article>
     </div>
   </section>
-
+  {
+    detailGroups.length > 0 && (
+      <section class="section detail-properties-section" aria-labelledby="all-car-specs">
+        <div class="container">
+          <div class="detail-properties-panel">
+            <div class="section-heading compact-section-heading">
+              <div>
+                <p class="eyebrow">Характеристики</p>
+                <h2 id="all-car-specs">Все характеристики автомобиля</h2>
+              </div>
+            </div>
+            <div class="detail-properties-groups">
+              {detailGroups.map((group) => (
+                <section class="detail-property-group">
+                  <h3>{group.title}</h3>
+                  <dl class="detail-property-grid">
+                    {group.items.map((item) => (
+                      <div>
+                        <dt>{item.label}</dt>
+                        <dd>{item.value}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </section>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+  <section class="section detail-description-section" aria-labelledby="seller-description">
+    <div class="container">
+      <div class="detail-description-panel">
+        <div class="section-heading compact-section-heading">
+          <div>
+            <p class="eyebrow">От продавца</p>
+            <h2 id="seller-description">Описание автомобиля</h2>
+          </div>
+        </div>
+        <p class="detail-description">{detailDescription || "Продавец пока не добавил описание автомобиля."}</p>
+      </div>
+    </div>
+  </section>
+  {
+    aiHighlights.length > 0 && (
+      <section class="section ai-highlights-section">
+        <div class="container">
+          <div class="ai-highlights-panel">
+            <div class="section-heading compact-section-heading">
+              <div>
+                <p class="eyebrow">AI Highlights</p>
+                <h2>Что AI увидел в объявлении</h2>
+              </div>
+            </div>
+            <div class="ai-highlight-chips">
+              {aiHighlights.map((highlight) => <span class="ai-highlight-chip">{highlight}</span>)}
+            </div>
+            <p class="ai-microcopy">AI Highlights основаны на данных объявления и не заменяют техническую проверку автомобиля.</p>
+          </div>
+        </div>
+      </section>
+    )
+  }
+  {
+    hasAiAnalysis && (
+      <section class="section ai-analysis-section">
+        <div class="container">
+          <div class="ai-analysis-panel detail-ai-analysis">
+            <div class="section-heading compact-section-heading">
+              <div>
+                <h2>AI-анализ объявления</h2>
+                <p class="section-subtitle">AI-оценка показывает качество заполнения объявления, а не техническое состояние автомобиля.</p>
+              </div>
+            </div>
+            <div class="ai-analysis-grid">
+              <article>
+                <span>Качество объявления</span>
+                <strong>{aiScore !== null ? `${aiScore}/100` : "не рассчитано"}</strong>
+              </article>
+              <article>
+                <span>Качество фото</span>
+                <strong>{photoScore !== null ? `${photoScore}/100` : "не рассчитано"}</strong>
+              </article>
+              <article>
+                <span>Доверие к данным</span>
+                <strong>{trustScore !== null ? `${trustScore}/100` : "не рассчитано"}</strong>
+              </article>
+              <article>
+                <span>Статус проверки</span>
+                <strong>{aiMissingFields.length ? "нужно уточнить" : "данные заполнены"}</strong>
+              </article>
+            </div>
+            <div class="ai-analysis-notes">
+              <div>
+                <h3>Рекомендации продавцу</h3>
+                {aiRecommendations.length ? (
+                  <ul>{aiRecommendations.slice(0, 5).map((item) => <li>{item}</li>)}</ul>
+                ) : (
+                  <p>Критичных рекомендаций нет.</p>
+                )}
+              </div>
+              <div>
+                <h3>Предупреждения</h3>
+                {aiWarnings.length || aiMissingFields.length ? (
+                  <ul>
+                    {[...aiWarnings, ...aiMissingFields.map((field) => `Уточните поле: ${field}`)].slice(0, 6).map((item) => <li>{item}</li>)}
+                  </ul>
+                ) : (
+                  <p>Серьезных предупреждений нет.</p>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    )
+  }
+  <section class="section seller-information-section" id="seller-information">
+    <div class="container">
+      <section
+        class="seller-summary-card"
+        data-seller-summary
+        data-api-url={xanoApiUrl}
+        data-detail-path={API_ROUTES.carBySlug(car.slug)}
+      >
+        <p class="eyebrow">Продавец</p>
+        <h2 data-seller-name>{staticSellerName}</h2>
+        <div class="seller-summary-meta">
+          <span data-seller-type>{staticSellerType}</span>
+          {staticSellerCity && <span data-seller-city>{staticSellerCity}</span>}
+          <span data-seller-count hidden={!staticSellerCount}>{staticSellerCount ? `${staticSellerCount} объявл.` : ""}</span>
+        </div>
+        <a class="button button-primary full-width" data-seller-contact hidden>Связаться с продавцом</a>
+        <p class="seller-contact-note" data-seller-contact-note>Контакт появится после загрузки данных продавца.</p>
+      </section>
+    </div>
+  </section>
+  {
+    sellerCars.length > 0 && (
+      <section class="section seller-listings-section">
+        <div class="container">
+          <div class="section-heading compact-section-heading seller-listings-heading">
+            <div>
+              <p class="eyebrow">Продавец</p>
+              <h2>Другие автомобили продавца</h2>
+            </div>
+            <span>{sellerCars.length} из доступных</span>
+          </div>
+          <div class="seller-listings-grid" aria-label="Другие автомобили продавца">
+            {sellerCars.map((sellerCar) => <CarCard car={sellerCar} />)}
+          </div>
+        </div>
+      </section>
+    )
+  }
+  {
+    similarCars.length > 0 && (
+      <section class="section related-cars-section">
+        <div class="container">
+          <div class="section-heading compact-section-heading">
+            <h2>Похожие автомобили</h2>
+          </div>
+          <div class="similar-cars-grid" aria-label="Похожие автомобили">
+            {similarCars.map(({ car: similarCar, reason }) => {
+              const imageUrl = getCarCardImageUrl(similarCar);
+              return (
+                <a class="similar-car-card" data-similar-slug={similarCar.slug} href={`/cars/${similarCar.slug}`} aria-label={`Открыть объявление ${similarCar.title}`}>
+                  {
+                    imageUrl ? (
+                      <img src={imageUrl} alt={similarCar.title} loading="lazy" decoding="async" />
+                    ) : (
+                      <span class="similar-car-empty">Фото</span>
+                    )
+                  }
+                  <span class="similar-car-body">
+                    <strong>{similarCar.title}</strong>
+                    <span>{formatter.format(similarCar.price)}</span>
+                    <small>{similarCar.year} · {similarCar.city}</small>
+                    <em class="similarity-reason">{reason}</em>
+                  </span>
+                </a>
+              );
+            })}
+          </div>
+        </div>
+      </section>
+    )
+  }
+  <script
+    is:inline
+    type="application/json"
+    id="listing-view-data"
+    data-api-url={xanoApiUrl}
+    data-analytics-path={API_ROUTES.listingViewAnalytics}
+    set:html={JSON.stringify(listingViewPayload)}
+  ></script>
   <script>
-    const thumbnailElements = Array.from(
-      document.querySelectorAll<HTMLElement>(
-        ".gallery-thumb",
-      ),
-    );
+    import { getOrCreateSessionId } from "../../lib/analytics/session";
 
-    const galleryImages = thumbnailElements
-      .map(
-        (thumbnail) =>
-          thumbnail.dataset.imageUrl?.trim() ??
-          "",
-      )
-      .filter(Boolean);
+    const sellerSummary = document.querySelector("[data-seller-summary]");
+    const loadSellerSummary = async () => {
+      if (!(sellerSummary instanceof HTMLElement)) return;
 
-    const openButton =
-      document.querySelector<HTMLButtonElement>(
-        "[data-static-lightbox-open]",
-      );
+      const apiUrl = sellerSummary.dataset.apiUrl || "";
+      const detailPath = sellerSummary.dataset.detailPath || "";
+      if (!apiUrl || !detailPath) return;
 
-    const mainImage =
-      document.querySelector<HTMLImageElement>(
-        ".gallery-main-button img",
-      );
+      try {
+        const response = await fetch(`${apiUrl}${detailPath}`);
+        if (!response.ok) return;
+        const payload = await response.json();
+        const seller = payload && typeof payload === "object" ? payload.seller : null;
+        if (!seller || typeof seller !== "object") return;
 
-    const galleryCount =
-      document.querySelector<HTMLElement>(
-        ".gallery-count",
-      );
+        const name = sellerSummary.querySelector("[data-seller-name]");
+        const type = sellerSummary.querySelector("[data-seller-type]");
+        const city = sellerSummary.querySelector("[data-seller-city]");
+        const count = sellerSummary.querySelector("[data-seller-count]");
+        const contact = sellerSummary.querySelector("[data-seller-contact]");
+        const note = sellerSummary.querySelector("[data-seller-contact-note]");
 
-    const prevButton =
-      document.querySelector<HTMLButtonElement>(
-        ".gallery-prev",
-      );
+        if (name instanceof HTMLElement && typeof seller.name === "string" && seller.name.trim()) {
+          name.textContent = seller.name.trim();
+        }
+        if (type instanceof HTMLElement && typeof seller.type === "string") {
+          type.textContent = seller.type === "dealer" ? "Дилер" : "Частный продавец";
+        }
+        if (city instanceof HTMLElement && typeof seller.city === "string" && seller.city.trim()) {
+          city.textContent = seller.city.trim();
+        }
+        const activeCount = Number(seller.active_listings_count);
+        if (count instanceof HTMLElement && Number.isInteger(activeCount) && activeCount > 0) {
+          count.textContent = `${activeCount} активных объявлений`;
+          count.hidden = false;
+        }
 
-    const nextButton =
-      document.querySelector<HTMLButtonElement>(
-        ".gallery-next",
-      );
-
-    const lightbox =
-      document.querySelector<HTMLElement>(
-        "#static-car-lightbox",
-      );
-
-    const lightboxImage =
-      lightbox?.querySelector<HTMLImageElement>(
-        "img",
-      ) ?? null;
-
-    const closeButton =
-      lightbox?.querySelector<HTMLButtonElement>(
-        ".lightbox-close",
-      ) ?? null;
-
-    const lightboxPrevButton =
-      lightbox?.querySelector<HTMLButtonElement>(
-        ".lightbox-prev",
-      ) ?? null;
-
-    const lightboxNextButton =
-      lightbox?.querySelector<HTMLButtonElement>(
-        ".lightbox-next",
-      ) ?? null;
-
-    const lightboxCount =
-      lightbox?.querySelector<HTMLElement>(
-        ".lightbox-count",
-      ) ?? null;
-
-    let activeSlideIndex = 0;
-    let previouslyFocusedElement: HTMLElement | null =
-      null;
-
-    const updateLightbox = () => {
-      const imageUrl =
-        galleryImages[activeSlideIndex];
-
-      if (
-        lightboxImage instanceof HTMLImageElement &&
-        imageUrl
-      ) {
-        lightboxImage.src = imageUrl;
-      }
-
-      if (
-        lightboxCount instanceof HTMLElement
-      ) {
-        lightboxCount.textContent =
-          galleryImages.length > 0
-            ? `${activeSlideIndex + 1} / ${
-                galleryImages.length
-              }`
-            : "0 / 0";
+        const href = typeof seller.contact?.href === "string" ? seller.contact.href.trim() : "";
+        const contactType = seller.contact?.type === "phone" ? "phone" : "email";
+        if (contact instanceof HTMLAnchorElement && /^(tel:|mailto:)/i.test(href)) {
+          contact.href = href;
+          contact.textContent = contactType === "phone" ? "Позвонить продавцу" : "Написать продавцу";
+          contact.hidden = false;
+          if (note instanceof HTMLElement) note.hidden = true;
+        } else if (note instanceof HTMLElement) {
+          note.textContent = "Продавец пока не добавил публичный способ связи.";
+        }
+      } catch {
+        // Карточка остаётся полезной даже при временной недоступности контакта.
       }
     };
 
-    const updateSlide = (
-      nextIndex: number,
-    ) => {
+    loadSellerSummary();
+
+    const RECENT_VIEWS_KEY = "sitecraft_recent_listing_views";
+    const listingViewDataNode = document.querySelector("#listing-view-data");
+    const readListingViewData = () => {
+      if (!(listingViewDataNode instanceof HTMLScriptElement)) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(listingViewDataNode.textContent || "{}") as Record<string, unknown>;
+      } catch {
+        return null;
+      }
+    };
+    const listingViewData = readListingViewData();
+
+    const saveRecentListingView = () => {
+      if (!listingViewData) {
+        return;
+      }
+
+      try {
+        const existing = JSON.parse(localStorage.getItem(RECENT_VIEWS_KEY) || "[]");
+        const list = Array.isArray(existing) ? existing : [];
+        const nextItem = {
+          car_id: listingViewData.car_id,
+          slug: listingViewData.slug,
+          title: listingViewData.title,
+          brand: listingViewData.brand,
+          model: listingViewData.model,
+          body_type: listingViewData.body_type,
+          fuel_type: listingViewData.fuel_type,
+          price: listingViewData.price,
+          city: listingViewData.city,
+          viewed_at: new Date().toISOString(),
+        };
+        const deduped = list.filter((item) => String(item?.slug || "") !== String(nextItem.slug || ""));
+        localStorage.setItem(RECENT_VIEWS_KEY, JSON.stringify([nextItem, ...deduped].slice(0, 20)));
+      } catch (error) {
+        console.warn("Recent listing view was not saved", error);
+      }
+    };
+
+    const trackListingView = () => {
+      if (!listingViewData || !(listingViewDataNode instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = listingViewDataNode.dataset.apiUrl || "";
+      const analyticsPath = listingViewDataNode.dataset.analyticsPath || "/analytics/listing-view";
+
+      if (!apiUrl) {
+        return;
+      }
+
+      const hostname = window.location.hostname;
+      const isCloudflarePreview = hostname.endsWith(".sitecraft-auto-market.pages.dev")
+        && hostname !== "sitecraft-auto-market.pages.dev";
+      if (isCloudflarePreview) {
+        return;
+      }
+
+      const payload = {
+        car_id: listingViewData.car_id,
+        slug: listingViewData.slug,
+        session_id: getOrCreateSessionId(),
+        source: document.referrer,
+        search_params: window.location.search,
+        viewed_at: new Date().toISOString(),
+      };
+
+      fetch(`${apiUrl}${analyticsPath}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      })
+        .then((response) => {
+          if (!response.ok && response.status !== 404 && import.meta.env.DEV) {
+            console.debug("Listing view analytics failed", response.status);
+          }
+        })
+        .catch((error) => {
+          if (import.meta.env.DEV) {
+            console.debug("Listing view analytics unavailable", error);
+          }
+        });
+    };
+
+    saveRecentListingView();
+    trackListingView();
+
+    const galleryImages = Array.from(document.querySelectorAll(".gallery-thumb"))
+      .map((thumb) => thumb instanceof HTMLElement ? thumb.dataset.slideSrc || thumb.querySelector("img")?.currentSrc || "" : "")
+      .filter(Boolean);
+    const openButton = document.querySelector<HTMLElement>("[data-lightbox-trigger]");
+    const mainImage = document.querySelector(".gallery-main-button img");
+    const galleryCount = document.querySelector(".gallery-count");
+    const prevButton = document.querySelector(".gallery-prev");
+    const nextButton = document.querySelector(".gallery-next");
+    let activeSlideIndex = 0;
+
+    const updateSlide = (nextIndex: number) => {
       if (galleryImages.length === 0) {
         return;
       }
 
-      activeSlideIndex =
-        (nextIndex + galleryImages.length) %
-        galleryImages.length;
+      activeSlideIndex = (nextIndex + galleryImages.length) % galleryImages.length;
+      const imageUrl = galleryImages[activeSlideIndex];
 
-      const imageUrl =
-        galleryImages[activeSlideIndex];
-
-      if (
-        mainImage instanceof HTMLImageElement &&
-        imageUrl
-      ) {
+      if (mainImage instanceof HTMLImageElement) {
         mainImage.src = imageUrl;
       }
 
-      if (
-        galleryCount instanceof HTMLElement
-      ) {
-        galleryCount.textContent = `${
-          activeSlideIndex + 1
-        } / ${galleryImages.length}`;
+      if (openButton) {
+        openButton.dataset.lightboxSrc = imageUrl;
       }
 
-      updateLightbox();
-
-      thumbnailElements.forEach(
-        (thumbnail) => {
-          const isActive =
-            thumbnail.dataset.slideIndex ===
-            String(activeSlideIndex);
-
-          thumbnail.classList.toggle(
-            "is-active",
-            isActive,
-          );
-
-          if (isActive) {
-            thumbnail.setAttribute(
-              "aria-current",
-              "true",
-            );
-          } else {
-            thumbnail.removeAttribute(
-              "aria-current",
-            );
-          }
-        },
-      );
-    };
-
-    const closeLightbox = () => {
-      if (!(lightbox instanceof HTMLElement)) {
-        return;
+      if (galleryCount instanceof HTMLElement) {
+        galleryCount.textContent = `${activeSlideIndex + 1} / ${galleryImages.length}`;
       }
 
-      lightbox.hidden = true;
-
-      document.documentElement.classList.remove(
-        "lightbox-open",
-      );
-
-      previouslyFocusedElement?.focus();
-      previouslyFocusedElement = null;
+      document.querySelectorAll(".gallery-thumb").forEach((thumb) => {
+        if (thumb instanceof HTMLElement) {
+          const isActive = thumb.dataset.slideIndex === String(activeSlideIndex);
+          thumb.classList.toggle("is-active", isActive);
+          thumb.setAttribute("aria-pressed", String(isActive));
+        }
+      });
     };
 
-    const openLightbox = () => {
-      if (
-        !(lightbox instanceof HTMLElement) ||
-        !(lightboxImage instanceof HTMLImageElement) ||
-        galleryImages.length === 0
-      ) {
-        return;
-      }
+    prevButton?.addEventListener("click", () => updateSlide(activeSlideIndex - 1));
+    nextButton?.addEventListener("click", () => updateSlide(activeSlideIndex + 1));
 
-      previouslyFocusedElement =
-        document.activeElement instanceof HTMLElement
-          ? document.activeElement
-          : null;
-
-      updateLightbox();
-
-      lightbox.hidden = false;
-
-      document.documentElement.classList.add(
-        "lightbox-open",
-      );
-
-      closeButton?.focus();
-    };
-
-    prevButton?.addEventListener(
-      "click",
-      () => {
-        updateSlide(activeSlideIndex - 1);
-      },
-    );
-
-    nextButton?.addEventListener(
-      "click",
-      () => {
-        updateSlide(activeSlideIndex + 1);
-      },
-    );
-
-    lightboxPrevButton?.addEventListener(
-      "click",
-      () => {
-        updateSlide(activeSlideIndex - 1);
-      },
-    );
-
-    lightboxNextButton?.addEventListener(
-      "click",
-      () => {
-        updateSlide(activeSlideIndex + 1);
-      },
-    );
-
-    thumbnailElements.forEach(
-      (button) => {
-        button.addEventListener(
-          "click",
-          () => {
-            const index = Number(
-              button.dataset.slideIndex ??
-                "0",
-            );
-
-            updateSlide(
-              Number.isFinite(index)
-                ? index
-                : 0,
-            );
-          },
-        );
-      },
-    );
-
-    openButton?.addEventListener(
-      "click",
-      openLightbox,
-    );
-
-    closeButton?.addEventListener(
-      "click",
-      closeLightbox,
-    );
-
-    lightbox?.addEventListener(
-      "click",
-      (event) => {
-        if (event.target === lightbox) {
-          closeLightbox();
+    document.querySelectorAll(".gallery-thumb").forEach((button) => {
+      button.addEventListener("click", () => {
+        if (button instanceof HTMLElement) {
+          updateSlide(Number(button.dataset.slideIndex || 0));
         }
-      },
-    );
+      });
+    });
 
-    document.addEventListener(
-      "keydown",
-      (event) => {
-        if (
-          !(lightbox instanceof HTMLElement) ||
-          lightbox.hidden
-        ) {
-          return;
-        }
-
-        if (event.key === "Escape") {
-          event.preventDefault();
-          closeLightbox();
-          return;
-        }
-
-        if (event.key === "ArrowLeft") {
-          event.preventDefault();
-          updateSlide(activeSlideIndex - 1);
-          return;
-        }
-
-        if (event.key === "ArrowRight") {
-          event.preventDefault();
-          updateSlide(activeSlideIndex + 1);
-        }
-      },
-    );
   </script>
 </BaseLayout>

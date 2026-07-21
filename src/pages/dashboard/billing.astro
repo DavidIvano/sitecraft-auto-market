@@ -1,0 +1,200 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { formatPaidPrice, paidProducts } from "../../lib/monetization";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout
+  title="Оплаты и кредиты"
+  description="Баланс AI-кредитов, активные платные услуги и история покупок."
+  noindex
+>
+  <section class="section page-hero">
+    <div class="container dashboard-grid billing-page" data-api-url={xanoApiUrl}>
+      <div>
+        <p class="eyebrow">Кабинет</p>
+        <h1>Оплаты и кредиты</h1>
+        <p class="lead">Здесь собраны AI-кредиты, активные продвижения объявлений и история покупок.</p>
+      </div>
+
+      <aside class="billing-balance-card">
+        <span>AI-кредиты</span>
+        <strong id="ai-credits-count">0</strong>
+        <p id="ai-credits-note">Проверяю баланс...</p>
+        <div class="credit-breakdown" id="ai-credits-breakdown" hidden></div>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container billing-layout" data-api-url={xanoApiUrl}>
+      <div class="billing-panel">
+        <h2>Купить услугу</h2>
+        <div class="billing-products">
+          {paidProducts.map((product) => (
+            <article class="billing-product-card">
+              <div>
+                <strong>{product.name}</strong>
+                <p>{product.description}</p>
+              </div>
+              <span>{formatPaidPrice(product)}</span>
+              <button class="button button-dark" type="button" data-product-slug={product.slug}>Купить</button>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div class="billing-panel">
+        <h2>История покупок</h2>
+        <div class="billing-history" id="billing-history">
+          <p class="form-message">Загружаю историю...</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { getAuthToken } from "../../lib/authClient";
+    import { API_ROUTES } from "../../lib/apiRoutes";
+    import { trackProductEvent } from "../../lib/analytics/events";
+    import { normalizeCreditWallets } from "../../lib/credits/model";
+    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+
+    const token = getAuthToken();
+    const page = document.querySelector(".billing-page");
+    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
+    const creditsCount = document.querySelector("#ai-credits-count");
+    const creditsNote = document.querySelector("#ai-credits-note");
+    const creditsBreakdown = document.querySelector("#ai-credits-breakdown");
+    const history = document.querySelector("#billing-history");
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const formatDate = (value: unknown) => {
+      if (!value) return "-";
+      const date = /^\d+$/.test(String(value)) ? new Date(Number(value)) : new Date(String(value));
+      return Number.isNaN(date.getTime())
+        ? "-"
+        : new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date);
+    };
+
+    const loadBilling = async () => {
+      if (!token) {
+        window.location.href = `/login?next=${encodeURIComponent("/dashboard/billing/")}`;
+        return;
+      }
+
+      try {
+        const [creditsResponse, purchasesResponse] = await Promise.all([
+          fetch(`${apiUrl}${API_ROUTES.credits}`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${apiUrl}${API_ROUTES.purchases}`, { headers: { Authorization: `Bearer ${token}` } }),
+        ]);
+
+        if (creditsResponse.ok) {
+          const credits = await creditsResponse.json();
+          const wallets = normalizeCreditWallets(credits);
+          trackProductEvent("credits_loaded", { count: wallets.ai.total, wallet_type: "ai" });
+
+          if (creditsCount) creditsCount.textContent = String(wallets.ai.total);
+          if (creditsNote) {
+            creditsNote.textContent = "AI-кредиты списываются только после успешной генерации. Просмотр и фильтры бесплатны.";
+          }
+          if (creditsBreakdown instanceof HTMLElement) {
+            creditsBreakdown.hidden = false;
+            creditsBreakdown.innerHTML = `
+              <span>Бесплатные: <b>${wallets.ai.free}</b></span>
+              <span>Платные: <b>${wallets.ai.paid}</b></span>
+              ${wallets.ai.unallocated ? `<span>Ранее начисленные: <b>${wallets.ai.unallocated}</b></span>` : ""}
+              <span>Использовано: <b>${wallets.ai.used}</b></span>
+            `;
+          }
+        } else if (creditsNote) {
+          creditsNote.textContent = "Баланс появится после добавления Xano endpoint /me/credits.";
+        }
+
+        if (purchasesResponse.ok && history instanceof HTMLElement) {
+          const purchases = await purchasesResponse.json();
+          const list = Array.isArray(purchases) ? purchases : purchases.items || purchases.purchases || [];
+
+          history.innerHTML = list.length
+            ? list
+                .map((purchase: Record<string, unknown>) => {
+                  const product = purchase.product && typeof purchase.product === "object"
+                    ? (purchase.product as Record<string, unknown>)
+                    : {};
+
+                  return `
+                    <div class="billing-history-row">
+                      <div>
+                        <strong>${escapeHtml(purchase.product_slug || product.slug || "Покупка")}</strong>
+                        <span>${escapeHtml(purchase.status || "pending")}</span>
+                      </div>
+                      <small>${formatDate(purchase.created_at)}</small>
+                    </div>
+                  `;
+                })
+                .join("")
+            : '<p class="form-message">Покупок пока нет.</p>';
+        } else if (history instanceof HTMLElement) {
+          history.innerHTML = '<p class="form-message">История появится после добавления Xano endpoint /me/purchases.</p>';
+        }
+      } catch (error) {
+        if (history instanceof HTMLElement) {
+          history.innerHTML = `<p class="form-message">${escapeHtml(getFriendlyErrorMessage(error, "Не удалось загрузить оплату."))}</p>`;
+        }
+      }
+    };
+
+    document.querySelectorAll("[data-product-slug]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!(button instanceof HTMLButtonElement)) return;
+        if (!token) {
+          window.location.href = `/login?next=${encodeURIComponent("/dashboard/billing/")}`;
+          return;
+        }
+
+        const productSlug = button.dataset.productSlug;
+        button.disabled = true;
+        button.textContent = "Создаю...";
+
+        try {
+          const response = await fetch(`${apiUrl}${API_ROUTES.purchaseCreate}`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ product_slug: productSlug }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(data.message || data.code || "Не удалось создать покупку");
+          }
+
+          const checkoutUrl = data.checkout_url || data.checkoutUrl || data.url;
+          if (checkoutUrl) {
+            window.location.href = checkoutUrl;
+            return;
+          }
+
+          window.location.href = `/payment/success?purchase_id=${encodeURIComponent(String(data.purchase_id || data.id || ""))}`;
+        } catch (error) {
+          alert(getFriendlyErrorMessage(error, "Не удалось создать покупку."));
+        } finally {
+          button.disabled = false;
+          button.textContent = "Купить";
+        }
+      });
+    });
+
+    loadBilling();
+  </script>
+</BaseLayout>

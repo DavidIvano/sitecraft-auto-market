@@ -1,0 +1,5 @@
+---
+type Props = { title?: string; description?: string };
+const { title = "Пока ничего нет", description = "Новые предложения появятся здесь после безопасной синхронизации." } = Astro.props;
+---
+<section class="deal-finder-state deal-finder-empty" aria-live="polite"><strong>{title}</strong><p>{description}</p></section>

@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import AuthShell from "../components/auth/AuthShell.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const xanoAuthApiUrl = import.meta.env.PUBLIC_XANO_AUTH_API_URL ?? xanoApiUrl;
@@ -7,39 +8,16 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/oauth/google/init";
 ---
 
-<BaseLayout title="Вход">
-  <section class="section page-hero">
-    <div class="container narrow">
-      <p class="eyebrow">Авторизация</p>
-      <h1>Войти в кабинет</h1>
-      <p class="lead">
-        Войдите через Google или по email и паролю. Оба способа открывают один и тот же личный кабинет.
-      </p>
-
+<BaseLayout title="Вход" noindex>
+  <AuthShell
+    infoEyebrow="Кабинет продавца"
+    infoTitle="Управляйте объявлениями в одном месте"
+    infoText="Публикация, AI-черновики, продвижение и статусы модерации собраны в спокойном рабочем кабинете."
+    benefits={["Создание объявления по 1–8 фото.", "История покупок и AI-кредиты.", "Редактирование и удаление своих объявлений."]}
+    formEyebrow="Авторизация"
+    formTitle="Войти"
+  >
       <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
-        <form class="form-panel" id="password-login-form">
-          <label class="full-field">
-            <span>Email</span>
-            <input type="email" name="email" autocomplete="email" required />
-          </label>
-
-          <label class="full-field">
-            <span>Пароль</span>
-            <span class="password-field">
-              <input type="password" name="password" autocomplete="current-password" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
-            </span>
-          </label>
-
-          <button class="button button-dark full-width" type="submit">Войти по email</button>
-          <p class="form-message">
-            Нет аккаунта? <a href="/register">Зарегистрироваться</a>
-          </p>
-          <p class="form-message" id="password-login-message">Введите email и пароль.</p>
-        </form>
-
-        <div class="auth-divider"><span>или</span></div>
-
         <button
           class="button button-light full-width"
           id="google-login"
@@ -52,9 +30,31 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
           Продолжить с Google
         </button>
         <p class="form-message" id="login-message" hidden></p>
+
+        <div class="auth-divider"><span>или email</span></div>
+
+        <form class="form-panel" id="password-login-form">
+          <div class="full-field">
+            <label for="login-email">Email</label>
+            <input id="login-email" type="email" name="email" autocomplete="email" required />
+          </div>
+
+          <div class="full-field">
+            <label for="login-password">Пароль</label>
+            <span class="password-field">
+              <input id="login-password" type="password" name="password" autocomplete="current-password" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
+            </span>
+          </div>
+
+          <button class="button button-dark full-width" id="password-login-submit" type="submit">Войти по email</button>
+          <p class="form-message">
+            Нет аккаунта? <a href="/register">Зарегистрироваться</a>
+          </p>
+          <p class="form-message" id="password-login-message">Введите email и пароль.</p>
+        </form>
       </div>
-    </div>
-  </section>
+  </AuthShell>
 
   <script>
     import {
@@ -65,31 +65,15 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       setAuthUser,
     } from "../lib/authClient";
     import { getFriendlyErrorMessage } from "../lib/errorMessages";
+    import { installPasswordToggles, setAuthButtonBusy } from "../lib/authUi";
 
     const button = document.querySelector("#google-login");
     const message = document.querySelector("#login-message");
     const passwordForm = document.querySelector("#password-login-form");
     const passwordMessage = document.querySelector("#password-login-message");
+    const passwordSubmit = document.querySelector<HTMLButtonElement>("#password-login-submit");
 
-    document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
-      toggle.addEventListener("click", () => {
-        if (!(toggle instanceof HTMLButtonElement)) {
-          return;
-        }
-
-        const field = toggle.closest(".password-field");
-        const input = field?.querySelector("input");
-
-        if (!(input instanceof HTMLInputElement)) {
-          return;
-        }
-
-        const isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        toggle.textContent = isHidden ? "Скрыть" : "Показать";
-        toggle.setAttribute("aria-label", isHidden ? "Скрыть пароль" : "Показать пароль");
-      });
-    });
+    installPasswordToggles();
 
     const getToken = (payload: unknown) => {
       if (!payload || typeof payload !== "object") {
@@ -152,7 +136,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
 
       message.hidden = false;
       message.textContent = "Открываю Google...";
-      button.disabled = true;
+      setAuthButtonBusy(button, true, "Открываю Google...");
 
       try {
         const response = await fetch(authStartUrl.toString());
@@ -184,7 +168,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
         window.location.href = authUrl;
       } catch (error) {
         console.error(error);
-        button.disabled = false;
+        setAuthButtonBusy(button, false, "Открываю Google...");
         message.hidden = false;
         message.textContent = getFriendlyErrorMessage(error, "Не удалось начать вход через Google. Попробуйте ещё раз.");
       }
@@ -214,6 +198,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
 
       try {
         passwordMessage.textContent = "Проверяю пароль...";
+        setAuthButtonBusy(passwordSubmit, true, "Выполняю вход...");
 
         const response = await fetch(`${apiUrl}/auth/login`, {
           method: "POST",
@@ -255,6 +240,8 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       } catch (error) {
         passwordMessage.textContent =
           getFriendlyErrorMessage(error, "Не удалось войти по email. Проверьте данные и попробуйте снова.");
+      } finally {
+        setAuthButtonBusy(passwordSubmit, false, "Выполняю вход...");
       }
     });
   </script>

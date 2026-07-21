@@ -1,0 +1,12 @@
+---
+type Props = {
+  as?: keyof HTMLElementTagNameMap;
+  class?: string;
+};
+
+const { as: Element = "div", class: className = "" } = Astro.props as Props;
+---
+
+<Element class:list={["mac-card", className]}>
+  <slot />
+</Element>

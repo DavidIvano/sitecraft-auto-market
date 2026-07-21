@@ -1,0 +1,12 @@
+---
+type Props = {
+  tone?: "blue" | "green" | "red" | "neutral";
+  class?: string;
+};
+
+const { tone = "neutral", class: className = "" } = Astro.props;
+---
+
+<span class:list={["mac-badge", `mac-badge-${tone}`, className]}>
+  <slot />
+</span>

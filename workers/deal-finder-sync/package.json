@@ -1,0 +1,6 @@
+{
+  "name": "sitecraft-deal-finder-sync",
+  "private": true,
+  "type": "module",
+  "scripts": { "check": "tsc --noEmit -p tsconfig.json" }
+}

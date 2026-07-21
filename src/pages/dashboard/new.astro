@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { API_ROUTES } from "../../lib/apiRoutes";
 import {
   bodyTypes,
   carBrands,
@@ -10,6 +11,7 @@ import {
   engineVolumeOptionsByFuel,
   fuelTypes,
   carModelsByBrand,
+  vehicleTypes,
   seatCounts,
   sellerTypes,
   transmissions,
@@ -19,22 +21,391 @@ const currentYear = new Date().getFullYear();
 const years = Array.from({ length: currentYear - 1980 + 1 }, (_, index) => currentYear - index);
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const useAiListingEndpoints = import.meta.env.PUBLIC_USE_AI_LISTING_ENDPOINTS !== "false";
+const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE === "true";
 ---
 
-<BaseLayout title="Добавить объявление">
+<BaseLayout title="Добавить объявление" noindex>
   <section class="section page-hero new-listing-hero">
     <div class="container">
       <p class="eyebrow">Новое объявление</p>
-      <h1>Добавить автомобиль</h1>
+      <h1>Новое объявление</h1>
       <p class="lead">
-        Заполните основные данные, добавьте до пяти фото и перетащите их в нужном порядке.
+        Создайте объявление по фото через AI или заполните данные вручную. Можно загрузить 1–8 фото и расставить их в нужном порядке.
         Первое фото станет главным в карточке и на странице автомобиля.
       </p>
 
-      <form class="listing-form listing-form-enhanced" id="new-listing-form" data-api-url={xanoApiUrl}>
+      <div class="listing-mode-switch" aria-label="Выберите способ создания объявления">
+        <button class="is-active" type="button" data-listing-mode="ai">Создать через AI</button>
+        <button type="button" data-listing-mode="manual">Заполнить вручную</button>
+      </div>
+
+      <section class="ai-draft-panel" aria-labelledby="ai-draft-title" data-mode-panel="ai">
+        <div>
+          <p class="eyebrow">AI-помощник</p>
+          <h2 id="ai-draft-title">Создать умный черновик по фото</h2>
+          <p>
+            Загрузите от 1 до 8 фотографий. Мы предложим основные данные, а вы сможете всё проверить и изменить.
+          </p>
+          <div class="ai-model-pills" aria-label="Помощь с объявлением">
+            <span>Фото анализируются автоматически</span>
+          </div>
+          <div class="ai-credit-pill">
+            <span>AI-кредиты:</span>
+            <strong id="ai-credit-balance">проверяю...</strong>
+            <a href="/dashboard/billing?product=ai_credits_10">Купить 10</a>
+          </div>
+          <ol class="ai-flow-steps" aria-label="Шаги AI создания объявления">
+            <li class="is-active"><span>1</span><strong>Фото</strong><small>1–8 изображений</small></li>
+            <li><span>2</span><strong>Анализ</strong><small>AI заполнит уверенные поля</small></li>
+            <li><span>3</span><strong>Подтверждение</strong><small>Проверка только нужных данных</small></li>
+            <li><span>4</span><strong>Модерация</strong><small>Отправка после подтверждения</small></li>
+          </ol>
+        </div>
+        <form
+          class="ai-draft-form"
+          id="ai-draft-form"
+          data-api-url={xanoApiUrl}
+          data-use-ai-listing-endpoints={String(useAiListingEndpoints)}
+          data-allow-legacy-ai-generate={String(allowLegacyAiGenerate)}
+        >
+          <input
+            class="photo-input"
+            id="ai-photo-input"
+            type="file"
+            name="photos"
+            accept="image/avif,image/webp,image/jpeg,image/png"
+            multiple
+            data-max-files="8"
+            data-max-size="8388608"
+          />
+          <label class="ai-draft-dropzone" for="ai-photo-input" data-ai-dropzone>
+            <span class="photo-dropzone-icon">+</span>
+            <strong>Выберите фотографии автомобиля</strong>
+            <small>1–8 изображений, до 8 МБ каждое. После анализа проверьте предложенные данные.</small>
+          </label>
+          <div class="photo-preview-toolbar">
+            <span id="ai-photo-count">0 / 8 фото</span>
+            <button class="button button-light button-small" type="button" id="ai-photo-clear" hidden>Очистить</button>
+          </div>
+          <div class="ai-photo-preview-grid" id="ai-photo-preview-grid" aria-live="polite">
+            <div class="photo-empty-state">Фото для AI пока не выбраны.</div>
+          </div>
+          <button class="button button-dark full-width" type="submit">Создать черновик по фото</button>
+          <p class="form-message" id="ai-draft-message">Объявление не будет опубликовано без вашей проверки.</p>
+        </form>
+      </section>
+
+      <section class="ai-draft-preview" id="ai-draft-preview" hidden aria-labelledby="ai-review-title">
+        <div class="section-heading ai-review-heading">
+          <span class="section-step">AI</span>
+          <div>
+            <p class="eyebrow">Проверка черновика</p>
+            <h2 id="ai-review-title">Подтвердите данные перед модерацией</h2>
+            <p>AI не публикует объявление сам. Проверьте поля, исправьте неточности и только потом отправьте объявление модератору.</p>
+          </div>
+        </div>
+
+        <div class="ai-review-summary">
+          <article>
+            <span>Качество объявления</span>
+            <strong id="ai-listing-score">—</strong>
+          </article>
+          <article>
+            <span>Качество фото</span>
+            <strong id="ai-photo-score">—</strong>
+          </article>
+          <article>
+            <span>Статус проверки</span>
+            <strong id="ai-review-status">Нужно подтвердить</strong>
+          </article>
+          <article class="ai-trust-score">
+            <span>Доверие к объявлению</span>
+            <strong id="ai-trust-score">—</strong>
+            <small class="ai-score-label" id="ai-trust-label">AI проверяет полноту данных, а не техническое состояние автомобиля.</small>
+          </article>
+        </div>
+
+        <div class="ai-fill-overview" id="ai-fill-overview" hidden>
+          <article>
+            <h3>AI заполнил</h3>
+            <ul id="ai-autofilled-fields"><li>После анализа появятся поля.</li></ul>
+          </article>
+          <article>
+            <h3>Нужно подтвердить</h3>
+            <ul id="ai-confirm-fields"><li>Пока нечего подтверждать.</li></ul>
+          </article>
+          <article>
+            <h3>Заполните вручную</h3>
+            <ul id="ai-manual-fields"><li>После анализа появятся пропущенные поля.</li></ul>
+          </article>
+        </div>
+
+        <div class="ai-review-notes">
+          <div>
+            <h3>Нужно подтвердить</h3>
+            <ul id="ai-missing-fields"><li>После анализа здесь появятся поля для проверки.</li></ul>
+          </div>
+          <div>
+            <h3>Предупреждения</h3>
+            <ul id="ai-warnings"><li>Пока предупреждений нет.</li></ul>
+          </div>
+          <div>
+            <h3>Рекомендации</h3>
+            <ul id="ai-recommendations"><li>AI подскажет, как улучшить объявление.</li></ul>
+          </div>
+        </div>
+
+        <form class="ai-review-form" id="ai-review-form">
+          <div class="section-heading">
+            <span class="section-step">AI</span>
+            <div>
+              <h2>Поля объявления</h2>
+              <p>Значок уверенности показывает, насколько AI доверяет распознанному значению.</p>
+            </div>
+          </div>
+          <div class="form-grid ai-review-grid">
+            <label class="full-field">
+              <span>Название объявления <b data-confidence-for="title">нужно подтвердить</b></span>
+              <input type="text" name="title" placeholder="Например, Ford Galaxy 2018" required />
+            </label>
+            <label>
+              <span>Марка <b data-confidence-for="make">нужно подтвердить</b></span>
+              <input type="text" name="brand" placeholder="Ford" required />
+            </label>
+            <label>
+              <span>Модель <b data-confidence-for="model">нужно подтвердить</b></span>
+              <input type="text" name="model" placeholder="Galaxy" required />
+            </label>
+            <label>
+              <span>Год <b data-confidence-for="year">нужно подтвердить</b></span>
+              <input type="number" name="year" min="1950" max={currentYear} placeholder="2018" required />
+            </label>
+            <label>
+              <span>Пробег, км <b data-confidence-for="mileage">вручную</b></span>
+              <input type="number" name="mileage" min="0" step="1" placeholder="85000" required />
+            </label>
+            <label>
+              <span>Цена, € <b data-confidence-for="price">вручную</b></span>
+              <input type="number" name="price" min="100" max="500000" step="1" placeholder="25000" required />
+            </label>
+            <label>
+              <span>Город <b data-confidence-for="city">вручную</b></span>
+              <input type="text" name="city" placeholder="Берлин" required />
+            </label>
+            <label>
+              <span>Страна</span>
+              <input type="text" name="country" value="Германия" required />
+            </label>
+            <label>
+              <span>Валюта</span>
+              <select name="currency" required>
+                <option value="EUR">EUR</option>
+              </select>
+            </label>
+            <label>
+              <span>Тип транспорта <b data-confidence-for="vehicle_type">нужно подтвердить</b></span>
+              <select name="vehicle_type">
+                <option value="">Выберите тип транспорта</option>
+                {vehicleTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Кузов <b data-confidence-for="body_type">нужно подтвердить</b></span>
+              <select name="body_type">
+                <option value="">Выберите кузов</option>
+                {bodyTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Цвет <b data-confidence-for="color">нужно подтвердить</b></span>
+              <select name="color">
+                <option value="">Выберите цвет</option>
+                {colors.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Топливо <b data-confidence-for="fuel_type">нужно подтвердить</b></span>
+              <select name="fuel_type" required>
+                <option value="">Выберите топливо</option>
+                {fuelTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Объем двигателя <b data-confidence-for="engine_volume">нужно подтвердить</b></span>
+              <input type="text" name="engine_volume" placeholder="Например, 2.0 л" />
+            </label>
+            <label>
+              <span>Коробка передач <b data-confidence-for="transmission">нужно подтвердить</b></span>
+              <select name="transmission" required>
+                <option value="">Выберите коробку</option>
+                {transmissions.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Привод <b data-confidence-for="drivetrain">нужно подтвердить</b></span>
+              <select name="drivetrain" required>
+                <option value="">Выберите привод</option>
+                {drivetrains.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Двери <b data-confidence-for="doors">нужно подтвердить</b></span>
+              <select name="doors">
+                <option value="">Выберите двери</option>
+                {doorCounts.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Места <b data-confidence-for="seats">нужно подтвердить</b></span>
+              <select name="seats">
+                <option value="">Выберите места</option>
+                {seatCounts.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Количество владельцев <b data-confidence-for="owners_count">вручную</b></span>
+              <select name="owners_count" required>
+                <option value="">Выберите количество</option>
+                <option value="1">1 владелец</option>
+                <option value="2">2 владельца</option>
+                <option value="3">3 владельца</option>
+                <option value="4">4 владельца</option>
+                <option value="5">5 и больше</option>
+              </select>
+            </label>
+            <label>
+              <span>Дата первой регистрации <b data-confidence-for="first_registration">нужно подтвердить</b></span>
+              <input type="month" name="first_registration" required />
+            </label>
+            <label>
+              <span>Состояние автомобиля <b data-confidence-for="vehicle_condition">нужно подтвердить</b></span>
+              <select name="vehicle_condition" required>
+                <option value="">Выберите состояние</option>
+                {carConditions.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <fieldset class="tuv-choice-field full-field" data-ai-field="has_valid_tuv">
+              <legend>TÜV / HU действует? <b data-confidence-for="has_valid_tuv">нужно подтвердить</b></legend>
+              <div class="segmented-choice">
+                <label><input type="radio" name="has_valid_tuv" value="true" required /> Да</label>
+                <label><input type="radio" name="has_valid_tuv" value="false" required /> Нет</label>
+              </div>
+            </fieldset>
+            <label data-tuv-until-field>
+              <span>TÜV / HU действует до <b data-confidence-for="tuv_valid_until">вручную</b></span>
+              <input type="month" name="tuv_valid_until" />
+            </label>
+            <label>
+              <span>Тип продавца</span>
+              <select name="seller_type" required>
+                <option value="">Выберите тип продавца</option>
+                {sellerTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Имя продавца</span>
+              <input type="text" name="seller_name" placeholder="Ваше имя" required />
+            </label>
+            <label>
+              <span>Телефон продавца</span>
+              <input type="tel" name="seller_phone" placeholder="+49 ..." />
+            </label>
+            <label>
+              <span>Email продавца</span>
+              <input type="email" name="seller_email" placeholder="name@example.com" />
+            </label>
+            <p class="form-field-hint full-field">Укажите хотя бы один способ связи: телефон или email.</p>
+            <label>
+              <span>VIN, если есть</span>
+              <input type="text" name="vin" placeholder="Необязательно" />
+            </label>
+            <label class="full-field">
+              <span>Описание</span>
+              <textarea name="description" rows="5" placeholder="AI предложит текст, вы можете отредактировать его перед модерацией."></textarea>
+            </label>
+          </div>
+          <div class="ai-review-actions">
+            <button class="button button-dark" type="button" id="ai-confirm-data">Сохранить черновик</button>
+            <div class="ai-action-panel" id="ai-description-action-panel" hidden>
+              <label class="ai-description-mode">
+                <span>Тип описания</span>
+                <select id="ai-description-mode">
+                  <option value="sales">Продающее описание</option>
+                  <option value="short">Короткое описание</option>
+                  <option value="technical">Честное техническое описание</option>
+                  <option value="de">Перевести на немецкий</option>
+                  <option value="kleinanzeigen">Текст для Kleinanzeigen</option>
+                  <option value="whatsapp">Текст для WhatsApp</option>
+                </select>
+              </label>
+              <button class="button button-light" type="button" id="ai-generate-description">Помочь с описанием</button>
+            </div>
+            <button class="button button-light" type="button" id="ai-quality-score" hidden>Проверить качество объявления</button>
+            <button class="button button-dark" type="button" id="ai-submit-moderation" hidden>Отправить на модерацию</button>
+          </div>
+        </form>
+
+        <section class="ai-description-preview" id="ai-description-preview" hidden aria-labelledby="ai-description-preview-title">
+          <div>
+            <h3 id="ai-description-preview-title">AI предложил описание</h3>
+            <p id="ai-description-preview-text"></p>
+          </div>
+          <div class="ai-description-preview-actions">
+            <button class="button button-dark button-small" type="button" id="ai-description-insert">Вставить в описание</button>
+            <button class="button button-light button-small" type="button" id="ai-description-replace">Заменить текущее</button>
+            <button class="button button-light button-small" type="button" id="ai-description-copy">Скопировать</button>
+            <button class="button button-light button-small" type="button" id="ai-description-shorten">Сделать короче</button>
+            <button class="button button-light button-small" type="button" id="ai-description-translate">Перевести на немецкий</button>
+          </div>
+          <span class="ai-description-preview-status" id="ai-description-preview-status" aria-live="polite"></span>
+        </section>
+
+        <section class="ai-suggestions" id="ai-suggestions" hidden aria-labelledby="ai-suggestions-title">
+          <div class="section-heading">
+            <span class="section-step">+</span>
+            <div>
+              <h2 id="ai-suggestions-title">AI предлагает улучшения</h2>
+              <p id="ai-suggestions-note">Можно вставить подсказки в черновик или скопировать их.</p>
+            </div>
+          </div>
+          <div class="ai-suggestion-list" id="ai-suggestion-list"></div>
+        </section>
+
+        <section class="ai-next-actions" id="ai-next-best-actions" hidden aria-labelledby="ai-next-best-actions-title">
+          <div class="section-heading">
+            <span class="section-step">→</span>
+            <div>
+              <h2 id="ai-next-best-actions-title">Что улучшить дальше</h2>
+              <p>Подсказки повышают полноту данных и доверие покупателей.</p>
+            </div>
+          </div>
+          <div class="ai-next-actions-grid" data-ai-next-actions></div>
+        </section>
+      </section>
+
+      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} novalidate data-mode-panel="manual" hidden>
+        <div class="listing-quiz-progress" aria-label="Шаги добавления объявления">
+          <button class="quiz-progress-step is-active" type="button" data-quiz-jump="0">
+            <span>1</span>
+            Автомобиль
+          </button>
+          <button class="quiz-progress-step" type="button" data-quiz-jump="1">
+            <span>2</span>
+            Характеристики
+          </button>
+          <button class="quiz-progress-step" type="button" data-quiz-jump="2">
+            <span>3</span>
+            Продавец
+          </button>
+          <button class="quiz-progress-step" type="button" data-quiz-jump="3">
+            <span>4</span>
+            Фото
+          </button>
+        </div>
         <div class="listing-workspace">
           <div class="listing-main-column">
-        <fieldset class="form-section form-section-highlight">
+        <fieldset class="form-section form-section-highlight" data-quiz-step="0">
           <div class="section-heading">
             <span class="section-step">1</span>
             <div>
@@ -43,6 +414,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             </div>
           </div>
           <div class="form-grid">
+            <label>
+              <span>Тип транспортного средства</span>
+              <select name="vehicleType" required>
+                <option value="">Выберите тип транспорта</option>
+                {vehicleTypes.map((item) => <option value={item}>{item}</option>)}
+              </select>
+            </label>
+
             <label>
               <span>Марка автомобиля</span>
               <select name="brand" required data-brand-select>
@@ -80,10 +459,20 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <span>Город / местоположение</span>
               <input type="text" name="location" placeholder="Берлин" required />
             </label>
+            <label>
+              <span>Страна</span>
+              <input type="text" name="country" value="Германия" required />
+            </label>
+            <label>
+              <span>Валюта</span>
+              <select name="currency" required>
+                <option value="EUR">EUR</option>
+              </select>
+            </label>
           </div>
         </fieldset>
 
-        <fieldset class="form-section">
+        <fieldset class="form-section" data-quiz-step="1">
           <div class="section-heading">
             <span class="section-step">2</span>
             <div>
@@ -156,11 +545,41 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             </label>
 
             <label>
+              <span>Количество владельцев</span>
+              <select name="ownerCount" required>
+                <option value="">Выберите количество</option>
+                <option value="1">1 владелец</option>
+                <option value="2">2 владельца</option>
+                <option value="3">3 владельца</option>
+                <option value="4">4 владельца</option>
+                <option value="5">5 и больше</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Дата первой регистрации</span>
+              <input type="month" name="firstRegistrationDate" required />
+            </label>
+
+            <label>
               <span>Состояние автомобиля</span>
               <select name="condition" required>
                 <option value="">Выберите состояние</option>
                 {carConditions.map((item) => <option value={item}>{item}</option>)}
               </select>
+            </label>
+
+            <fieldset class="tuv-choice-field full-field">
+              <legend>TÜV / HU действует?</legend>
+              <div class="segmented-choice">
+                <label><input type="radio" name="hasValidTuv" value="true" required /> Да</label>
+                <label><input type="radio" name="hasValidTuv" value="false" required /> Нет</label>
+              </div>
+            </fieldset>
+
+            <label data-manual-tuv-until-field>
+              <span>TÜV / HU действует до</span>
+              <input type="month" name="tuvValidUntil" />
             </label>
 
             <label>
@@ -178,7 +597,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           </div>
         </fieldset>
 
-        <fieldset class="form-section">
+        <fieldset class="form-section" data-quiz-step="2">
           <div class="section-heading">
             <span class="section-step">3</span>
             <div>
@@ -204,12 +623,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           </div>
         </fieldset>
 
-        <fieldset class="form-section photo-form-section">
+        <fieldset class="form-section photo-form-section" data-quiz-step="3">
           <div class="section-heading">
             <span class="section-step">4</span>
             <div>
               <h2>Фото и описание</h2>
-              <p>До 5 изображений. Перетащите карточки, чтобы выбрать главное фото первым.</p>
+              <p>До 8 изображений. Перетащите карточки, чтобы выбрать главное фото первым.</p>
             </div>
           </div>
           <div class="form-grid">
@@ -221,7 +640,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                 name="photos"
                 accept="image/avif,image/webp,image/jpeg,image/png"
                 multiple
-                data-max-files="5"
+                data-max-files="8"
               />
               <label class="photo-dropzone" for="photo-input" data-photo-dropzone>
                 <span class="photo-dropzone-icon">+</span>
@@ -229,7 +648,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                 <small>AVIF, PNG, JPG или WEBP. Первое изображение будет главным.</small>
               </label>
               <div class="photo-preview-toolbar">
-                <span id="photo-count">0 / 5 фото</span>
+                <span id="photo-count">0 / 8 фото</span>
                 <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить фото</button>
               </div>
               <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
@@ -243,6 +662,11 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             </label>
           </div>
         </fieldset>
+        <div class="quiz-navigation" aria-label="Навигация по шагам">
+          <button class="button button-light" type="button" data-quiz-prev>Назад</button>
+          <button class="button button-dark" type="button" data-quiz-next>Дальше</button>
+          <button class="button button-dark" type="submit" data-quiz-submit hidden>Добавить объявление</button>
+        </div>
           </div>
 
           <aside class="listing-side-panel" aria-label="Проверка объявления">
@@ -255,7 +679,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                 <li>Телефон или email заполнен.</li>
                 <li>Описание без лишних личных данных.</li>
               </ul>
-              <button class="button button-dark full-width" type="submit">Добавить объявление</button>
+              <button class="button button-dark full-width" type="submit" data-side-submit hidden>Добавить объявление</button>
               <p class="form-message" id="form-message">
                 После отправки объявление будет подготовлено к модерации.
               </p>
@@ -266,15 +690,73 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
       <script is:inline type="application/json" id="car-model-data" set:html={JSON.stringify(carModelsByBrand)} />
       <script is:inline type="application/json" id="engine-volume-data" set:html={JSON.stringify(engineVolumeOptionsByFuel)} />
+      <script is:inline type="application/json" id="api-route-data" set:html={JSON.stringify(API_ROUTES)} />
 
       <script>
-        import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
+        import { fetchCurrentUser, getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
         import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+        import { normalizeAiDraftFields } from "../../lib/ai/normalizeAiDraftFields";
+        import {
+          BACKEND_FIELD_TO_CONTROL,
+          extractAiDraftIdentity,
+          extractListingFieldIssues,
+          normalizeTuvSubmissionValue,
+          validateAiDraftSubmission,
+          type ListingFieldIssue,
+        } from "../../lib/aiDraftSubmission";
+        import { formatBytes } from "../../lib/imageCompression";
+        import { uploadListingImages } from "../../lib/listingImageUpload";
 
-        const authToken = getAuthToken();
+        const isDevelopment = import.meta.env.DEV;
+        const aiCurrentYear = new Date().getFullYear();
+        const getActiveAuthToken = () => String(getAuthToken() || "").trim();
+        const authUser = getAuthUser();
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
-        const photoInput = document.querySelector('input[name="photos"]');
+        const photoInput = document.querySelector("#photo-input");
+        const aiDraftForm = document.querySelector("#ai-draft-form");
+        const aiPhotoInput = document.querySelector("#ai-photo-input");
+        const aiDropzone = document.querySelector("[data-ai-dropzone]");
+        const aiPhotoPreviewGrid = document.querySelector("#ai-photo-preview-grid");
+        const aiPhotoCount = document.querySelector("#ai-photo-count");
+        const aiPhotoClear = document.querySelector("#ai-photo-clear");
+        const aiDraftMessage = document.querySelector("#ai-draft-message");
+        const aiCreditBalance = document.querySelector("#ai-credit-balance");
+        const listingModeButtons = Array.from(document.querySelectorAll("[data-listing-mode]"));
+        const listingModePanels = Array.from(document.querySelectorAll("[data-mode-panel]"));
+        const aiDraftPreview = document.querySelector("#ai-draft-preview");
+        const aiReviewForm = document.querySelector("#ai-review-form");
+        const aiConfirmButton = document.querySelector("#ai-confirm-data");
+        const aiDescriptionActionPanel = document.querySelector("#ai-description-action-panel");
+        const aiDescriptionMode = document.querySelector("#ai-description-mode");
+        const aiGenerateDescriptionButton = document.querySelector("#ai-generate-description");
+        const aiQualityScoreButton = document.querySelector("#ai-quality-score");
+        const aiSubmitModerationButton = document.querySelector("#ai-submit-moderation");
+        const aiListingScore = document.querySelector("#ai-listing-score");
+        const aiPhotoScore = document.querySelector("#ai-photo-score");
+        const aiTrustScore = document.querySelector("#ai-trust-score");
+        const aiTrustLabel = document.querySelector("#ai-trust-label");
+        const aiReviewStatus = document.querySelector("#ai-review-status");
+        const aiFillOverview = document.querySelector("#ai-fill-overview");
+        const aiAutofilledFields = document.querySelector("#ai-autofilled-fields");
+        const aiConfirmFields = document.querySelector("#ai-confirm-fields");
+        const aiManualFields = document.querySelector("#ai-manual-fields");
+        const aiMissingFields = document.querySelector("#ai-missing-fields");
+        const aiWarnings = document.querySelector("#ai-warnings");
+        const aiRecommendations = document.querySelector("#ai-recommendations");
+        const aiSuggestions = document.querySelector("#ai-suggestions");
+        const aiSuggestionList = document.querySelector("#ai-suggestion-list");
+        const aiSuggestionsNote = document.querySelector("#ai-suggestions-note");
+        const aiDescriptionPreview = document.querySelector("#ai-description-preview");
+        const aiDescriptionPreviewText = document.querySelector("#ai-description-preview-text");
+        const aiDescriptionPreviewStatus = document.querySelector("#ai-description-preview-status");
+        const aiDescriptionInsert = document.querySelector("#ai-description-insert");
+        const aiDescriptionReplace = document.querySelector("#ai-description-replace");
+        const aiDescriptionCopy = document.querySelector("#ai-description-copy");
+        const aiDescriptionShorten = document.querySelector("#ai-description-shorten");
+        const aiDescriptionTranslate = document.querySelector("#ai-description-translate");
+        const aiNextBestActions = document.querySelector("#ai-next-best-actions");
+        const aiNextActionsGrid = document.querySelector("[data-ai-next-actions]");
         const photoDropzone = document.querySelector("[data-photo-dropzone]");
         const photoPreviewGrid = document.querySelector("#photo-preview-grid");
         const photoCount = document.querySelector("#photo-count");
@@ -285,19 +767,77 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const engineVolumeSelect = document.querySelector("[data-engine-volume-select]");
         const modelDataElement = document.querySelector("#car-model-data");
         const engineVolumeDataElement = document.querySelector("#engine-volume-data");
+        const apiRouteDataElement = document.querySelector("#api-route-data");
+        const quizSteps = Array.from(document.querySelectorAll("[data-quiz-step]"));
+        const quizProgressSteps = Array.from(document.querySelectorAll("[data-quiz-jump]"));
+        const quizPrevButton = document.querySelector("[data-quiz-prev]");
+        const quizNextButton = document.querySelector("[data-quiz-next]");
+        const quizSubmitButton = document.querySelector("[data-quiz-submit]");
+        const sideSubmitButton = document.querySelector("[data-side-submit]");
         const carModelsByBrand = modelDataElement?.textContent
           ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
           : {};
         const engineVolumeOptionsByFuel = engineVolumeDataElement?.textContent
           ? JSON.parse(engineVolumeDataElement.textContent) as Record<string, string[]>
           : {};
+        const apiRoutes = apiRouteDataElement?.textContent
+          ? JSON.parse(apiRouteDataElement.textContent) as Record<string, string>
+          : {};
         const selectedPhotos: File[] = [];
+        const selectedAiPhotos: File[] = [];
         const photoUrls = new Map<File, string>();
+        const aiPhotoUrls = new Map<File, string>();
+        let activeQuizStep = 0;
+        let currentAiDraftId: string | number | null = null;
+        let currentAiListingId: string | number | null = null;
+        let currentAiUploadedImages: Array<{ url: string; key: string; contentType: string; size: number }> = [];
+        let currentAiAnalysis: Record<string, any> | null = null;
+        let currentAiDescriptionPreview = "";
+        let acceptedAiSuggestions: Array<{ type: string; label: string; target: string; text: string; accepted_at: string }> = [];
+        let currentAiScores: Record<string, unknown> = {};
+        let isAiDraftDirty = true;
+        let isAiSubmitRunning = false;
 
-        function clearOldAuthAndRelogin() {
-          clearAuth();
-          rememberNext("/dashboard/new");
-          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
+        function markAiDraftDirty() {
+          isAiDraftDirty = true;
+          if (aiReviewStatus instanceof HTMLElement && currentAiDraftId) {
+            aiReviewStatus.textContent = "Есть несохранённые изменения";
+          }
+        }
+
+        function markAiDraftSaved() {
+          isAiDraftDirty = false;
+          if (aiReviewStatus instanceof HTMLElement) {
+            aiReviewStatus.textContent = "Черновик сохранён";
+          }
+        }
+
+        // Empty values are not a 0% AI result. Number(\"\") and Number(null)
+        // would otherwise create an invented score in the published listing.
+        function parseOptionalAiScore(...values: unknown[]) {
+          for (const value of values) {
+            if (value === null || value === undefined || (typeof value === "string" && !value.trim())) continue;
+            const numeric = typeof value === "number" ? value : Number(value);
+            if (Number.isFinite(numeric)) return Math.max(0, Math.min(100, Math.round(numeric)));
+          }
+          return null;
+        }
+
+        function recoverAuthOrRelogin() {
+          const token = getActiveAuthToken();
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+          if (!token) {
+            redirectToLogin("/dashboard/new/");
+            return;
+          }
+
+          void isSessionConfirmedExpired(apiUrl, token).then((expired) => {
+            if (expired) {
+              redirectToLogin("/dashboard/new/");
+              return;
+            }
+            setAiMessage("Вход сохранён, но сервис временно отклонил запрос. Попробуйте ещё раз.");
+          });
         }
 
         function isWrongTokenError(value: string) {
@@ -320,6 +860,1088 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           if (message instanceof HTMLElement) {
             message.textContent = value;
           }
+        }
+
+        function setAiMessage(value: string) {
+          if (aiDraftMessage instanceof HTMLElement) {
+            aiDraftMessage.textContent = value;
+          }
+        }
+
+        function setListingMode(mode: "ai" | "manual") {
+          listingModeButtons.forEach((button) => {
+            if (button instanceof HTMLElement) {
+              button.classList.toggle("is-active", button.dataset.listingMode === mode);
+            }
+          });
+
+          listingModePanels.forEach((panel) => {
+            if (panel instanceof HTMLElement) {
+              panel.hidden = panel.dataset.modePanel !== mode;
+            }
+          });
+        }
+
+        function readJsonResponse(value: string) {
+          if (!value) {
+            return {};
+          }
+
+          try {
+            return JSON.parse(value);
+          } catch {
+            return { message: value };
+          }
+        }
+
+        function firstValue(...values: unknown[]) {
+          const value = values.find((item) => item !== undefined && item !== null && String(item).trim() !== "");
+          return value === undefined || value === null ? "" : String(value).trim();
+        }
+
+        const fieldLabels: Record<string, string> = {
+          title: "Название",
+          brand: "Марка",
+          make: "Марка",
+          model: "Модель",
+          year: "Год",
+          color: "Цвет",
+          body_type: "Кузов",
+          vehicle_type: "Тип транспорта",
+          fuel_type: "Топливо",
+          transmission: "Коробка",
+          drivetrain: "Привод",
+          doors: "Двери",
+          seats: "Места",
+          engine_volume: "Объем двигателя",
+          owners_count: "Количество владельцев",
+          first_registration: "Дата первой регистрации",
+          vehicle_condition: "Состояние автомобиля",
+          seller_type: "Тип продавца",
+          seller_name: "Имя продавца",
+          seller_phone: "Телефон продавца",
+          seller_email: "Email продавца",
+          has_valid_tuv: "Действующий TÜV/HU",
+          tuv_valid_until: "Срок TÜV/HU",
+          mileage: "Пробег",
+          price: "Цена",
+          currency: "Валюта",
+          city: "Город",
+          country: "Страна",
+          description: "Описание",
+          tuv_hu: "TÜV/HU",
+          interior_photo: "Фото салона",
+          dashboard_photo: "Фото приборной панели",
+          vin: "VIN",
+        };
+
+        const confidenceFields = [
+          "title",
+          "make",
+          "model",
+          "year",
+          "body_type",
+          "color",
+          "fuel_type",
+          "transmission",
+          "drivetrain",
+          "doors",
+          "seats",
+          "vehicle_type",
+          "engine_volume",
+          "first_registration",
+          "vehicle_condition",
+        ];
+
+        const sensitiveConfirmationFields = new Set([
+          "mileage",
+          "price",
+          "drivetrain",
+          "engine_volume",
+          "owners_count",
+          "first_registration",
+          "vehicle_condition",
+          "vin",
+          "has_valid_tuv",
+          "tuv_valid_until",
+          "seller_name",
+          "seller_phone",
+          "seller_email",
+        ]);
+
+        function normalizeFieldName(field: unknown) {
+          const name = String(field || "").trim();
+          const aliases: Record<string, string> = {
+            make: "brand",
+            drive_type: "drivetrain",
+            owner_count: "owners_count",
+            condition: "vehicle_condition",
+            registration_date: "first_registration",
+            first_registration_date: "first_registration",
+          };
+          return aliases[name] || name;
+        }
+
+        function confidenceBadgeName(field: string) {
+          return field === "brand" ? "make" : field;
+        }
+
+        function getFieldLabel(field: unknown) {
+          const name = String(field || "").trim();
+          return fieldLabels[name] || fieldLabels[normalizeFieldName(name)] || name;
+        }
+
+        function isValidVin(value: unknown) {
+          const vin = String(value || "").trim().toUpperCase();
+          return /^[A-HJ-NPR-Z0-9]{17}$/.test(vin);
+        }
+
+        function normalizeOptionalVin(value: unknown) {
+          const vin = String(value || "").trim().toUpperCase();
+          return isValidVin(vin) ? vin : "";
+        }
+
+        function shouldUseNewAiEndpoints() {
+          return aiDraftForm instanceof HTMLFormElement && aiDraftForm.dataset.useAiListingEndpoints === "true";
+        }
+
+        function allowLegacyAiEndpoint() {
+          return aiDraftForm instanceof HTMLFormElement && aiDraftForm.dataset.allowLegacyAiGenerate === "true";
+        }
+
+        function apiRoute(name: string, fallback: string) {
+          const route = apiRoutes[name];
+          return typeof route === "string" && route.startsWith("/") ? route : fallback;
+        }
+
+        function isPublicImageUrl(value: unknown) {
+          const url = String(value || "").trim();
+
+          return /^https?:\/\//i.test(url) && !/^(blob|data|file):/i.test(url);
+        }
+
+        function toAiR2Images(images: typeof currentAiUploadedImages) {
+          return images.map((image) => {
+            const url = String(image.url || "").trim();
+
+            if (!isPublicImageUrl(url)) {
+              throw new Error("Фото не загружено в хранилище. Нужна публичная ссылка изображения.");
+            }
+
+            return {
+              url,
+              key: String(image.key || ""),
+              contentType: String(image.contentType || "image/webp"),
+              size: Number(image.size || 0),
+            };
+          });
+        }
+
+        function getXanoErrorMessage(data: Record<string, any>, responseText: string) {
+          const candidates = [
+            data?.message,
+            data?.error,
+            data?.error_description,
+            data?.payload?.message,
+            data?.payload?.error,
+            data?.response?.message,
+          ];
+          const message = candidates.find((value) => typeof value === "string" && value.trim());
+          const errorType = String(data?.error_type || data?.type || data?.code || "").trim();
+
+          if (message) {
+            return String(message);
+          }
+
+          if (/inputerror|accessdenied/i.test(errorType) && responseText.trim()) {
+            return responseText;
+          }
+
+          return responseText.trim();
+        }
+
+        function carSubmitRoute(id: string | number) {
+          return `/cars/${encodeURIComponent(String(id))}/submit`;
+        }
+
+        function normalizeConfidence(value: unknown) {
+          const numberValue = Number(value);
+
+          if (!Number.isFinite(numberValue)) {
+            return 0;
+          }
+
+          return numberValue <= 1 ? Math.round(numberValue * 100) : Math.round(numberValue);
+        }
+
+        function renderList(container: Element | null, values: unknown[], emptyText: string) {
+          if (!(container instanceof HTMLElement)) {
+            return;
+          }
+
+          const items = values
+            .map((value) => String(value || "").trim())
+            .filter(Boolean);
+
+          container.innerHTML = items.length
+            ? items.map((value) => `<li>${escapeHtml(value)}</li>`).join("")
+            : `<li>${escapeHtml(emptyText)}</li>`;
+        }
+
+        function renderFieldList(container: Element | null, values: unknown[], emptyText: string) {
+          const labels = values
+            .map((value) => getFieldLabel(value))
+            .filter(Boolean);
+
+          renderList(container, Array.from(new Set(labels)), emptyText);
+        }
+
+        function getAiReviewControl(name: string) {
+          if (!(aiReviewForm instanceof HTMLFormElement)) {
+            return null;
+          }
+
+          const control = aiReviewForm.elements.namedItem(name);
+          if (control instanceof RadioNodeList) {
+            return Array.from(control).find((item) => item instanceof HTMLInputElement && item.checked)
+              || Array.from(control).find((item) => item instanceof HTMLInputElement)
+              || null;
+          }
+
+          return control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement ? control : null;
+        }
+
+        function setFormField(name: string, value: unknown) {
+          if (aiReviewForm instanceof HTMLFormElement) {
+            const namedControl = aiReviewForm.elements.namedItem(name);
+            if (namedControl instanceof RadioNodeList) {
+              const stringValue = String(value ?? "").trim();
+              const radio = Array.from(namedControl).find(
+                (item) => item instanceof HTMLInputElement && item.value === stringValue,
+              );
+              if (radio instanceof HTMLInputElement) {
+                radio.checked = true;
+                radio.dispatchEvent(new Event("change", { bubbles: true }));
+              }
+              return radio ? null : `AI вернул поле "${getFieldLabel(name)}" со значением "${stringValue}", которое нужно подтвердить вручную.`;
+            }
+          }
+
+          const control = getAiReviewControl(name);
+          const stringValue = String(value ?? "").trim();
+
+          if (!control || value === undefined || value === null || stringValue === "") {
+            return null;
+          }
+
+          if (control instanceof HTMLSelectElement) {
+            const hasOption = Array.from(control.options).some((option) => option.value === stringValue);
+
+            if (!hasOption) {
+              control.value = "";
+              return `AI вернул поле "${getFieldLabel(name)}" со значением "${stringValue}", но такого варианта нет в форме.`;
+            }
+
+            control.value = stringValue;
+            control.dispatchEvent(new Event("change", { bubbles: true }));
+            return null;
+          }
+
+          control.value = stringValue;
+          control.dispatchEvent(new Event("input", { bubbles: true }));
+          return null;
+        }
+
+        function setAiReviewField(name: string, value: unknown) {
+          return setFormField(name, value);
+        }
+
+        function syncAiReviewVisibility(analysis: Record<string, any>) {
+          if (!(aiReviewForm instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const requiredFields = new Set([
+            "title", "brand", "model", "year", "mileage", "price", "currency", "city", "country",
+            "vehicle_type", "body_type", "fuel_type", "transmission", "drivetrain", "doors", "seats", "color",
+            "owners_count", "first_registration", "vehicle_condition", "seller_type", "seller_name", "has_valid_tuv",
+          ]);
+          const missingFields = new Set(
+            (analysis.missing_fields || []).map((field: unknown) => String(field || "").replace("make", "brand")),
+          );
+
+          Array.from(aiReviewForm.querySelectorAll(".form-grid > label, .form-grid > [data-ai-field]")).forEach((fieldContainer) => {
+            const control = fieldContainer.querySelector("input, select, textarea");
+
+            if (!(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement)) {
+              return;
+            }
+
+            const name = control.name;
+            const hasValue = control.type === "radio"
+              ? Boolean(aiReviewForm.querySelector(`input[name="${name}"]:checked`))
+              : String(control.value || "").trim().length > 0;
+            const shouldShow = requiredFields.has(name) || missingFields.has(name) || hasValue;
+            if (fieldContainer instanceof HTMLElement) fieldContainer.hidden = !shouldShow;
+          });
+        }
+
+        function setAiActionStep(step: "review" | "confirmed") {
+          if (aiConfirmButton instanceof HTMLButtonElement) {
+            aiConfirmButton.hidden = step !== "review";
+          }
+          if (aiDescriptionActionPanel instanceof HTMLElement) {
+            aiDescriptionActionPanel.hidden = step !== "confirmed";
+          }
+          if (aiQualityScoreButton instanceof HTMLButtonElement) {
+            aiQualityScoreButton.hidden = step !== "confirmed";
+          }
+          if (aiSubmitModerationButton instanceof HTMLButtonElement) {
+            aiSubmitModerationButton.hidden = step !== "confirmed";
+          }
+        }
+
+        function getAiReviewData() {
+          if (!(aiReviewForm instanceof HTMLFormElement)) {
+            return {} as Record<string, string>;
+          }
+
+          const data = Object.fromEntries(
+            Array.from(new FormData(aiReviewForm).entries()).map(([key, value]) => [key, String(value).trim()]),
+          ) as Record<string, string>;
+
+          return data;
+        }
+
+        function setConfidenceBadge(field: string, value: unknown) {
+          const badge = document.querySelector(`[data-confidence-for="${confidenceBadgeName(field)}"]`);
+          const confidence = normalizeConfidence(value);
+
+          if (!(badge instanceof HTMLElement)) {
+            return;
+          }
+
+          if (!confidence) {
+            badge.textContent = "Нужно подтвердить";
+            badge.dataset.level = "low";
+            return;
+          }
+
+          badge.dataset.level = confidence >= 80 ? "high" : confidence >= 55 ? "medium" : "low";
+          badge.textContent = confidence >= 80 ? `AI уверен: ${confidence}%` : confidence >= 55 ? `Проверьте: ${confidence}%` : "Нужно подтвердить";
+        }
+
+        function asRecord(value: unknown) {
+          return value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, any>) : {};
+        }
+
+        function normalizeConfidenceMap(raw: Record<string, any>) {
+          const source = asRecord(raw.field_confidence || raw.fieldConfidence || raw.confidence || {});
+          const result: Record<string, number> = {};
+
+          Object.entries(source).forEach(([field, value]) => {
+            result[normalizeFieldName(field)] = normalizeConfidence(value);
+          });
+
+          return result;
+        }
+
+        function normalizeAutoFillMap(raw: Record<string, any>, confidence: Record<string, number>) {
+          const source = asRecord(raw.auto_fill_allowed || raw.autoFillAllowed || {});
+          const result: Record<string, boolean> = {};
+
+          Object.entries(source).forEach(([field, value]) => {
+            result[normalizeFieldName(field)] = value === true || value === "true" || value === 1;
+          });
+
+          Object.entries(confidence).forEach(([field, value]) => {
+            if (!(field in result)) {
+              result[field] = value >= 85 && !sensitiveConfirmationFields.has(field);
+            }
+          });
+
+          return result;
+        }
+
+        function getUnifiedAiFields(raw: Record<string, any>) {
+          const normalized = asRecord(raw.normalized_fields || raw.normalizedFields);
+          const detected = asRecord(raw.detected_fields || raw.detectedFields || raw.fields);
+          const draft = asRecord(raw.draft);
+          const car = asRecord(raw.car || raw.listing);
+          const source = Object.keys(normalized).length ? normalized : { ...car, ...draft, ...detected };
+
+          return {
+            title: firstValue(source.title, raw.suggested_title, raw.suggestedTitle),
+            brand: firstValue(source.brand, source.make, source.car_make),
+            model: firstValue(source.model, source.car_model),
+            year: firstValue(source.year),
+            color: firstValue(source.color),
+            body_type: firstValue(source.body_type, source.bodyType),
+            vehicle_type: firstValue(source.vehicle_type, source.vehicleType),
+            fuel_type: firstValue(source.fuel_type, source.fuelType),
+            transmission: firstValue(source.transmission),
+            drivetrain: firstValue(source.drivetrain, source.drive_type),
+            doors: firstValue(source.doors),
+            seats: firstValue(source.seats),
+            engine_volume: firstValue(source.engine_volume, source.engineVolume),
+            owners_count: firstValue(source.owners_count, source.owner_count),
+            first_registration: firstValue(source.first_registration, source.first_registration_date, source.registration_date),
+            vehicle_condition: firstValue(source.vehicle_condition, source.condition),
+            seller_type: firstValue(source.seller_type),
+            seller_name: firstValue(source.seller_name),
+            seller_phone: firstValue(source.seller_phone),
+            seller_email: firstValue(source.seller_email),
+            has_valid_tuv: source.has_valid_tuv,
+            tuv_valid_until: firstValue(source.tuv_valid_until),
+            mileage: firstValue(source.mileage),
+            price: firstValue(source.price),
+            currency: firstValue(source.currency),
+            city: firstValue(source.city, source.location),
+            country: firstValue(source.country),
+            vin: firstValue(source.vin),
+            description: firstValue(source.description, raw.suggested_description, raw.suggestedDescription),
+          };
+        }
+
+        function normalizeMissingFields(raw: Record<string, any>, fields: Record<string, unknown>) {
+          const source = Array.isArray(raw.missing_fields)
+            ? raw.missing_fields
+            : Array.isArray(raw.missingFields)
+              ? raw.missingFields
+              : [];
+          const missing = source.map(normalizeFieldName).filter(Boolean);
+
+          if (missing.length) {
+            return Array.from(new Set(missing));
+          }
+
+          const requiredFields = [
+            "title", "brand", "model", "year", "mileage", "price", "currency", "city", "country",
+            "vehicle_type", "body_type", "fuel_type", "transmission", "drivetrain", "doors", "seats", "color",
+            "owners_count", "first_registration", "vehicle_condition", "seller_type", "seller_name", "has_valid_tuv",
+          ];
+          return requiredFields.filter((field) => !firstValue(fields[field]));
+        }
+
+        function normalizeInsertSuggestions(raw: Record<string, any>, fields: Record<string, any>) {
+          const source = Array.isArray(raw.insert_suggestions)
+            ? raw.insert_suggestions
+            : Array.isArray(raw.insertSuggestions)
+              ? raw.insertSuggestions
+              : [];
+          const suggestions = source
+            .map((item) => asRecord(item))
+            .map((item) => ({
+              type: String(item.type || "text"),
+              label: firstValue(item.label, item.title, "Вставить подсказку"),
+              target: firstValue(item.target, item.field, "description"),
+              text: firstValue(item.text, item.value, item.content),
+            }))
+            .filter((item) => item.text);
+
+          if (suggestions.length) {
+            return { suggestions, isFallback: false };
+          }
+
+          const title = [fields.brand, fields.model, fields.year].filter(Boolean).join(" ");
+          const fallbackSuggestions = [
+            {
+              type: "description_block",
+              label: "Вставить про состояние кузова",
+              target: "description",
+              text: `Кузов ${title || "автомобиля"} выглядит аккуратно. Перед покупкой рекомендуем проверить лакокрасочное покрытие и историю обслуживания.`,
+            },
+            {
+              type: "description_block",
+              label: "Вставить про салон",
+              target: "description",
+              text: "Салон стоит отдельно проверить при осмотре: состояние сидений, панели приборов, электроники и следы активной эксплуатации.",
+            },
+            {
+              type: "description_block",
+              label: "Сделать описание для немецкого покупателя",
+              target: "description",
+              text: `${title || "Автомобиль"} подготовлен к просмотру. Данные объявления следует подтвердить по документам, сервисной истории и состоянию автомобиля при личном осмотре.`,
+            },
+          ];
+
+          if (String(fields.fuel_type || "").toLowerCase().includes("диз")) {
+            fallbackSuggestions.splice(2, 0, {
+              type: "description_block",
+              label: "Вставить про экономичный дизель",
+              target: "description",
+              text: "Дизельный двигатель хорошо подходит для дальних поездок и экономичной эксплуатации при регулярном обслуживании.",
+            });
+          }
+
+          return { suggestions: fallbackSuggestions, isFallback: true };
+        }
+
+        function normalizeAiAnalysis(raw: Record<string, any>) {
+          const incomingFields = getUnifiedAiFields(raw);
+          const normalized = normalizeAiDraftFields(incomingFields, { currentYear: aiCurrentYear });
+          const confidence = normalizeConfidenceMap(raw);
+          const autoFillAllowed = normalizeAutoFillMap(raw, confidence);
+          const identity = extractAiDraftIdentity(raw);
+          const detectedVin = firstValue(incomingFields.vin);
+          const warnings = Array.isArray(raw.warnings) ? [...raw.warnings] : [];
+          const fields = {
+            ...normalized.fields,
+            country: firstValue(incomingFields.country) || "Германия",
+            currency: firstValue(incomingFields.currency) || "EUR",
+            seller_name: firstValue(incomingFields.seller_name, authUser?.name),
+            seller_email: firstValue(incomingFields.seller_email, authUser?.email),
+            seller_phone: firstValue(incomingFields.seller_phone),
+            vin: normalizeOptionalVin(detectedVin),
+          };
+
+          if (detectedVin && !isValidVin(detectedVin)) {
+            warnings.push("AI увидел похожий на VIN текст, но это не полноценный VIN. Поле VIN очищено, при необходимости заполните его вручную.");
+          }
+
+          const suggestions = normalizeInsertSuggestions(raw, fields);
+
+          return {
+            detected_fields: {
+              ...fields,
+              make: fields.brand || "",
+            },
+            confidence,
+            auto_fill_allowed: autoFillAllowed,
+            field_sources: asRecord(raw.field_sources || raw.fieldSources || {}),
+            missing_fields: normalizeMissingFields(raw, fields),
+            warnings: [...warnings, ...normalized.warnings],
+            recommendations: Array.isArray(raw.recommendations) ? raw.recommendations : [],
+            suggested_title: firstValue(fields.title, raw.suggested_title, raw.suggestedTitle, [fields.brand, fields.model, fields.year].filter(Boolean).join(" ")),
+            suggested_description: firstValue(fields.description, raw.suggested_description, raw.suggestedDescription),
+            photo_quality_score: parseOptionalAiScore(raw.photo_quality_score, raw.photoQualityScore, raw.photo_score),
+            listing_quality_score: parseOptionalAiScore(raw.listing_quality_score, raw.listingQualityScore, raw.listing_score, raw.score),
+            trust_score: parseOptionalAiScore(raw.trust_score, raw.trustScore),
+            draft_id: identity.draftId,
+            listing_id: identity.listingId,
+            insert_suggestions: suggestions.suggestions,
+            suggestions_are_fallback: suggestions.isFallback,
+          };
+        }
+
+        function renderAiFillOverview(analysis: Record<string, any>) {
+          if (aiFillOverview instanceof HTMLElement) {
+            aiFillOverview.hidden = false;
+          }
+
+          const fields = analysis.detected_fields || {};
+          const confidence = analysis.confidence || {};
+          const autoFillAllowed = analysis.auto_fill_allowed || {};
+          const missingFields = new Set((analysis.missing_fields || []).map(normalizeFieldName));
+          const filled: string[] = [];
+          const needsConfirm: string[] = [];
+
+          Object.keys(fields).forEach((field) => {
+            const normalizedField = normalizeFieldName(field);
+
+            if (!firstValue(fields[field]) || normalizedField === "make" || normalizedField === "country") {
+              return;
+            }
+
+            const score = normalizeConfidence(confidence[normalizedField] ?? confidence[confidenceBadgeName(normalizedField)]);
+            const canAutoFill = autoFillAllowed[normalizedField] !== false;
+
+            if (canAutoFill && score >= 85 && !sensitiveConfirmationFields.has(normalizedField)) {
+              filled.push(normalizedField);
+            } else {
+              needsConfirm.push(normalizedField);
+            }
+          });
+
+          renderFieldList(aiAutofilledFields, filled, "Пока нет уверенно заполненных полей.");
+          renderFieldList(aiConfirmFields, needsConfirm, "Пока нечего подтверждать.");
+          renderFieldList(aiManualFields, Array.from(missingFields), "Обязательные поля заполнены.");
+        }
+
+        function getSuggestionText(card: HTMLElement) {
+          return card.dataset.suggestionText || "";
+        }
+
+        function appendToDescription(text: string) {
+          const control = getAiReviewControl("description");
+
+          if (!(control instanceof HTMLTextAreaElement)) {
+            return;
+          }
+
+          const current = control.value.trim();
+          control.value = current ? `${current}\n\n${text}` : text;
+          control.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        function replaceDescription(text: string) {
+          const control = getAiReviewControl("description");
+
+          if (!(control instanceof HTMLTextAreaElement)) {
+            return;
+          }
+
+          control.value = text;
+          control.dispatchEvent(new Event("input", { bubbles: true }));
+        }
+
+        function recordAcceptedAiSuggestion(type: string, label: string, target: string, text: string) {
+          acceptedAiSuggestions.push({
+            type,
+            label,
+            target,
+            text,
+            accepted_at: new Date().toISOString(),
+          });
+          markAiDraftDirty();
+        }
+
+        function getScoreLabel(score: unknown) {
+          const value = Number(score || 0);
+
+          if (value >= 90) return "Отлично";
+          if (value >= 70) return "Хорошо";
+          if (value >= 40) return "Нужно улучшить";
+          return "Слабое";
+        }
+
+        function setScoreCard(element: Element | null, value: unknown) {
+          if (element instanceof HTMLElement) {
+            const score = parseOptionalAiScore(value);
+            element.textContent = score === null ? "—" : `${score}/100`;
+          }
+        }
+
+        function setTrustScore(value: unknown) {
+          const score = parseOptionalAiScore(value);
+
+          setScoreCard(aiTrustScore, score);
+          if (aiTrustLabel instanceof HTMLElement) {
+            aiTrustLabel.textContent = score === null
+              ? "Оценка появится после проверки качества объявления."
+              : `${getScoreLabel(score)}. AI проверяет полноту данных, а не техническое состояние автомобиля.`;
+          }
+        }
+
+        function showDescriptionPreview(text: string, mode: string) {
+          currentAiDescriptionPreview = text;
+
+          if (aiDescriptionPreview instanceof HTMLElement) {
+            aiDescriptionPreview.hidden = false;
+          }
+          if (aiDescriptionPreviewText instanceof HTMLElement) {
+            aiDescriptionPreviewText.textContent = text;
+          }
+          if (aiDescriptionPreviewStatus instanceof HTMLElement) {
+            aiDescriptionPreviewStatus.textContent = `Режим: ${getDescriptionModeLabel(mode)}`;
+          }
+        }
+
+        function getDescriptionMode() {
+          return aiDescriptionMode instanceof HTMLSelectElement ? aiDescriptionMode.value : "sales";
+        }
+
+        function getDescriptionModeLabel(mode: string) {
+          const labels: Record<string, string> = {
+            sales: "Продающее описание",
+            short: "Короткое описание",
+            technical: "Честное техническое описание",
+            de: "На немецком",
+            kleinanzeigen: "Kleinanzeigen",
+            whatsapp: "WhatsApp",
+          };
+
+          return labels[mode] || labels.sales;
+        }
+
+        function getDescriptionControlValue() {
+          const control = getAiReviewControl("description");
+          return control ? String(control.value || "").trim() : "";
+        }
+
+        function renderAiSuggestions(analysis: Record<string, any>) {
+          if (!(aiSuggestions instanceof HTMLElement) || !(aiSuggestionList instanceof HTMLElement)) {
+            return;
+          }
+
+          const suggestions = Array.isArray(analysis.insert_suggestions) ? analysis.insert_suggestions : [];
+          aiSuggestions.hidden = suggestions.length === 0;
+
+          if (aiSuggestionsNote instanceof HTMLElement) {
+            aiSuggestionsNote.textContent = analysis.suggestions_are_fallback
+              ? "Базовые подсказки по заполненным данным."
+              : "Можно вставить подсказки в черновик или скопировать их.";
+          }
+
+          aiSuggestionList.innerHTML = suggestions
+            .map((suggestion: Record<string, any>, index: number) => {
+              const label = firstValue(suggestion.label, "Вставить подсказку");
+              const target = firstValue(suggestion.target, "description");
+              const text = firstValue(suggestion.text);
+              const preview = text.length > 160 ? `${text.slice(0, 160)}...` : text;
+
+              return `
+                <article class="ai-suggestion-card" data-suggestion-index="${index}" data-suggestion-target="${escapeHtml(target)}" data-suggestion-text="${escapeHtml(text)}">
+                  <div>
+                    <h3>${escapeHtml(label)}</h3>
+                    <p>${escapeHtml(preview)}</p>
+                    <small>${escapeHtml(target === "description" ? "Описание" : target === "title" ? "Название" : "Скопировать")}</small>
+                  </div>
+                  <div class="ai-suggestion-actions">
+                    <button class="button button-dark button-small" type="button" data-suggestion-insert="${index}">Вставить</button>
+                    <button class="button button-light button-small" type="button" data-suggestion-copy="${index}">Скопировать</button>
+                    <button class="button button-light button-small" type="button" data-suggestion-hide="${index}">Скрыть</button>
+                  </div>
+                  <span class="ai-suggestion-status" aria-live="polite"></span>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        function renderAiDraftPreview(raw: Record<string, any>) {
+          const analysis = normalizeAiAnalysis(raw);
+          const fields = analysis.detected_fields;
+
+          currentAiAnalysis = analysis;
+          currentAiDraftId = analysis.draft_id || currentAiDraftId;
+          currentAiListingId = analysis.listing_id || currentAiListingId;
+
+          if (aiDraftPreview instanceof HTMLElement) {
+            aiDraftPreview.hidden = false;
+            aiDraftPreview.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+
+          const fieldWarnings = [
+            setAiReviewField("title", analysis.suggested_title || [fields.brand, fields.model, fields.year].filter(Boolean).join(" ")),
+            setAiReviewField("brand", fields.brand),
+            setAiReviewField("model", fields.model),
+            setAiReviewField("year", fields.year),
+            setAiReviewField("mileage", fields.mileage),
+            setAiReviewField("price", fields.price),
+            setAiReviewField("city", fields.city),
+            setAiReviewField("country", fields.country || "Германия"),
+            setAiReviewField("vehicle_type", fields.vehicle_type),
+            setAiReviewField("body_type", fields.body_type),
+            setAiReviewField("color", fields.color),
+            setAiReviewField("fuel_type", fields.fuel_type),
+            setAiReviewField("engine_volume", fields.engine_volume),
+            setAiReviewField("transmission", fields.transmission),
+            setAiReviewField("drivetrain", fields.drivetrain),
+            setAiReviewField("doors", fields.doors),
+            setAiReviewField("seats", fields.seats),
+            setAiReviewField("owners_count", fields.owners_count),
+            setAiReviewField("first_registration", fields.first_registration),
+            setAiReviewField("vehicle_condition", fields.vehicle_condition),
+            setAiReviewField("has_valid_tuv", fields.has_valid_tuv),
+            setAiReviewField("tuv_valid_until", fields.tuv_valid_until),
+            setAiReviewField("seller_type", fields.seller_type),
+            setAiReviewField("seller_name", fields.seller_name),
+            setAiReviewField("seller_phone", fields.seller_phone),
+            setAiReviewField("seller_email", fields.seller_email),
+            setAiReviewField("vin", fields.vin),
+            setAiReviewField("description", analysis.suggested_description),
+          ].filter(Boolean);
+          markAiDraftDirty();
+          syncAiReviewVisibility(analysis);
+          setAiActionStep("review");
+          renderAiFillOverview(analysis);
+          renderAiSuggestions(analysis);
+
+          Object.entries(analysis.confidence || {}).forEach(([field, value]) => setConfidenceBadge(field, value));
+          confidenceFields.forEach((field) => {
+            const normalizedField = normalizeFieldName(field);
+
+            if (!(normalizedField in (analysis.confidence || {})) && !(field in (analysis.confidence || {}))) {
+              setConfidenceBadge(field, 0);
+            }
+          });
+
+          const localScore = calculateListingQualityScore(getAiReviewData(), analysis);
+          const listingScore = parseOptionalAiScore(analysis.listing_quality_score);
+          const photoScore = parseOptionalAiScore(analysis.photo_quality_score);
+          const trustScore = parseOptionalAiScore(analysis.trust_score);
+
+          setScoreCard(aiListingScore, listingScore);
+          setScoreCard(aiPhotoScore, photoScore);
+          setTrustScore(trustScore);
+          currentAiScores = {
+            ...(listingScore === null ? {} : { listing_quality_score: listingScore }),
+            ...(photoScore === null ? {} : { photo_quality_score: photoScore }),
+            ...(trustScore === null ? {} : { trust_score: trustScore }),
+            next_best_actions: localScore.next_best_actions,
+          };
+          if (aiReviewStatus instanceof HTMLElement) {
+            aiReviewStatus.textContent = analysis.missing_fields.length ? "Нужно подтвердить" : "Готов к проверке";
+          }
+
+          renderFieldList(aiMissingFields, analysis.missing_fields, "Обязательные поля заполнены.");
+          renderList(aiWarnings, [...analysis.warnings, ...fieldWarnings, ...localScore.warnings], "Критичных предупреждений нет.");
+          renderList(aiRecommendations, [...analysis.recommendations, ...localScore.recommendations], "Черновик выглядит хорошо.");
+          renderNextBestActions(localScore.next_best_actions);
+        }
+
+        function calculateListingQualityScore(data: Record<string, string>, analysis: Record<string, any> | null = null) {
+          let score = 0;
+          const warnings: string[] = [];
+          const recommendations: string[] = [];
+
+          if (selectedAiPhotos.length || selectedPhotos.length) score += 15;
+          if ((selectedAiPhotos.length || selectedPhotos.length) >= 3) score += 10;
+          ["year", "mileage", "price", "city", "fuel_type", "transmission"].forEach((field) => {
+            if (data[field]) score += 8;
+          });
+          if (data.description && data.description.length >= 80) score += 14;
+          if (data.body_type) score += 5;
+          if (data.color) score += 4;
+          if (data.brand && data.model) score += 10;
+
+          const validation = validateListingData(data, { allowExtremePrice: true });
+          warnings.push(...validation.errors);
+
+          if (!data.description || data.description.length < 80) {
+            recommendations.push("Добавьте описание: состояние, обслуживание, комплектацию и причину продажи.");
+          }
+          if ((selectedAiPhotos.length || selectedPhotos.length) < 3) {
+            recommendations.push("Добавьте фото салона, приборной панели и кузова с разных сторон.");
+          }
+          if (analysis?.missing_fields?.length) {
+            recommendations.push("Подтвердите поля, которые AI отметил как неизвестные.");
+          }
+
+          return {
+            score: Math.max(0, Math.min(100, score - warnings.length * 6)),
+            photo_score: Math.min(100, (selectedAiPhotos.length || selectedPhotos.length || currentAiUploadedImages.length) * 18 + ((selectedAiPhotos.length || selectedPhotos.length || currentAiUploadedImages.length) >= 3 ? 25 : 0)),
+            trust_score: Math.max(0, Math.min(100, score - warnings.length * 8 + (data.description?.length >= 80 ? 8 : 0))),
+            warnings,
+            recommendations,
+            next_best_actions: buildLocalNextBestActions(data),
+          };
+        }
+
+        function buildLocalNextBestActions(data: Record<string, string>) {
+          const actions: Array<Record<string, string>> = [];
+          const photoCount = currentAiUploadedImages.length || selectedAiPhotos.length || selectedPhotos.length;
+
+          if (photoCount < 3) {
+            actions.push({
+              label: "Добавьте фото салона",
+              impact: "+12",
+              action: "upload_more_photos",
+              explanation: "Фото салона и приборной панели повышают доверие покупателей.",
+            });
+          }
+          if (!data.mileage) {
+            actions.push({ label: "Укажите пробег", impact: "+10", action: "fill_mileage", field: "mileage" });
+          }
+          if (!data.price) {
+            actions.push({ label: "Укажите цену", impact: "+10", action: "fill_price", field: "price" });
+          }
+          if (!data.city) {
+            actions.push({ label: "Укажите город", impact: "+8", action: "fill_city", field: "city" });
+          }
+          if (!data.description || data.description.length < 80) {
+            actions.push({
+              label: "Расширьте описание",
+              impact: "+8",
+              action: "fill_description",
+              field: "description",
+              explanation: "Добавьте состояние, обслуживание, комплектацию и причину продажи.",
+            });
+          }
+          actions.push({ label: "Переведите описание на немецкий", impact: "+6", action: "translate_description", field: "description" });
+
+          return actions.slice(0, 5);
+        }
+
+        function renderNextBestActions(actions: unknown[]) {
+          if (!(aiNextBestActions instanceof HTMLElement) || !(aiNextActionsGrid instanceof HTMLElement)) {
+            return;
+          }
+
+          const items = Array.isArray(actions) ? actions.map(asRecord).filter((item) => firstValue(item.label)) : [];
+          aiNextBestActions.hidden = items.length === 0;
+          aiNextActionsGrid.innerHTML = items
+            .map((item, index) => `
+              <article class="ai-next-action-card" data-next-action-index="${index}" data-next-action="${escapeHtml(firstValue(item.action))}" data-next-field="${escapeHtml(firstValue(item.field))}">
+                <div>
+                  <h3>${escapeHtml(firstValue(item.label))}</h3>
+                  <p>${escapeHtml(firstValue(item.explanation, "Это поможет сделать объявление понятнее."))}</p>
+                </div>
+                ${firstValue(item.impact) ? `<strong>${escapeHtml(firstValue(item.impact))}</strong>` : ""}
+                <button class="button button-light button-small" type="button" data-run-next-action>${firstValue(item.action) ? "Сделать" : "Понятно"}</button>
+              </article>
+            `)
+            .join("");
+        }
+
+        function focusAiField(name: string) {
+          const control = getAiReviewControl(name);
+          if (control) {
+            control.scrollIntoView({ behavior: "smooth", block: "center" });
+            control.focus();
+          }
+        }
+
+        function clearAiFieldErrors() {
+          if (!(aiReviewForm instanceof HTMLFormElement)) return;
+
+          aiReviewForm.querySelectorAll(".is-invalid").forEach((control) => {
+            control.classList.remove("is-invalid");
+            control.removeAttribute("aria-invalid");
+            control.removeAttribute("aria-describedby");
+          });
+          aiReviewForm.querySelectorAll("[data-field-error]").forEach((node) => node.remove());
+          aiDropzone?.classList.remove("is-invalid");
+          aiDropzone?.removeAttribute("aria-invalid");
+        }
+
+        function showAiFieldErrors(issues: ListingFieldIssue[]) {
+          clearAiFieldErrors();
+          let firstControl: HTMLElement | null = null;
+
+          issues.forEach((issue, index) => {
+            const controlName = BACKEND_FIELD_TO_CONTROL[issue.field] || issue.field;
+            if (controlName === "photos") {
+              if (aiDropzone instanceof HTMLElement) {
+                aiDropzone.classList.add("is-invalid");
+                aiDropzone.setAttribute("aria-invalid", "true");
+                firstControl ||= aiDropzone;
+              }
+              return;
+            }
+
+            const control = getAiReviewControl(controlName);
+            if (!control) return;
+
+            control.classList.add("is-invalid");
+            control.setAttribute("aria-invalid", "true");
+            const fieldContainer = control.closest("label, fieldset, [data-ai-field]");
+            if (!(fieldContainer instanceof HTMLElement)) return;
+
+            const errorId = `ai-field-error-${controlName}-${index}`;
+            const errorNode = document.createElement("small");
+            errorNode.id = errorId;
+            errorNode.className = "field-error";
+            errorNode.dataset.fieldError = controlName;
+            errorNode.textContent = issue.message;
+            fieldContainer.append(errorNode);
+            control.setAttribute("aria-describedby", errorId);
+            firstControl ||= control;
+          });
+
+          setAiActionStep("review");
+          if (aiReviewStatus instanceof HTMLElement) aiReviewStatus.textContent = "Нужно исправить";
+          const targetControl = firstControl as HTMLElement | null;
+          if (targetControl) {
+            targetControl.scrollIntoView({ behavior: "smooth", block: "center" });
+            targetControl.focus();
+          }
+        }
+
+        function setAiSubmitBusy(isBusy: boolean, label = "Отправить на модерацию") {
+          isAiSubmitRunning = isBusy;
+          if (aiSubmitModerationButton instanceof HTMLButtonElement) {
+            aiSubmitModerationButton.disabled = isBusy;
+            aiSubmitModerationButton.textContent = label;
+            aiSubmitModerationButton.setAttribute("aria-busy", String(isBusy));
+          }
+        }
+
+        function validateListingData(data: Record<string, string>, options: { allowExtremePrice?: boolean } = {}) {
+          const imageCount = currentAiUploadedImages.length || selectedAiPhotos.length || selectedPhotos.length;
+          return validateAiDraftSubmission(data, { ...options, imageCount });
+        }
+
+        function getStepTitle(index: number) {
+          return ["Автомобиль", "Характеристики", "Продавец", "Фото и описание"][index] || "Шаг";
+        }
+
+        function updateQuizStep(nextStep: number) {
+          const maxStep = Math.max(quizSteps.length - 1, 0);
+          activeQuizStep = Math.min(Math.max(nextStep, 0), maxStep);
+
+          quizSteps.forEach((step, index) => {
+            if (step instanceof HTMLElement) {
+              step.hidden = index !== activeQuizStep;
+              step.classList.toggle("is-current", index === activeQuizStep);
+            }
+          });
+
+          quizProgressSteps.forEach((step, index) => {
+            if (step instanceof HTMLElement) {
+              step.classList.toggle("is-active", index === activeQuizStep);
+              step.classList.toggle("is-complete", index < activeQuizStep);
+              step.setAttribute("aria-current", index === activeQuizStep ? "step" : "false");
+            }
+          });
+
+          if (quizPrevButton instanceof HTMLButtonElement) {
+            quizPrevButton.hidden = activeQuizStep === 0;
+          }
+
+          if (quizNextButton instanceof HTMLButtonElement) {
+            quizNextButton.hidden = activeQuizStep === maxStep;
+          }
+
+          if (quizSubmitButton instanceof HTMLButtonElement) {
+            quizSubmitButton.hidden = activeQuizStep !== maxStep;
+          }
+
+          if (sideSubmitButton instanceof HTMLButtonElement) {
+            sideSubmitButton.hidden = activeQuizStep !== maxStep;
+          }
+
+          setMessage(`Шаг ${activeQuizStep + 1} из ${quizSteps.length}: ${getStepTitle(activeQuizStep)}.`);
+        }
+
+        function validateQuizStep(index: number) {
+          const step = quizSteps[index];
+
+          if (!(step instanceof HTMLElement)) {
+            return true;
+          }
+
+          const controls = Array.from(step.querySelectorAll("input, select, textarea"));
+          const invalidControl = controls.find((control) => {
+            if (
+              !(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) ||
+              control.disabled ||
+              !control.required
+            ) {
+              return false;
+            }
+
+            return !String(control.value || "").trim();
+          });
+
+          controls.forEach((control) => {
+            if (control instanceof HTMLElement) {
+              control.classList.remove("is-invalid");
+            }
+          });
+
+          if (invalidControl instanceof HTMLElement) {
+            invalidControl.classList.add("is-invalid");
+            invalidControl.focus();
+            setMessage("Заполните обязательные поля этого шага, чтобы продолжить.");
+            return false;
+          }
+
+          return true;
+        }
+
+        function goToQuizStep(targetStep: number) {
+          if (targetStep > activeQuizStep) {
+            for (let index = activeQuizStep; index < targetStep; index += 1) {
+              if (!validateQuizStep(index)) {
+                updateQuizStep(index);
+                return;
+              }
+            }
+          }
+
+          updateQuizStep(targetStep);
         }
 
         function escapeHtml(value: string) {
@@ -372,9 +1994,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
               return `
                 <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
-                  <img src="${url}" alt="Фото ${index + 1}" />
+                  <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="new-listing" data-lightbox-src="${url}" data-lightbox-alt="Фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
+                    <img src="${url}" alt="Фото ${index + 1}" />
+                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                  </button>
                   <div class="photo-preview-actions">
                     <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
+                    <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
                     <div class="photo-preview-buttons">
                       ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
                       <button type="button" aria-label="Удалить фото ${index + 1}" data-remove-photo="${index}">×</button>
@@ -440,38 +2066,112 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           renderPhotoPreview();
         }
 
-        async function convertImageToJpeg(file: File, index: number) {
-          const bitmap = await createImageBitmap(file);
-          const maxSize = 1920;
-          const scale = Math.min(1, maxSize / Math.max(bitmap.width, bitmap.height));
-          const width = Math.max(1, Math.round(bitmap.width * scale));
-          const height = Math.max(1, Math.round(bitmap.height * scale));
-          const canvas = document.createElement("canvas");
-          canvas.width = width;
-          canvas.height = height;
-
-          const context = canvas.getContext("2d");
-          if (!context) {
-            bitmap.close();
-            throw new Error("Браузер не смог подготовить изображение к загрузке.");
+        function syncAiPhotoInput() {
+          if (!(aiPhotoInput instanceof HTMLInputElement)) {
+            return;
           }
 
-          context.drawImage(bitmap, 0, 0, width, height);
-          bitmap.close();
+          const transfer = new DataTransfer();
+          selectedAiPhotos.forEach((file) => transfer.items.add(file));
+          aiPhotoInput.files = transfer.files;
+        }
 
-          const blob = await new Promise<Blob | null>((resolve) => {
-            canvas.toBlob(resolve, "image/jpeg", 0.88);
-          });
-
-          if (!blob) {
-            throw new Error("Не удалось конвертировать изображение перед отправкой.");
+        function renderAiPhotoPreview() {
+          if (!(aiPhotoPreviewGrid instanceof HTMLElement)) {
+            return;
           }
 
-          const safeName = file.name.replace(/\.[^.]+$/, "") || `car-photo-${index + 1}`;
-          return new File([blob], `${safeName}.jpg`, {
-            type: "image/jpeg",
-            lastModified: Date.now(),
-          });
+          const maxFiles = aiPhotoInput instanceof HTMLInputElement ? Number(aiPhotoInput.dataset.maxFiles || 8) : 8;
+
+          if (aiPhotoCount instanceof HTMLElement) {
+            aiPhotoCount.textContent = `${selectedAiPhotos.length} / ${maxFiles} фото`;
+          }
+
+          if (aiPhotoClear instanceof HTMLButtonElement) {
+            aiPhotoClear.hidden = selectedAiPhotos.length === 0;
+          }
+
+          if (selectedAiPhotos.length === 0) {
+            aiPhotoPreviewGrid.innerHTML = `<div class="photo-empty-state">Фото для AI пока не выбраны.</div>`;
+            return;
+          }
+
+          aiPhotoPreviewGrid.innerHTML = selectedAiPhotos
+            .map((file, index) => {
+              let url = aiPhotoUrls.get(file);
+
+              if (!url) {
+                url = URL.createObjectURL(file);
+                aiPhotoUrls.set(file, url);
+              }
+
+              return `
+                <article class="photo-preview-card ai-photo-card" data-ai-photo-index="${index}">
+                  <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="new-ai-listing" data-lightbox-src="${url}" data-lightbox-alt="AI фото ${index + 1}" aria-label="Увеличить AI фото ${index + 1}">
+                    <img src="${url}" alt="AI фото ${index + 1}" />
+                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                  </button>
+                  <div class="photo-preview-actions">
+                    <span>Фото ${index + 1}</span>
+                    <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
+                    <button type="button" aria-label="Удалить AI фото ${index + 1}" data-remove-ai-photo="${index}">×</button>
+                  </div>
+                </article>
+              `;
+            })
+            .join("");
+        }
+
+        function setAiPhotoFiles(files: File[]) {
+          if (!(aiPhotoInput instanceof HTMLInputElement)) {
+            return;
+          }
+
+          const maxFiles = Number(aiPhotoInput.dataset.maxFiles || 8);
+          const maxSize = Number(aiPhotoInput.dataset.maxSize || 8 * 1024 * 1024);
+          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+          const validFiles = imageFiles.filter((file) => file.size <= maxSize);
+          const remainingSlots = Math.max(maxFiles - selectedAiPhotos.length, 0);
+
+          selectedAiPhotos.push(...validFiles.slice(0, remainingSlots));
+          if (validFiles.length > 0) markAiDraftDirty();
+
+          if (imageFiles.length !== validFiles.length) {
+            setAiMessage("Некоторые фото больше 8 МБ и не добавлены.");
+          } else if (validFiles.length > remainingSlots) {
+            setAiMessage(`Можно загрузить максимум ${maxFiles} фото для AI-черновика.`);
+          } else {
+            setAiMessage("Фото готовы. Можно создать AI-черновик.");
+          }
+
+          syncAiPhotoInput();
+          renderAiPhotoPreview();
+          markAiDraftDirty();
+        }
+
+        function removeAiPhoto(index: number) {
+          const [file] = selectedAiPhotos.splice(index, 1);
+
+          if (file) {
+            const url = aiPhotoUrls.get(file);
+            if (url) {
+              URL.revokeObjectURL(url);
+            }
+            aiPhotoUrls.delete(file);
+          }
+
+          syncAiPhotoInput();
+          renderAiPhotoPreview();
+          markAiDraftDirty();
+        }
+
+        function clearAiPhotos() {
+          selectedAiPhotos.splice(0, selectedAiPhotos.length);
+          aiPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
+          aiPhotoUrls.clear();
+          syncAiPhotoInput();
+          renderAiPhotoPreview();
+          markAiDraftDirty();
         }
 
         function updateModelsForBrand() {
@@ -502,34 +2202,174 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           engineVolumeSelect.disabled = !fuel || volumes.length === 0;
         }
 
-        if (!authToken) {
-          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new")}`;
+        function enableFastFieldActivation() {
+          const controls = document.querySelectorAll(
+            ".listing-form-enhanced input:not([type='file']), .listing-form-enhanced textarea",
+          );
+
+          controls.forEach((control) => {
+            control.addEventListener(
+              "pointerdown",
+              () => {
+                if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) {
+                  if (document.activeElement !== control) {
+                    control.focus({ preventScroll: true });
+                  }
+                }
+              },
+              { capture: true },
+            );
+          });
         }
+
+        function openFilePicker(input: Element | null) {
+          if (!(input instanceof HTMLInputElement)) {
+            return;
+          }
+
+          input.value = "";
+          input.click();
+        }
+
+        if (!getActiveAuthToken()) {
+          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new/")}`;
+        }
+
+        enableFastFieldActivation();
+        setListingMode("ai");
+        updateQuizStep(0);
+
+        listingModeButtons.forEach((button) => {
+          button.addEventListener("click", () => {
+            if (button instanceof HTMLElement && (button.dataset.listingMode === "ai" || button.dataset.listingMode === "manual")) {
+              setListingMode(button.dataset.listingMode);
+            }
+          });
+        });
+
+        quizPrevButton?.addEventListener("click", () => {
+          goToQuizStep(activeQuizStep - 1);
+        });
+
+        quizNextButton?.addEventListener("click", () => {
+          if (validateQuizStep(activeQuizStep)) {
+            goToQuizStep(activeQuizStep + 1);
+          }
+        });
+
+        quizProgressSteps.forEach((step) => {
+          step.addEventListener("click", () => {
+            if (step instanceof HTMLElement) {
+              goToQuizStep(Number(step.dataset.quizJump || 0));
+            }
+          });
+        });
 
         async function validateAuthToken() {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
 
+          const authToken = getActiveAuthToken();
           if (!authToken || !apiUrl) {
-            clearOldAuthAndRelogin();
+            recoverAuthOrRelogin();
             return;
           }
 
           try {
-            const response = await fetch(`${apiUrl}/auth/me`, {
-              headers: {
-                Authorization: `Bearer ${authToken}`,
-              },
-            });
-
-            if (!response.ok) {
-              clearOldAuthAndRelogin();
+            const user = await fetchCurrentUser(apiUrl, authToken);
+            if (!user && !getAuthToken()) {
+              recoverAuthOrRelogin();
             }
           } catch {
-            clearOldAuthAndRelogin();
+            // Keep the saved session during temporary network or API failures.
           }
         }
 
         validateAuthToken();
+
+        function getCreditsFromPayload(payload: Record<string, any> | null | undefined) {
+          const value = payload?.ai_credits ?? payload?.credits ?? payload?.ai_credits_total ?? payload?.balance_after;
+          const numericValue = Number(value);
+
+          return Number.isFinite(numericValue) ? numericValue : null;
+        }
+
+        function setAiCreditsBalance(value: number) {
+          if (aiCreditBalance instanceof HTMLElement) {
+            aiCreditBalance.textContent = String(Math.max(0, Math.round(value)));
+          }
+        }
+
+        async function loadAiCredits() {
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl || !(aiCreditBalance instanceof HTMLElement)) {
+            return;
+          }
+
+          try {
+            const response = await fetch(`${apiUrl}${apiRoute("credits", "/me/credits")}`, {
+              headers: { Authorization: `Bearer ${authToken}` },
+            });
+
+            if (!response.ok) {
+              aiCreditBalance.textContent = "0";
+              return;
+            }
+
+            const credits = await response.json();
+            setAiCreditsBalance(Number(credits.ai_credits_total ?? credits.ai_credits ?? credits.credits ?? 0));
+          } catch {
+            aiCreditBalance.textContent = "0";
+          }
+        }
+
+        async function syncAiCreditsAfterUsage(payload: Record<string, any> | null | undefined) {
+          const directBalance = getCreditsFromPayload(payload);
+
+          if (directBalance !== null) {
+            setAiCreditsBalance(directBalance);
+            return;
+          }
+
+          await loadAiCredits();
+        }
+
+        loadAiCredits();
+
+        function syncTuvDateField(scope: Element | null, radioName: string, fieldSelector: string) {
+          if (!scope) return;
+          const selected = scope.querySelector(`input[name="${radioName}"]:checked`);
+          const container = scope.querySelector(fieldSelector);
+          const input = container?.querySelector('input[type="month"]');
+          const hasValidTuv = selected instanceof HTMLInputElement ? selected.value : "";
+
+          if (container instanceof HTMLElement) container.hidden = hasValidTuv !== "true";
+          if (input instanceof HTMLInputElement) {
+            input.required = hasValidTuv === "true";
+            input.disabled = hasValidTuv === "false";
+            if (hasValidTuv === "false") input.value = "";
+          }
+        }
+
+        form?.addEventListener("change", (event) => {
+          if (event.target instanceof HTMLInputElement && event.target.name === "hasValidTuv") {
+            syncTuvDateField(form, "hasValidTuv", "[data-manual-tuv-until-field]");
+          }
+        });
+        aiReviewForm?.addEventListener("change", (event) => {
+          markAiDraftDirty();
+          clearAiFieldErrors();
+          if (event.target instanceof HTMLInputElement && event.target.name === "has_valid_tuv") {
+            syncTuvDateField(aiReviewForm, "has_valid_tuv", "[data-tuv-until-field]");
+          }
+        });
+        aiReviewForm?.addEventListener("input", () => {
+          markAiDraftDirty();
+          clearAiFieldErrors();
+        });
+        syncTuvDateField(form, "hasValidTuv", "[data-manual-tuv-until-field]");
+        syncTuvDateField(aiReviewForm, "has_valid_tuv", "[data-tuv-until-field]");
 
         brandSelect?.addEventListener("change", updateModelsForBrand);
         fuelSelect?.addEventListener("change", updateEngineVolumesForFuel);
@@ -540,7 +2380,757 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
         });
 
+        aiPhotoInput?.addEventListener("change", () => {
+          if (aiPhotoInput instanceof HTMLInputElement) {
+            setAiPhotoFiles(Array.from(aiPhotoInput.files || []));
+          }
+        });
+
+        aiPhotoClear?.addEventListener("click", clearAiPhotos);
+
+        aiDropzone?.addEventListener("click", (event) => {
+          event.preventDefault();
+          openFilePicker(aiPhotoInput);
+        });
+
+        aiDropzone?.addEventListener("dragover", (event) => {
+          event.preventDefault();
+          if (aiDropzone instanceof HTMLElement) {
+            aiDropzone.classList.add("is-dragging");
+          }
+        });
+
+        aiDropzone?.addEventListener("dragleave", () => {
+          if (aiDropzone instanceof HTMLElement) {
+            aiDropzone.classList.remove("is-dragging");
+          }
+        });
+
+        aiDropzone?.addEventListener("drop", (event) => {
+          event.preventDefault();
+          const dragEvent = event as DragEvent;
+
+          if (aiDropzone instanceof HTMLElement) {
+            aiDropzone.classList.remove("is-dragging");
+          }
+
+          setAiPhotoFiles(Array.from(dragEvent.dataTransfer?.files || []));
+        });
+
+        aiPhotoPreviewGrid?.addEventListener("click", (event) => {
+          const button = event.target instanceof HTMLElement ? event.target.closest("[data-remove-ai-photo]") : null;
+
+          if (button instanceof HTMLElement) {
+            removeAiPhoto(Number(button.dataset.removeAiPhoto || -1));
+          }
+        });
+
+        aiSuggestionList?.addEventListener("click", async (event) => {
+          const target = event.target instanceof HTMLElement ? event.target : null;
+          const card = target?.closest(".ai-suggestion-card");
+
+          if (!(card instanceof HTMLElement)) {
+            return;
+          }
+
+          const status = card.querySelector(".ai-suggestion-status");
+          const suggestionLabel = card.querySelector("h3")?.textContent?.trim() || "AI suggestion";
+          const text = getSuggestionText(card);
+          const suggestionTarget = card.dataset.suggestionTarget || "description";
+          const insertButton = target?.closest("[data-suggestion-insert]");
+          const copyButton = target?.closest("[data-suggestion-copy]");
+          const hideButton = target?.closest("[data-suggestion-hide]");
+
+          if (hideButton instanceof HTMLElement) {
+            card.remove();
+            return;
+          }
+
+          if (copyButton instanceof HTMLElement) {
+            await navigator.clipboard?.writeText(text);
+            if (status instanceof HTMLElement) {
+              status.textContent = "Скопировано";
+            }
+            return;
+          }
+
+          if (!(insertButton instanceof HTMLElement)) {
+            return;
+          }
+
+          if (suggestionTarget === "description") {
+            appendToDescription(text);
+            recordAcceptedAiSuggestion("insert_suggestion", suggestionLabel, "description", text);
+            if (status instanceof HTMLElement) {
+              status.textContent = "Добавлено в описание";
+            }
+            return;
+          }
+
+          if (suggestionTarget === "title") {
+            const titleControl = getAiReviewControl("title");
+            const hasTitle = titleControl ? String(titleControl.value || "").trim().length > 0 : false;
+
+            if (hasTitle && !window.confirm("Название уже заполнено. Заменить его AI-подсказкой?")) {
+              return;
+            }
+
+            setAiReviewField("title", text);
+            recordAcceptedAiSuggestion("insert_suggestion", suggestionLabel, "title", text);
+            if (status instanceof HTMLElement) {
+              status.textContent = "Название обновлено";
+            }
+            return;
+          }
+
+          await navigator.clipboard?.writeText(text);
+          if (status instanceof HTMLElement) {
+            status.textContent = "Скопировано";
+          }
+        });
+
+        aiNextActionsGrid?.addEventListener("click", (event) => {
+          const button = event.target instanceof HTMLElement ? event.target.closest("[data-run-next-action]") : null;
+          const card = button instanceof HTMLElement ? button.closest(".ai-next-action-card") : null;
+
+          if (!(card instanceof HTMLElement)) {
+            return;
+          }
+
+          const action = card.dataset.nextAction || "";
+          const field = card.dataset.nextField || "";
+
+          if (action === "upload_more_photos") {
+            aiDropzone?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+          }
+          if (action === "translate_description") {
+            if (aiDescriptionMode instanceof HTMLSelectElement) aiDescriptionMode.value = "de";
+            void generateAiDescription("de");
+            return;
+          }
+          if (action === "shorten_description") {
+            if (aiDescriptionMode instanceof HTMLSelectElement) aiDescriptionMode.value = "short";
+            void generateAiDescription("short");
+            return;
+          }
+          if (field) {
+            focusAiField(field);
+            return;
+          }
+          if (action === "fill_mileage") focusAiField("mileage");
+          if (action === "fill_price") focusAiField("price");
+          if (action === "fill_city") focusAiField("city");
+          if (action === "fill_description") focusAiField("description");
+        });
+
+        aiDraftForm?.addEventListener("submit", async (event) => {
+          event.preventDefault();
+
+          if (!(aiDraftForm instanceof HTMLFormElement)) {
+            return;
+          }
+
+          const apiUrl = aiDraftForm.dataset.apiUrl;
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) {
+            recoverAuthOrRelogin();
+            return;
+          }
+
+          if (selectedAiPhotos.length < 1) {
+            setAiMessage("Добавьте хотя бы одно фото автомобиля.");
+            return;
+          }
+
+          if (selectedAiPhotos.length > 8) {
+            setAiMessage("Для AI-черновика можно загрузить максимум 8 фото.");
+            return;
+          }
+
+          try {
+            setAiMessage("Сжимаю и загружаю фото в Cloudflare R2...");
+            currentAiUploadedImages = await uploadListingImages(selectedAiPhotos, {
+              onProgress: (progressMessage) => setAiMessage(progressMessage),
+            });
+
+            if (currentAiUploadedImages.length === 0) {
+              throw new Error("Фото не загружено в хранилище. Нужна публичная ссылка изображения.");
+            }
+
+            const r2Images = toAiR2Images(currentAiUploadedImages);
+            const r2ImagesJson = JSON.stringify(r2Images);
+            const payload = new FormData();
+            payload.set("r2_images", r2ImagesJson);
+            payload.set("mode", "analyze_only");
+            payload.set("expected_status", "ai_draft");
+
+            setAiMessage("AI анализирует фото и готовит черновик...");
+            const analyzeRoute = shouldUseNewAiEndpoints()
+              ? apiRoute("aiAnalyzePhotos", "/ai/listing/analyze-photos")
+              : allowLegacyAiEndpoint()
+                ? apiRoute("aiGenerateListing", "/ai/generate-listing")
+                : "";
+
+            if (!analyzeRoute) {
+              throw new Error("Функция AI-черновика пока не подключена в Xano. Нужен endpoint POST /ai/listing/analyze-photos.");
+            }
+
+            const endpoint = `${apiUrl}${analyzeRoute}`;
+            const bodyPreview = {
+              r2_images: r2ImagesJson,
+              mode: "analyze_only",
+              expected_status: "ai_draft",
+            };
+
+            if (isDevelopment) {
+              console.log("AI analyze payload", {
+                endpoint,
+                r2Images,
+                bodyPreview,
+              });
+            }
+
+            const response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+              },
+              body: payload,
+            });
+
+            if (response.status === 401) {
+              recoverAuthOrRelogin();
+              return;
+            }
+
+            const responseText = await response.text();
+            const data = readJsonResponse(responseText);
+
+            if (!response.ok) {
+              if (response.status === 404) {
+                throw new Error("Endpoint /ai/listing/analyze-photos не найден в Xano или сайт использует неправильный API URL.");
+              }
+
+              throw new Error(getXanoErrorMessage(data, responseText) || "AI analyze failed");
+            }
+
+            renderAiDraftPreview(data);
+            await syncAiCreditsAfterUsage(data);
+            setAiMessage("AI-черновик готов. Проверьте поля и подтвердите данные перед модерацией.");
+          } catch (error) {
+            console.error(error);
+
+            if (error instanceof Error && /401|unauthorized|войдите/i.test(error.message)) {
+              recoverAuthOrRelogin();
+              return;
+            }
+
+            setAiMessage(getFriendlyErrorMessage(error, "Не удалось создать AI-черновик. Попробуйте другое фото."));
+          }
+        });
+
+        function buildAiDraftPayload(data: Record<string, string>) {
+          const payload = new FormData();
+          const title = data.title || [data.brand, data.model, data.year].filter(Boolean).join(" ");
+
+          payload.set("title", title);
+          payload.set("brand", data.brand || "");
+          payload.set("make", data.brand || "");
+          payload.set("model", data.model || "");
+          payload.set("year", data.year || "");
+          payload.set("price", data.price || "");
+          payload.set("mileage", data.mileage || "");
+          payload.set("city", data.city || "");
+          payload.set("country", data.country || "Германия");
+          payload.set("vehicle_type", data.vehicle_type || "");
+          payload.set("body_type", data.body_type || "");
+          payload.set("color", data.color || "");
+          payload.set("fuel_type", data.fuel_type || "");
+          payload.set("transmission", data.transmission || "");
+          payload.set("drivetrain", data.drivetrain || "");
+          payload.set("doors", data.doors || "");
+          payload.set("seats", data.seats || "");
+          payload.set("engine_volume", data.engine_volume || "");
+          payload.set("owners_count", data.owners_count || "");
+          payload.set("owner_count", data.owners_count || "");
+          payload.set("first_registration", data.first_registration || "");
+          payload.set("first_registration_date", data.first_registration || "");
+          payload.set("vehicle_condition", data.vehicle_condition || "");
+          payload.set("condition", data.vehicle_condition || "");
+          const hasValidTuv = normalizeTuvSubmissionValue(data.has_valid_tuv);
+          payload.set("has_valid_tuv", hasValidTuv);
+          payload.set("tuv_valid_until", hasValidTuv === "true" ? data.tuv_valid_until || "" : "");
+          payload.set("vin", data.vin || "");
+          payload.set("currency", data.currency || "EUR");
+          payload.set("seller_type", data.seller_type || "");
+          payload.set("seller_name", data.seller_name || "");
+          payload.set("seller_email", data.seller_email || "");
+          payload.set("seller_phone", data.seller_phone || "");
+          payload.set("status", "ai_draft");
+          payload.set("moderation_status", "draft");
+          payload.set("is_ai_generated", "true");
+          payload.set("description", data.description || "");
+          const r2Images = toAiR2Images(currentAiUploadedImages);
+          payload.set("r2_images", JSON.stringify(r2Images));
+          payload.set("image_urls", JSON.stringify(r2Images.map((image) => image.url)));
+          payload.set("image_keys", JSON.stringify(r2Images.map((image) => image.key)));
+          payload.set("main_image_url", r2Images[0]?.url || "");
+          payload.set("cover_image_url", r2Images[0]?.url || "");
+          const aiAnalysisPayload = {
+            ...(currentAiAnalysis || {}),
+            ...currentAiScores,
+            accepted_ai_suggestions: acceptedAiSuggestions,
+          };
+          payload.set("accepted_ai_suggestions", JSON.stringify(acceptedAiSuggestions));
+          payload.set("ai_analysis", JSON.stringify(aiAnalysisPayload));
+          const listingScore = parseOptionalAiScore(currentAiScores.listing_quality_score);
+          const photoScore = parseOptionalAiScore(currentAiScores.photo_quality_score);
+          const trustScore = parseOptionalAiScore(currentAiScores.trust_score);
+          if (listingScore !== null) {
+            payload.set("listing_quality_score", String(listingScore));
+            // Legacy alias remains only for old Xano endpoint compatibility.
+            payload.set("ai_listing_score", String(listingScore));
+          }
+          if (photoScore !== null) payload.set("photo_quality_score", String(photoScore));
+          if (trustScore !== null) payload.set("trust_score", String(trustScore));
+
+          if (currentAiDraftId) {
+            payload.set("draft_id", String(currentAiDraftId));
+          }
+          if (currentAiListingId) {
+            payload.set("listing_id", String(currentAiListingId));
+          }
+
+          return payload;
+        }
+
+        async function saveConfirmedAiDraft(apiUrl: string, data = getAiReviewData()) {
+          const authToken = getActiveAuthToken();
+          if (!authToken) {
+            recoverAuthOrRelogin();
+            throw new Error("Сессия истекла. Войдите снова.");
+          }
+
+          const validation = validateListingData(data);
+
+          if (!validation.ok) {
+            showAiFieldErrors(validation.issues);
+            throw new Error(validation.errors.join("\n"));
+          }
+          clearAiFieldErrors();
+
+          const payload = buildAiDraftPayload(data);
+          const draftRoute = shouldUseNewAiEndpoints()
+            ? apiRoute("listingsCreateDraft", "/listings/create-draft")
+            : allowLegacyAiEndpoint()
+              ? apiRoute("cars", "/cars")
+              : "";
+
+          if (!draftRoute) {
+            throw new Error("Endpoint /listings/create-draft не подключен. AI-черновик нельзя сохранить через старый поток.");
+          }
+
+          const response = await fetch(
+            `${apiUrl}${draftRoute}`,
+            {
+            method: "POST",
+            headers: { Authorization: `Bearer ${authToken}` },
+            body: payload,
+            },
+          );
+
+          const responseText = await response.text();
+          const result = readJsonResponse(responseText);
+
+          if (!response.ok) {
+            if (response.status === 404 && shouldUseNewAiEndpoints()) {
+              throw new Error("Endpoint /listings/create-draft не найден в Xano или сайт использует неправильный API URL.");
+            }
+
+            const fieldIssues = extractListingFieldIssues(result);
+            if (fieldIssues.length) showAiFieldErrors(fieldIssues);
+            throw new Error(fieldIssues.map((issue) => issue.message).join("\n") || result?.message || responseText || "Не удалось сохранить AI-черновик.");
+          }
+
+          const identity = extractAiDraftIdentity(result);
+          currentAiDraftId = identity.draftId || currentAiDraftId;
+          currentAiListingId = identity.listingId || currentAiListingId;
+
+          if (!currentAiDraftId && !currentAiListingId) {
+            throw new Error("Черновик сохранён, но сервер не вернул его номер.");
+          }
+
+          markAiDraftSaved();
+
+          return result;
+        }
+
+        function buildLocalDescription(data: Record<string, string>, mode = "sales") {
+          const title = data.title || [data.brand, data.model, data.year].filter(Boolean).join(" ");
+          const details = [
+            data.year ? `${data.year} год` : "",
+            data.mileage ? `пробег ${data.mileage} км` : "",
+            data.fuel_type ? `топливо ${data.fuel_type}` : "",
+            data.transmission ? `коробка ${data.transmission}` : "",
+            data.body_type ? `кузов ${data.body_type}` : "",
+            data.color ? `цвет ${data.color}` : "",
+          ].filter(Boolean);
+          const factLine = details.length ? details.join(", ") : "данные нужно уточнить у продавца";
+          const name = title || "Автомобиль";
+
+          if (mode === "short") {
+            return `${name} в продаже. ${factLine}. Проверьте состояние и документы при осмотре.`.replace(/\s+/g, " ").trim();
+          }
+
+          if (mode === "technical") {
+            return `${name}. ${factLine}. Описание носит информационный характер: пробег, комплектацию, TÜV/HU, сервисную историю и техническое состояние нужно проверить по документам и при осмотре.`.replace(/\s+/g, " ").trim();
+          }
+
+          if (mode === "de") {
+            return `${[data.brand, data.model].filter(Boolean).join(" ") || "Fahrzeug"}, Baujahr ${data.year || "nicht angegeben"}, Kraftstoff: ${data.fuel_type || "nicht angegeben"}, Getriebe: ${data.transmission || "nicht angegeben"}, Kilometerstand: ${data.mileage || "nicht angegeben"} km. Bitte Zustand, Ausstattung und Servicehistorie vor Ort prüfen.`.replace(/\s+/g, " ").trim();
+          }
+
+          if (mode === "kleinanzeigen") {
+            return `${name} zu verkaufen. ${factLine}. Besichtigung nach Absprache möglich. Bei Interesse gerne melden.`.replace(/\s+/g, " ").trim();
+          }
+
+          if (mode === "whatsapp") {
+            return `Здравствуйте! Актуально объявление: ${name}. ${factLine}. Можно договориться о просмотре и уточнить детали по состоянию автомобиля.`.replace(/\s+/g, " ").trim();
+          }
+
+          return `${name} в продаже. ${factLine}. Автомобиль подготовлен к просмотру, данные объявления подтверждаются продавцом перед модерацией. Рекомендуем уточнить сервисную историю, комплектацию и состояние при контакте.`.replace(/\s+/g, " ").trim();
+        }
+
+        function applyDescriptionPreview(action: "insert" | "replace") {
+          if (!currentAiDescriptionPreview) {
+            return;
+          }
+
+          if (action === "replace") {
+            replaceDescription(currentAiDescriptionPreview);
+          } else {
+            appendToDescription(currentAiDescriptionPreview);
+          }
+
+          recordAcceptedAiSuggestion("generated_description", getDescriptionModeLabel(getDescriptionMode()), "description", currentAiDescriptionPreview);
+          if (aiDescriptionPreviewStatus instanceof HTMLElement) {
+            aiDescriptionPreviewStatus.textContent = action === "replace" ? "Описание заменено." : "Описание вставлено.";
+          }
+          setAiMessage("Описание вставлено.");
+        }
+
+        async function generateAiDescription(mode = getDescriptionMode()) {
+          const apiUrl = aiDraftForm instanceof HTMLFormElement ? aiDraftForm.dataset.apiUrl : undefined;
+          const data = getAiReviewData();
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) {
+            recoverAuthOrRelogin();
+            return;
+          }
+
+          try {
+            setAiMessage("Генерирую описание...");
+
+            if (!shouldUseNewAiEndpoints()) {
+              const fallback = buildLocalDescription(data, mode);
+              showDescriptionPreview(fallback, mode);
+              if (!getDescriptionControlValue()) {
+                replaceDescription(fallback);
+                recordAcceptedAiSuggestion("generated_description", getDescriptionModeLabel(mode), "description", fallback);
+                setAiMessage("Описание добавлено. Проверьте перед отправкой.");
+              } else {
+                setAiMessage("AI предложил описание. Проверьте текст перед вставкой.");
+              }
+              return;
+            }
+
+            const response = await fetch(`${apiUrl}${apiRoute("aiGenerateDescription", "/ai/listing/generate-description")}`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fields: data,
+                analysis: currentAiAnalysis,
+                r2_images: currentAiUploadedImages,
+                mode,
+              }),
+            });
+
+            if (response.status === 401) {
+              recoverAuthOrRelogin();
+              return;
+            }
+
+            let result: Record<string, any> = {};
+            let description = "";
+            let usedFallback = false;
+
+            if (response.status === 404) {
+              description = buildLocalDescription(data, mode);
+              usedFallback = true;
+            } else {
+              const responseText = await response.text();
+              result = readJsonResponse(responseText);
+
+              if (!response.ok) {
+                throw new Error(getXanoErrorMessage(result, responseText) || "Не удалось выполнить AI-действие. Попробуйте позже.");
+              }
+
+              description = firstValue(result.description, result.suggested_description, buildLocalDescription(data, mode));
+            }
+
+            showDescriptionPreview(description, String(result.mode || mode));
+            renderList(aiWarnings, [...(currentAiAnalysis?.warnings || []), ...(result.warnings || [])], "Критичных предупреждений нет.");
+            renderList(aiRecommendations, [...(currentAiAnalysis?.recommendations || []), ...(result.recommendations || [])], "Черновик выглядит хорошо.");
+
+            if (!getDescriptionControlValue()) {
+              replaceDescription(description);
+              recordAcceptedAiSuggestion("generated_description", getDescriptionModeLabel(mode), "description", description);
+              setAiMessage(usedFallback ? "Описание создано локально. Для полной AI-версии нужен endpoint generate-description." : "Описание добавлено. Проверьте перед отправкой.");
+            } else {
+              setAiMessage(usedFallback ? "Описание создано локально. Для полной AI-версии нужен endpoint generate-description." : "AI предложил описание. Проверьте текст перед вставкой.");
+            }
+          } catch (error) {
+            console.error(error);
+            if (error instanceof Error && /401|unauthorized|войдите/i.test(error.message)) {
+              recoverAuthOrRelogin();
+              return;
+            }
+            setAiMessage(getFriendlyErrorMessage(error, "Не удалось выполнить AI-действие. Попробуйте позже."));
+          }
+        }
+
+        aiConfirmButton?.addEventListener("click", async () => {
+          const apiUrl = aiDraftForm instanceof HTMLFormElement ? aiDraftForm.dataset.apiUrl : undefined;
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) {
+            recoverAuthOrRelogin();
+            return;
+          }
+
+          try {
+            setAiMessage("Сохраняю подтвержденный AI-черновик...");
+            await saveConfirmedAiDraft(apiUrl);
+            if (aiReviewStatus instanceof HTMLElement) {
+              aiReviewStatus.textContent = "Данные подтверждены";
+            }
+            setAiActionStep("confirmed");
+            setAiMessage("Черновик сохранен. Теперь его можно отправить на модерацию.");
+          } catch (error) {
+            console.error(error);
+            setAiMessage(getFriendlyErrorMessage(error, "Проверьте поля черновика и попробуйте еще раз."));
+          }
+        });
+
+        aiGenerateDescriptionButton?.addEventListener("click", () => {
+          void generateAiDescription(getDescriptionMode());
+        });
+
+        aiDescriptionInsert?.addEventListener("click", () => applyDescriptionPreview("insert"));
+        aiDescriptionReplace?.addEventListener("click", () => applyDescriptionPreview("replace"));
+        aiDescriptionCopy?.addEventListener("click", async () => {
+          if (!currentAiDescriptionPreview) return;
+          await navigator.clipboard?.writeText(currentAiDescriptionPreview);
+          if (aiDescriptionPreviewStatus instanceof HTMLElement) {
+            aiDescriptionPreviewStatus.textContent = "Описание скопировано.";
+          }
+          setAiMessage("Описание скопировано.");
+        });
+        aiDescriptionShorten?.addEventListener("click", () => {
+          if (aiDescriptionMode instanceof HTMLSelectElement) aiDescriptionMode.value = "short";
+          void generateAiDescription("short");
+        });
+        aiDescriptionTranslate?.addEventListener("click", () => {
+          if (aiDescriptionMode instanceof HTMLSelectElement) aiDescriptionMode.value = "de";
+          void generateAiDescription("de");
+        });
+
+        aiQualityScoreButton?.addEventListener("click", async () => {
+          const apiUrl = aiDraftForm instanceof HTMLFormElement ? aiDraftForm.dataset.apiUrl : undefined;
+          const data = getAiReviewData();
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) {
+            recoverAuthOrRelogin();
+            return;
+          }
+
+          try {
+            setAiMessage("Проверяю качество объявления...");
+            const local = calculateListingQualityScore(data, currentAiAnalysis);
+
+            if (!shouldUseNewAiEndpoints()) {
+              setScoreCard(aiListingScore, local.score);
+              setScoreCard(aiPhotoScore, local.photo_score);
+              setTrustScore(local.trust_score);
+              renderList(aiWarnings, local.warnings, "Критичных предупреждений нет.");
+              renderList(aiRecommendations, local.recommendations, "Черновик выглядит хорошо.");
+              renderNextBestActions(local.next_best_actions);
+              currentAiScores = {
+                listing_quality_score: local.score,
+                photo_quality_score: local.photo_score,
+                trust_score: local.trust_score,
+                next_best_actions: local.next_best_actions,
+              };
+              setAiMessage("Качество объявления проверено.");
+              return;
+            }
+
+            const response = await fetch(`${apiUrl}${apiRoute("aiQualityScore", "/ai/listing/quality-score")}`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${authToken}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                fields: data,
+                analysis: currentAiAnalysis,
+                photo_count: currentAiUploadedImages.length || selectedAiPhotos.length,
+                images: currentAiUploadedImages,
+              }),
+            });
+
+            if (response.status === 401) {
+              recoverAuthOrRelogin();
+              return;
+            }
+
+            if (response.status === 404) {
+              setScoreCard(aiListingScore, local.score);
+              setScoreCard(aiPhotoScore, local.photo_score);
+              setTrustScore(local.trust_score);
+              renderList(aiWarnings, local.warnings, "Критичных предупреждений нет.");
+              renderList(aiRecommendations, local.recommendations, "Черновик выглядит хорошо.");
+              renderNextBestActions(local.next_best_actions);
+              currentAiScores = {
+                listing_quality_score: local.score,
+                photo_quality_score: local.photo_score,
+                trust_score: local.trust_score,
+                next_best_actions: local.next_best_actions,
+              };
+              setAiMessage("Качество проверено локально. Для полной AI-проверки нужен endpoint quality-score.");
+              return;
+            }
+
+            const responseText = await response.text();
+            const result = readJsonResponse(responseText);
+
+            if (!response.ok) {
+              throw new Error(getXanoErrorMessage(result, responseText) || "Не удалось выполнить AI-действие. Попробуйте позже.");
+            }
+
+            const listingScore = parseOptionalAiScore(result.listing_quality_score, result.listing_score, result.score, local.score);
+            const photoScore = parseOptionalAiScore(result.photo_quality_score, result.photo_score, local.photo_score);
+            const trustScore = parseOptionalAiScore(result.trust_score, local.trust_score);
+
+            setScoreCard(aiListingScore, listingScore);
+            setScoreCard(aiPhotoScore, photoScore);
+            setTrustScore(trustScore);
+            renderList(aiWarnings, result.warnings || [], "Критичных предупреждений нет.");
+            renderList(aiRecommendations, result.recommendations || [], "Черновик выглядит хорошо.");
+            renderNextBestActions(result.next_best_actions || local.next_best_actions);
+            currentAiScores = {
+              listing_quality_score: listingScore,
+              photo_quality_score: photoScore,
+              trust_score: trustScore,
+              next_best_actions: result.next_best_actions || local.next_best_actions,
+            };
+            setAiMessage("Качество объявления проверено.");
+          } catch (error) {
+            console.error(error);
+            setAiMessage(getFriendlyErrorMessage(error, "Не удалось выполнить AI-действие. Попробуйте позже."));
+          }
+        });
+
+        aiSubmitModerationButton?.addEventListener("click", async () => {
+          if (isAiSubmitRunning) return;
+          const apiUrl = aiDraftForm instanceof HTMLFormElement ? aiDraftForm.dataset.apiUrl : undefined;
+
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) {
+            recoverAuthOrRelogin();
+            return;
+          }
+
+          try {
+            const currentData = getAiReviewData();
+            const validation = validateListingData(currentData);
+            if (!validation.ok) {
+              showAiFieldErrors(validation.issues);
+              throw new Error(validation.errors.join("\n"));
+            }
+
+            setAiSubmitBusy(true, "Сохраняю актуальные данные…");
+            setAiMessage(isAiDraftDirty ? "Сохраняю актуальные данные…" : "Проверяю сохранённый черновик…");
+            await saveConfirmedAiDraft(apiUrl, currentData);
+
+            setAiSubmitBusy(true, "Проверяю объявление…");
+            setAiMessage("Проверяю объявление…");
+            setAiSubmitBusy(true, "Отправляю на модерацию…");
+            setAiMessage("Отправляю объявление на модерацию…");
+            const response = shouldUseNewAiEndpoints()
+              ? await fetch(`${apiUrl}${apiRoute("listingsSubmitModeration", "/listings/submit-moderation")}`, {
+                  method: "POST",
+                  headers: {
+                    Authorization: `Bearer ${authToken}`,
+                    "Content-Type": "application/json",
+                  },
+                  body: JSON.stringify({
+                    draft_id: currentAiDraftId,
+                    listing_id: currentAiListingId,
+                  }),
+                })
+              : currentAiListingId
+                ? await fetch(`${apiUrl}${carSubmitRoute(currentAiListingId)}`, {
+                    method: "PATCH",
+                    headers: { Authorization: `Bearer ${authToken}` },
+                  })
+                : null;
+
+            if (!response) {
+              throw new Error("Сервер не вернул номер объявления для отправки на модерацию.");
+            }
+
+            const responseText = await response.text();
+            const result = readJsonResponse(responseText);
+
+            if (!response.ok) {
+              if (response.status === 404 && shouldUseNewAiEndpoints()) {
+                throw new Error("Endpoint /listings/submit-moderation не найден в Xano или сайт использует неправильный API URL.");
+              }
+
+              const fieldIssues = extractListingFieldIssues(result);
+              if (fieldIssues.length) {
+                showAiFieldErrors(fieldIssues);
+                setAiMessage(`Объявление пока не готово к модерации. Исправьте отмеченные поля: ${fieldIssues.map((issue) => issue.message).join(" ")}`);
+              }
+              throw new Error(fieldIssues.map((issue) => issue.message).join("\n") || result?.message || responseText || "Не удалось отправить объявление на модерацию.");
+            }
+
+            setAiMessage("Объявление отправлено на модерацию.");
+            window.location.href = `/dashboard/listings?submitted=1`;
+          } catch (error) {
+            console.error(error);
+            if (!(aiReviewForm?.querySelector(".is-invalid"))) {
+              setAiMessage(getFriendlyErrorMessage(error, "Проверьте отмеченные поля и попробуйте отправить ещё раз."));
+            }
+          } finally {
+            setAiSubmitBusy(false);
+          }
+        });
+
         photoClear?.addEventListener("click", clearPhotos);
+
+        photoDropzone?.addEventListener("click", (event) => {
+          event.preventDefault();
+          openFilePicker(photoInput);
+        });
 
         photoDropzone?.addEventListener("dragover", (event) => {
           event.preventDefault();
@@ -603,12 +3193,17 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
         async function submitListing(payload: FormData) {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+          const authToken = getActiveAuthToken();
 
+          if (!authToken) {
+            recoverAuthOrRelogin();
+            throw new Error("Сессия истекла. Войдите снова.");
+          }
           if (!apiUrl) {
             throw new Error("api url missing");
           }
 
-          const createResponse = await fetch(`${apiUrl}/cars`, {
+          const createResponse = await fetch(`${apiUrl}${apiRoute("cars", "/cars")}`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -631,7 +3226,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             throw new Error("Объявление сохранено, но сервер не вернул номер объявления.");
           }
 
-          const submitResponse = await fetch(`${apiUrl}/cars/${id}/submit`, {
+          const submitResponse = await fetch(`${apiUrl}${carSubmitRoute(id)}`, {
             method: "PATCH",
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -656,6 +3251,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
+          for (let index = 0; index < quizSteps.length; index += 1) {
+            if (!validateQuizStep(index)) {
+              updateQuizStep(index);
+              return;
+            }
+          }
+
           syncPhotoInput();
           const formData = new FormData(form);
           const sellerPhone = String(formData.get("sellerPhone") || "").trim();
@@ -666,6 +3268,41 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
+          const listingValidation = validateListingData({
+            title: `${String(formData.get("brand") || "")} ${String(formData.get("model") || "")} ${String(formData.get("year") || "")}`.trim(),
+            brand: String(formData.get("brand") || ""),
+            model: String(formData.get("model") || ""),
+            price: String(formData.get("price") || ""),
+            year: String(formData.get("year") || ""),
+            mileage: String(formData.get("mileage") || ""),
+            city: String(formData.get("location") || ""),
+            country: String(formData.get("country") || ""),
+            currency: String(formData.get("currency") || ""),
+            fuel_type: String(formData.get("fuelType") || ""),
+            vehicle_type: String(formData.get("vehicleType") || ""),
+            body_type: String(formData.get("bodyType") || ""),
+            transmission: String(formData.get("transmission") || ""),
+            drivetrain: String(formData.get("drivetrain") || ""),
+            doors: String(formData.get("doors") || ""),
+            seats: String(formData.get("seats") || ""),
+            color: String(formData.get("color") || ""),
+            owners_count: String(formData.get("ownerCount") || ""),
+            first_registration: String(formData.get("firstRegistrationDate") || ""),
+            vehicle_condition: String(formData.get("condition") || ""),
+            seller_type: String(formData.get("sellerType") || ""),
+            seller_name: String(formData.get("sellerName") || ""),
+            seller_phone: sellerPhone,
+            seller_email: sellerEmail,
+            vin: String(formData.get("vin") || ""),
+            has_valid_tuv: String(formData.get("hasValidTuv") || ""),
+            tuv_valid_until: String(formData.get("tuvValidUntil") || ""),
+          });
+
+          if (!listingValidation.ok) {
+            setMessage(listingValidation.errors.join(" "));
+            return;
+          }
+
           const brand = String(formData.get("brand") || "");
           const model = String(formData.get("model") || "");
           const year = Number(formData.get("year"));
@@ -673,59 +3310,64 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           const payload = new FormData();
           payload.set("title", `${brand} ${model} ${year}`.trim());
+          payload.set("vehicle_type", String(formData.get("vehicleType") || ""));
           payload.set("brand", brand);
           payload.set("model", model);
+          payload.set("body_type", String(formData.get("bodyType") || ""));
+          payload.set("engine_volume", String(formData.get("engineVolume") || ""));
+          payload.set("drivetrain", String(formData.get("drivetrain") || ""));
           payload.set("year", String(year));
           payload.set("price", String(Number(formData.get("price"))));
           payload.set("mileage", String(Number(formData.get("mileage"))));
           payload.set("fuel_type", String(formData.get("fuelType") || ""));
           payload.set("transmission", String(formData.get("transmission") || ""));
-          payload.set("currency", "EUR");
+          payload.set("doors", String(formData.get("doors") || ""));
+          payload.set("seats", String(formData.get("seats") || ""));
+          payload.set("color", String(formData.get("color") || ""));
+          payload.set("currency", String(formData.get("currency") || "EUR"));
           payload.set("city", city);
-          payload.set("country", "Германия");
+          payload.set("country", String(formData.get("country") || "Германия"));
+          payload.set("seller_type", String(formData.get("sellerType") || ""));
           payload.set("seller_name", String(formData.get("sellerName") || "").trim());
           payload.set("seller_phone", sellerPhone);
           payload.set("seller_email", sellerEmail);
+          payload.set("owners_count", String(formData.get("ownerCount") || ""));
+          payload.set("owner_count", String(formData.get("ownerCount") || ""));
+          payload.set("first_registration", String(formData.get("firstRegistrationDate") || ""));
+          payload.set("first_registration_date", String(formData.get("firstRegistrationDate") || ""));
+          payload.set("vehicle_condition", String(formData.get("condition") || ""));
+          payload.set("condition", String(formData.get("condition") || ""));
+          payload.set("vin", String(formData.get("vin") || "").trim().toUpperCase());
+          payload.set("has_valid_tuv", String(formData.get("hasValidTuv") || ""));
           payload.set(
-            "description",
-            [
-              String(formData.get("description") || ""),
-              `Кузов: ${String(formData.get("bodyType") || "не указан")}`,
-              `Объем двигателя: ${String(formData.get("engineVolume") || "не указан")}`,
-              `Привод: ${String(formData.get("drivetrain") || "не указан")}`,
-              `Двери: ${String(formData.get("doors") || "не указано")}`,
-              `Места: ${String(formData.get("seats") || "не указано")}`,
-              `Цвет: ${String(formData.get("color") || "не указан")}`,
-              `Состояние: ${String(formData.get("condition") || "не указано")}`,
-              `Тип продавца: ${String(formData.get("sellerType") || "не указан")}`,
-              `VIN: ${String(formData.get("vin") || "не указан")}`,
-              `Продавец: ${String(formData.get("sellerName") || "не указан")}`,
-              `Телефон: ${sellerPhone || "не указан"}`,
-              `Email: ${sellerEmail || "не указан"}`,
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            "tuv_valid_until",
+            String(formData.get("hasValidTuv")) === "true" ? String(formData.get("tuvValidUntil") || "") : "",
           );
+          payload.set("description", String(formData.get("description") || "").trim());
 
           const photoFiles = [...selectedPhotos];
 
-          if (photoFiles.length > 5) {
-            setMessage("Можно загрузить максимум 5 фото.");
+          if (photoFiles.length > 8) {
+            setMessage("Можно загрузить максимум 8 фото.");
             return;
           }
 
           try {
-            if (photoFiles.length > 0) {
-              setMessage("Подготавливаю фото к загрузке...");
-            }
+            let uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }> = [];
 
-            for (const [index, file] of photoFiles.entries()) {
-              if (file instanceof File && file.size > 0) {
-                const uploadFile = await convertImageToJpeg(file, index);
-                payload.append("photos", uploadFile);
-                payload.append("photos[]", uploadFile);
-                payload.set(`photo_${index + 1}`, uploadFile);
-              }
+            if (photoFiles.length > 0) {
+              setMessage("Сжимаю и загружаю фото в хранилище...");
+              uploadedImages = await uploadListingImages(photoFiles, {
+                onProgress: (progressMessage) => setMessage(progressMessage),
+              });
+
+              const imageUrls = uploadedImages.map((image) => image.url);
+              const imageKeys = uploadedImages.map((image) => image.key);
+              payload.set("main_image_url", imageUrls[0] || "");
+              payload.set("cover_image_url", imageUrls[0] || "");
+              payload.set("image_urls", JSON.stringify(imageUrls));
+              payload.set("image_keys", JSON.stringify(imageKeys));
+              payload.set("r2_images", JSON.stringify(uploadedImages));
             }
 
             setMessage("Сохраняю объявление и отправляю на модерацию...");

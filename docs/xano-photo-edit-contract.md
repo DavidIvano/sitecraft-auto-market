@@ -57,6 +57,8 @@ The frontend sends `multipart/form-data` with repeated `photos` fields.
 
 This endpoint is needed for the edit page.
 
+The edit page now uploads new files to Cloudflare R2 first, then sends metadata to Xano. Keep the old `photos` fallback only for manual Xano tests.
+
 Input should accept:
 
 ```txt
@@ -76,6 +78,9 @@ seller_email email optional
 description text
 replace_photos boolean/text optional
 delete_image_ids text optional
+r2_images text/json optional
+new_image_urls text/json optional
+new_image_keys text/json optional
 photos Storage -> File Resource -> List optional
 ```
 
@@ -87,9 +92,12 @@ Expected behavior:
 4. Set `status = draft` or `pending_review` after edit, depending on moderation flow.
 5. If `delete_image_ids` is passed, delete those rows from `car_listing_images` only for this listing.
 6. If `replace_photos == true`, delete all existing `car_listing_images` rows for this listing.
-7. Loop through new `photos`, store each file, and add rows to `car_listing_images`.
-8. Recalculate `sort_order` and `is_main`.
-9. Update `car_listings.main_image_url` from the first remaining image.
+7. If `r2_images` is passed, parse JSON and add one row per R2 image to `car_listing_images`.
+8. If `new_image_urls` is passed without `r2_images`, add one row per public URL to `car_listing_images`.
+9. If legacy `photos` are passed, store each file in Xano, build a full public URL from `image.path`, and add rows to `car_listing_images`.
+10. Do not rely on the `image` column for new rows. Save the public URL in `image_url` and the full source object in `image_metadata`.
+11. Recalculate `sort_order`, `is_main`, and `is_primary`.
+12. Update `car_listings.main_image_url` and `car_listings.cover_image_url` from the first remaining image.
 
 After saving, the frontend can call:
 
@@ -98,3 +106,9 @@ PATCH /cars/{id}/submit
 ```
 
 to send the listing back to moderation.
+
+The full copy-paste endpoint is in:
+
+```txt
+docs/xano-endpoint-patch-dashboard-listings-id-photos.xs
+```

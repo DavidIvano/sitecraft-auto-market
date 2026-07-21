@@ -1,0 +1,6 @@
+---
+const cards = Array.from({ length: 6 });
+---
+<div class="deal-finder-grid" aria-label="Загрузка предложений" aria-busy="true">
+  {cards.map(() => <div class="deal-finder-card deal-finder-skeleton"><div></div><span></span><span></span><span></span></div>)}
+</div>

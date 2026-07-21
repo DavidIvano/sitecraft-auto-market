@@ -1,0 +1,16 @@
+---
+type Props = {
+  title: string;
+  text?: string;
+  class?: string;
+};
+
+const { title, text, class: className = "" } = Astro.props;
+---
+
+<div class:list={["mac-empty-state", className]}>
+  <span class="mac-empty-state-icon" aria-hidden="true">⌕</span>
+  <h3>{title}</h3>
+  {text && <p>{text}</p>}
+  <slot />
+</div>

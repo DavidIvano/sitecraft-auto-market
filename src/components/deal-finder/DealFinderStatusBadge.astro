@@ -1,0 +1,9 @@
+---
+import type { DealFinderRecommendation, DealFinderSourceStatus, DealFinderUserStatus } from "../../lib/deal-finder/types";
+type Props = { sourceStatus?: DealFinderSourceStatus | string | null; userStatus?: DealFinderUserStatus | string | null; recommendation?: DealFinderRecommendation | string | null };
+const { sourceStatus, userStatus, recommendation } = Astro.props;
+const label = recommendation || (sourceStatus === "source_removed" ? "Источник удалён" : userStatus === "saved" ? "Сохранено" : userStatus === "hidden" ? "Скрыто" : "Новое");
+const tone = recommendation === "HOT_DEAL" ? "is-hot" : sourceStatus === "source_removed" ? "is-warning" : userStatus === "saved" ? "is-saved" : "is-neutral";
+---
+
+<span class:list={["deal-status-badge", tone]}>{label}</span>

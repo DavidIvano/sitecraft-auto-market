@@ -1,0 +1,1086 @@
+{
+  "success": true,
+  "message": "Kleinanzeigen live search completed",
+  "data": {
+    "meta": {
+      "page": 0,
+      "size": 5,
+      "source": "live"
+    },
+    "ads": [
+      {
+        "ad_id": "3460739294",
+        "title": "vw polo 86c coupe  auch tausch",
+        "description": "Sanitized fixture; personal data removed.",
+        "price": {
+          "amount": 2000,
+          "currency_code": "EUR"
+        },
+        "images": [
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/d9/d9862db5-9f37-4c0b-b360-2e47b2d11e84?rule=$_57.AUTO",
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/10/103e958e-bcd7-4d4a-a579-a509778696a7?rule=$_57.AUTO"
+        ],
+        "ad_url": "https://www.kleinanzeigen.de/s-anzeige/vw-polo-86c-coupe-auch-tausch/3460739294-216-1225",
+        "created_at": "2026-07-16T22:53:37.000Z",
+        "status": "ACTIVE",
+        "deleted": false,
+        "location": {
+          "id": "1225",
+          "name": "31600 Uchte",
+          "city": "Uchte",
+          "zip": "31600"
+        },
+        "category": {
+          "id": "216",
+          "name": "Autos",
+          "parent_id": null
+        },
+        "attributes": [
+          {
+            "name": "autos.marke",
+            "label": "Marke",
+            "values": [
+              {
+                "value": "volkswagen",
+                "label": "Volkswagen"
+              }
+            ]
+          },
+          {
+            "name": "autos.model",
+            "label": "Modell",
+            "values": [
+              {
+                "value": "polo",
+                "label": "Polo"
+              }
+            ]
+          },
+          {
+            "name": "autos.km",
+            "label": "Kilometerstand",
+            "values": [
+              {
+                "value": "160000",
+                "label": "160.000"
+              }
+            ]
+          },
+          {
+            "name": "autos.schaden",
+            "label": "Fahrzeugzustand",
+            "values": [
+              {
+                "value": "nein",
+                "label": "Unbeschädigtes Fahrzeug"
+              }
+            ]
+          },
+          {
+            "name": "autos.ezdate",
+            "label": "Erstzulassung",
+            "values": [
+              {
+                "value": "1991-02",
+                "label": "EZ 02/1991"
+              }
+            ]
+          },
+          {
+            "name": "autos.fuel",
+            "label": "Kraftstoffart",
+            "values": [
+              {
+                "value": "benzin",
+                "label": "Benzin"
+              }
+            ]
+          },
+          {
+            "name": "autos.power",
+            "label": "Leistung",
+            "values": [
+              {
+                "value": "55",
+                "label": "55"
+              }
+            ]
+          },
+          {
+            "name": "autos.shift",
+            "label": "Getriebe",
+            "values": [
+              {
+                "value": "manuell",
+                "label": "Manuell"
+              }
+            ]
+          },
+          {
+            "name": "autos.typ",
+            "label": "Fahrzeugtyp",
+            "values": [
+              {
+                "value": "coupe",
+                "label": "Coupé"
+              }
+            ]
+          },
+          {
+            "name": "autos.anzahl_tueren",
+            "label": "Anzahl Türen",
+            "values": [
+              {
+                "value": "2_3",
+                "label": "2/3"
+              }
+            ]
+          },
+          {
+            "name": "autos.tuevdate",
+            "label": "HU bis",
+            "values": [
+              {
+                "value": "2028-05",
+                "label": "Mai 2028"
+              }
+            ]
+          },
+          {
+            "name": "autos.umweltplakette",
+            "label": "Umweltplakette",
+            "values": [
+              {
+                "value": "4_gruen",
+                "label": "4 (Grün)"
+              }
+            ]
+          },
+          {
+            "name": "autos.aussenfarbe",
+            "label": "Außenfarbe",
+            "values": [
+              {
+                "value": "rot",
+                "label": "Rot"
+              }
+            ]
+          }
+        ],
+        "details": {
+          "Marke": "Volkswagen",
+          "Modell": "Polo",
+          "Kilometerstand": "160.000",
+          "Fahrzeugzustand": "Unbeschädigtes Fahrzeug",
+          "Erstzulassung": "EZ 02/1991",
+          "Kraftstoffart": "Benzin",
+          "Leistung": "55",
+          "Getriebe": "Manuell",
+          "Fahrzeugtyp": "Coupé",
+          "Anzahl Türen": "2/3",
+          "HU bis": "Mai 2028",
+          "Umweltplakette": "4 (Grün)",
+          "Außenfarbe": "Rot"
+        }
+      },
+      {
+        "ad_id": "3460739094",
+        "title": "VW Golf 2005 TÜV Neu",
+        "description": "Sanitized fixture; personal data removed.",
+        "price": {
+          "amount": 2350,
+          "currency_code": "EUR"
+        },
+        "images": [
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a7/a721e054-c694-453e-9527-28ec41b4a3bb?rule=$_57.AUTO",
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/21/2105065d-b9d2-46f3-91a7-22034b070ccb?rule=$_57.AUTO"
+        ],
+        "ad_url": "https://www.kleinanzeigen.de/s-anzeige/vw-golf-2005-tuev-neu/3460739094-216-9550",
+        "created_at": "2026-07-16T22:51:43.000Z",
+        "status": "ACTIVE",
+        "deleted": false,
+        "location": {
+          "id": "9550",
+          "name": "30453 Linden-Limmer",
+          "city": "Linden-Limmer",
+          "zip": "30453"
+        },
+        "category": {
+          "id": "216",
+          "name": "Autos",
+          "parent_id": null
+        },
+        "attributes": [
+          {
+            "name": "autos.marke",
+            "label": "Marke",
+            "values": [
+              {
+                "value": "volkswagen",
+                "label": "Volkswagen"
+              }
+            ]
+          },
+          {
+            "name": "autos.model",
+            "label": "Modell",
+            "values": [
+              {
+                "value": "andere",
+                "label": "Weitere VW"
+              }
+            ]
+          },
+          {
+            "name": "autos.km",
+            "label": "Kilometerstand",
+            "values": [
+              {
+                "value": "235000",
+                "label": "235.000"
+              }
+            ]
+          },
+          {
+            "name": "autos.schaden",
+            "label": "Fahrzeugzustand",
+            "values": [
+              {
+                "value": "ja",
+                "label": "Beschädigtes Fahrzeug"
+              }
+            ]
+          },
+          {
+            "name": "autos.ezdate",
+            "label": "Erstzulassung",
+            "values": [
+              {
+                "value": "2005-10",
+                "label": "EZ 10/2005"
+              }
+            ]
+          },
+          {
+            "name": "autos.fuel",
+            "label": "Kraftstoffart",
+            "values": [
+              {
+                "value": "benzin",
+                "label": "Benzin"
+              }
+            ]
+          },
+          {
+            "name": "autos.typ",
+            "label": "Fahrzeugtyp",
+            "values": [
+              {
+                "value": "kleinwagen",
+                "label": "Kleinwagen"
+              }
+            ]
+          },
+          {
+            "name": "autos.anzahl_tueren",
+            "label": "Anzahl Türen",
+            "values": [
+              {
+                "value": "4_5",
+                "label": "4/5"
+              }
+            ]
+          },
+          {
+            "name": "autos.tuevdate",
+            "label": "HU bis",
+            "values": [
+              {
+                "value": "2028-03",
+                "label": "März 2028"
+              }
+            ]
+          },
+          {
+            "name": "autos.umweltplakette",
+            "label": "Umweltplakette",
+            "values": [
+              {
+                "value": "4_gruen",
+                "label": "4 (Grün)"
+              }
+            ]
+          },
+          {
+            "name": "autos.schadstoffklasse",
+            "label": "Schadstoffklasse",
+            "values": [
+              {
+                "value": "euro4",
+                "label": "Euro4"
+              }
+            ]
+          },
+          {
+            "name": "autos.aussenfarbe",
+            "label": "Außenfarbe",
+            "values": [
+              {
+                "value": "schwarz",
+                "label": "Schwarz"
+              }
+            ]
+          }
+        ],
+        "details": {
+          "Marke": "Volkswagen",
+          "Modell": "Weitere VW",
+          "Kilometerstand": "235.000",
+          "Fahrzeugzustand": "Beschädigtes Fahrzeug",
+          "Erstzulassung": "EZ 10/2005",
+          "Kraftstoffart": "Benzin",
+          "Fahrzeugtyp": "Kleinwagen",
+          "Anzahl Türen": "4/5",
+          "HU bis": "März 2028",
+          "Umweltplakette": "4 (Grün)",
+          "Schadstoffklasse": "Euro4",
+          "Außenfarbe": "Schwarz"
+        }
+      },
+      {
+        "ad_id": "3444070877",
+        "title": "Mercedes S Klasse W140 320 H Kennzeichen(Fest Preis )",
+        "description": "Sanitized fixture; personal data removed.",
+        "price": {
+          "amount": 3800,
+          "currency_code": "EUR"
+        },
+        "images": [
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/c2/c29e3e40-a0c4-41ac-9bba-2df7a43a5696?rule=$_57.AUTO",
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/a8/a861cb35-1b21-4b9a-a733-72d6976eeab1?rule=$_57.AUTO"
+        ],
+        "ad_url": "https://www.kleinanzeigen.de/s-anzeige/mercedes-s-klasse-w140-320-h-kennzeichen-fest-preis-/3444070877-216-2951",
+        "created_at": "2026-07-16T22:50:30.000Z",
+        "status": "ACTIVE",
+        "deleted": false,
+        "location": {
+          "id": "2951",
+          "name": "27374 Visselhövede",
+          "city": "Visselhövede",
+          "zip": "27374"
+        },
+        "category": {
+          "id": "216",
+          "name": "Autos",
+          "parent_id": null
+        },
+        "attributes": [
+          {
+            "name": "autos.marke",
+            "label": "Marke",
+            "values": [
+              {
+                "value": "mercedes_benz",
+                "label": "Mercedes Benz"
+              }
+            ]
+          },
+          {
+            "name": "autos.model",
+            "label": "Modell",
+            "values": [
+              {
+                "value": "s_klasse",
+                "label": "Weitere S-Klasse"
+              }
+            ]
+          },
+          {
+            "name": "autos.km",
+            "label": "Kilometerstand",
+            "values": [
+              {
+                "value": "316000",
+                "label": "316.000"
+              }
+            ]
+          },
+          {
+            "name": "autos.schaden",
+            "label": "Fahrzeugzustand",
+            "values": [
+              {
+                "value": "nein",
+                "label": "Unbeschädigtes Fahrzeug"
+              }
+            ]
+          },
+          {
+            "name": "autos.ezdate",
+            "label": "Erstzulassung",
+            "values": [
+              {
+                "value": "1992-03",
+                "label": "EZ 03/1992"
+              }
+            ]
+          },
+          {
+            "name": "autos.fuel",
+            "label": "Kraftstoffart",
+            "values": [
+              {
+                "value": "benzin",
+                "label": "Benzin"
+              }
+            ]
+          },
+          {
+            "name": "autos.power",
+            "label": "Leistung",
+            "values": [
+              {
+                "value": "231",
+                "label": "231"
+              }
+            ]
+          },
+          {
+            "name": "autos.shift",
+            "label": "Getriebe",
+            "values": [
+              {
+                "value": "automatik",
+                "label": "Automatik"
+              }
+            ]
+          },
+          {
+            "name": "autos.typ",
+            "label": "Fahrzeugtyp",
+            "values": [
+              {
+                "value": "limousine",
+                "label": "Limousine"
+              }
+            ]
+          },
+          {
+            "name": "autos.anzahl_tueren",
+            "label": "Anzahl Türen",
+            "values": [
+              {
+                "value": "4_5",
+                "label": "4/5"
+              }
+            ]
+          },
+          {
+            "name": "autos.tuevdate",
+            "label": "HU bis",
+            "values": [
+              {
+                "value": "2028-05",
+                "label": "Mai 2028"
+              }
+            ]
+          },
+          {
+            "name": "autos.umweltplakette",
+            "label": "Umweltplakette",
+            "values": [
+              {
+                "value": "4_gruen",
+                "label": "4 (Grün)"
+              }
+            ]
+          },
+          {
+            "name": "autos.schadstoffklasse",
+            "label": "Schadstoffklasse",
+            "values": [
+              {
+                "value": "euro4",
+                "label": "Euro4"
+              }
+            ]
+          },
+          {
+            "name": "autos.aussenfarbe",
+            "label": "Außenfarbe",
+            "values": [
+              {
+                "value": "gold",
+                "label": "Gold"
+              }
+            ]
+          },
+          {
+            "name": "autos.material_innenausstattung",
+            "label": "Material Innenausstattung",
+            "values": [
+              {
+                "value": "volleder",
+                "label": "Vollleder"
+              }
+            ]
+          },
+          {
+            "name": "autos.park_assistant",
+            "label": "Einparkhilfe",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.alluminium_rims",
+            "label": "Leichtmetallfelgen",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.air_conditioning",
+            "label": "Klimaanlage",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.radio_tuner",
+            "label": "Radio/Tuner",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.handsfree_speaker",
+            "label": "Freisprecheinrichtung",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.seat_heating",
+            "label": "Sitzheizung",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.speed_control",
+            "label": "Tempomat",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.non_smoking",
+            "label": "Nichtraucher-Fahrzeug",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.abs",
+            "label": "Antiblockiersystem (ABS)",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          }
+        ],
+        "details": {
+          "Marke": "Mercedes Benz",
+          "Modell": "Weitere S-Klasse",
+          "Kilometerstand": "316.000",
+          "Fahrzeugzustand": "Unbeschädigtes Fahrzeug",
+          "Erstzulassung": "EZ 03/1992",
+          "Kraftstoffart": "Benzin",
+          "Leistung": "231",
+          "Getriebe": "Automatik",
+          "Fahrzeugtyp": "Limousine",
+          "Anzahl Türen": "4/5",
+          "HU bis": "Mai 2028",
+          "Umweltplakette": "4 (Grün)",
+          "Schadstoffklasse": "Euro4",
+          "Außenfarbe": "Gold",
+          "Material Innenausstattung": "Vollleder",
+          "Einparkhilfe": "true",
+          "Leichtmetallfelgen": "true",
+          "Klimaanlage": "true",
+          "Radio/Tuner": "true",
+          "Freisprecheinrichtung": "true",
+          "Sitzheizung": "true",
+          "Tempomat": "true",
+          "Nichtraucher-Fahrzeug": "true",
+          "Antiblockiersystem (ABS)": "true"
+        }
+      },
+      {
+        "ad_id": "3460738611",
+        "title": "Auto Opel Corsa 1.2",
+        "description": "Sanitized fixture; personal data removed.",
+        "price": {
+          "amount": 1800,
+          "currency_code": "EUR"
+        },
+        "images": [
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/82/82727f17-6366-4752-8b14-f1fdde067511?rule=$_57.AUTO",
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/0b/0b5dd253-a220-4ea7-bb5a-020518ca8c7b?rule=$_57.AUTO"
+        ],
+        "ad_url": "https://www.kleinanzeigen.de/s-anzeige/auto-opel-corsa-1-2/3460738611-216-1762",
+        "created_at": "2026-07-16T22:47:10.000Z",
+        "status": "ACTIVE",
+        "deleted": false,
+        "location": {
+          "id": "1762",
+          "name": "32427 Minden",
+          "city": "Minden",
+          "zip": "32427"
+        },
+        "category": {
+          "id": "216",
+          "name": "Autos",
+          "parent_id": null
+        },
+        "attributes": [
+          {
+            "name": "autos.marke",
+            "label": "Marke",
+            "values": [
+              {
+                "value": "opel",
+                "label": "Opel"
+              }
+            ]
+          },
+          {
+            "name": "autos.model",
+            "label": "Modell",
+            "values": [
+              {
+                "value": "corsa",
+                "label": "Corsa"
+              }
+            ]
+          },
+          {
+            "name": "autos.km",
+            "label": "Kilometerstand",
+            "values": [
+              {
+                "value": "169445",
+                "label": "169.445"
+              }
+            ]
+          },
+          {
+            "name": "autos.schaden",
+            "label": "Fahrzeugzustand",
+            "values": [
+              {
+                "value": "ja",
+                "label": "Beschädigtes Fahrzeug"
+              }
+            ]
+          },
+          {
+            "name": "autos.ezdate",
+            "label": "Erstzulassung",
+            "values": [
+              {
+                "value": "2005-07",
+                "label": "EZ 07/2005"
+              }
+            ]
+          },
+          {
+            "name": "autos.fuel",
+            "label": "Kraftstoffart",
+            "values": [
+              {
+                "value": "benzin",
+                "label": "Benzin"
+              }
+            ]
+          },
+          {
+            "name": "autos.shift",
+            "label": "Getriebe",
+            "values": [
+              {
+                "value": "manuell",
+                "label": "Manuell"
+              }
+            ]
+          },
+          {
+            "name": "autos.typ",
+            "label": "Fahrzeugtyp",
+            "values": [
+              {
+                "value": "kleinwagen",
+                "label": "Kleinwagen"
+              }
+            ]
+          },
+          {
+            "name": "autos.anzahl_tueren",
+            "label": "Anzahl Türen",
+            "values": [
+              {
+                "value": "2_3",
+                "label": "2/3"
+              }
+            ]
+          },
+          {
+            "name": "autos.tuevdate",
+            "label": "HU bis",
+            "values": [
+              {
+                "value": "2028-07",
+                "label": "Juli 2028"
+              }
+            ]
+          },
+          {
+            "name": "autos.umweltplakette",
+            "label": "Umweltplakette",
+            "values": [
+              {
+                "value": "4_gruen",
+                "label": "4 (Grün)"
+              }
+            ]
+          },
+          {
+            "name": "autos.schadstoffklasse",
+            "label": "Schadstoffklasse",
+            "values": [
+              {
+                "value": "euro4",
+                "label": "Euro4"
+              }
+            ]
+          },
+          {
+            "name": "autos.aussenfarbe",
+            "label": "Außenfarbe",
+            "values": [
+              {
+                "value": "blau",
+                "label": "Blau"
+              }
+            ]
+          },
+          {
+            "name": "autos.air_conditioning",
+            "label": "Klimaanlage",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.radio_tuner",
+            "label": "Radio/Tuner",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          }
+        ],
+        "details": {
+          "Marke": "Opel",
+          "Modell": "Corsa",
+          "Kilometerstand": "169.445",
+          "Fahrzeugzustand": "Beschädigtes Fahrzeug",
+          "Erstzulassung": "EZ 07/2005",
+          "Kraftstoffart": "Benzin",
+          "Getriebe": "Manuell",
+          "Fahrzeugtyp": "Kleinwagen",
+          "Anzahl Türen": "2/3",
+          "HU bis": "Juli 2028",
+          "Umweltplakette": "4 (Grün)",
+          "Schadstoffklasse": "Euro4",
+          "Außenfarbe": "Blau",
+          "Klimaanlage": "true",
+          "Radio/Tuner": "true"
+        }
+      },
+      {
+        "ad_id": "3460738591",
+        "title": "Opel Astra Automatik, Klima, HU&#x2F;TÜV 07&#x2F;2027",
+        "description": "Sanitized fixture; personal data removed.",
+        "price": {
+          "amount": 2100,
+          "currency_code": "EUR"
+        },
+        "images": [
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/8c/8c08c09e-5604-4c8e-b013-b7ce952e9a20?rule=$_57.AUTO",
+          "https://img.kleinanzeigen.de/api/v1/prod-ads/images/8a/8aec2a93-8fe2-43b7-8827-6b8647684e13?rule=$_57.AUTO"
+        ],
+        "ad_url": "https://www.kleinanzeigen.de/s-anzeige/opel-astra-automatik-klima-hu-tuev-07-2027/3460738591-216-17266",
+        "created_at": "2026-07-16T22:47:01.000Z",
+        "status": "ACTIVE",
+        "deleted": false,
+        "location": {
+          "id": "17266",
+          "name": "39326 Wolmirstedt",
+          "city": "Wolmirstedt",
+          "zip": "39326"
+        },
+        "category": {
+          "id": "216",
+          "name": "Autos",
+          "parent_id": null
+        },
+        "attributes": [
+          {
+            "name": "autos.marke",
+            "label": "Marke",
+            "values": [
+              {
+                "value": "opel",
+                "label": "Opel"
+              }
+            ]
+          },
+          {
+            "name": "autos.model",
+            "label": "Modell",
+            "values": [
+              {
+                "value": "astra",
+                "label": "Astra"
+              }
+            ]
+          },
+          {
+            "name": "autos.km",
+            "label": "Kilometerstand",
+            "values": [
+              {
+                "value": "182000",
+                "label": "182.000"
+              }
+            ]
+          },
+          {
+            "name": "autos.schaden",
+            "label": "Fahrzeugzustand",
+            "values": [
+              {
+                "value": "nein",
+                "label": "Unbeschädigtes Fahrzeug"
+              }
+            ]
+          },
+          {
+            "name": "autos.ezdate",
+            "label": "Erstzulassung",
+            "values": [
+              {
+                "value": "2004-12",
+                "label": "EZ 12/2004"
+              }
+            ]
+          },
+          {
+            "name": "autos.fuel",
+            "label": "Kraftstoffart",
+            "values": [
+              {
+                "value": "benzin",
+                "label": "Benzin"
+              }
+            ]
+          },
+          {
+            "name": "autos.power",
+            "label": "Leistung",
+            "values": [
+              {
+                "value": "125",
+                "label": "125"
+              }
+            ]
+          },
+          {
+            "name": "autos.shift",
+            "label": "Getriebe",
+            "values": [
+              {
+                "value": "automatik",
+                "label": "Automatik"
+              }
+            ]
+          },
+          {
+            "name": "autos.anzahl_tueren",
+            "label": "Anzahl Türen",
+            "values": [
+              {
+                "value": "4_5",
+                "label": "4/5"
+              }
+            ]
+          },
+          {
+            "name": "autos.tuevdate",
+            "label": "HU bis",
+            "values": [
+              {
+                "value": "2027-07",
+                "label": "Juli 2027"
+              }
+            ]
+          },
+          {
+            "name": "autos.umweltplakette",
+            "label": "Umweltplakette",
+            "values": [
+              {
+                "value": "4_gruen",
+                "label": "4 (Grün)"
+              }
+            ]
+          },
+          {
+            "name": "autos.schadstoffklasse",
+            "label": "Schadstoffklasse",
+            "values": [
+              {
+                "value": "euro4",
+                "label": "Euro4"
+              }
+            ]
+          },
+          {
+            "name": "autos.aussenfarbe",
+            "label": "Außenfarbe",
+            "values": [
+              {
+                "value": "silber",
+                "label": "Silber"
+              }
+            ]
+          },
+          {
+            "name": "autos.material_innenausstattung",
+            "label": "Material Innenausstattung",
+            "values": [
+              {
+                "value": "stoff",
+                "label": "Stoff"
+              }
+            ]
+          },
+          {
+            "name": "autos.alluminium_rims",
+            "label": "Leichtmetallfelgen",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.air_conditioning",
+            "label": "Klimaanlage",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.radio_tuner",
+            "label": "Radio/Tuner",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.non_smoking",
+            "label": "Nichtraucher-Fahrzeug",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          },
+          {
+            "name": "autos.abs",
+            "label": "Antiblockiersystem (ABS)",
+            "values": [
+              {
+                "value": "true",
+                "label": "true"
+              }
+            ]
+          }
+        ],
+        "details": {
+          "Marke": "Opel",
+          "Modell": "Astra",
+          "Kilometerstand": "182.000",
+          "Fahrzeugzustand": "Unbeschädigtes Fahrzeug",
+          "Erstzulassung": "EZ 12/2004",
+          "Kraftstoffart": "Benzin",
+          "Leistung": "125",
+          "Getriebe": "Automatik",
+          "Anzahl Türen": "4/5",
+          "HU bis": "Juli 2027",
+          "Umweltplakette": "4 (Grün)",
+          "Schadstoffklasse": "Euro4",
+          "Außenfarbe": "Silber",
+          "Material Innenausstattung": "Stoff",
+          "Leichtmetallfelgen": "true",
+          "Klimaanlage": "true",
+          "Radio/Tuner": "true",
+          "Nichtraucher-Fahrzeug": "true",
+          "Antiblockiersystem (ABS)": "true"
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,19 @@
+---
+import DealFinderImage from "./DealFinderImage.astro";
+import DealFinderStatusBadge from "./DealFinderStatusBadge.astro";
+import DealScoreBadge from "./DealScoreBadge.astro";
+import { formatDealFinderPrice, formatDealFinderDate, getSafeDealFinderSourceUrl } from "../../lib/deal-finder/formatters";
+import { decodeDealFinderText } from "../../lib/deal-finder/text";
+import { detailUrl } from "../../lib/deal-finder/routes";
+import type { DealFinderListing } from "../../lib/deal-finder/types";
+type Props = { listing: DealFinderListing };
+const { listing } = Astro.props;
+const analysis = listing.analysis;
+const sourceUrl = getSafeDealFinderSourceUrl(listing.source_url);
+const displayTitle = decodeDealFinderText(listing.title);
+const listingUrl = detailUrl(listing.id);
+---
+<article class="deal-finder-card">
+  <a href={listingUrl} aria-label={`Открыть ${displayTitle}`}><DealFinderImage src={listing.source_image_url} alt={displayTitle} /></a>
+  <div class="deal-finder-card-body"><div class="deal-finder-card-top"><DealFinderStatusBadge sourceStatus={listing.source_status} userStatus={listing.user_status} recommendation={analysis?.recommendation} /><DealScoreBadge score={analysis?.deal_score} /></div><h2><a href={listingUrl}>{displayTitle}</a></h2><strong class="deal-finder-price">{formatDealFinderPrice(listing.price, listing.currency)}</strong><dl><div><dt>Год</dt><dd>{listing.year || "—"}</dd></div><div><dt>Пробег</dt><dd>{listing.mileage ? `${listing.mileage.toLocaleString("ru-RU")} км` : "—"}</dd></div><div><dt>Город</dt><dd>{listing.city || "—"}</dd></div></dl><p class="deal-finder-meta">Найдено: {formatDealFinderDate(listing.first_seen_at)}</p><div class="deal-finder-actions">{sourceUrl && <a class="button button-dark" href={sourceUrl} target="_blank" rel="noopener noreferrer nofollow">Открыть оригинал</a>}<button class="button button-dark" type="button" data-deal-action={listing.is_saved ? "unsave" : "save"}>{listing.is_saved ? "Убрать из сохранённых" : "Сохранить"}</button><button class="button button-dark" type="button" data-deal-action="view" disabled={listing.is_viewed}>{listing.is_viewed ? "Просмотрено" : "Отметить просмотренным"}</button><button class="button button-dark" type="button" data-deal-action={listing.is_hidden ? "restore" : "hide"}>{listing.is_hidden ? "Восстановить" : "Скрыть"}</button><a class="button button-primary" href={listingUrl}>Подробнее</a></div></div>
+</article>

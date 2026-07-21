@@ -2,20 +2,51 @@
 import BaseLayout from "../layouts/BaseLayout.astro";
 
 const steps = [
-  "Создать объявление",
-  "Загрузить фото",
-  "Отправить на модерацию",
-  "Публикация после проверки",
+  "Загрузите 1–8 фото",
+  "AI соберет черновик",
+  "Подтвердите данные",
+  "Отправьте на модерацию",
+];
+const benefits = [
+  "Автоматическое сжатие фото для быстрой загрузки.",
+  "AI заполняет только поля, в которых уверен.",
+  "Ручная модерация перед публикацией в каталоге.",
 ];
 ---
 
 <BaseLayout title="Продать авто">
-  <section class="section page-hero">
-    <div class="container narrow">
-      <p class="eyebrow">Для продавцов</p>
-      <h1>Как продать авто</h1>
-      <p class="lead">Добавьте данные автомобиля, загрузите фотографии и отправьте объявление на ручную проверку.</p>
-      <a class="button button-dark" href="/dashboard">Перейти в кабинет</a>
+  <section class="section page-hero sell-hero">
+    <div class="container sell-workspace">
+      <aside class="sell-progress" aria-label="Шаги публикации">
+        <p class="eyebrow">Seller flow</p>
+        <h2>Как это работает</h2>
+        <ol>
+          {steps.map((step, index) => (
+            <li class:list={[index === 0 && "is-active"]}>
+              <span>{index + 1}</span>
+              <strong>{step}</strong>
+            </li>
+          ))}
+        </ol>
+      </aside>
+      <div class="sell-window">
+        <p class="eyebrow">Для продавцов</p>
+        <h1>Создайте объявление по фото</h1>
+        <p class="lead">Загрузите фотографии автомобиля, проверьте AI-черновик и отправьте объявление на ручную модерацию.</p>
+        <div class="sell-dropzone" aria-label="Загрузка фотографий">
+          <span aria-hidden="true">+</span>
+          <strong>1–8 фото автомобиля</strong>
+          <p>Фото сжимаются в браузерный формат, первое изображение станет главным.</p>
+        </div>
+        <ul class="sell-benefits">
+          {benefits.map((benefit) => <li>{benefit}</li>)}
+        </ul>
+        <div class="hero-actions">
+          <a class="button button-dark" href="/dashboard/new">Создать объявление по фото</a>
+          <a class="button button-light" href="/dashboard">Перейти в кабинет</a>
+        </div>
+        <p class="form-message">Можно начать через AI или переключиться на ручное заполнение в кабинете.</p>
+      </div>
     </div>
   </section>
 
@@ -26,6 +57,7 @@ const steps = [
           <div class="step-card">
             <span>{index + 1}</span>
             <strong>{step}</strong>
+            <p>{index === 0 ? "Добавьте общий вид, салон, приборную панель и детали кузова." : index === 1 ? "AI распознает марку, модель, год, цвет и часть характеристик." : index === 2 ? "Вы видите только важные поля для проверки и исправления." : "После модерации объявление появится в каталоге."}</p>
           </div>
         ))}
       </div>

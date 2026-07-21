@@ -1,0 +1,9 @@
+<form class="deal-finder-filters glass-panel" data-deal-finder-filters>
+  <label>Поиск<input name="search" type="search" placeholder="Марка, модель или город" /></label>
+  <label>Марка<input name="brand" placeholder="Например, BMW" /></label>
+  <label>Цена до<input name="price_max" type="number" min="0" max="1000000" inputmode="numeric" /></label>
+  <label>Оценка от<input name="deal_score_min" type="number" min="0" max="100" inputmode="numeric" /></label>
+  <label>Оценка до<input name="deal_score_max" type="number" min="0" max="100" inputmode="numeric" /></label>
+  <label>Сортировка<select name="sort"><option value="newest">Сначала новые</option><option value="deal_score_desc">Выше оценка</option><option value="price_asc">Дешевле</option><option value="price_desc">Дороже</option></select></label>
+  <button class="button button-dark" type="submit">Применить</button>
+</form>

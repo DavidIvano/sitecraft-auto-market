@@ -1,0 +1,18 @@
+---
+type Props = { title?: string; description?: string; active?: "feed" | "watchlist" | "hidden" | "searches" | "compare" | "notifications" | "inbox" };
+const { title = "Deal Finder", description = "Закрытый инструмент для проверки внешних предложений.", active = "feed" } = Astro.props;
+const links = [
+  { key: "feed", href: "/dashboard/deal-finder/", label: "Сегодня" },
+  { key: "watchlist", href: "/dashboard/deal-finder/watchlist/", label: "Шорт-лист" },
+  { key: "hidden", href: "/dashboard/deal-finder/hidden/", label: "Скрытые" },
+  { key: "searches", href: "/dashboard/deal-finder/searches/", label: "Поиски" },
+  { key: "compare", href: "/dashboard/deal-finder/compare/", label: "Сравнение" },
+  { key: "notifications", href: "/dashboard/deal-finder/notifications/", label: "Уведомления" },
+];
+---
+<header class="deal-finder-header page-hero">
+  <div><span class="eyebrow">INTERNAL TOOL</span><h1>{title}</h1><p>{description}</p></div>
+  <nav class="deal-finder-tabs" aria-label="Deal Finder">
+    {links.map((link) => <a href={link.href} aria-current={link.key === active ? "page" : undefined}>{link.label}</a>)}
+  </nav>
+</header>

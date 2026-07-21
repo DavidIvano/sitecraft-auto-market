@@ -1,0 +1,28 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+
+export const prerender = false;
+
+Astro.response.status = 404;
+Astro.response.headers.set("Cache-Control", "no-store");
+---
+
+<BaseLayout
+  title="Объявление не найдено"
+  description="Запрошенное объявление не найдено или больше не опубликовано."
+  noindex
+>
+  <section class="section system-state-section">
+    <div class="container system-state-container">
+      <div class="system-state-panel" role="status">
+        <p class="eyebrow">404</p>
+        <h1>Объявление не найдено</h1>
+        <p>Возможно, объявление снято с публикации, продано или адрес указан неверно.</p>
+        <div class="system-state-actions">
+          <a class="button button-primary" href="/cars">Перейти к автомобилям</a>
+          <a class="button button-secondary" href="/">На главную</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

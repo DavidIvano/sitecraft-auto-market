@@ -23,6 +23,18 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "Что-то 
     return "Сессия входа устарела. Войдите в кабинет ещё раз.";
   }
 
+  if (value.includes("forbidden") || value.includes("access denied") || value.includes("403")) {
+    return "Вход выполнен, но для этого действия недостаточно прав.";
+  }
+
+  if (value.includes("module_disabled") || value.includes("feature_disabled") || value.includes("module disabled")) {
+    return "Функция временно выключена в настройках сайта.";
+  }
+
+  if (value.includes("auth_state_mismatch")) {
+    return "Вход сохранён, но сервис временно отклонил запрос. Попробуйте ещё раз.";
+  }
+
   if (value.includes("missing param") || value.includes("input_error") || value.includes("required")) {
     return "Заполните обязательные поля и попробуйте снова.";
   }
@@ -37,6 +49,22 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "Что-то 
 
   if (value.includes("not found") || value.includes("404")) {
     return "Нужная запись не найдена.";
+  }
+
+  if (value.includes("upload") || value.includes("r2") || value.includes("bucket") || value.includes("route missing")) {
+    return "Не удалось загрузить фото. Попробуйте ещё раз чуть позже.";
+  }
+
+  if (value.includes("ai-кредит") || value.includes("ai credit") || value.includes("credit") || value.includes("paymentrequired")) {
+    return "Недостаточно AI-кредитов. Пополните баланс и попробуйте снова.";
+  }
+
+  if (value.includes("limit") || value.includes("rate") || value.includes("too many") || value.includes("429")) {
+    return "Лимит генераций временно исчерпан. Попробуйте позже.";
+  }
+
+  if (value.includes("openai") || value.includes("ai") || value.includes("model")) {
+    return "Не удалось создать AI-черновик. Попробуйте другие фото или повторите позже.";
   }
 
   if (value.includes("failed to fetch") || value.includes("network") || value.includes("cors") || value.includes("endpoint") || value.includes("xano") || value.includes("api")) {

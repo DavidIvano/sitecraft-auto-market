@@ -29,8 +29,9 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
   <script>
     import {
       AUTH_DEBUG_KEY,
-      clearAuth,
       consumeNext,
+      fetchCurrentUser,
+      getAuthToken,
       setAuthToken,
       setAuthUser,
     } from "../../../lib/authClient";
@@ -182,20 +183,9 @@ const googleContinuePath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_CONTINUE_PATH
           addDebug("User: saved");
         }
 
-        const authMeResponse = await fetch(`${apiUrl}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-        const authMeText = await authMeResponse.text();
-
-        addDebug(`Auth check status: ${authMeResponse.status}`);
-        addDebug(`Auth check response: ${authMeText}`);
-
-        if (!authMeResponse.ok) {
-          clearAuth();
-          throw new Error(authMeText);
-        }
+        const confirmedUser = await fetchCurrentUser(apiUrl, token, { force: true });
+        addDebug(`Auth check: ${confirmedUser?.id ? "confirmed" : "not confirmed"}`);
+        if (!confirmedUser?.id && !getAuthToken()) throw new Error("Unauthorized");
 
         const next = consumeNext("/dashboard");
         addDebug(`Next page: ${next}`);

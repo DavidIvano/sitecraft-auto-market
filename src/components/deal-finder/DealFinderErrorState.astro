@@ -1,0 +1,5 @@
+---
+type Props = { title?: string; description?: string };
+const { title = "Не удалось загрузить Deal Finder", description = "Проверьте доступ или повторите попытку позже." } = Astro.props;
+---
+<section class="deal-finder-state deal-finder-error" role="alert"><strong>{title}</strong><p>{description}</p></section>

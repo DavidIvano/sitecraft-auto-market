@@ -1,0 +1,11 @@
+---
+import { DEAL_FINDER_PLACEHOLDER } from "../../lib/deal-finder/constants";
+import { isSafeDealFinderImageUrl } from "../../lib/deal-finder/formatters";
+type Props = { src?: string | null; alt: string; loading?: "eager" | "lazy" };
+const { src, alt, loading = "lazy" } = Astro.props;
+const safeSource = isSafeDealFinderImageUrl(src) ? src : DEAL_FINDER_PLACEHOLDER;
+---
+
+<div class="deal-finder-image">
+  <img src={safeSource} alt={alt} loading={loading} decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder={DEAL_FINDER_PLACEHOLDER} />
+</div>

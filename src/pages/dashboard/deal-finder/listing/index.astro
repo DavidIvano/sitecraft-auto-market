@@ -1,0 +1,44 @@
+---
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import DealFinderHeader from "../../../../components/deal-finder/DealFinderHeader.astro";
+---
+
+<BaseLayout
+  title="Deal Finder объявление"
+  canonicalPath="/dashboard/deal-finder/listing/"
+  noindex
+  breadcrumbs={[
+    { href: "/", label: "Главная" },
+    { href: "/dashboard", label: "Кабинет" },
+    { href: "/dashboard/deal-finder/", label: "Deal Finder" },
+    { label: "Предложение" },
+  ]}
+>
+  <section class="section deal-finder-section">
+    <div class="container">
+      <DealFinderHeader title="Проверка предложения" description="Закрытая карточка внешнего предложения." />
+      <div id="deal-finder-detail" class="deal-finder-state" aria-busy="true">Загрузка предложения…</div>
+    </div>
+  </section>
+  <script>
+    import { mountDealFinderDetail } from "../../../../lib/deal-finder/client";
+    import { normalizeDealFinderListingId } from "../../../../lib/deal-finder/routes";
+
+    const root = document.querySelector<HTMLElement>("#deal-finder-detail");
+    const id = normalizeDealFinderListingId(new URLSearchParams(window.location.search).get("id"));
+
+    if (root && id) {
+      mountDealFinderDetail(root, id);
+    } else if (root) {
+      const state = document.createElement("section");
+      const title = document.createElement("strong");
+      const description = document.createElement("p");
+      state.className = "deal-finder-state deal-finder-error";
+      title.textContent = "Предложение не указано";
+      description.textContent = "Откройте предложение из закрытой ленты Deal Finder.";
+      state.append(title, description);
+      root.removeAttribute("aria-busy");
+      root.replaceChildren(state);
+    }
+  </script>
+</BaseLayout>

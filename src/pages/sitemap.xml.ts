@@ -1,8 +1,11 @@
 import { SITE_URL } from "../lib/config";
 import { getApprovedCars } from "../lib/xano";
 import type { CarListing } from "../lib/types";
+import { isPublicListing } from "../lib/listingStatus";
 
-const siteUrl = SITE_URL || "https://sitecraft-auto-market.pages.dev";
+export const prerender = false;
+
+const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 
 const toIsoDate = (value?: string | number) => {
   if (!value) {
@@ -29,9 +32,8 @@ export async function GET() {
   const staticPages = [
     { path: "/", priority: "1.0", changefreq: "daily" },
     { path: "/cars", priority: "0.9", changefreq: "daily" },
+    { path: "/pricing", priority: "0.8", changefreq: "weekly" },
     { path: "/sell", priority: "0.7", changefreq: "weekly" },
-    { path: "/login", priority: "0.3", changefreq: "monthly" },
-    { path: "/register", priority: "0.3", changefreq: "monthly" },
     { path: "/support", priority: "0.3", changefreq: "monthly" },
     { path: "/privacy", priority: "0.2", changefreq: "yearly" },
   ];
@@ -39,9 +41,9 @@ export async function GET() {
   let cars: CarListing[] = [];
 
   try {
-    cars = await getApprovedCars();
-  } catch (error) {
-    console.warn(error);
+    cars = (await getApprovedCars()).filter(isPublicListing);
+  } catch {
+    cars = [];
   }
 
   const urls = [
@@ -51,12 +53,18 @@ export async function GET() {
       changefreq: page.changefreq,
       priority: page.priority,
     })),
-    ...cars.map((car) => ({
+    ...cars
+      .filter((car, index, list) => (
+        Boolean(car.slug)
+        && isPublicListing(car)
+        && list.findIndex((candidate) => candidate.slug === car.slug) === index
+      ))
+      .map((car) => ({
       loc: new URL(`/cars/${car.slug}`, siteUrl).toString(),
       lastmod: toIsoDate(car.updated_at ?? car.created_at),
       changefreq: "weekly",
       priority: "0.8",
-    })),
+      })),
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
@@ -76,6 +84,7 @@ ${urls
   return new Response(body, {
     headers: {
       "Content-Type": "application/xml; charset=utf-8",
+      "Cache-Control": "no-store",
     },
   });
 }

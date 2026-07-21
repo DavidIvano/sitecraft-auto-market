@@ -1,6 +1,7 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
-import { carBrands, fuelTypes, transmissions } from "../data/carOptions";
+import { carBrands, fuelTypes, popularCarBrands, transmissions } from "../data/carOptions";
+import { getBrandLogoSvg } from "../lib/brandLogos";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
@@ -14,8 +15,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     <div class="container market-hero-inner">
       <div class="market-hero-copy">
         <p class="eyebrow">SiteCraft Auto Market</p>
-        <h1>Найди свой автомобиль</h1>
-        <p class="lead">Свежие проверенные автомобили, ручная модерация и быстрый подбор по главным параметрам.</p>
+        <h1>Купите или продайте авто быстрее с AI-помощником</h1>
+        <p class="lead">Загрузите фото автомобиля — AI заполнит черновик, подскажет, что улучшить, проверит качество объявления и поможет покупателю найти подходящую машину.</p>
+        <div class="hero-cta-row">
+          <a class="button button-accent" href="/dashboard/new">Создать объявление по фото</a>
+          <a class="button button-light" href="/cars#ai-buyer-search-title">Подобрать авто с AI</a>
+        </div>
+        <p class="ai-microcopy">AI помогает с данными объявления, но финальную информацию подтверждает продавец.</p>
       </div>
 
       <div
@@ -30,44 +36,48 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           <button class="search-tab" type="button">Премиум</button>
         </div>
         <form class="market-search" id="home-search-form">
-          <label>
+          <label class="search-field search-field-brand">
             Марка
             <select name="brand">
               <option value="">Неважно</option>
               {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
             </select>
           </label>
-          <label>
+          <label class="search-field search-field-model">
             Модель
             <input name="model" type="search" placeholder="Например, A4" />
           </label>
-          <label>
-            Цена до
-            <input name="price" type="number" min="0" step="100" placeholder="4000" />
+          <label class="search-field search-field-price-min">
+            Цена от
+            <input name="price_min" type="number" min="0" step="100" placeholder="5000" />
           </label>
-          <label>
+          <label class="search-field search-field-price-max">
+            Цена до
+            <input name="price_max" type="number" min="0" step="100" placeholder="40000" />
+          </label>
+          <label class="search-field search-field-year">
             Год от
             <input name="year" type="number" min="1950" max="2030" placeholder="2018" />
           </label>
-          <label>
+          <label class="search-field search-field-mileage">
             Пробег до
             <input name="mileage" type="number" min="0" step="1000" placeholder="150000" />
           </label>
-          <label>
+          <label class="search-field search-field-fuel">
             Топливо
             <select name="fuel">
               <option value="">Неважно</option>
               {fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}
             </select>
           </label>
-          <label>
+          <label class="search-field search-field-transmission">
             Трансмиссия
             <select name="transmission">
               <option value="">Неважно</option>
               {transmissions.map((transmission) => <option value={transmission}>{transmission}</option>)}
             </select>
           </label>
-          <label>
+          <label class="search-field search-field-city">
             Город
             <input name="city" type="search" placeholder="Берлин" />
           </label>
@@ -82,11 +92,43 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     </div>
   </section>
 
+  <section class="section home-ai-features">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">AI marketplace</p>
+          <h2>Как AI помогает</h2>
+        </div>
+      </div>
+      <div class="ai-feature-grid">
+        <article class="ai-feature-card">
+          <span>01</span>
+          <h3>AI создаёт черновик</h3>
+          <p>Загрузите фото — AI предложит марку, модель, цвет, кузов, топливо и описание.</p>
+        </article>
+        <article class="ai-feature-card">
+          <span>02</span>
+          <h3>AI улучшает объявление</h3>
+          <p>Показывает качество объявления, недостающие поля и готовые подсказки для вставки.</p>
+        </article>
+        <article class="ai-feature-card">
+          <span>03</span>
+          <h3>AI помогает покупателю</h3>
+          <p>Покупатель пишет обычным языком, какое авто ищет, а сайт применяет фильтры.</p>
+        </article>
+        <article class="ai-feature-card">
+          <span>04</span>
+          <h3>AI помогает модератору</h3>
+          <p>AI находит противоречия, слабые места и помогает сформировать причину исправления.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
   <section class="section home-categories">
     <div class="container">
       <div class="section-heading row-heading">
         <div>
-          <p class="eyebrow">Подборки</p>
           <h2>Категории авто</h2>
         </div>
         <div class="slider-controls" aria-label="Управление слайдером категорий">
@@ -102,15 +144,39 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     </div>
   </section>
 
+  <section class="section home-brand-section">
+    <div class="container">
+      <div class="section-heading row-heading">
+        <div>
+          <h2>Быстрый выбор бренда</h2>
+        </div>
+        <div class="slider-controls" aria-label="Управление слайдером марок">
+          <button class="slider-button" id="brand-prev" type="button" aria-label="Предыдущие марки">‹</button>
+          <button class="slider-button" id="brand-next" type="button" aria-label="Следующие марки">›</button>
+        </div>
+      </div>
+      <div class="brand-carousel" aria-label="Популярные марки автомобилей">
+        <div class="brand-track" id="home-brand-track">
+          {popularCarBrands.map((brand) => (
+            <a class="brand-chip-card" href={`/cars?brand=${encodeURIComponent(brand)}`}>
+              <span class="brand-logo-wrap" set:html={getBrandLogoSvg(brand)} />
+              <span class="brand-chip-copy">
+                <strong>{brand}</strong>
+                <span class="brand-chip-count">Смотреть</span>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
   <section class="section">
     <div class="container">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">Последние объявления</p>
           <h2>Свежие автомобили</h2>
-          <p class="section-subtitle">Последние опубликованные автомобили с актуальными фотографиями и контактами продавцов.</p>
         </div>
-        <a href="/cars">Все авто</a>
       </div>
       <div
         class="cards-grid"
@@ -123,10 +189,16 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         <p>Подбираю последние опубликованные объявления.</p>
       </div>
       <p class="form-message" id="home-live-cars-message"></p>
+      <div class="center-action">
+        <a class="button button-light" href="/cars">Все авто</a>
+      </div>
     </div>
   </section>
 
   <script>
+    import { getBrandLogoSvg } from "../lib/brandLogos";
+    import { isPublicListing } from "../lib/listingStatus";
+
     const liveGrid = document.querySelector("#home-live-cars-grid");
     const loadingState = document.querySelector("#home-loading-state");
     const message = document.querySelector("#home-live-cars-message");
@@ -138,6 +210,12 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const categoryTrack = document.querySelector("#home-category-track");
     const categoryPrev = document.querySelector("#category-prev");
     const categoryNext = document.querySelector("#category-next");
+    const brandTrack = document.querySelector("#home-brand-track");
+    const brandPrev = document.querySelector("#brand-prev");
+    const brandNext = document.querySelector("#brand-next");
+    const bodyTypeOptions = ["Седан", "Универсал", "Хэтчбек", "Купе", "Кабриолет", "Внедорожник / SUV", "Кроссовер", "Минивэн", "Фургон", "Пикап", "Лимузин"];
+    const vehicleTypeOptions = ["Легковой автомобиль", "Электромобиль", "Коммерческий транспорт", "Мотоцикл", "Грузовой транспорт", "Прицеп"];
+    const popularBrandOptions = ["Audi", "BMW", "Mercedes-Benz", "Volkswagen", "Toyota", "Ford", "Hyundai", "Kia", "Skoda", "Mazda", "Opel", "Tesla"];
     let allCars: Array<Record<string, unknown>> = [];
 
     const formatPrice = (price: unknown, currency: string) =>
@@ -168,17 +246,62 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       return Number.isNaN(date.getTime()) ? null : date;
     };
 
-    const formatDate = (value: unknown) => {
-      const date = toDate(value);
-
-      if (!date) {
-        return "дата уточняется";
+    const parseStringArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === "string" && item.length > 0);
       }
 
-      return new Intl.DateTimeFormat("ru-RU", {
-        dateStyle: "medium",
-        timeStyle: "short",
-      }).format(date);
+      if (typeof value === "string" && value.trim()) {
+        try {
+          return parseStringArray(JSON.parse(value));
+        } catch {
+          return value.startsWith("http") ? [value] : [];
+        }
+      }
+
+      return [];
+    };
+
+    const getImageMetadataVariantUrl = (value: unknown, variants: string[] = []) => {
+      if (!value || typeof value !== "object") {
+        return "";
+      }
+
+      const metadata = value as Record<string, unknown>;
+      const variantUrls = variants.map((variant) => {
+        const variantGroup = metadata.variants;
+        if (!variantGroup || typeof variantGroup !== "object") {
+          return "";
+        }
+
+        const variantValue = (variantGroup as Record<string, unknown>)[variant];
+        return variantValue && typeof variantValue === "object"
+          ? (variantValue as Record<string, unknown>).url
+          : "";
+      });
+      const optimized = metadata.optimized;
+      const optimizedUrl = optimized && typeof optimized === "object"
+        ? (optimized as Record<string, unknown>).url
+        : "";
+      const url = [...variantUrls, optimizedUrl, metadata.url, metadata.public_url, metadata.image_url, metadata.src, metadata.path]
+        .find((candidate) => typeof candidate === "string" && candidate.length > 0);
+
+      return typeof url === "string" && url.startsWith("http") ? url : "";
+    };
+
+    const getCarCoverImageUrl = (car?: Record<string, unknown>) => {
+      if (!car) {
+        return "";
+      }
+
+      const images = Array.isArray(car.images) ? car.images : [];
+      const imageFromRows = images
+        .map((image: { image_url?: string; image?: { url?: string }; image_metadata?: unknown }) =>
+          getImageMetadataVariantUrl(image.image_metadata, ["card", "thumb", "detail"]) || image.image_url || image.image?.url
+        )
+        .find(Boolean);
+
+      return String(car.cover_image_url || car.main_image_url || parseStringArray(car.image_urls)[0] || imageFromRows || "");
     };
 
     const newestFirst = (cars: Array<Record<string, unknown>>) =>
@@ -189,81 +312,182 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       });
 
     const carImageMarkup = (car: Record<string, unknown>) => {
-      const imageUrl = String(car.main_image_url || "");
+      const imageUrl = getCarCoverImageUrl(car);
 
       if (!imageUrl) {
         return `<div class="car-image car-image-empty">Фото пока не добавлено</div>`;
       }
 
-      return `<img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" />`;
+      return `
+        <button class="vehicle-image-trigger car-card-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(imageUrl)}" data-lightbox-sources="${escapeHtml(JSON.stringify([imageUrl]))}" data-lightbox-alt="${escapeHtml(car.title)}" aria-label="Увеличить фото: ${escapeHtml(car.title)}">
+          <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" decoding="async" width="960" height="720" referrerpolicy="no-referrer" />
+          <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+        </button>
+      `;
+    };
+
+    const isFutureDate = (value: unknown) => {
+      const date = toDate(value);
+      return Boolean(date && date.getTime() > Date.now());
+    };
+
+    const isSold = (car: Record<string, unknown>) =>
+      car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
+
+    const renderStatusBadge = (car: Record<string, unknown>) =>
+      isSold(car)
+        ? `<span class="status-badge status-sold">Продано</span>`
+        : `<span class="status-badge status-approved">Проверено</span>`;
+
+    const renderPaidBadges = (car: Record<string, unknown>) => {
+      const badges = [
+        isFutureDate(car.homepage_until) && "Премиум",
+        isFutureDate(car.featured_until) && "Выделенное",
+        isFutureDate(car.boosted_until) && "Вверху",
+        car.is_ai_generated && "Создано с AI",
+        (car.dealer_verified || car.dealer_plan === "business") && "Проверенный дилер",
+        !(car.dealer_verified || car.dealer_plan === "business") &&
+          (car.dealer_plan === "pro" || car.dealer_plan === "basic") &&
+          "Дилер",
+      ].filter(Boolean);
+
+      return badges
+        .map((badge) => `<span class="paid-badge${badge === "Создано с AI" ? " paid-badge-ai" : ""}">${escapeHtml(badge)}</span>`)
+        .join("");
+    };
+
+    const renderAiMini = (car: Record<string, unknown>) => {
+      const candidates = [car.trust_score, car.listing_quality_score, car.ai_listing_score, car.ai_scan_score];
+      const score = candidates.reduce<number | null>((result, value) => {
+        if (result !== null || value === null || value === undefined || (typeof value === "string" && !value.trim())) return result;
+        const numeric = typeof value === "number" ? value : Number(value);
+        return Number.isFinite(numeric) ? Math.max(0, Math.min(100, Math.round(numeric))) : null;
+      }, null);
+      if (score === null) return "";
+      const tone = score >= 85 ? "good" : score >= 65 ? "medium" : "low";
+
+      return `
+        <div class="ai-analysis-mini ai-analysis-mini-${tone}" aria-label="AI рейтинг объявления ${score}%">
+          <span>AI</span>
+          <strong>${score}%</strong>
+        </div>
+      `;
+    };
+
+    const normalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
+
+    const renderSmartBadges = (car: Record<string, unknown>) => {
+      const mileage = Number(car.mileage || 0);
+      const year = Number(car.year || 0);
+      const age = Number.isFinite(year) && year > 0 ? Math.max(1, new Date().getFullYear() - year) : 0;
+      const bodyType = normalizeText(car.body_type);
+      const seats = Number(car.seats || 0);
+      const badges = [
+        (seats >= 5 || seats === 0) && /(универсал|минивэн|внедорожник|suv|кроссовер)/i.test(bodyType) ? "Семейный авто" : "",
+        normalizeText(car.fuel_type) === "дизель" ? "Экономичный дизель" : "",
+        age > 0 && mileage > 0 && mileage / age < 12000 && mileage < 180000 ? "Низкий пробег" : "",
+      ].filter(Boolean);
+
+      return badges
+        .map((badge) => `<span class="ai-smart-badge" title="Оценка основана на данных объявления.">${escapeHtml(badge)}</span>`)
+        .join("");
+    };
+
+    const normalizeCityLabel = (value: unknown) => {
+      const city = String(value || "").trim();
+
+      if (!city) {
+        return "Не указан";
+      }
+
+      return city
+        .split(/([\s-]+)/)
+        .map((part) => (/^[\p{L}]/u.test(part) ? part.charAt(0).toLocaleUpperCase("ru-RU") + part.slice(1) : part))
+        .join("");
     };
 
     const renderCarCard = (car: Record<string, unknown>) => {
-      const slug = encodeURIComponent(String(car.slug ?? ""));
+      const rawSlug = String(car.slug ?? "").trim();
+      const detailPath = rawSlug ? `/cars/${encodeURIComponent(rawSlug)}` : "";
       const title = escapeHtml(car.title);
+      const cardContent = `
+        <div class="car-card-media">
+          ${carImageMarkup(car)}
+          ${isSold(car) ? '<span class="sold-ribbon">Продано</span>' : ""}
+        </div>
+        <div class="car-card-body">
+          <div class="car-card-top">
+            <h3>${detailPath ? `<a href="${detailPath}">${title}</a>` : title}</h3>
+          </div>
+          <div class="car-card-badges">
+            ${renderStatusBadge(car)}
+            ${renderPaidBadges(car)}
+            ${renderAiMini(car)}
+            ${renderSmartBadges(car)}
+          </div>
+          <p class="car-price">${formatPrice(car.price, String(car.currency || "EUR"))}</p>
+          <dl class="car-meta">
+            <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
+            <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
+            <div><dt>Город</dt><dd>${escapeHtml(normalizeCityLabel(car.city))}</dd></div>
+          </dl>
+          ${detailPath ? `<a class="button button-light car-card-details" href="${detailPath}">Подробнее</a>` : ""}
+        </div>
+      `;
 
       return `
-        <article class="car-card">
-          <a class="car-image-link" href="/cars/${slug}" aria-label="Смотреть ${title}">
-            ${carImageMarkup(car)}
-          </a>
-          <div class="car-card-body">
-            <div class="car-card-top">
-              <h3>${title}</h3>
-              <span class="status-badge status-approved">Проверено модератором</span>
-            </div>
-            <p class="car-price">${formatPrice(car.price, String(car.currency || "EUR"))}</p>
-            <p class="car-date">Добавлено: ${formatDate(car.created_at)}</p>
-            <dl class="car-meta">
-              <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
-              <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
-              <div><dt>Город</dt><dd>${escapeHtml(car.city)}</dd></div>
-            </dl>
-            <a class="button button-light full-width" href="/cars/${slug}">Смотреть</a>
-          </div>
+        <article class="car-card${isSold(car) ? " car-card-sold" : ""}">
+          <div class="car-card-link car-card-composite${detailPath ? "" : " car-card-link-disabled"}"${detailPath ? "" : ' aria-disabled="true"'}>${cardContent}</div>
         </article>
       `;
     };
 
+    const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
+      const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
+      const match = String(car.description || "").match(expression);
+      return match?.[1]?.trim() || "";
+    };
+
+    const getCarBodyType = (car: Record<string, unknown>) =>
+      String(car.body_type || getFieldFromDescription(car, "Кузов") || "");
+
+    const getCarVehicleType = (car: Record<string, unknown>) => {
+      const explicit = String(car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
+
+      if (explicit && explicit !== "не указан") {
+        return explicit;
+      }
+
+      if (/электро/i.test(String(car.fuel_type || ""))) {
+        return "Электромобиль";
+      }
+
+      if (/фургон|пикап/i.test(getCarBodyType(car))) {
+        return "Коммерческий транспорт";
+      }
+
+      return "Легковой автомобиль";
+    };
+
     const categoryDefinitions = [
-      {
-        title: "Семейные",
-        text: "Практичные автомобили для города и поездок.",
-        match: (car: Record<string, unknown>) =>
-          /универсал|минивэн|suv|кроссовер|внедорожник/i.test(String(car.description || "")),
-      },
-      {
-        title: "Первые авто",
-        text: "Недорогие варианты для старта.",
-        match: (car: Record<string, unknown>) => Number(car.price || 0) > 0 && Number(car.price || 0) <= 5000,
-      },
-      {
-        title: "Премиум",
-        text: "BMW, Audi, Mercedes-Benz и другие сильные варианты.",
-        match: (car: Record<string, unknown>) =>
-          /bmw|audi|mercedes|porsche|lexus|land rover/i.test(String(car.brand || "")),
-      },
-      {
-        title: "Электро",
-        text: "Электромобили и современные гибриды.",
-        match: (car: Record<string, unknown>) => /электро|hybrid|гибрид/i.test(String(car.fuel_type || "")),
-      },
-      {
-        title: "Свежие",
-        text: "Последние опубликованные объявления.",
-        match: () => true,
-      },
-      {
-        title: "С фото",
-        text: "Объявления с загруженными изображениями.",
-        match: (car: Record<string, unknown>) => Boolean(car.main_image_url),
-      },
+      ...vehicleTypeOptions.map((type) => ({
+        title: type,
+        text: "Объявления этого типа транспорта.",
+        href: `/cars?vehicle_type=${encodeURIComponent(type)}`,
+        match: (car: Record<string, unknown>) => getCarVehicleType(car).toLowerCase() === type.toLowerCase(),
+      })),
+      ...bodyTypeOptions.map((type) => ({
+        title: type,
+        text: `Автомобили с кузовом ${type.toLowerCase()}.`,
+        href: `/cars?body_type=${encodeURIComponent(type)}`,
+        match: (car: Record<string, unknown>) => getCarBodyType(car).toLowerCase() === type.toLowerCase(),
+      })),
     ];
 
     const pickCategoryCar = (
       cars: Array<Record<string, unknown>>,
       match: (car: Record<string, unknown>) => boolean,
-    ) => cars.find((car) => match(car) && Boolean(car.main_image_url)) || cars.find((car) => match(car)) || cars[0];
+    ) => cars.find((car) => match(car) && Boolean(getCarCoverImageUrl(car))) || cars.find((car) => match(car)) || cars[0];
 
     const renderCategories = (cars: Array<Record<string, unknown>>) => {
       if (!(categoryTrack instanceof HTMLElement)) {
@@ -278,8 +502,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       categoryTrack.innerHTML = categoryDefinitions
         .map((category) => {
           const car = pickCategoryCar(cars, category.match);
-          const imageUrl = String(car?.main_image_url || "");
-          const slug = car?.slug ? `/cars/${encodeURIComponent(String(car.slug))}` : "/cars";
+          const imageUrl = getCarCoverImageUrl(car);
+          const slug = category.href || (car?.slug ? `/cars/${encodeURIComponent(String(car.slug))}` : "/cars");
           const meta = car
             ? `${escapeHtml(car.brand)} ${escapeHtml(car.model)} · ${formatPrice(car.price, String(car.currency || "EUR"))}`
             : "Смотреть объявления";
@@ -316,11 +540,48 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     categoryPrev?.addEventListener("click", () => scrollCategories(-1));
     categoryNext?.addEventListener("click", () => scrollCategories(1));
 
-    const applyHeroImage = (cars: Array<Record<string, unknown>>) => {
-      const firstCarWithImage = cars.find((car) => Boolean(car.main_image_url));
+    const renderBrands = (cars: Array<Record<string, unknown>>) => {
+      if (!(brandTrack instanceof HTMLElement)) {
+        return;
+      }
 
-      if (heroImage instanceof HTMLImageElement && firstCarWithImage?.main_image_url) {
-        heroImage.src = String(firstCarWithImage.main_image_url);
+      brandTrack.innerHTML = popularBrandOptions
+        .map((brand) => {
+          const count = cars.filter((car) => String(car.brand || "").toLowerCase() === brand.toLowerCase()).length;
+
+          return `
+            <a class="brand-chip-card" href="/cars?brand=${encodeURIComponent(brand)}" aria-label="Показать ${escapeHtml(brand)}">
+              <span class="brand-logo-wrap">${getBrandLogoSvg(brand)}</span>
+              <span class="brand-chip-copy">
+                <strong>${escapeHtml(brand)}</strong>
+                <span class="brand-chip-count">${count > 0 ? `${count} объявл.` : "0 объявл."}</span>
+              </span>
+            </a>
+          `;
+        })
+        .join("");
+    };
+
+    const scrollBrands = (direction: number) => {
+      if (!(brandTrack instanceof HTMLElement)) {
+        return;
+      }
+
+      brandTrack.scrollBy({
+        left: direction * Math.max(220, brandTrack.clientWidth * 0.8),
+        behavior: "smooth",
+      });
+    };
+
+    brandPrev?.addEventListener("click", () => scrollBrands(-1));
+    brandNext?.addEventListener("click", () => scrollBrands(1));
+
+    const applyHeroImage = (cars: Array<Record<string, unknown>>) => {
+      const firstCarWithImage = cars.find((car) => Boolean(getCarCoverImageUrl(car)));
+      const imageUrl = getCarCoverImageUrl(firstCarWithImage);
+
+      if (heroImage instanceof HTMLImageElement && imageUrl) {
+        heroImage.src = imageUrl;
         heroImage.hidden = false;
       }
     };
@@ -331,7 +592,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const fuel = String(formData.get("fuel") || "").toLowerCase();
       const transmission = String(formData.get("transmission") || "").toLowerCase();
       const city = String(formData.get("city") || "").toLowerCase();
-      const maxPrice = Number(formData.get("price") || 0);
+      const minPrice = Number(formData.get("price_min") || 0);
+      const maxPrice = Number(formData.get("price_max") || formData.get("price") || 0);
       const minYear = Number(formData.get("year") || 0);
       const maxMileage = Number(formData.get("mileage") || 0);
 
@@ -341,10 +603,29 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         (!fuel || String(car.fuel_type || "").toLowerCase() === fuel) &&
         (!transmission || String(car.transmission || "").toLowerCase() === transmission) &&
         (!city || String(car.city || "").toLowerCase().includes(city)) &&
+        (!minPrice || Number(car.price || 0) >= minPrice) &&
         (!maxPrice || Number(car.price || 0) <= maxPrice) &&
         (!minYear || Number(car.year || 0) >= minYear) &&
         (!maxMileage || Number(car.mileage || 0) <= maxMileage)
       );
+    };
+
+    const applyHomeFilters = () => {
+      if (!(searchForm instanceof HTMLFormElement)) {
+        return;
+      }
+
+      const formData = new FormData(searchForm);
+      const hasActiveFilter = Array.from(formData.values()).some((value) => String(value || "").trim() !== "");
+      const filteredCars = hasActiveFilter
+        ? allCars.filter((car) => matchesFilters(car, formData))
+        : allCars;
+
+      renderCars(filteredCars, hasActiveFilter);
+
+      if (searchButton instanceof HTMLButtonElement) {
+        searchButton.textContent = hasActiveFilter ? `Показать: ${filteredCars.length}` : "Смотреть объявления";
+      }
     };
 
     const renderCars = (cars: Array<Record<string, unknown>>, filtered = false) => {
@@ -394,13 +675,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
               return;
             }
 
-            allCars = newestFirst(cars);
+            allCars = newestFirst(cars.filter(isPublicListing));
             applyHeroImage(allCars);
             renderCategories(allCars);
+            renderBrands(allCars);
             renderCars(allCars);
           })
-          .catch((error) => {
-            console.error(error);
+          .catch(() => {
             if (loadingState instanceof HTMLElement) {
               loadingState.hidden = true;
             }
@@ -416,17 +697,15 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
     searchForm?.addEventListener("submit", (event) => {
       event.preventDefault();
+      applyHomeFilters();
+    });
 
-      if (!(searchForm instanceof HTMLFormElement)) {
-        return;
-      }
-
-      const formData = new FormData(searchForm);
-      const filteredCars = allCars.filter((car) => matchesFilters(car, formData));
-      renderCars(filteredCars, true);
-
-      if (searchButton instanceof HTMLButtonElement) {
-        searchButton.textContent = `Показать: ${filteredCars.length}`;
+    searchForm?.addEventListener("change", applyHomeFilters);
+    searchForm?.addEventListener("input", () => {
+      window.clearTimeout(Number(searchForm instanceof HTMLElement ? searchForm.dataset.filterTimer : 0));
+      const timer = window.setTimeout(applyHomeFilters, 180);
+      if (searchForm instanceof HTMLElement) {
+        searchForm.dataset.filterTimer = String(timer);
       }
     });
 

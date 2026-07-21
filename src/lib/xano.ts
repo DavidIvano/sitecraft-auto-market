@@ -1,53 +1,149 @@
 import type { CarListing } from "./types";
+import { parseOptionalScore } from "./aiScores";
+import { sortPromotedCars } from "./monetization";
+import { API_ROUTES, buildApiUrl, getXanoApiUrl, isXanoConfigured } from "./apiRoutes";
+import { normalizePublicCarList, normalizePublicCarListing } from "./publicCar";
 
-const API_URL = import.meta.env.PUBLIC_XANO_API_URL;
-const PLACEHOLDER_API_URL = "https://your-xano-api-url.com/api:YOUR_GROUP";
+const API_URL = getXanoApiUrl();
+const PUBLIC_API_TIMEOUT_MS = 8_000;
+let sellerListingsQueue: Promise<void> = Promise.resolve();
 
-function isApiConfigured() {
-  return Boolean(API_URL && API_URL !== PLACEHOLDER_API_URL);
+export class XanoPublicApiError extends Error {
+  status: number;
+
+  constructor(message: string, status = 503) {
+    super(message);
+    this.name = "XanoPublicApiError";
+    this.status = status;
+  }
 }
 
+async function fetchPublicJson(path: string) {
+  let response: Response;
+  try {
+    response = await fetch(buildApiUrl(path, API_URL), {
+      headers: { Accept: "application/json" },
+      signal: AbortSignal.timeout(PUBLIC_API_TIMEOUT_MS),
+    });
+  } catch (error) {
+    throw new XanoPublicApiError(
+      error instanceof Error && error.name === "TimeoutError"
+        ? "Xano public API timed out"
+        : "Xano public API is unavailable",
+      503,
+    );
+  }
+
+  if (response.status === 404) return null;
+  if (!response.ok) {
+    throw new XanoPublicApiError("Xano public API request failed", response.status >= 500 ? 503 : 502);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) {
+    throw new XanoPublicApiError("Xano public API returned a non-JSON response", 502);
+  }
+
+  try {
+    return await response.json() as unknown;
+  } catch {
+    throw new XanoPublicApiError("Xano public API returned invalid JSON", 502);
+  }
+}
+
+const queueSellerListingsRequest = <T>(request: () => Promise<T>) => {
+  const result = sellerListingsQueue.then(request, request);
+  sellerListingsQueue = result.then(() => undefined, () => undefined);
+  return result;
+};
+
 export async function getApprovedCars(): Promise<CarListing[]> {
-  if (!isApiConfigured()) {
+  if (!isXanoConfigured(API_URL)) {
     console.warn("PUBLIC_XANO_API_URL is not configured");
     return [];
   }
 
-  const response = await fetch(`${API_URL}/cars`);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch cars");
-  }
-
-  return response.json();
+  const payload = await fetchPublicJson(API_ROUTES.cars);
+  return sortPromotedCars(normalizePublicCarList(payload));
 }
 
 export async function getCarBySlug(slug: string): Promise<CarListing | null> {
-  if (!isApiConfigured()) {
+  if (!isXanoConfigured(API_URL)) {
     console.warn("PUBLIC_XANO_API_URL is not configured");
     return null;
   }
 
-  const response = await fetch(`${API_URL}/cars/${slug}`);
-
-  if (response.status === 404) {
-    return null;
-  }
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch car");
-  }
-
-  return response.json();
+  const payload = await fetchPublicJson(API_ROUTES.carBySlug(slug));
+  return payload ? normalizePublicCarListing(payload) : null;
 }
 
-export async function createCarListing(formData: FormData): Promise<CarListing> {
-  if (!isApiConfigured()) {
+export async function getSellerListingsBySlug(slug: string): Promise<CarListing[]> {
+  if (!isXanoConfigured(API_URL)) return [];
+
+  return queueSellerListingsRequest(async () => {
+    const url = buildApiUrl(API_ROUTES.carSellerListings(slug), API_URL);
+    let response: Response | null = null;
+    for (let attempt = 0; attempt < 4; attempt += 1) {
+      response = await fetch(url);
+      if (response.status !== 429) break;
+      await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+    }
+    await new Promise((resolve) => setTimeout(resolve, 120));
+    if (!response) throw new Error("Failed to fetch seller listings");
+    if (response.status === 404) return [];
+    if (!response.ok) throw new Error("Failed to fetch seller listings");
+
+    const cars = await response.json();
+    if (!Array.isArray(cars)) return [];
+
+    return cars.slice(0, 6).flatMap((item): CarListing[] => {
+      if (!item || typeof item !== "object") return [];
+      const source = item as Record<string, unknown>;
+      const slugValue = String(source.slug || "").trim();
+      const title = String(source.title || "").trim();
+      if (!slugValue || !title) return [];
+
+      return [{
+        id: Number(source.id) || 0,
+        slug: slugValue,
+        title,
+        brand: String(source.brand || ""),
+        model: String(source.model || ""),
+        year: Number(source.year) || 0,
+        price: Number(source.price) || 0,
+        currency: String(source.currency || "EUR"),
+        mileage: Number(source.mileage) || 0,
+        city: String(source.city || ""),
+        country: String(source.country || ""),
+        body_type: String(source.body_type || ""),
+        fuel_type: String(source.fuel_type || ""),
+        transmission: String(source.transmission || ""),
+        thumbnail_url: String(source.thumbnail_url || ""),
+        main_image_url: String(source.main_image_url || ""),
+        primary_image_url: String(source.primary_image_url || ""),
+        image_url: String(source.image_url || ""),
+        cover_image_url: String(source.cover_image_url || ""),
+        is_ai_generated: source.is_ai_generated === true,
+        listing_quality_score: parseOptionalScore(source.listing_quality_score) ?? undefined,
+        photo_quality_score: parseOptionalScore(source.photo_quality_score) ?? undefined,
+        trust_score: parseOptionalScore(source.trust_score) ?? undefined,
+        description: "",
+        status: "approved",
+        moderation_status: "approved",
+        moderator_approved: true,
+      }];
+    });
+  });
+}
+
+export async function createCarListing(formData: FormData, authToken?: string): Promise<CarListing> {
+  if (!isXanoConfigured(API_URL)) {
     throw new Error("PUBLIC_XANO_API_URL is not configured");
   }
 
-  const response = await fetch(`${API_URL}/cars`, {
+  const response = await fetch(buildApiUrl(API_ROUTES.cars, API_URL), {
     method: "POST",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
     body: formData,
   });
 
@@ -58,13 +154,14 @@ export async function createCarListing(formData: FormData): Promise<CarListing> 
   return response.json();
 }
 
-export async function submitCarForReview(id: number): Promise<CarListing> {
-  if (!isApiConfigured()) {
+export async function submitCarForReview(id: number, authToken?: string): Promise<CarListing> {
+  if (!isXanoConfigured(API_URL)) {
     throw new Error("PUBLIC_XANO_API_URL is not configured");
   }
 
-  const response = await fetch(`${API_URL}/cars/${id}/submit`, {
+  const response = await fetch(buildApiUrl(API_ROUTES.carSubmit(id), API_URL), {
     method: "PATCH",
+    headers: authToken ? { Authorization: `Bearer ${authToken}` } : undefined,
   });
 
   if (!response.ok) {

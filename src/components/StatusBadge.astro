@@ -3,9 +3,13 @@ import type { CarListingStatus } from "../lib/types";
 
 const statusLabels: Record<CarListingStatus, string> = {
   draft: "Черновик",
+  ai_draft: "AI-черновик",
+  ready_for_review: "Готово к проверке",
   pending_review: "На модерации",
-  approved: "Проверено модератором",
+  approved: "Проверено",
+  published: "Опубликовано",
   rejected: "Отклонено",
+  needs_fix: "Нужно исправить",
   archived: "В архиве",
   blocked: "Заблокировано",
   deleted: "Удалено",

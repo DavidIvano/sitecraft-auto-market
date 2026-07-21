@@ -1,11 +1,12 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import { API_ROUTES } from "../../lib/apiRoutes";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Админ-панель авто">
+<BaseLayout title="Админ-панель авто" noindex>
   <section class="section page-hero">
     <div class="container">
       <div class="admin-heading">
@@ -17,7 +18,10 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             заблокированы, удалены или отправлены в архив.
           </p>
         </div>
-        <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
+        <div class="admin-heading-actions">
+          <a class="button button-light" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
+          <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
+        </div>
       </div>
 
       <div
@@ -25,6 +29,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         id="admin-board"
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
+        data-ai-moderation-path={API_ROUTES.aiModerationCheck}
         hidden
       >
         <div class="admin-toolbar">
@@ -36,24 +41,37 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             Статус
             <select id="admin-status">
               <option value="all">Все объявления</option>
-              <option value="pending_review">На модерации</option>
-              <option value="approved">Опубликованные</option>
-              <option value="draft">Черновики</option>
+              <option value="pending">Ожидают проверки</option>
+              <option value="needs_fix">Нужно исправить</option>
+              <option value="approved">Одобрено</option>
               <option value="rejected">Отклонённые</option>
-              <option value="archived">Архив</option>
               <option value="blocked">Заблокированные</option>
-              <option value="deleted">Удалённые</option>
+              <option value="conflict">Требует проверки</option>
+              <option value="archived">Архив</option>
               <option value="sold">Проданные</option>
             </select>
           </label>
           <button class="button button-light" id="admin-refresh" type="button">Обновить</button>
         </div>
 
-        <div class="admin-stats" id="admin-stats" aria-label="Сводка по объявлениям"></div>
+        <div class="admin-moderation-layout">
+          <aside class="admin-status-panel">
+            <span>Статусы</span>
+            <div class="admin-stats" id="admin-stats" aria-label="Сводка по объявлениям"></div>
+          </aside>
 
-        <div class="admin-list" id="admin-list">
-          <div class="empty-state">
-            Загружаю объявления...
+          <div class="admin-table-panel">
+            <div class="admin-table-head" aria-hidden="true">
+              <span>Объявление</span>
+              <span>Данные</span>
+              <span>Действия</span>
+            </div>
+            <div class="admin-list admin-table-view" id="admin-list">
+              <div class="detail-skeleton">
+                <div class="skeleton-gallery"></div>
+                <div class="skeleton-panel"><span></span><strong></strong><i></i><em></em></div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -67,18 +85,22 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
   </section>
 
   <script>
-    import { clearAuth, getAuthToken, rememberNext } from "../../lib/authClient";
+    import { fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isSessionConfirmedExpired, rememberNext } from "../../lib/authClient";
+    import { buildModerationReason, runModerationFallback } from "../../lib/ai/moderationFallback";
+    import {
+      canRunModerationAction,
+      getEffectiveModerationStatus,
+      getLifecycleStatus,
+      getModerationQueueCounts,
+      getModerationQueueGroup,
+      getStatusConflict,
+      getStatusLabel,
+      getStatusTone,
+    } from "../../lib/listingStatus";
+    import type { AiModerationCheckResponse, AiModerationIssue, ModerationQueueGroup } from "../../lib/types";
+    import type { ModerationAction } from "../../lib/listingStatus";
 
-    type AdminStatus =
-      | "all"
-      | "draft"
-      | "pending_review"
-      | "approved"
-      | "rejected"
-      | "archived"
-      | "blocked"
-      | "deleted"
-      | "sold";
+    type AdminStatusFilter = ModerationQueueGroup;
 
     type AdminCar = {
       id?: number | string;
@@ -95,20 +117,25 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       city?: string;
       country?: string;
       description?: string;
-      status?: AdminStatus;
+      status?: string | null;
+      moderation_status?: string | null;
       main_image_url?: string;
+      cover_image_url?: string;
+      image_urls?: string[] | string;
+      images?: Array<{ image_url?: string; image?: { url?: string } }>;
       created_at?: string;
       updated_at?: string;
       user_id?: number | string;
-    };
-
-    type AuthMeResponse = {
-      user?: {
-        id?: number | string;
-        email?: string;
-        name?: string;
-        role?: string;
-      };
+      vin?: string;
+      seller_name?: string;
+      seller_phone?: string;
+      seller_email?: string;
+      phone?: string;
+      email?: string;
+      ai_analysis?: unknown;
+      trust_score?: number | string;
+      ai_listing_score?: number | string;
+      listing_quality_score?: number | string;
     };
 
     const board = document.querySelector("#admin-board");
@@ -120,23 +147,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const status = document.querySelector("#admin-status");
     const refresh = document.querySelector("#admin-refresh");
     const adminToken = getAuthToken();
-    const allowedAdminEmails = new Set([
-      "ivanovdavid19@gmail.com",
-      "ivanovdavid119@gmail.com",
-    ]);
-
-    const statusLabels: Record<string, string> = {
-      all: "Все",
-      draft: "Черновики",
-      pending_review: "На модерации",
-      approved: "Опубликованные",
-      rejected: "Отклонённые",
-      archived: "Архив",
-      blocked: "Заблокированные",
-      deleted: "Удалённые",
-      sold: "Проданные",
-    };
-
     const actionLabels: Record<string, string> = {
       approve: "Одобрить",
       reject: "Отклонить",
@@ -148,11 +158,11 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     };
 
     let cars: AdminCar[] = [];
+    const aiModerationStates = new Map<string, { loading?: boolean; error?: string; result?: AiModerationCheckResponse; reason?: string }>();
 
     const redirectToLogin = () => {
-      clearAuth();
       rememberNext("/admin/moderation");
-      window.location.href = `/login?next=${encodeURIComponent("/admin/moderation")}`;
+      window.location.href = `/login?next=${encodeURIComponent("/admin/moderation/")}`;
     };
 
     const redirectToSupport = () => {
@@ -165,11 +175,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       }
     };
 
-    const isAdminUser = (user?: AuthMeResponse["user"]) => {
-      const email = String(user?.email || "").trim().toLowerCase();
-      const role = String(user?.role || "").trim().toLowerCase();
-
-      return role === "admin" || allowedAdminEmails.has(email);
+    const showAdminBoard = () => {
+      if (board instanceof HTMLElement) board.hidden = false;
+      if (accessMessage instanceof HTMLElement) accessMessage.hidden = true;
     };
 
     const requireAdminAccess = async () => {
@@ -191,37 +199,26 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       }
 
       try {
-        const response = await fetch(`${apiUrl}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-          },
-        });
-
-        if (response.status === 401 || response.status === 403) {
+        const user = await fetchCurrentUser(apiUrl, adminToken);
+        if (!user && !getAuthToken()) {
           redirectToLogin();
           return false;
         }
-
-        if (!response.ok) {
-          throw new Error(`auth check failed ${response.status}`);
-        }
-
-        const payload = (await response.json()) as AuthMeResponse;
-
-        if (!isAdminUser(payload.user)) {
+        if (user && !isAdminUser(user)) {
           redirectToSupport();
           return false;
         }
-
-        board.hidden = false;
-        if (accessMessage instanceof HTMLElement) {
-          accessMessage.hidden = true;
-        }
+        showAdminBoard();
         return true;
       } catch (error) {
         console.error(error);
-        setAccessMessage("Не удалось проверить доступ к админ-панели. Попробуйте войти ещё раз.");
-        return false;
+        const cachedUser = getAuthUser();
+        if (cachedUser && !isAdminUser(cachedUser)) {
+          redirectToSupport();
+          return false;
+        }
+        showAdminBoard();
+        return true;
       }
     };
 
@@ -282,15 +279,191 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       return [];
     };
 
+    const parseStringArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        return value.filter((item): item is string => typeof item === "string" && item.length > 0);
+      }
+
+      if (typeof value === "string" && value.trim()) {
+        try {
+          return parseStringArray(JSON.parse(value));
+        } catch {
+          return value.startsWith("http") ? [value] : [];
+        }
+      }
+
+      return [];
+    };
+
+    const getCarImages = (car: AdminCar) => {
+      const rowImages = (car.images ?? [])
+        .map((image, index) => ({
+          id: (image as { id?: number | string }).id,
+          url: image.image_url || image.image?.url || "",
+          isMain: Boolean((image as { is_main?: boolean }).is_main),
+          sortOrder: Number((image as { sort_order?: number }).sort_order ?? index),
+        }))
+        .filter((image) => image.url);
+
+      const fallbackImages = [
+        car.cover_image_url,
+        car.main_image_url,
+        ...parseStringArray(car.image_urls),
+      ]
+        .filter((url): url is string => Boolean(url))
+        .map((url, index) => ({
+          id: "",
+          url,
+          isMain: index === 0,
+          sortOrder: index,
+        }));
+
+      const allImages = rowImages.length > 0 ? rowImages : fallbackImages;
+      const seen = new Set<string>();
+
+      return allImages
+        .sort((left, right) => Number(left.sortOrder) - Number(right.sortOrder))
+        .filter((image) => {
+          if (seen.has(image.url)) {
+            return false;
+          }
+
+          seen.add(image.url);
+          return true;
+        });
+    };
+
+    const riskLabels: Record<string, string> = {
+      low: "Низкий",
+      medium: "Средний",
+      high: "Высокий",
+    };
+
+    const recommendationLabels: Record<string, string> = {
+      approve: "Можно одобрить после ручной проверки",
+      needs_fix: "Отправить на исправление",
+      reject: "Отклонить",
+      block: "Рассмотреть блокировку",
+      manual_review: "Требуется ручная проверка",
+    };
+
+    const normalizeAiModeration = (value: unknown): AiModerationCheckResponse => {
+      const result = value && typeof value === "object" ? value as Record<string, unknown> : {};
+      const issues = Array.isArray(result.issues)
+        ? result.issues
+            .filter((item) => item && typeof item === "object")
+            .map((item) => {
+              const issue = item as Record<string, unknown>;
+              const severity = String(issue.severity || "info");
+              return {
+                field: issue.field ? String(issue.field) : undefined,
+                severity: severity === "critical" || severity === "warning" ? severity : "info",
+                message: String(issue.message || "Проверьте данные объявления."),
+              } as AiModerationIssue;
+            })
+        : [];
+
+      return {
+        risk_level: result.risk_level === "high" || result.risk_level === "medium" || result.risk_level === "low"
+          ? result.risk_level
+          : undefined,
+        trust_score: Number.isFinite(Number(result.trust_score)) ? Number(result.trust_score) : undefined,
+        issues,
+        recommendation:
+          result.recommendation === "approve" ||
+          result.recommendation === "needs_fix" ||
+          result.recommendation === "reject" ||
+          result.recommendation === "block" ||
+          result.recommendation === "manual_review"
+            ? result.recommendation
+            : undefined,
+        suggested_action: result.suggested_action ? String(result.suggested_action) : undefined,
+        suggested_rejection_reason: result.suggested_rejection_reason ? String(result.suggested_rejection_reason) : undefined,
+        warnings: Array.isArray(result.warnings) ? result.warnings.map(String) : [],
+        raw: value,
+      };
+    };
+
+    const renderAiModerationCard = (car: AdminCar) => {
+      const carId = String(car.id || "");
+      const state = aiModerationStates.get(carId) || {};
+      const result = state.result;
+      const risk = result?.risk_level || "low";
+      const trustScore = Number.isFinite(Number(result?.trust_score)) ? Math.round(Number(result?.trust_score)) : null;
+      const issues = result?.issues || [];
+      const recommendation = result?.recommendation || "manual_review";
+      const reason = state.reason || result?.suggested_rejection_reason || "";
+
+      if (state.loading) {
+        return `
+          <section class="ai-moderation-card" data-ai-moderation-card="${escapeHtml(carId)}">
+            <div class="ai-moderation-card-head">
+              <strong>AI-проверка</strong>
+              <span class="ai-risk-badge ai-risk-medium">Проверяет</span>
+            </div>
+            <p>AI проверяет объявление...</p>
+          </section>
+        `;
+      }
+
+      return `
+        <section class="ai-moderation-card" data-ai-moderation-card="${escapeHtml(carId)}">
+          <div class="ai-moderation-card-head">
+            <strong>AI-проверка</strong>
+            ${
+              result
+                ? `<span class="ai-risk-badge ai-risk-${escapeHtml(risk)}">Риск: ${escapeHtml(riskLabels[risk] || risk)}</span>`
+                : `<span class="ai-risk-badge">Не запускалась</span>`
+            }
+          </div>
+          <p class="ai-moderation-note">AI помогает найти проблемы в данных объявления, но не заменяет решение модератора.</p>
+          ${
+            state.error
+              ? `<p class="ai-moderation-error">${escapeHtml(state.error)}</p>`
+              : ""
+          }
+          ${
+            result
+              ? `
+                <div class="ai-moderation-summary">
+                  <span>Доверие: <strong>${trustScore ?? "на проверке"}${trustScore === null ? "" : "/100"}</strong></span>
+                  <span>Рекомендация: <strong>${escapeHtml(recommendationLabels[recommendation] || recommendation)}</strong></span>
+                </div>
+                <ul class="ai-issue-list">
+                  ${
+                    issues.length
+                      ? issues.map((issue) => `<li class="ai-issue-${escapeHtml(issue.severity)}"><span>${escapeHtml(issue.field || "Данные")}</span>${escapeHtml(issue.message)}</li>`).join("")
+                      : `<li class="ai-issue-info"><span>Данные</span>Явных проблем не найдено.</li>`
+                  }
+                </ul>
+                ${
+                  reason
+                    ? `<div class="ai-rejection-draft" data-rejection-draft="${escapeHtml(carId)}"><strong>Причина для пользователя</strong><textarea readonly>${escapeHtml(reason)}</textarea></div>`
+                    : ""
+                }
+                <div class="ai-moderation-actions">
+                  <button class="button button-light button-small" type="button" data-ai-rejection-generate="${escapeHtml(carId)}">Сгенерировать причину отказа</button>
+                  <button class="button button-light button-small" type="button" data-ai-rejection-copy="${escapeHtml(carId)}" ${reason ? "" : "disabled"}>Скопировать причину</button>
+                  <button class="button button-light button-small" type="button" data-ai-recommendation-apply="${escapeHtml(carId)}">Применить рекомендацию</button>
+                </div>
+              `
+              : `
+                <p>AI ещё не проверял это объявление.</p>
+                <button class="button button-light button-small" type="button" data-ai-moderation-check="${escapeHtml(carId)}">Проверить AI</button>
+              `
+          }
+        </section>
+      `;
+    };
+
     const getFilteredCars = () => {
-      const selectedStatus =
-        status instanceof HTMLSelectElement ? status.value : "all";
+      const selectedStatus = status instanceof HTMLSelectElement ? normalizeQueueFilter(status.value) : "all";
       const query =
         search instanceof HTMLInputElement ? search.value.trim().toLowerCase() : "";
 
       return cars.filter((car) => {
-        const carStatus = car.status || "draft";
-        const statusMatches = selectedStatus === "all" || carStatus === selectedStatus;
+        const queueGroup = getModerationQueueGroup(car);
+        const statusMatches = selectedStatus === "all" || queueGroup === selectedStatus;
         const haystack = [
           car.id,
           car.title,
@@ -299,6 +472,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           car.city,
           car.country,
           car.status,
+          car.moderation_status,
+          getStatusLabel(queueGroup),
           car.year,
         ]
           .filter(Boolean)
@@ -314,46 +489,56 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return;
       }
 
-      const statuses = [
-        "pending_review",
-        "approved",
-        "draft",
-        "rejected",
-        "archived",
-        "blocked",
-        "deleted",
-        "sold",
+      const statuses: Array<Exclude<ModerationQueueGroup, "all">> = [
+        "pending", "needs_fix", "approved", "rejected", "blocked", "conflict", "archived", "sold",
       ];
+      const counts = getModerationQueueCounts(cars);
 
       stats.innerHTML = [
-        `<button class="stat-card" type="button" data-status="all"><span>${cars.length}</span><strong>Всего</strong></button>`,
-        ...statuses.map((item) => {
-          const count = cars.filter((car) => (car.status || "draft") === item).length;
-          return `<button class="stat-card" type="button" data-status="${item}"><span>${count}</span><strong>${escapeHtml(statusLabels[item])}</strong></button>`;
-        }),
+        `<button class="stat-card" type="button" data-status="all"><span>${counts.all}</span><strong>Всего</strong></button>`,
+        ...statuses.map((item) => `<button class="stat-card" type="button" data-status="${item}"><span>${counts[item]}</span><strong>${escapeHtml(getStatusLabel(item))}</strong></button>`),
       ].join("");
     };
 
     const getActions = (car: AdminCar) => {
-      const current = car.status || "draft";
+      const candidates: ModerationAction[] = ["approve", "reject", "archive", "block", "delete", "sold"];
+      return candidates.filter((action) => canRunModerationAction(car, action));
+    };
 
-      if (current === "pending_review") {
-        return ["approve", "reject", "block"];
-      }
+    const normalizeQueueFilter = (value: string): AdminStatusFilter => {
+      const legacy: Record<string, AdminStatusFilter> = { pending_review: "pending" };
+      const normalized = legacy[value] || value;
+      return ["all", "pending", "needs_fix", "approved", "rejected", "blocked", "conflict", "archived", "sold"].includes(normalized)
+        ? normalized as AdminStatusFilter
+        : "all";
+    };
 
-      if (current === "approved") {
-        return ["archive", "block", "sold"];
-      }
+    const getPrimaryDisplayStatus = (car: AdminCar) => {
+      const lifecycle = getLifecycleStatus(car);
+      if (["deleted", "archived", "sold", "blocked"].includes(lifecycle)) return lifecycle;
+      return getEffectiveModerationStatus(car) || lifecycle;
+    };
 
-      if (current === "rejected" || current === "archived" || current === "blocked") {
-        return ["restore", "delete"];
-      }
+    const renderSellerContact = (car: AdminCar) => {
+      const name = String(car.seller_name || "").trim();
+      const email = String(car.seller_email || "").trim().toLowerCase();
+      const phone = String(car.seller_phone || "").trim();
+      const safeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? email : "";
+      const safePhone = phone.replace(/[^+\d]/g, "");
 
-      if (current === "deleted") {
-        return ["restore"];
-      }
-
-      return ["approve", "reject"];
+      return `
+        <section class="admin-seller-contact" aria-label="Контакт продавца">
+          <div class="admin-seller-contact-heading">
+            <strong>Контакт продавца</strong>
+            ${car.user_id ? `<span>Пользователь ID ${escapeHtml(car.user_id)}</span>` : ""}
+          </div>
+          <dl>
+            <div><dt>Имя</dt><dd>${escapeHtml(name || "Не указано")}</dd></div>
+            <div><dt>Email</dt><dd>${safeEmail ? `<a href="mailto:${encodeURIComponent(safeEmail)}">${escapeHtml(safeEmail)}</a>` : "Не указан"}</dd></div>
+            <div><dt>Телефон</dt><dd>${safePhone ? `<a href="tel:${escapeHtml(safePhone)}">${escapeHtml(phone)}</a>` : "Не указан"}</dd></div>
+          </dl>
+        </section>
+      `;
     };
 
     const renderList = () => {
@@ -377,20 +562,64 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       list.innerHTML = filtered
         .map((car) => {
           const title = car.title || [car.brand, car.model, car.year].filter(Boolean).join(" ");
-          const image = car.main_image_url || "/favicon.svg";
-          const carStatus = car.status || "draft";
+          const lifecycleStatus = getLifecycleStatus(car);
+          const moderationStatus = getEffectiveModerationStatus(car);
+          const queueGroup = getModerationQueueGroup(car);
+          const conflict = getStatusConflict(car);
+          const displayStatus = getPrimaryDisplayStatus(car);
           const actions = getActions(car);
+          const images = getCarImages(car);
 
           return `
-            <article class="admin-car">
-              <img class="admin-car-image" src="${escapeHtml(image)}" alt="${escapeHtml(title || "Авто")}" loading="lazy" />
+            <article class="admin-car admin-car-${escapeHtml(queueGroup || lifecycleStatus)}" data-lifecycle-status="${escapeHtml(lifecycleStatus)}" data-moderation-status="${escapeHtml(moderationStatus || "none")}" data-queue-group="${escapeHtml(queueGroup || "none")}">
               <div class="admin-car-main">
+                <section class="admin-image-editor" aria-label="Изображения объявления ${escapeHtml(title)}">
+                  <div class="admin-image-editor-head">
+                    <strong>Изображения${images.length ? ` · ${images.length}` : ""}</strong>
+                    <label class="button button-light button-small">
+                      Добавить фото
+                      <input class="admin-image-input" type="file" accept="image/avif,image/webp,image/jpeg,image/png" multiple data-add-images-for="${escapeHtml(car.id)}" hidden />
+                    </label>
+                  </div>
+                  <div class="admin-image-grid" role="list">
+                    ${
+                      images.length > 0
+                        ? images
+                            .map(
+                              (item, index) => `
+                                <article class="admin-image-card${item.isMain || index === 0 ? " is-main" : ""}" role="listitem">
+                                  <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-group="moderation-${escapeHtml(car.id)}" data-lightbox-src="${escapeHtml(item.url)}" data-lightbox-alt="${escapeHtml(title)}, фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
+                                    <img src="${escapeHtml(item.url)}" alt="Фото ${index + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
+                                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                                  </button>
+                                  <div class="admin-image-actions">
+                                    <span>${item.isMain || index === 0 ? "Главное" : `Фото ${index + 1}`}</span>
+                                    <div>
+                                      ${
+                                        item.id
+                                          ? `<button type="button" data-image-action="main" data-id="${escapeHtml(car.id)}" data-image-id="${escapeHtml(item.id)}">Главным</button>
+                                             <button type="button" data-image-action="delete" data-id="${escapeHtml(car.id)}" data-image-id="${escapeHtml(item.id)}">Удалить</button>`
+                                          : `<span>Нет ID фото</span>`
+                                      }
+                                    </div>
+                                  </div>
+                                </article>
+                              `,
+                            )
+                            .join("")
+                        : `<div class="photo-empty-state">Фото пока нет. Добавьте изображение.</div>`
+                    }
+                  </div>
+                </section>
                 <div class="admin-car-title">
                   <div>
                     <span class="admin-id">ID ${escapeHtml(car.id)}</span>
                     <h2>${escapeHtml(title || "Без названия")}</h2>
                   </div>
-                  <span class="status-badge status-${escapeHtml(carStatus)}">${escapeHtml(statusLabels[carStatus] || carStatus)}</span>
+                  <div class="admin-status-badges">
+                    <span class="status-badge status-${escapeHtml(displayStatus)} status-tone-${escapeHtml(getStatusTone(displayStatus))}">${escapeHtml(getStatusLabel(displayStatus))}</span>
+                    ${conflict ? `<span class="status-badge status-conflict status-tone-danger" title="${escapeHtml(conflict.message)}">Конфликт статусов</span>` : ""}
+                  </div>
                 </div>
                 <dl class="admin-car-meta">
                   <div><dt>Цена</dt><dd>${escapeHtml(formatPrice(car))}</dd></div>
@@ -399,13 +628,27 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                   <div><dt>Создано</dt><dd>${escapeHtml(formatDate(car.created_at))}</dd></div>
                 </dl>
                 <p class="admin-description">${escapeHtml(car.description || "Описание не заполнено.")}</p>
+                ${renderSellerContact(car)}
+                ${renderAiModerationCard(car)}
                 <div class="admin-actions">
-                  ${actions
-                    .map(
-                      (action) =>
-                        `<button class="button ${action === "delete" || action === "block" || action === "reject" ? "button-danger" : "button-light"}" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
-                    )
-                    .join("")}
+                  <div class="admin-safe-actions">
+                    ${actions
+                      .filter((action) => !["delete", "block", "reject"].includes(action))
+                      .map(
+                        (action) =>
+                          `<button class="button button-light" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
+                      )
+                      .join("")}
+                  </div>
+                  <div class="admin-danger-actions">
+                    ${actions
+                      .filter((action) => ["delete", "block", "reject"].includes(action))
+                      .map(
+                        (action) =>
+                          `<button class="button button-danger" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
+                      )
+                      .join("")}
+                  </div>
                   ${
                     car.slug
                       ? `<a class="button button-light" href="/cars/${escapeHtml(car.slug)}" target="_blank" rel="noreferrer">Открыть</a>`
@@ -441,6 +684,17 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           },
         });
 
+        if (response.status === 401) {
+          if (await isSessionConfirmedExpired(apiUrl, adminToken)) {
+            redirectToLogin();
+            return;
+          }
+          throw new Error("AUTH_STATE_MISMATCH");
+        }
+        if (response.status === 403) {
+          redirectToSupport();
+          return;
+        }
         if (!response.ok) {
           throw new Error(`moderation load failed ${response.status}`);
         }
@@ -471,12 +725,11 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return;
       }
 
-      const endpointAction =
-        action === "restore"
-          ? "approve"
-          : action === "archive" || action === "block" || action === "delete" || action === "sold"
-            ? action
-            : action;
+      const endpointAction = action;
+
+      if (action === "delete" && !window.confirm("Удалить объявление? Его можно будет увидеть в статусе «Удалённые».")) {
+        return;
+      }
 
       try {
         message.textContent = `${actionLabels[action] || "Действие"}...`;
@@ -499,8 +752,235 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       }
     };
 
+    const getCarById = (id: string) => cars.find((car) => String(car.id || "") === id);
+
+    const runAiModerationCheck = async (id: string) => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const car = getCarById(id);
+      const apiUrl = board.dataset.apiUrl;
+      const aiModerationPath = board.dataset.aiModerationPath || "/ai/moderation/check-listing";
+
+      if (!car || !apiUrl) {
+        return;
+      }
+
+      aiModerationStates.set(id, { loading: true });
+      renderList();
+
+      try {
+        const images = getCarImages(car);
+        const response = await fetch(`${apiUrl}${aiModerationPath}`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            listing_id: Number(car.id || 0),
+            listing: car,
+            images,
+          }),
+        });
+
+        if (response.status === 404) {
+          const fallback = runModerationFallback(car as Record<string, unknown>, images);
+          aiModerationStates.set(id, {
+            result: fallback,
+            error: "AI-проверка модерации ещё не подключена. Выполнена локальная проверка качества данных.",
+            reason: fallback.suggested_rejection_reason,
+          });
+          renderList();
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`AI moderation failed ${response.status}`);
+        }
+
+        const result = normalizeAiModeration(await response.json());
+        aiModerationStates.set(id, {
+          result,
+          reason: result.suggested_rejection_reason || buildModerationReason(result.issues || []),
+        });
+        renderList();
+      } catch (error) {
+        console.error(error);
+        const car = getCarById(id);
+        const fallback = car ? runModerationFallback(car as Record<string, unknown>, getCarImages(car)) : undefined;
+        aiModerationStates.set(id, fallback
+          ? {
+              result: fallback,
+              error: "AI endpoint недоступен, выполнена локальная проверка качества данных.",
+              reason: fallback.suggested_rejection_reason,
+            }
+          : { error: "Не удалось выполнить AI-проверку." });
+        renderList();
+      }
+    };
+
+    const generateModerationReason = (id: string) => {
+      const state = aiModerationStates.get(id);
+      const result = state?.result;
+
+      if (!result) {
+        return;
+      }
+
+      aiModerationStates.set(id, {
+        ...state,
+        reason: result.suggested_rejection_reason || buildModerationReason(result.issues || []),
+      });
+      renderList();
+    };
+
+    const copyModerationReason = async (id: string) => {
+      const state = aiModerationStates.get(id);
+      const reason = state?.reason || state?.result?.suggested_rejection_reason || "";
+
+      if (!reason || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(reason);
+        message.textContent = "Причина скопирована.";
+      } catch {
+        message.textContent = "Не удалось скопировать причину.";
+      }
+    };
+
+    const applyAiRecommendation = (id: string) => {
+      if (!(list instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const result = aiModerationStates.get(id)?.result;
+      const recommendation = result?.recommendation || result?.suggested_action || "manual_review";
+      const card = list.querySelector(`[data-ai-moderation-card="${CSS.escape(id)}"]`);
+
+      list.querySelectorAll(".admin-actions .button").forEach((button) => button.classList.remove("is-ai-suggested"));
+
+      if (recommendation === "approve" || recommendation === "approved") {
+        const approveButton = card?.closest(".admin-car")?.querySelector('[data-action="approve"]');
+        if (approveButton instanceof HTMLElement) {
+          approveButton.classList.add("is-ai-suggested");
+          approveButton.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+        message.textContent = "AI предлагает одобрение, но решение должен подтвердить модератор.";
+        return;
+      }
+
+      if (recommendation === "block" || recommendation === "blocked") {
+        message.textContent = "AI предлагает блокировку, но решение должен подтвердить модератор.";
+        return;
+      }
+
+      if (recommendation === "needs_fix" || recommendation === "send_to_fix" || recommendation === "reject") {
+        generateModerationReason(id);
+        message.textContent = "Подготовил причину для пользователя. Проверьте текст перед отказом.";
+        return;
+      }
+
+      message.textContent = "Требуется ручная проверка модератором.";
+    };
+
+    const runImageAction = async (action: string, carId: string, imageId: string) => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) {
+        return;
+      }
+
+      const apiUrl = board.dataset.apiUrl;
+
+      if (!apiUrl) {
+        return;
+      }
+
+      if (action === "delete" && !window.confirm("Удалить это фото из объявления?")) {
+        return;
+      }
+
+      try {
+        message.textContent = action === "delete" ? "Удаляю фото..." : "Обновляю главное фото...";
+        const endpoint = action === "delete" ? "delete" : "main";
+        const response = await fetch(`${apiUrl}/admin/cars/${carId}/images/${imageId}/${endpoint}`, {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        await loadCars();
+      } catch (error) {
+        console.error(error);
+        message.textContent = "Не удалось обновить фото. Проверьте Xano endpoint.";
+      }
+    };
+
+    const addImagesToCar = async (carId: string, files: File[]) => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement) || files.length === 0) {
+        return;
+      }
+
+      const apiUrl = board.dataset.apiUrl;
+
+      if (!apiUrl) {
+        return;
+      }
+
+      try {
+        const { uploadListingImages } = await import("../../lib/listingImageUpload");
+        const imageFiles = files.filter((file) => file.type.startsWith("image/")).slice(0, 8);
+
+        if (imageFiles.length === 0) {
+          message.textContent = "Выберите изображения.";
+          return;
+        }
+
+        message.textContent = "Сжимаю и загружаю фото...";
+        const uploadedImages = await uploadListingImages(imageFiles, {
+          onProgress: (progressMessage) => {
+            message.textContent = progressMessage;
+          },
+        });
+
+        message.textContent = "Добавляю фото в Xano...";
+        const response = await fetch(`${apiUrl}/admin/cars/${carId}/images`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${adminToken}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            r2_images: uploadedImages,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+
+        await loadCars();
+      } catch (error) {
+        console.error(error);
+        message.textContent = "Не удалось добавить фото. Проверьте Xano endpoint для изображений.";
+      }
+    };
+
     search?.addEventListener("input", renderList);
-    status?.addEventListener("change", renderList);
+    status?.addEventListener("change", () => {
+      const selected = status instanceof HTMLSelectElement ? normalizeQueueFilter(status.value) : "all";
+      const url = new URL(window.location.href);
+      selected === "all" ? url.searchParams.delete("status") : url.searchParams.set("status", selected);
+      window.history.replaceState({}, "", url);
+      renderList();
+    });
     refresh?.addEventListener("click", loadCars);
 
     stats?.addEventListener("click", (event) => {
@@ -509,13 +989,67 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
       if (button instanceof HTMLButtonElement && status instanceof HTMLSelectElement) {
         status.value = button.dataset.status || "all";
-        renderList();
+        status.dispatchEvent(new Event("change"));
       }
     });
 
     list?.addEventListener("click", async (event) => {
       const target = event.target;
+      const imageButton = target instanceof HTMLElement ? target.closest("button[data-image-action]") : null;
+      const aiCheckButton = target instanceof HTMLElement ? target.closest("button[data-ai-moderation-check]") : null;
+      const aiReasonButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-generate]") : null;
+      const aiCopyButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-copy]") : null;
+      const aiApplyButton = target instanceof HTMLElement ? target.closest("button[data-ai-recommendation-apply]") : null;
       const button = target instanceof HTMLElement ? target.closest("button[data-action]") : null;
+
+      if (aiCheckButton instanceof HTMLButtonElement) {
+        const id = aiCheckButton.dataset.aiModerationCheck;
+        if (id) {
+          aiCheckButton.disabled = true;
+          await runAiModerationCheck(id);
+          aiCheckButton.disabled = false;
+        }
+        return;
+      }
+
+      if (aiReasonButton instanceof HTMLButtonElement) {
+        const id = aiReasonButton.dataset.aiRejectionGenerate;
+        if (id) {
+          generateModerationReason(id);
+        }
+        return;
+      }
+
+      if (aiCopyButton instanceof HTMLButtonElement) {
+        const id = aiCopyButton.dataset.aiRejectionCopy;
+        if (id) {
+          await copyModerationReason(id);
+        }
+        return;
+      }
+
+      if (aiApplyButton instanceof HTMLButtonElement) {
+        const id = aiApplyButton.dataset.aiRecommendationApply;
+        if (id) {
+          applyAiRecommendation(id);
+        }
+        return;
+      }
+
+      if (imageButton instanceof HTMLButtonElement) {
+        const carId = imageButton.dataset.id;
+        const imageId = imageButton.dataset.imageId;
+        const action = imageButton.dataset.imageAction;
+
+        if (!carId || !imageId || !action) {
+          return;
+        }
+
+        imageButton.disabled = true;
+        await runImageAction(action, carId, imageId);
+        imageButton.disabled = false;
+        return;
+      }
 
       if (!(button instanceof HTMLButtonElement)) {
         return;
@@ -533,8 +1067,28 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       button.disabled = false;
     });
 
+    list?.addEventListener("change", async (event) => {
+      const input = event.target instanceof HTMLElement ? event.target.closest("input[data-add-images-for]") : null;
+
+      if (!(input instanceof HTMLInputElement)) {
+        return;
+      }
+
+      const carId = input.dataset.addImagesFor;
+
+      if (!carId) {
+        return;
+      }
+
+      await addImagesToCar(carId, Array.from(input.files || []));
+      input.value = "";
+    });
+
     requireAdminAccess().then((hasAccess) => {
       if (hasAccess) {
+        if (status instanceof HTMLSelectElement) {
+          status.value = normalizeQueueFilter(new URL(window.location.href).searchParams.get("status") || "all");
+        }
         loadCars();
       }
     });

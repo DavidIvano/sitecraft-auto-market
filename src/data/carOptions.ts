@@ -36,6 +36,30 @@ export const carBrands = [
   "Smart",
 ];
 
+export const popularCarBrands = [
+  "Audi",
+  "BMW",
+  "Mercedes-Benz",
+  "Volkswagen",
+  "Toyota",
+  "Ford",
+  "Hyundai",
+  "Kia",
+  "Skoda",
+  "Mazda",
+  "Opel",
+  "Tesla",
+];
+
+export const vehicleTypes = [
+  "Легковой автомобиль",
+  "Электромобиль",
+  "Коммерческий транспорт",
+  "Мотоцикл",
+  "Грузовой транспорт",
+  "Прицеп",
+];
+
 export const carModelsByBrand: Record<string, string[]> = {
   Audi: ["80", "90", "100", "A1", "A2", "A3", "A4", "A4 allroad", "A5", "A6", "A6 allroad", "A7", "A8", "Q2", "Q3", "Q4 e-tron", "Q5", "Q7", "Q8", "e-tron", "e-tron GT", "RS3", "RS4", "RS5", "RS6", "RS7", "S3", "S4", "S5", "S6", "S7", "S8", "TT", "R8"],
   BMW: ["1 Series", "2 Series", "2 Series Active Tourer", "3 Series", "3 Series Touring", "4 Series", "5 Series", "5 Series Touring", "6 Series", "7 Series", "8 Series", "X1", "X2", "X3", "X4", "X5", "X6", "X7", "Z3", "Z4", "i3", "i4", "i5", "i7", "i8", "iX", "iX1", "iX3", "M2", "M3", "M4", "M5", "M8"],

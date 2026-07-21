@@ -1,0 +1,9 @@
+---
+type Props = { score?: number | null };
+const { score } = Astro.props;
+const value = typeof score === "number" ? Math.max(0, Math.min(100, Math.round(score))) : null;
+---
+
+<span class:list={["deal-score-badge", value !== null && value >= 80 ? "is-hot" : value !== null && value >= 70 ? "is-good" : "is-muted"]}>
+  {value === null ? "Без оценки" : `Score ${value}`}
+</span>

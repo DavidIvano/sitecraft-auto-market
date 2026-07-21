@@ -1,0 +1,141 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { formatPaidPrice, paidProducts } from "../../../lib/monetization";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const promoteProducts = paidProducts.filter((product) =>
+  ["boost_7_days", "featured_14_days", "homepage_premium_7_days"].includes(product.slug),
+);
+---
+
+<BaseLayout title="Продвижение объявления" description="Платные функции продвижения объявления" noindex>
+  <section class="section page-hero">
+    <div class="container promote-page" data-api-url={xanoApiUrl}>
+      <p class="eyebrow">Продвижение</p>
+      <h1>Усилить объявление</h1>
+      <p class="lead">Выберите услугу для своего автомобиля. Истёкшие услуги перестают влиять на сортировку автоматически.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container promote-layout">
+      <article class="promote-car-card" id="promote-car-card">
+        <p class="form-message">Загружаю объявление...</p>
+      </article>
+
+      <div class="promote-products">
+        {promoteProducts.map((product) => (
+          <article class="pricing-card">
+            <div>
+              <h3>{product.name}</h3>
+              <p>{product.description}</p>
+            </div>
+            <strong>{formatPaidPrice(product)}</strong>
+            <button class="button button-dark" type="button" data-product-slug={product.slug}>Активировать</button>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { getAuthToken } from "../../../lib/authClient";
+    import { API_ROUTES } from "../../../lib/apiRoutes";
+    import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
+
+    const token = getAuthToken();
+    const page = document.querySelector(".promote-page");
+    const carCard = document.querySelector("#promote-car-card");
+    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
+    const carId = new URLSearchParams(window.location.search).get("id");
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const formatActiveDate = (value: unknown) => {
+      if (!value) return "не активна";
+      const date = /^\d+$/.test(String(value)) ? new Date(Number(value)) : new Date(String(value));
+      return Number.isNaN(date.getTime())
+        ? "не активна"
+        : `активна до ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date)}`;
+    };
+
+    const loadCar = async () => {
+      if (!token) {
+        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
+        return;
+      }
+
+      if (!carId) {
+        if (carCard) carCard.innerHTML = '<p class="form-message">В ссылке нет ID объявления.</p>';
+        return;
+      }
+
+      try {
+        const response = await fetch(`${apiUrl}${API_ROUTES.dashboardListing(encodeURIComponent(String(carId)))}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const car = response.ok ? await response.json() : null;
+
+        if (!car || !(carCard instanceof HTMLElement)) {
+          if (carCard) carCard.innerHTML = '<p class="form-message">Не удалось загрузить объявление.</p>';
+          return;
+        }
+
+        carCard.innerHTML = `
+          <h2>${escapeHtml(car.title || "Объявление")}</h2>
+          <p>${escapeHtml(car.brand || "")} ${escapeHtml(car.model || "")}</p>
+          <dl class="promotion-status-list">
+            <div><dt>Поднятие</dt><dd>${formatActiveDate(car.boosted_until)}</dd></div>
+            <div><dt>Featured</dt><dd>${formatActiveDate(car.featured_until)}</dd></div>
+            <div><dt>Главная</dt><dd>${formatActiveDate(car.homepage_until)}</dd></div>
+          </dl>
+        `;
+      } catch (error) {
+        if (carCard) carCard.innerHTML = `<p class="form-message">${escapeHtml(getFriendlyErrorMessage(error, "Не удалось загрузить объявление."))}</p>`;
+      }
+    };
+
+    document.querySelectorAll("[data-product-slug]").forEach((button) => {
+      button.addEventListener("click", async () => {
+        if (!(button instanceof HTMLButtonElement) || !token || !carId) return;
+        const productSlug = button.dataset.productSlug;
+        button.disabled = true;
+
+        try {
+          const response = await fetch(`${apiUrl}${API_ROUTES.purchaseCreate}`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ product_slug: productSlug, car_id: Number(carId) }),
+          });
+          const data = await response.json().catch(() => ({}));
+
+          if (!response.ok) {
+            throw new Error(data.message || data.code || "Не удалось создать покупку");
+          }
+
+          if (data.checkout_url || data.checkoutUrl || data.url) {
+            window.location.href = data.checkout_url || data.checkoutUrl || data.url;
+            return;
+          }
+
+          window.location.href = `/payment/success?purchase_id=${encodeURIComponent(String(data.purchase_id || data.id || ""))}&car_id=${encodeURIComponent(String(carId))}`;
+        } catch (error) {
+          alert(getFriendlyErrorMessage(error, "Не удалось создать покупку."));
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+
+    loadCar();
+  </script>
+</BaseLayout>

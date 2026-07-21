@@ -1,0 +1,70 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout title="Дилеры" description="Админка дилеров" noindex>
+  <section class="section page-hero">
+    <div class="container admin-page" data-api-url={xanoApiUrl}>
+      <p class="eyebrow">Admin</p>
+      <h1>Дилеры</h1>
+      <p class="lead">Проверяйте дилерские профили, статусы и бейдж Verified Dealer.</p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="admin-table" id="dealers-table">
+        <p class="form-message">Загружаю дилеров...</p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { getAuthToken } from "../../lib/authClient";
+
+    const token = getAuthToken();
+    const page = document.querySelector(".admin-page");
+    const table = document.querySelector("#dealers-table");
+    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
+
+    const escapeHtml = (value: unknown) =>
+      String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+
+    const loadDealers = async () => {
+      if (!token || !(table instanceof HTMLElement)) return;
+      const response = await fetch(`${apiUrl}/admin/dealers`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!response.ok) {
+        table.innerHTML = '<p class="form-message">Добавьте Xano endpoint /admin/dealers для управления дилерами.</p>';
+        return;
+      }
+
+      const dealers = await response.json();
+      table.innerHTML = Array.isArray(dealers) && dealers.length
+        ? dealers
+            .map(
+              (dealer) => `
+                <div class="admin-table-row">
+                  <strong>${escapeHtml(dealer.company_name || "Дилер")}</strong>
+                  <span>${escapeHtml(dealer.dealer_plan || "none")}</span>
+                  <span>${escapeHtml(dealer.status || "draft")}</span>
+                  <span>${dealer.is_verified ? "Verified" : "Not verified"}</span>
+                </div>
+              `,
+            )
+            .join("")
+        : '<p class="form-message">Дилеров пока нет.</p>';
+    };
+
+    loadDealers();
+  </script>
+</BaseLayout>

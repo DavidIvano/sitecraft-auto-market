@@ -2,6 +2,8 @@
 
 The frontend is ready for Google login through Xano.
 
+The production callback source is `docs/xano/oauth-google-continue.xs`. Existing users keep their database role during Google sign-in; only newly created users receive the default `user` role.
+
 ## Frontend Routes
 
 ```txt

@@ -1,19 +1,87 @@
+---
+import { bodyTypes, carBrands, fuelTypes, transmissions, vehicleTypes } from "../data/carOptions";
+
+const params = Astro.url.searchParams;
+const selectedVehicleType = params.get("vehicle_type") || "";
+const selectedBodyType = params.get("body_type") || "";
+const selectedBrand = params.get("brand") || "";
+const selectedModel = params.get("model") || "";
+const selectedCity = params.get("city") || "";
+const selectedPriceMin = params.get("price_min") || "";
+const selectedPriceMax = params.get("price_max") || params.get("price") || "";
+const selectedFuelType = params.get("fuel_type") || "";
+const selectedTransmission = params.get("transmission") || "";
+const selectedYearMin = params.get("year_min") || "";
+const selectedYearMax = params.get("year_max") || "";
+const selectedMileageMax = params.get("mileage_max") || "";
+---
+
 <form class="search-bar" action="/cars" method="get">
-  <label>
+  <label class="search-field search-field-vehicle">
+    <span>Тип транспорта</span>
+    <select name="vehicle_type">
+      <option value="">Любой</option>
+      {vehicleTypes.map((type) => <option value={type} selected={selectedVehicleType === type}>{type}</option>)}
+    </select>
+  </label>
+  <label class="search-field search-field-body">
+    <span>Тип кузова</span>
+    <select name="body_type">
+      <option value="">Любой</option>
+      {bodyTypes.map((type) => <option value={type} selected={selectedBodyType === type}>{type}</option>)}
+    </select>
+  </label>
+  <label class="search-field search-field-brand">
     <span>Марка</span>
-    <input type="text" name="brand" placeholder="BMW" />
+    <select name="brand">
+      <option value="">Любая</option>
+      {carBrands.map((brand) => <option value={brand} selected={selectedBrand === brand}>{brand}</option>)}
+    </select>
   </label>
-  <label>
+  <label class="search-field search-field-model">
     <span>Модель</span>
-    <input type="text" name="model" placeholder="X5" />
+    <input type="text" name="model" placeholder="X5" value={selectedModel} />
   </label>
-  <label>
+  <label class="search-field search-field-city">
     <span>Город</span>
-    <input type="text" name="city" placeholder="Берлин" />
+    <input type="text" name="city" placeholder="Берлин" value={selectedCity} />
   </label>
-  <label>
+  <label class="search-field search-field-price-min">
+    <span>Цена от</span>
+    <input type="number" name="price_min" placeholder="5000" min="0" value={selectedPriceMin} />
+  </label>
+  <label class="search-field search-field-price-max">
     <span>Цена до</span>
-    <input type="number" name="price_max" placeholder="50000" min="0" />
+    <input type="number" name="price_max" placeholder="50000" min="0" value={selectedPriceMax} />
   </label>
-  <button class="button button-dark" type="submit">Найти</button>
+  <label class="search-field search-field-fuel">
+    <span>Топливо</span>
+    <select name="fuel_type">
+      <option value="">Любое</option>
+      {fuelTypes.map((type) => <option value={type} selected={selectedFuelType === type}>{type}</option>)}
+    </select>
+  </label>
+  <label class="search-field search-field-transmission">
+    <span>Коробка</span>
+    <select name="transmission">
+      <option value="">Любая</option>
+      {transmissions.map((type) => <option value={type} selected={selectedTransmission === type}>{type}</option>)}
+    </select>
+  </label>
+  <label class="search-field search-field-year-min">
+    <span>Год от</span>
+    <input type="number" name="year_min" placeholder="2015" min="1950" max="2030" value={selectedYearMin} />
+  </label>
+  <label class="search-field search-field-year-max">
+    <span>Год до</span>
+    <input type="number" name="year_max" placeholder="2026" min="1950" max="2030" value={selectedYearMax} />
+  </label>
+  <label class="search-field search-field-mileage-max">
+    <span>Пробег до</span>
+    <input type="number" name="mileage_max" placeholder="150000" min="0" step="1000" value={selectedMileageMax} />
+  </label>
+  <div class="search-bar-actions">
+    <button class="button button-dark search-submit" type="submit">Применить бесплатно</button>
+    <button class="button button-light" type="reset" id="catalog-filter-reset">Сбросить</button>
+  </div>
 </form>

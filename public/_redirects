@@ -1,2 +1,0 @@
-/cars/detail /cars/detail/ 200
-/cars/:slug /cars/detail/?slug=:slug 200

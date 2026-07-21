@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "include": [
+    "/cars/*",
+    "/sitemap.xml",
+    "/dashboard/cars/*/promote",
+    "/dashboard/drafts/*",
+    "/api/*"
+  ],
+  "exclude": [
+    "/_astro/*",
+    "/favicon.ico",
+    "/favicon.png",
+    "/favicon.svg",
+    "/apple-touch-icon.png",
+    "/sitecraft-logo.png"
+  ]
+}

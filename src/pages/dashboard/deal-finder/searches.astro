@@ -1,0 +1,5 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import DealFinderHeader from "../../../components/deal-finder/DealFinderHeader.astro";
+---
+<BaseLayout title="Поиски Deal Finder" noindex><section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Профили поиска" description="Критерии, расписание и дневной бюджет источника в одном месте." active="searches" /><div id="deal-finder-searches" class="deal-finder-state" aria-busy="true">Загрузка профилей…</div></div></section><script>import { mountDealFinderSearches } from "../../../lib/deal-finder/client"; const root = document.querySelector<HTMLElement>("#deal-finder-searches"); if (root) mountDealFinderSearches(root);</script></BaseLayout>

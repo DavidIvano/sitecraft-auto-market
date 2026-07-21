@@ -1,0 +1,7 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import DealFinderHeader from "../../../components/deal-finder/DealFinderHeader.astro";
+import DealFinderStats from "../../../components/deal-finder/DealFinderStats.astro";
+import DealFinderSkeleton from "../../../components/deal-finder/DealFinderSkeleton.astro";
+---
+<BaseLayout title="Шорт-лист Deal Finder" noindex><section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Шорт-лист" description="Сохранённые предложения с решениями, заметками и следующими действиями." active="watchlist" /><DealFinderStats /><div id="deal-finder-feed"><DealFinderSkeleton /></div></div></section><script>import { mountDealFinderFeed } from "../../../lib/deal-finder/client"; const root = document.querySelector<HTMLElement>("#deal-finder-feed"); if (root) mountDealFinderFeed(root, { is_saved: true, source_status: "active" });</script></BaseLayout>

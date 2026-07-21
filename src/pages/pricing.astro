@@ -1,0 +1,99 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { formatPaidPrice, paidProducts } from "../lib/monetization";
+
+const privateProducts = paidProducts.filter((product) =>
+  ["boost_7_days", "featured_14_days", "homepage_premium_7_days", "ai_credits_10"].includes(product.slug),
+);
+const dealerProducts = paidProducts.filter((product) => product.slug.startsWith("dealer_"));
+const getPrivateFit = (slug: string) => {
+  if (slug === "boost_7_days") return "Подходит, если объявление уже готово и нужно поднять его выше в каталоге.";
+  if (slug === "featured_14_days") return "Для продавцов, которым нужен заметный бейдж и приоритет в выдаче.";
+  if (slug === "homepage_premium_7_days") return "Лучший выбор для дорогих или срочных автомобилей.";
+  return "Для создания черновиков по фото и быстрой подготовки описания.";
+};
+const getDealerFit = (slug: string) => {
+  if (slug.includes("business")) return "Для автосалонов с большим количеством активных объявлений.";
+  if (slug.includes("pro")) return "Для дилеров, которые регулярно публикуют новые автомобили.";
+  return "Для небольших продавцов, которым нужен аккуратный старт.";
+};
+const pricingSchema = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: "SiteCraft Auto Market paid listing tools",
+  description: "Платные функции для продвижения автомобильных объявлений и дилерских профилей.",
+  offers: paidProducts.map((product) => ({
+    "@type": "Offer",
+    name: product.name,
+    price: (product.price_cents / 100).toFixed(2),
+    priceCurrency: product.currency,
+    availability: "https://schema.org/InStock",
+  })),
+};
+---
+
+<BaseLayout
+  title="Тарифы"
+  description="Платные функции SiteCraft Auto Market: поднятие объявлений, выделение, премиум на главной, AI-кредиты и дилерские пакеты."
+  canonicalPath="/pricing"
+  jsonLd={pricingSchema}
+>
+  <section class="section page-hero">
+    <div class="container pricing-hero">
+      <p class="eyebrow">Монетизация без рекламы</p>
+      <h1>Продвигайте автомобили внутри SiteCraft Auto Market</h1>
+      <p class="lead">
+        Выберите платную опцию для конкретного объявления или подключите дилерский пакет. Секретные платежные ключи
+        хранятся только в Xano, а сайт получает только безопасные статусы покупок.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container pricing-section">
+      <div class="section-heading">
+        <h2>Для частных продавцов</h2>
+      </div>
+      <div class="pricing-grid">
+        {privateProducts.map((product) => (
+          <article class:list={["pricing-card", product.slug === "homepage_premium_7_days" && "pricing-card-popular"]}>
+            <div>
+              {product.slug === "homepage_premium_7_days" && <span class="pricing-popular-badge">Популярно</span>}
+              <h3>{product.name}</h3>
+              <p>{product.description}</p>
+              <p class="pricing-fit">{getPrivateFit(product.slug)}</p>
+            </div>
+            <strong>{formatPaidPrice(product)}</strong>
+            <a class="button button-dark" href={`/dashboard/billing?product=${product.slug}`}>Купить</a>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section-muted">
+    <div class="container pricing-section">
+      <div class="section-heading">
+        <h2>Пакеты для дилеров</h2>
+      </div>
+      <div class="pricing-grid dealer-pricing-grid">
+        {dealerProducts.map((product) => (
+          <article class="pricing-card pricing-card-featured">
+            <div>
+              <h3>{product.name}</h3>
+              <p>{product.description}</p>
+              <p class="pricing-fit">{getDealerFit(product.slug)}</p>
+              <ul class="pricing-details">
+                {product.active_listing_limit && <li>До {product.active_listing_limit} активных объявлений</li>}
+                {product.monthly_ai_credits && <li>{product.monthly_ai_credits} AI-кредитов каждый месяц</li>}
+                {product.dealer_priority && <li>Приоритет дилера: {product.dealer_priority}</li>}
+              </ul>
+            </div>
+            <strong>{formatPaidPrice(product)} / мес.</strong>
+            <a class="button button-dark" href={`/dashboard/dealer?plan=${product.slug}`}>Выбрать</a>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

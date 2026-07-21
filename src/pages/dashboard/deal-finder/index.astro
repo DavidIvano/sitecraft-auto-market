@@ -1,0 +1,15 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import DealFinderHeader from "../../../components/deal-finder/DealFinderHeader.astro";
+import DealFinderStats from "../../../components/deal-finder/DealFinderStats.astro";
+import DealFinderFilters from "../../../components/deal-finder/DealFinderFilters.astro";
+import DealFinderSkeleton from "../../../components/deal-finder/DealFinderSkeleton.astro";
+---
+<BaseLayout title="Deal Finder" noindex>
+  <section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Сегодня" description="Приоритетные предложения, следующие действия и состояние источника." /><div class="deal-finder-refresh-row"><p>Данные загружаются напрямую из закрытого Xano-раздела.</p><button class="button button-dark" type="button" data-deal-finder-refresh>Обновить</button></div><div id="deal-finder-today" class="deal-finder-today" aria-live="polite" aria-busy="true"><span>Собираем рабочий список…</span></div><DealFinderStats /><DealFinderFilters /><div id="deal-finder-feed"><DealFinderSkeleton /></div></div></section>
+  <script>
+    import { mountDealFinderFeed } from "../../../lib/deal-finder/client";
+    const root = document.querySelector<HTMLElement>("#deal-finder-feed");
+    if (root) mountDealFinderFeed(root);
+  </script>
+</BaseLayout>

@@ -1,48 +1,51 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import AuthShell from "../components/auth/AuthShell.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Регистрация">
-  <section class="section page-hero">
-    <div class="container narrow">
-      <p class="eyebrow">Регистрация</p>
-      <h1>Создать аккаунт</h1>
-      <p class="lead">
-        Создайте кабинет, чтобы добавлять автомобили, сохранять объявления и управлять публикациями.
-      </p>
-
+<BaseLayout title="Регистрация" noindex>
+  <AuthShell
+    infoEyebrow="Старт продавца"
+    infoTitle="Создайте кабинет для публикации авто"
+    infoText="После регистрации можно добавить фото, получить AI-черновик и отправить объявление на модерацию."
+    benefits={["1–8 фото на объявление.", "AI-поля только после анализа.", "Продвижение и биллинг в кабинете."]}
+    formEyebrow="Регистрация"
+    formTitle="Создать аккаунт"
+  >
       <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
+        <a class="button button-light full-width" href="/login">Продолжить с Google</a>
+        <div class="auth-divider"><span>или email</span></div>
         <form class="form-panel" id="register-form">
-          <label class="full-field">
-            <span>Имя</span>
-            <input type="text" name="name" autocomplete="name" required />
-          </label>
+          <div class="full-field">
+            <label for="register-name">Имя</label>
+            <input id="register-name" type="text" name="name" autocomplete="name" required />
+          </div>
 
-          <label class="full-field">
-            <span>Email</span>
-            <input type="email" name="email" autocomplete="email" required />
-          </label>
+          <div class="full-field">
+            <label for="register-email">Email</label>
+            <input id="register-email" type="email" name="email" autocomplete="email" required />
+          </div>
 
-          <label class="full-field">
-            <span>Пароль</span>
+          <div class="full-field">
+            <label for="register-password">Пароль</label>
             <span class="password-field">
-              <input type="password" name="password" autocomplete="new-password" minlength="8" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
+              <input id="register-password" type="password" name="password" autocomplete="new-password" minlength="8" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
             </span>
-          </label>
+          </div>
 
-          <label class="full-field">
-            <span>Повторите пароль</span>
+          <div class="full-field">
+            <label for="register-password-confirm">Повторите пароль</label>
             <span class="password-field">
-              <input type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" data-password-toggle>Показать</button>
+              <input id="register-password-confirm" type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
             </span>
-          </label>
+          </div>
 
-          <button class="button button-dark full-width" type="submit">Создать аккаунт</button>
+          <button class="button button-dark full-width" id="register-submit" type="submit">Создать аккаунт</button>
           <p class="form-message">
             Уже есть аккаунт? <a href="/login">Войти</a>
           </p>
@@ -51,35 +54,18 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           </p>
         </form>
       </div>
-    </div>
-  </section>
+  </AuthShell>
 
   <script>
     import { consumeNext, setAuthToken, setAuthUser } from "../lib/authClient";
     import { getFriendlyErrorMessage } from "../lib/errorMessages";
+    import { installPasswordToggles, setAuthButtonBusy } from "../lib/authUi";
 
     const form = document.querySelector("#register-form");
     const message = document.querySelector("#register-message");
+    const submit = document.querySelector<HTMLButtonElement>("#register-submit");
 
-    document.querySelectorAll("[data-password-toggle]").forEach((toggle) => {
-      toggle.addEventListener("click", () => {
-        if (!(toggle instanceof HTMLButtonElement)) {
-          return;
-        }
-
-        const field = toggle.closest(".password-field");
-        const input = field?.querySelector("input");
-
-        if (!(input instanceof HTMLInputElement)) {
-          return;
-        }
-
-        const isHidden = input.type === "password";
-        input.type = isHidden ? "text" : "password";
-        toggle.textContent = isHidden ? "Скрыть" : "Показать";
-        toggle.setAttribute("aria-label", isHidden ? "Скрыть пароль" : "Показать пароль");
-      });
-    });
+    installPasswordToggles();
 
     const getToken = (payload: unknown) => {
       if (!payload || typeof payload !== "object") {
@@ -148,6 +134,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
       try {
         message.textContent = "Создаю аккаунт...";
+        setAuthButtonBusy(submit, true, "Создаю аккаунт...");
 
         const response = await fetch(`${apiUrl}/auth/register`, {
           method: "POST",
@@ -188,6 +175,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         window.location.href = next;
       } catch (error) {
         message.textContent = getFriendlyRegisterError(error instanceof Error ? error.message : error);
+      } finally {
+        setAuthButtonBusy(submit, false, "Создаю аккаунт...");
       }
     });
   </script>

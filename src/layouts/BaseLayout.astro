@@ -1,8 +1,9 @@
 ---
 import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
+import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
-import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
+import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
 import "../styles/global.css";
 
 type Props = {
@@ -12,6 +13,7 @@ type Props = {
   image?: string;
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   breadcrumbs?: Array<{ href?: string; label: string }>;
+  noindex?: boolean;
 };
 
 const {
@@ -21,11 +23,18 @@ const {
   image = "/sitecraft-logo.png",
   jsonLd,
   breadcrumbs,
+  noindex = false,
 } = Astro.props;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
-const siteUrl = SITE_URL || "https://sitecraft-auto-market.pages.dev";
+const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
 const imageUrl = new URL(image, siteUrl).toString();
+const buildSha = import.meta.env.PUBLIC_BUILD_SHA || import.meta.env.CF_PAGES_COMMIT_SHA || "local";
+const buildTimestamp = import.meta.env.PUBLIC_BUILD_TIMESTAMP || new Date().toISOString();
+const buildEnvironment =
+  import.meta.env.PUBLIC_BUILD_ENVIRONMENT
+  || import.meta.env.ENVIRONMENT
+  || (import.meta.env.CF_PAGES_BRANCH ? "cloudflare-pages" : "local");
 const labelBySegment: Record<string, string> = {
   admin: "Админ",
   auth: "Авторизация",
@@ -37,6 +46,7 @@ const labelBySegment: Record<string, string> = {
   listings: "Мои объявления",
   login: "Вход",
   moderation: "Модерация",
+  "deal-finder": "Deal Finder",
   new: "Новое объявление",
   privacy: "Конфиденциальность",
   register: "Регистрация",
@@ -44,6 +54,32 @@ const labelBySegment: Record<string, string> = {
   support: "Поддержка",
 };
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
+const isWorkspacePath = pathname === "/dashboard"
+  || pathname.startsWith("/dashboard/")
+  || pathname === "/admin"
+  || pathname.startsWith("/admin/");
+const shellNavItems = [
+  { href: "/", label: "Главная", short: "Г" },
+  { href: "/cars", label: "Авто", short: "А" },
+  { href: "/dashboard", label: "Кабинет", short: "К" },
+  ...(DEAL_FINDER_ENABLED
+    ? [{ href: "/dashboard/deal-finder", label: "Deal Finder", short: "DF", dealFinderOnly: true }]
+    : []),
+  { href: "/sell", label: "Продать авто", short: "П" },
+  { href: "/pricing", label: "Тарифы", short: "Т" },
+  { href: "/admin/moderation", label: "Модерация", short: "✓", adminOnly: true },
+];
+const getShellNavClass = (href: string) => {
+  const normalizedHref = href.replace(/\/$/, "") || "/";
+
+  if (normalizedHref === "/") {
+    return pathname === "/" ? "mac-sidebar-link is-active" : "mac-sidebar-link";
+  }
+
+  return pathname === normalizedHref || pathname.startsWith(`${normalizedHref}/`)
+    ? "mac-sidebar-link is-active"
+    : "mac-sidebar-link";
+};
 const generatedBreadcrumbs =
   pathname === "/"
     ? []
@@ -102,7 +138,11 @@ const schemaItems = [
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
+    <meta name="sitecraft-build-sha" content={buildSha} />
+    <meta name="sitecraft-build-timestamp" content={buildTimestamp} />
+    <meta name="sitecraft-build-environment" content={buildEnvironment} />
     <meta name="description" content={description} />
+    {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />
     <meta property="og:site_name" content={SITE_NAME} />
@@ -130,25 +170,83 @@ const schemaItems = [
     </script>
   </head>
   <body>
-    <Header />
-    <main>
-      {
-        pageBreadcrumbs.length > 0 && (
-          <nav class="breadcrumbs" aria-label="Хлебные крошки">
-            <div class="container breadcrumbs-inner">
-              {pageBreadcrumbs.map((item, index) => (
-                <>
-                  {item.href ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}
-                  {index < pageBreadcrumbs.length - 1 && <span class="breadcrumb-separator" aria-hidden="true">/</span>}
-                </>
-              ))}
-            </div>
-          </nav>
-        )
-      }
-      <slot />
-    </main>
-    <Footer />
-    <CookieNotice />
+    <div class:list={["mac-app-shell", isWorkspacePath ? "is-workspace-shell" : "is-public-shell"]}>
+      <aside class="mac-sidebar" aria-label="Навигация SiteCraft Auto Market">
+        <div class="mac-sidebar-top">
+          <a class="mac-sidebar-brand" href="/" aria-label="SiteCraft Auto Market">
+            <img src="/sitecraft-logo.png" alt="" width="38" height="38" decoding="async" />
+            <strong>Auto Market</strong>
+          </a>
+          <button class="mac-sidebar-toggle" type="button" aria-label="Скрыть боковое меню" aria-expanded="true">‹</button>
+        </div>
+        <nav class="mac-sidebar-nav" aria-label="Разделы сайта">
+          {
+            shellNavItems.map((item) => (
+              <a
+                class={getShellNavClass(item.href)}
+                href={item.href}
+                aria-current={getShellNavClass(item.href).includes("is-active") ? "page" : undefined}
+                data-short={item.short}
+                data-admin-only={item.adminOnly ? "true" : undefined}
+                data-deal-finder-only={item.dealFinderOnly ? "true" : undefined}
+                hidden={item.adminOnly || item.dealFinderOnly}
+              >
+                {item.label}
+              </a>
+            ))
+          }
+        </nav>
+        <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+          <span aria-hidden="true">◐</span>
+          <strong>Тема</strong>
+        </button>
+        <a class="mac-sidebar-cta" href="/dashboard/new">Добавить авто</a>
+      </aside>
+      <div class="mac-workspace">
+        <Header />
+        <main class="mac-main">
+          {
+            pageBreadcrumbs.length > 0 && (
+              <nav class="breadcrumbs" aria-label="Хлебные крошки">
+                <div class="container breadcrumbs-inner">
+                  {pageBreadcrumbs.map((item, index) => (
+                    <>
+                      {item.href ? <a href={item.href}>{item.label}</a> : <span aria-current="page">{item.label}</span>}
+                      {index < pageBreadcrumbs.length - 1 && <span class="breadcrumb-separator" aria-hidden="true">/</span>}
+                    </>
+                  ))}
+                </div>
+              </nav>
+            )
+          }
+          <slot />
+        </main>
+        <Footer />
+      </div>
+    </div>
+  <ImageLightbox />
+  <CookieNotice />
+  <script>
+    import { installImageLightbox } from "../lib/media/lightbox";
+    installImageLightbox();
+  </script>
+    <script is:inline>
+      (() => {
+        const shell = document.querySelector(".mac-app-shell");
+        const toggle = document.querySelector(".mac-sidebar-toggle");
+        if (!(shell instanceof HTMLElement) || !(toggle instanceof HTMLButtonElement)) return;
+
+        const setCollapsed = (collapsed) => {
+          shell.classList.toggle("is-sidebar-collapsed", collapsed);
+          toggle.textContent = collapsed ? "›" : "‹";
+          toggle.setAttribute("aria-label", collapsed ? "Открыть боковое меню" : "Скрыть боковое меню");
+          toggle.setAttribute("aria-expanded", String(!collapsed));
+          localStorage.setItem("sitecraft-sidebar-collapsed", collapsed ? "true" : "false");
+        };
+
+        setCollapsed(localStorage.getItem("sitecraft-sidebar-collapsed") === "true");
+        toggle.addEventListener("click", () => setCollapsed(!shell.classList.contains("is-sidebar-collapsed")));
+      })();
+    </script>
   </body>
 </html>

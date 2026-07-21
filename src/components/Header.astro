@@ -3,10 +3,17 @@ const navItems = [
   { href: "/", label: "Главная" },
   { href: "/cars", label: "Авто" },
   { href: "/sell", label: "Продать авто" },
-  { href: "/dashboard", label: "Кабинет" },
+  { href: "/pricing", label: "Тарифы" },
 ];
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
+const isCurrentPath = (href: string) => {
+  const normalizedHref = href.replace(/\/$/, "") || "/";
+  return normalizedHref === "/"
+    ? currentPath === "/"
+    : currentPath === normalizedHref || currentPath.startsWith(`${normalizedHref}/`);
+};
 ---
 
 <header class="site-header" data-api-url={xanoApiUrl}>
@@ -28,9 +35,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     </button>
     <div class="header-menu" id="site-header-menu">
       <nav class="main-nav" aria-label="Основная навигация">
-        {navItems.map((item) => <a href={item.href}>{item.label}</a>)}
+        {navItems.map((item) => <a href={item.href} aria-current={isCurrentPath(item.href) ? "page" : undefined}>{item.label}</a>)}
       </nav>
       <div class="header-actions">
+        <button class="button button-light theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+          <span aria-hidden="true">◐</span>
+        </button>
+        <a class="button button-light deal-finder-link" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
+        <a class="button button-light admin-link" href="/admin/moderation" data-admin-only="true" hidden>Модерация</a>
+        <a class="button button-light auth-register" href="/register">Регистрация</a>
         <a class="button button-light auth-link" href="/login">Войти</a>
         <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
         <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
@@ -38,13 +51,17 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     </div>
   </div>
   <script>
-    import { clearAuth, getAuthToken } from "../lib/authClient";
+    import { clearAuth, fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isDealFinderUser } from "../lib/authClient";
 
     const authLink = document.querySelector(".auth-link");
+    const authRegister = document.querySelector(".auth-register");
     const authLogout = document.querySelector(".auth-logout");
+    const adminOnlyLinks = document.querySelectorAll("[data-admin-only]");
+    const dealFinderOnlyLinks = document.querySelectorAll("[data-deal-finder-only]");
     const menu = document.querySelector(".header-menu");
     const menuToggle = document.querySelector(".menu-toggle");
     const header = document.querySelector(".site-header");
+    const themeToggles = document.querySelectorAll(".theme-toggle");
     const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
     let lastScrollY = window.scrollY;
@@ -68,35 +85,88 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       link.addEventListener("click", () => setMenuOpen(false));
     });
 
-    const resetHeader = () => {
-      clearAuth();
+    const syncThemeToggle = () => {
+      const isDark = document.documentElement.dataset.theme === "dark";
+      themeToggles.forEach((toggle) => {
+        if (toggle instanceof HTMLButtonElement) {
+          toggle.setAttribute("aria-pressed", String(isDark));
+          toggle.setAttribute("aria-label", isDark ? "Включить светлую тему" : "Включить тёмную тему");
+        }
+      });
+    };
+
+    syncThemeToggle();
+    themeToggles.forEach((toggle) => {
+      toggle.addEventListener("click", () => {
+        const nextTheme = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = nextTheme;
+        localStorage.setItem("sitecraft-theme", nextTheme);
+        syncThemeToggle();
+      });
+    });
+
+    const showGuestHeader = () => {
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/login";
         authLink.textContent = "Войти";
+        authLink.hidden = false;
+      }
+
+      if (authRegister instanceof HTMLAnchorElement) {
+        authRegister.hidden = false;
       }
 
       if (authLogout instanceof HTMLButtonElement) {
         authLogout.hidden = true;
       }
+
+      adminOnlyLinks.forEach((link) => {
+        if (link instanceof HTMLElement) {
+          link.hidden = true;
+        }
+      });
+      dealFinderOnlyLinks.forEach((link) => {
+        if (link instanceof HTMLElement) link.hidden = true;
+      });
+    };
+
+    const showUserHeader = (user: { email?: unknown; role?: unknown } | null) => {
+      if (authLink instanceof HTMLAnchorElement) {
+        authLink.href = "/dashboard";
+        authLink.textContent = "Кабинет";
+        authLink.hidden = false;
+      }
+
+      if (authRegister instanceof HTMLAnchorElement) {
+        authRegister.hidden = true;
+      }
+
+      if (authLogout instanceof HTMLButtonElement) {
+        authLogout.hidden = false;
+      }
+
+      adminOnlyLinks.forEach((link) => {
+        if (link instanceof HTMLElement) {
+          link.hidden = !isAdminUser(user);
+        }
+      });
+      dealFinderOnlyLinks.forEach((link) => {
+        if (link instanceof HTMLElement) link.hidden = !isDealFinderUser(user);
+      });
     };
 
     if (token && authLink instanceof HTMLAnchorElement && authLogout instanceof HTMLButtonElement) {
-      fetch(`${apiUrl}/auth/me`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((response) => {
-          if (!response.ok) {
-            resetHeader();
-            return;
-          }
+      const cachedUser = getAuthUser();
+      showUserHeader(cachedUser);
 
-          authLink.href = "/dashboard";
-          authLink.textContent = "Кабинет";
-          authLogout.hidden = false;
+      fetchCurrentUser(apiUrl, token)
+        .then((user) => {
+          if (user) showUserHeader(user);
+          else if (!getAuthToken()) showGuestHeader();
         })
-        .catch(() => {
-          resetHeader();
-        });
+        .catch(() => {});
+    } else {
+      showGuestHeader();
     }
 
     authLogout?.addEventListener("click", () => {
