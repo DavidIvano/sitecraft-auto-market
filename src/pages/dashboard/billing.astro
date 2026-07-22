@@ -1,200 +1,67 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { formatPaidPrice, paidProducts } from "../../lib/monetization";
-
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout
-  title="Оплаты и кредиты"
-  description="Баланс AI-кредитов, активные платные услуги и история покупок."
-  noindex
->
-  <section class="section page-hero">
-    <div class="container dashboard-grid billing-page" data-api-url={xanoApiUrl}>
-      <div>
-        <p class="eyebrow">Кабинет</p>
-        <h1>Оплаты и кредиты</h1>
-        <p class="lead">Здесь собраны AI-кредиты, активные продвижения объявлений и история покупок.</p>
-      </div>
-
-      <aside class="billing-balance-card">
-        <span>AI-кредиты</span>
-        <strong id="ai-credits-count">0</strong>
-        <p id="ai-credits-note">Проверяю баланс...</p>
-        <div class="credit-breakdown" id="ai-credits-breakdown" hidden></div>
-      </aside>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="container billing-layout" data-api-url={xanoApiUrl}>
-      <div class="billing-panel">
-        <h2>Купить услугу</h2>
-        <div class="billing-products">
-          {paidProducts.map((product) => (
-            <article class="billing-product-card">
-              <div>
-                <strong>{product.name}</strong>
-                <p>{product.description}</p>
-              </div>
-              <span>{formatPaidPrice(product)}</span>
-              <button class="button button-dark" type="button" data-product-slug={product.slug}>Купить</button>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      <div class="billing-panel">
-        <h2>История покупок</h2>
-        <div class="billing-history" id="billing-history">
-          <p class="form-message">Загружаю историю...</p>
-        </div>
-      </div>
+<BaseLayout title="Кредиты и операции" description="Баланс внутренних кредитов и история операций." noindex>
+  <section class="section billing-page-section">
+    <div class="container billing-credit-page" data-api-url={xanoApiUrl} aria-busy="true">
+      <header class="dashboard-home-heading"><div><p class="eyebrow">Кабинет</p><h1>Кредиты и операции</h1><p class="lead">Единый баланс используется для AI-функций и продвижения объявлений.</p></div><a class="button button-light" href="/dashboard/listings/">Мои объявления</a></header>
+      <section class="billing-credit-overview" aria-labelledby="billing-balance-title">
+        <div><span id="billing-balance-title">Текущий баланс</span><strong id="billing-balance">—</strong><p>Просмотр страниц и локальные фильтры кредиты не расходуют.</p></div>
+        <div class="billing-credit-rules"><strong>Как списываются кредиты</strong><p>Стоимость продвижения определяется только сервером. Запись появляется после успешной активации.</p></div>
+      </section>
+      <section class="billing-transactions" aria-labelledby="billing-history-title">
+        <div class="section-heading"><div><p class="eyebrow">Журнал</p><h2 id="billing-history-title">История операций</h2></div></div>
+        <div class="billing-history" id="billing-history" aria-live="polite"><p class="form-message">Загружаю историю...</p></div>
+      </section>
     </div>
   </section>
 
   <script>
-    import { getAuthToken } from "../../lib/authClient";
+    import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
     import { API_ROUTES } from "../../lib/apiRoutes";
-    import { trackProductEvent } from "../../lib/analytics/events";
-    import { normalizeCreditWallets } from "../../lib/credits/model";
-    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+    import { PROMOTION_PRODUCTS, parseApiDate, type CreditTransactionRecord, type CreditTransactionsResponse, type DashboardSummary, type PromotionProductSlug } from "../../lib/promotions/model";
 
+    const page = document.querySelector<HTMLElement>(".billing-credit-page");
+    const balance = document.querySelector<HTMLElement>("#billing-balance");
+    const history = document.querySelector<HTMLElement>("#billing-history");
     const token = getAuthToken();
-    const page = document.querySelector(".billing-page");
-    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
-    const creditsCount = document.querySelector("#ai-credits-count");
-    const creditsNote = document.querySelector("#ai-credits-note");
-    const creditsBreakdown = document.querySelector("#ai-credits-breakdown");
-    const history = document.querySelector("#billing-history");
+    const apiUrl = String(page?.dataset.apiUrl || "").replace(/\/+$/, "");
+    const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
+    const formatDate = (value: unknown) => { const date = parseApiDate(value); return date ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date) : "Дата не указана"; };
+    const transactionTitle = (item: CreditTransactionRecord) => PROMOTION_PRODUCTS[item.product_slug as PromotionProductSlug]?.name || item.description || item.notes || item.type || "Операция с кредитами";
 
-    const escapeHtml = (value: unknown) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    function renderTransactions(items: CreditTransactionRecord[]) {
+      if (!history) return;
+      history.innerHTML = items.length ? items.map((item) => `<article class="billing-history-row"><div><strong>${escapeHtml(transactionTitle(item))}</strong><span>${escapeHtml(formatDate(item.created_at))}${item.related_car_id || item.listing_id ? ` · объявление #${escapeHtml(item.related_car_id || item.listing_id)}` : ""}</span></div><div><b class="${Number(item.amount) < 0 ? "is-debit" : "is-credit"}">${Number(item.amount) > 0 ? "+" : ""}${escapeHtml(item.amount)} кредитов</b><small>Баланс: ${escapeHtml(item.balance_after)}</small></div></article>`).join("") : '<div class="mac-empty-state"><strong>Операций пока нет</strong><p>Успешные списания и начисления появятся здесь.</p></div>';
+    }
 
-    const formatDate = (value: unknown) => {
-      if (!value) return "-";
-      const date = /^\d+$/.test(String(value)) ? new Date(Number(value)) : new Date(String(value));
-      return Number.isNaN(date.getTime())
-        ? "-"
-        : new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date);
-    };
-
-    const loadBilling = async () => {
-      if (!token) {
-        window.location.href = `/login?next=${encodeURIComponent("/dashboard/billing/")}`;
-        return;
-      }
-
+    async function loadBilling() {
+      if (!token || !page) return;
+      page.setAttribute("aria-busy", "true");
       try {
-        const [creditsResponse, purchasesResponse] = await Promise.all([
-          fetch(`${apiUrl}${API_ROUTES.credits}`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${apiUrl}${API_ROUTES.purchases}`, { headers: { Authorization: `Bearer ${token}` } }),
+        const headers = { Authorization: `Bearer ${token}` };
+        const [summaryResponse, historyResponse] = await Promise.all([
+          fetch(`${apiUrl}${API_ROUTES.dashboardSummary}`, { headers }),
+          fetch(`${apiUrl}${API_ROUTES.dashboardCreditTransactions}?page=1&per_page=20`, { headers }),
         ]);
-
-        if (creditsResponse.ok) {
-          const credits = await creditsResponse.json();
-          const wallets = normalizeCreditWallets(credits);
-          trackProductEvent("credits_loaded", { count: wallets.ai.total, wallet_type: "ai" });
-
-          if (creditsCount) creditsCount.textContent = String(wallets.ai.total);
-          if (creditsNote) {
-            creditsNote.textContent = "AI-кредиты списываются только после успешной генерации. Просмотр и фильтры бесплатны.";
-          }
-          if (creditsBreakdown instanceof HTMLElement) {
-            creditsBreakdown.hidden = false;
-            creditsBreakdown.innerHTML = `
-              <span>Бесплатные: <b>${wallets.ai.free}</b></span>
-              <span>Платные: <b>${wallets.ai.paid}</b></span>
-              ${wallets.ai.unallocated ? `<span>Ранее начисленные: <b>${wallets.ai.unallocated}</b></span>` : ""}
-              <span>Использовано: <b>${wallets.ai.used}</b></span>
-            `;
-          }
-        } else if (creditsNote) {
-          creditsNote.textContent = "Баланс появится после добавления Xano endpoint /me/credits.";
+        if (summaryResponse.status === 401 || historyResponse.status === 401) {
+          if (await isSessionConfirmedExpired(apiUrl, token)) { redirectToLogin("/dashboard/billing/"); return; }
         }
-
-        if (purchasesResponse.ok && history instanceof HTMLElement) {
-          const purchases = await purchasesResponse.json();
-          const list = Array.isArray(purchases) ? purchases : purchases.items || purchases.purchases || [];
-
-          history.innerHTML = list.length
-            ? list
-                .map((purchase: Record<string, unknown>) => {
-                  const product = purchase.product && typeof purchase.product === "object"
-                    ? (purchase.product as Record<string, unknown>)
-                    : {};
-
-                  return `
-                    <div class="billing-history-row">
-                      <div>
-                        <strong>${escapeHtml(purchase.product_slug || product.slug || "Покупка")}</strong>
-                        <span>${escapeHtml(purchase.status || "pending")}</span>
-                      </div>
-                      <small>${formatDate(purchase.created_at)}</small>
-                    </div>
-                  `;
-                })
-                .join("")
-            : '<p class="form-message">Покупок пока нет.</p>';
-        } else if (history instanceof HTMLElement) {
-          history.innerHTML = '<p class="form-message">История появится после добавления Xano endpoint /me/purchases.</p>';
-        }
+        if (!summaryResponse.ok || !historyResponse.ok) throw new Error("Сервис кредитов временно недоступен.");
+        const summary = await summaryResponse.json() as DashboardSummary;
+        const transactions = await historyResponse.json() as CreditTransactionsResponse;
+        if (balance) balance.textContent = `${summary.credits.balance} кредитов`;
+        renderTransactions(Array.isArray(transactions.items) ? transactions.items : []);
       } catch (error) {
-        if (history instanceof HTMLElement) {
-          history.innerHTML = `<p class="form-message">${escapeHtml(getFriendlyErrorMessage(error, "Не удалось загрузить оплату."))}</p>`;
-        }
+        if (history) history.innerHTML = `<div class="mac-empty-state" role="alert"><strong>Не удалось загрузить операции</strong><p>${escapeHtml(error instanceof Error ? error.message : "Проверьте соединение.")}</p><button class="button button-light" type="button" data-billing-retry>Повторить</button></div>`;
+      } finally {
+        page.setAttribute("aria-busy", "false");
       }
-    };
+    }
 
-    document.querySelectorAll("[data-product-slug]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        if (!(button instanceof HTMLButtonElement)) return;
-        if (!token) {
-          window.location.href = `/login?next=${encodeURIComponent("/dashboard/billing/")}`;
-          return;
-        }
-
-        const productSlug = button.dataset.productSlug;
-        button.disabled = true;
-        button.textContent = "Создаю...";
-
-        try {
-          const response = await fetch(`${apiUrl}${API_ROUTES.purchaseCreate}`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ product_slug: productSlug }),
-          });
-          const data = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(data.message || data.code || "Не удалось создать покупку");
-          }
-
-          const checkoutUrl = data.checkout_url || data.checkoutUrl || data.url;
-          if (checkoutUrl) {
-            window.location.href = checkoutUrl;
-            return;
-          }
-
-          window.location.href = `/payment/success?purchase_id=${encodeURIComponent(String(data.purchase_id || data.id || ""))}`;
-        } catch (error) {
-          alert(getFriendlyErrorMessage(error, "Не удалось создать покупку."));
-        } finally {
-          button.disabled = false;
-          button.textContent = "Купить";
-        }
-      });
-    });
-
-    loadBilling();
+    history?.addEventListener("click", (event) => { if (event.target instanceof Element && event.target.closest("[data-billing-retry]")) void loadBilling(); });
+    if (!token) redirectToLogin("/dashboard/billing/"); else void loadBilling();
   </script>
 </BaseLayout>

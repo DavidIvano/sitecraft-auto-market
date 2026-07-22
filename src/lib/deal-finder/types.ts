@@ -196,6 +196,26 @@ export type DealFinderAnalyzeResponse = {
   };
 };
 
+export type DealFinderTranslationStatus = "pending" | "processing" | "completed" | "failed" | "stale";
+
+export type DealFinderTranslation = {
+  id: number;
+  listing_id: number;
+  source_language: string;
+  target_language: "ru";
+  status: DealFinderTranslationStatus;
+  translated_text?: string | null;
+  completed_at?: string | null;
+  failed_at?: string | null;
+  error_code?: string | null;
+  cached?: boolean;
+  source_text_hash?: string;
+};
+
+export type DealFinderTranslationResponse = {
+  translation: DealFinderTranslation;
+};
+
 export type DealFinderListingDetails = {
   listing: DealFinderListing;
   analysis: DealFinderAnalysis | null;

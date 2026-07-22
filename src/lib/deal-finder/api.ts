@@ -17,6 +17,7 @@ import type {
   DealFinderSearchInput,
   DealFinderStats,
   DealFinderSyncLog,
+  DealFinderTranslationResponse,
   DealFinderWorkspacePayload,
 } from "./types";
 import { DealFinderApiError } from "./types";
@@ -83,6 +84,26 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 
 function listingScore(listing: DealFinderListing) {
   return Number(listing.analysis?.deal_score || 0);
+}
+
+function getDealFinderMockListing(id: number | string) {
+  const storedListing = dealFinderMockListings.find((item) => item.id === Number(id));
+  if (storedListing || Number(id) !== 59) return storedListing;
+  const description = "Zum Verkauf steht ein gepflegter Volkswagen Golf 1.6 TDI.\n\nDas Fahrzeug ist fahrbereit und wurde regelmäßig gewartet. Klimaanlage, Tempomat und zwei Schlüssel sind vorhanden.\n\nBekannte Hinweise: altersübliche Gebrauchsspuren. Bitte besichtigen und Probefahrt vereinbaren.";
+  return {
+    ...dealFinderMockListings[0],
+    id: 59,
+    title: "Volkswagen Golf 1.6 TDI Comfortline",
+    description,
+    source_image_url: "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1600&q=82",
+    source_images: [
+      "https://images.unsplash.com/photo-1494976388531-d1058494cdd8?auto=format&fit=crop&w=1600&q=82",
+      "https://images.unsplash.com/photo-1503736334956-4c8f8e92946d?auto=format&fit=crop&w=1600&q=82",
+      "https://images.unsplash.com/photo-1542362567-b07e54358753?auto=format&fit=crop&w=1600&q=82",
+      "https://images.unsplash.com/photo-1553440569-bcc63803a83d?auto=format&fit=crop&w=1600&q=82",
+    ],
+    analysis: dealFinderMockListings[0].analysis ? { ...dealFinderMockListings[0].analysis, listing_id: 59 } : null,
+  } satisfies DealFinderListing;
 }
 
 export function filterDealFinderMockListings(filters: DealFinderFilters = {}) {
@@ -195,7 +216,7 @@ export async function getDealFinderListings(filters: DealFinderFilters = {}, sig
 
 export async function getDealFinderListing(id: number | string, signal?: AbortSignal): Promise<DealFinderListingDetails> {
   if (DEAL_FINDER_USE_MOCK_DATA) {
-    const listing = dealFinderMockListings.find((item) => item.id === Number(id));
+    const listing = getDealFinderMockListing(id);
     if (!listing) throw new DealFinderApiError("Объявление не найдено.", 404, "NOT_FOUND");
     return {
       listing,
@@ -235,6 +256,34 @@ export const saveDealFinderListing = (id: number | string, signal?: AbortSignal)
 export const unsaveDealFinderListing = (id: number | string, signal?: AbortSignal) => listingAction(id, API_ROUTES.dealFinderListingUnsave, signal);
 export const hideDealFinderListing = (id: number | string, signal?: AbortSignal) => listingAction(id, API_ROUTES.dealFinderListingHide, signal);
 export const restoreDealFinderListing = (id: number | string, signal?: AbortSignal) => listingAction(id, API_ROUTES.dealFinderListingRestore, signal);
+export async function requestDealFinderDescriptionTranslation(
+  id: number | string,
+  targetLanguage: "ru" = "ru",
+  signal?: AbortSignal,
+): Promise<DealFinderTranslationResponse> {
+  if (DEAL_FINDER_USE_MOCK_DATA) {
+    const listing = getDealFinderMockListing(id);
+    if (!listing) throw new DealFinderApiError("Объявление не найдено.", 404, "NOT_FOUND");
+    if (!listing.description?.trim()) throw new DealFinderApiError("В объявлении нет описания для перевода.", 422, "DESCRIPTION_REQUIRED");
+    return {
+      translation: {
+        id: 9000 + listing.id,
+        listing_id: listing.id,
+        source_language: "de",
+        target_language: targetLanguage,
+        status: "completed",
+        translated_text: `Тестовый перевод: ${listing.description}`,
+        completed_at: new Date().toISOString(),
+        cached: true,
+      },
+    };
+  }
+  return request<DealFinderTranslationResponse>(API_ROUTES.dealFinderListingTranslateDescription(id), {
+    method: "POST",
+    body: JSON.stringify({ target_language: targetLanguage }),
+    signal,
+  });
+}
 export const requestDealFinderAnalysis = (
   id: number | string,
   options: { force?: boolean; signal?: AbortSignal } = {},

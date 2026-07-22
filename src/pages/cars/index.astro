@@ -3,7 +3,7 @@ import CarCard from "../../components/CarCard.astro";
 import SearchBar from "../../components/SearchBar.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getApprovedCars } from "../../lib/xano";
-import { sortPromotedCars } from "../../lib/monetization";
+import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
 import { SITE_URL } from "../../lib/config";
 import { API_ROUTES } from "../../lib/apiRoutes";
 import { getCreditActionPolicy } from "../../lib/credits/model";
@@ -24,7 +24,7 @@ const aiSearchPolicy = getCreditActionPolicy("ai_search_intent");
 
 try {
   const xanoCars = await getApprovedCars();
-  cars = sortPromotedCars(xanoCars.filter(isPublicListing));
+  cars = xanoCars.filter(isPublicListing);
 } catch {
   cars = [];
 }
@@ -86,7 +86,7 @@ const matchesServerFilters = (car: CarListing) =>
   (!serverFilters.mileageMax || Number(car.mileage || 0) <= serverFilters.mileageMax);
 
 const sortCarsByMode = (items: CarListing[], mode: string) =>
-  [...items].sort((left, right) => {
+  sortCarsByActivePromotion(items, { ordinaryCompare: (left, right) => {
     if (mode === "price_asc") {
       return Number(left.price || 0) - Number(right.price || 0);
     }
@@ -99,8 +99,8 @@ const sortCarsByMode = (items: CarListing[], mode: string) =>
       return Number(left.mileage || 0) - Number(right.mileage || 0);
     }
 
-    return Number(right.created_at || 0) - Number(left.created_at || 0);
-  });
+    return (parseApiDate(right.created_at)?.getTime() || 0) - (parseApiDate(left.created_at)?.getTime() || 0);
+  } });
 
 cars = sortCarsByMode(cars.filter(matchesServerFilters), selectedSort);
 
@@ -221,7 +221,7 @@ const collectionSchema = {
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
       >
-        {cars.map((car) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} />)}
+        {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} />)}
       </div>
       <div class="form-message live-cars-message" id="live-cars-message" hidden>
         <span id="live-cars-message-text">{cars.length > 0 ? "" : "Загружаю каталог автомобилей..."}</span>
@@ -252,12 +252,15 @@ const collectionSchema = {
       getBuyerSearchClarifications,
       getBuyerSearchCriteriaFromParams,
       getBuyerSearchCriteriaList,
-      getBuyerSearchMatchReasons,
       getBuyerSearchRelaxations,
       normalizeBuyerSearchCriteria,
       type BuyerSearchCriteria,
     } from "../../lib/buyer-search/model";
     import { isPublicListing } from "../../lib/listingStatus";
+    import { renderPublicCarCardMarkup } from "../../lib/publicCarCard";
+    import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
+    import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
+    import type { CarListing } from "../../lib/types";
 
     const grid = document.querySelector("#live-cars-grid");
     const message = document.querySelector("#live-cars-message");
@@ -315,19 +318,6 @@ const collectionSchema = {
         .join("");
     };
 
-    const toDate = (value: unknown) => {
-      if (!value) {
-        return null;
-      }
-
-      const stringValue = String(value);
-      const date = typeof value === "number" || /^\d+$/.test(stringValue)
-        ? new Date(Number(value))
-        : new Date(stringValue);
-
-      return Number.isNaN(date.getTime()) ? null : date;
-    };
-
     const parseStringArray = (value: unknown): string[] => {
       if (Array.isArray(value)) {
         return value.filter((item): item is string => typeof item === "string" && item.length > 0);
@@ -343,79 +333,6 @@ const collectionSchema = {
 
       return [];
     };
-
-    const getImageMetadataVariantUrl = (value: unknown, variants: string[] = []) => {
-      if (!value || typeof value !== "object") {
-        return "";
-      }
-
-      const metadata = value as Record<string, unknown>;
-      const variantUrls = variants
-        .map((variant) => {
-          const variantGroup = metadata.variants;
-          if (!variantGroup || typeof variantGroup !== "object") {
-            return "";
-          }
-
-          const variantValue = (variantGroup as Record<string, unknown>)[variant];
-          return variantValue && typeof variantValue === "object"
-            ? (variantValue as Record<string, unknown>).url
-            : "";
-        });
-
-      const optimized = metadata.optimized;
-      const optimizedUrl = optimized && typeof optimized === "object"
-        ? (optimized as Record<string, unknown>).url
-        : "";
-      const url = [...variantUrls, optimizedUrl, metadata.url, metadata.public_url, metadata.image_url, metadata.src, metadata.path]
-        .find((candidate) => typeof candidate === "string" && candidate.length > 0);
-
-      return typeof url === "string" && url.startsWith("http") ? url : "";
-    };
-
-    const getCarCoverImageUrl = (car: Record<string, unknown>) => {
-      const images = Array.isArray(car.images) ? car.images : [];
-      const imageFromRows = images
-        .map((image: { image_url?: string; image?: { url?: string }; image_metadata?: unknown }) =>
-          getImageMetadataVariantUrl(image.image_metadata, ["card", "thumb", "detail"]) || image.image_url || image.image?.url
-        )
-        .find(Boolean);
-
-      return String(car.cover_image_url || car.main_image_url || parseStringArray(car.image_urls)[0] || imageFromRows || "");
-    };
-
-    const isFutureDate = (value: unknown) => {
-      if (!value) {
-        return false;
-      }
-
-      const date = toDate(value);
-      return Boolean(date && date.getTime() > Date.now());
-    };
-
-    const getPromotionScore = (car: Record<string, unknown>) => {
-      const dealerPlan = String(car.dealer_plan || "");
-
-      return (
-        (isFutureDate(car.homepage_until) ? 1000 : 0) +
-        (isFutureDate(car.featured_until) ? 700 : 0) +
-        (isFutureDate(car.boosted_until) ? 400 : 0) +
-        (dealerPlan === "business" ? 25 : dealerPlan === "pro" ? 20 : dealerPlan === "basic" ? 10 : 0)
-      );
-    };
-
-    const promotedFirst = (cars: Array<Record<string, unknown>>) =>
-      [...cars].sort((left, right) => {
-        const promotionDiff = getPromotionScore(right) - getPromotionScore(left);
-
-        if (promotionDiff !== 0) {
-          return promotionDiff;
-        }
-
-        const leftTime = toDate(left.created_at)?.getTime() ?? 0;
-        const rightTime = toDate(right.created_at)?.getTime() ?? 0;
-        return rightTime - leftTime;
-      });
 
     const setCatalogView = (view: string) => {
       if (!(grid instanceof HTMLElement)) {
@@ -445,75 +362,6 @@ const collectionSchema = {
     });
 
     setCatalogView(localStorage.getItem("sitecraft-catalog-view") || "grid");
-
-    const renderPaidBadges = (car: Record<string, unknown>) => {
-      const badges = [
-        isFutureDate(car.homepage_until) && "Премиум",
-        isFutureDate(car.featured_until) && "Выделенное",
-        isFutureDate(car.boosted_until) && "Вверху",
-        car.is_ai_generated && "Создано с AI",
-        (car.dealer_verified || car.dealer_plan === "business") && "Проверенный дилер",
-        !(car.dealer_verified || car.dealer_plan === "business") &&
-          (car.dealer_plan === "pro" || car.dealer_plan === "basic") &&
-          "Дилер",
-      ].filter(Boolean);
-
-      if (badges.length === 0) {
-        return "";
-      }
-
-      return badges
-        .map((badge) => `<span class="paid-badge${badge === "Создано с AI" ? " paid-badge-ai" : ""}">${escapeHtml(badge)}</span>`)
-        .join("");
-    };
-
-    const isSold = (car: Record<string, unknown>) =>
-      car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
-
-    const renderStatusBadge = (car: Record<string, unknown>) => {
-      if (isSold(car)) {
-        return `<span class="status-badge status-sold">Продано</span>`;
-      }
-
-      return `<span class="status-badge status-approved">Проверено</span>`;
-    };
-
-    const renderAiMini = (car: Record<string, unknown>) => {
-      const candidates = [car.trust_score, car.listing_quality_score, car.ai_listing_score, car.ai_scan_score];
-      const score = candidates.reduce<number | null>((result, value) => {
-        if (result !== null || value === null || value === undefined || (typeof value === "string" && !value.trim())) return result;
-        const numeric = typeof value === "number" ? value : Number(value);
-        return Number.isFinite(numeric) ? Math.max(0, Math.min(100, Math.round(numeric))) : null;
-      }, null);
-      if (score === null) return "";
-      const tone = score >= 85 ? "good" : score >= 65 ? "medium" : "low";
-
-      return `
-        <div class="ai-analysis-mini ai-analysis-mini-${tone} ai-trust-badge" aria-label="AI качество объявления ${score}%" title="AI-оценка показывает качество заполнения объявления, а не техническое состояние автомобиля.">
-          <span>AI</span>
-          <strong>${score}%</strong>
-        </div>
-      `;
-    };
-
-    const normalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
-
-    const renderSmartBadges = (car: Record<string, unknown>) => {
-      const mileage = Number(car.mileage || 0);
-      const year = Number(car.year || 0);
-      const age = Number.isFinite(year) && year > 0 ? Math.max(1, new Date().getFullYear() - year) : 0;
-      const bodyType = normalizeText(car.body_type);
-      const seats = Number(car.seats || 0);
-      const badges = [
-        (seats >= 5 || seats === 0) && /(универсал|минивэн|внедорожник|suv|кроссовер)/i.test(bodyType) ? "Семейный авто" : "",
-        normalizeText(car.fuel_type) === "дизель" ? "Экономичный дизель" : "",
-        age > 0 && mileage > 0 && mileage / age < 12000 && mileage < 180000 ? "Низкий пробег" : "",
-      ].filter(Boolean);
-
-      return badges
-        .map((badge) => `<span class="ai-smart-badge" title="Оценка основана на данных объявления.">${escapeHtml(badge)}</span>`)
-        .join("");
-    };
 
     const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
       const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
@@ -646,8 +494,7 @@ const collectionSchema = {
 
     const sortCars = (cars: Record<string, unknown>[]) => {
       const mode = sortSelect instanceof HTMLSelectElement ? sortSelect.value : "newest";
-
-      return [...cars].sort((left, right) => {
+      const ordinaryCompare = (left: Record<string, unknown>, right: Record<string, unknown>) => {
         if (mode === "price_asc") {
           return Number(left.price || 0) - Number(right.price || 0);
         }
@@ -660,26 +507,11 @@ const collectionSchema = {
           return Number(left.mileage || 0) - Number(right.mileage || 0);
         }
 
-        return Number(right.created_at || 0) - Number(left.created_at || 0);
-      });
-    };
-
-    const renderCarImage = (car: Record<string, unknown>) => {
-      const imageUrl = getCarCoverImageUrl(car);
-
-      if (imageUrl) {
-        return `
-          <button class="vehicle-image-trigger car-card-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(imageUrl)}" data-lightbox-sources="${escapeHtml(JSON.stringify([imageUrl]))}" data-lightbox-alt="${escapeHtml(car.title)}" aria-label="Увеличить фото: ${escapeHtml(car.title)}">
-            <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" decoding="async" width="960" height="720" referrerpolicy="no-referrer" />
-            <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
-          </button>
-        `;
-      }
-
-      return `
-        <div class="car-image car-image-empty">Фото пока не добавлено</div>
-        ${isSold(car) ? `<span class="sold-ribbon">Продано</span>` : ""}
-      `;
+        return (parseApiDate(right.created_at)?.getTime() || 0) - (parseApiDate(left.created_at)?.getTime() || 0);
+      };
+      return sortCarsByActivePromotion(cars as CarListing[], {
+        ordinaryCompare: ordinaryCompare as (left: CarListing, right: CarListing) => number,
+      }) as Array<Record<string, unknown>>;
     };
 
     const setCatalogMessage = (text: string, options: { showRetry?: boolean } = {}) => {
@@ -693,17 +525,6 @@ const collectionSchema = {
       if (retryButton instanceof HTMLButtonElement) {
         retryButton.hidden = !options.showRetry;
       }
-    };
-
-    const renderMatchReasons = (car: Record<string, unknown>) => {
-      const reasons = getBuyerSearchMatchReasons(car, getActiveCriteria());
-      if (reasons.length === 0) return "";
-      return `
-        <div class="buyer-match-reasons" aria-label="Почему автомобиль подходит">
-          <strong>Почему подходит</strong>
-          <ul>${reasons.map((reason) => `<li>${escapeHtml(reason)}</li>`).join("")}</ul>
-        </div>
-      `;
     };
 
     const renderEmptyCatalog = () => {
@@ -748,42 +569,9 @@ const collectionSchema = {
       }
 
       grid.innerHTML = filteredCars
-        .map((car) => {
-          const rawSlug = String(car.slug || "").trim();
-          const detailPath = rawSlug ? `/cars/${encodeURIComponent(rawSlug)}` : "";
-          const cardContent = `
-            <div class="car-card-media">
-              ${renderCarImage(car)}
-              ${isSold(car) ? '<span class="sold-ribbon">Продано</span>' : ""}
-            </div>
-            <div class="car-card-body">
-              <div class="car-card-top">
-                <h3>${detailPath ? `<a href="${detailPath}">${escapeHtml(car.title)}</a>` : escapeHtml(car.title)}</h3>
-              </div>
-              <div class="car-card-badges">
-                ${renderStatusBadge(car)}
-                ${renderPaidBadges(car)}
-                ${renderAiMini(car)}
-                ${renderSmartBadges(car)}
-              </div>
-              <p class="car-price">${formatPrice(car.price, car.currency)}</p>
-              ${renderMatchReasons(car)}
-              <dl class="car-meta">
-                <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
-                <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
-                <div><dt>Город</dt><dd>${escapeHtml(normalizeCityLabel(car.city))}</dd></div>
-              </dl>
-              ${detailPath ? `<a class="button button-light car-card-details" href="${detailPath}">Подробнее</a>` : ""}
-            </div>
-          `;
-
-          return `
-            <article class="car-card${isSold(car) ? " car-card-sold" : ""}">
-              <div class="car-card-link car-card-composite${detailPath ? "" : " car-card-link-disabled"}"${detailPath ? "" : ' aria-disabled="true"'}>${cardContent}</div>
-            </article>
-          `;
-        })
+        .map((car, index) => renderPublicCarCardMarkup(car as CarListing, { priority: index < 4 }))
         .join("");
+      refreshPublicCarCardIcons(grid);
 
       setCatalogMessage("");
       renderRecommendedCars();
@@ -899,7 +687,7 @@ const collectionSchema = {
 
     const refreshCatalogFromCurrentFilters = () => {
       if (latestCatalogCars.length > 0) {
-        renderCatalogCars(sortCars(promotedFirst(latestCatalogCars.filter(matchesActiveFilters))));
+        renderCatalogCars(sortCars(latestCatalogCars.filter(matchesActiveFilters)));
         return;
       }
 
@@ -1041,7 +829,7 @@ const collectionSchema = {
             }
 
             latestCatalogCars = cars.filter(isPublicListing);
-            const filteredCars = sortCars(promotedFirst(latestCatalogCars.filter(matchesActiveFilters)));
+            const filteredCars = sortCars(latestCatalogCars.filter(matchesActiveFilters));
 
             renderCatalogCars(filteredCars);
           });
@@ -1245,5 +1033,6 @@ const collectionSchema = {
     renderAppliedCriteria();
     renderClarifications("", getActiveCriteria());
     getOrCreateSessionId();
+    installPublicCarCardInteractions();
   </script>
 </BaseLayout>

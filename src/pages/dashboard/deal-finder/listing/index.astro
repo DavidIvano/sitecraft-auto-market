@@ -1,6 +1,5 @@
 ---
 import BaseLayout from "../../../../layouts/BaseLayout.astro";
-import DealFinderHeader from "../../../../components/deal-finder/DealFinderHeader.astro";
 ---
 
 <BaseLayout
@@ -16,8 +15,12 @@ import DealFinderHeader from "../../../../components/deal-finder/DealFinderHeade
 >
   <section class="section deal-finder-section">
     <div class="container">
-      <DealFinderHeader title="Проверка предложения" description="Закрытая карточка внешнего предложения." />
-      <div id="deal-finder-detail" class="deal-finder-state" aria-busy="true">Загрузка предложения…</div>
+      <div id="deal-finder-detail" class="deal-detail-root" aria-busy="true">
+        <div class="deal-detail-loading" role="status" aria-label="Загрузка предложения">
+          <span class="deal-detail-loading-gallery"></span>
+          <span></span><span></span><span></span>
+        </div>
+      </div>
     </div>
   </section>
   <script>

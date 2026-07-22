@@ -195,9 +195,27 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     </div>
   </section>
 
+  <section class="section homepage-promotions" id="homepage-promotions" hidden aria-labelledby="homepage-promotions-title">
+    <div class="container">
+      <div class="section-heading row-heading">
+        <div>
+          <p class="eyebrow">Премиум</p>
+          <h2 id="homepage-promotions-title">Премиум-автомобили</h2>
+          <p class="section-subtitle">Автомобили с активным размещением на главной. Услуга не является редакционной рекомендацией.</p>
+        </div>
+        <a class="button button-light" href="/cars">Смотреть каталог</a>
+      </div>
+      <div class="cards-grid public-car-grid" data-homepage-promotions-grid></div>
+    </div>
+  </section>
+
   <script>
     import { getBrandLogoSvg } from "../lib/brandLogos";
     import { isPublicListing } from "../lib/listingStatus";
+    import { renderPublicCarCardMarkup } from "../lib/publicCarCard";
+    import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../lib/publicCarCardsClient";
+    import { getHomepagePromotedCars, sortCarsByActivePromotion } from "../lib/promotions/model";
+    import type { CarListing } from "../lib/types";
 
     const liveGrid = document.querySelector("#home-live-cars-grid");
     const loadingState = document.querySelector("#home-loading-state");
@@ -213,6 +231,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const brandTrack = document.querySelector("#home-brand-track");
     const brandPrev = document.querySelector("#brand-prev");
     const brandNext = document.querySelector("#brand-next");
+    const homepagePromotions = document.querySelector("#homepage-promotions");
+    const homepagePromotionsGrid = document.querySelector("[data-homepage-promotions-grid]");
     const bodyTypeOptions = ["Седан", "Универсал", "Хэтчбек", "Купе", "Кабриолет", "Внедорожник / SUV", "Кроссовер", "Минивэн", "Фургон", "Пикап", "Лимузин"];
     const vehicleTypeOptions = ["Легковой автомобиль", "Электромобиль", "Коммерческий транспорт", "Мотоцикл", "Грузовой транспорт", "Прицеп"];
     const popularBrandOptions = ["Audi", "BMW", "Mercedes-Benz", "Volkswagen", "Toyota", "Ford", "Hyundai", "Kia", "Skoda", "Mazda", "Opel", "Tesla"];
@@ -311,136 +331,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return rightTime - leftTime;
       });
 
-    const carImageMarkup = (car: Record<string, unknown>) => {
-      const imageUrl = getCarCoverImageUrl(car);
-
-      if (!imageUrl) {
-        return `<div class="car-image car-image-empty">Фото пока не добавлено</div>`;
-      }
-
-      return `
-        <button class="vehicle-image-trigger car-card-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(imageUrl)}" data-lightbox-sources="${escapeHtml(JSON.stringify([imageUrl]))}" data-lightbox-alt="${escapeHtml(car.title)}" aria-label="Увеличить фото: ${escapeHtml(car.title)}">
-          <img src="${escapeHtml(imageUrl)}" alt="${escapeHtml(car.title)}" class="car-image" loading="lazy" decoding="async" width="960" height="720" referrerpolicy="no-referrer" />
-          <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
-        </button>
-      `;
-    };
-
-    const isFutureDate = (value: unknown) => {
-      const date = toDate(value);
-      return Boolean(date && date.getTime() > Date.now());
-    };
-
-    const isSold = (car: Record<string, unknown>) =>
-      car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
-
-    const renderStatusBadge = (car: Record<string, unknown>) =>
-      isSold(car)
-        ? `<span class="status-badge status-sold">Продано</span>`
-        : `<span class="status-badge status-approved">Проверено</span>`;
-
-    const renderPaidBadges = (car: Record<string, unknown>) => {
-      const badges = [
-        isFutureDate(car.homepage_until) && "Премиум",
-        isFutureDate(car.featured_until) && "Выделенное",
-        isFutureDate(car.boosted_until) && "Вверху",
-        car.is_ai_generated && "Создано с AI",
-        (car.dealer_verified || car.dealer_plan === "business") && "Проверенный дилер",
-        !(car.dealer_verified || car.dealer_plan === "business") &&
-          (car.dealer_plan === "pro" || car.dealer_plan === "basic") &&
-          "Дилер",
-      ].filter(Boolean);
-
-      return badges
-        .map((badge) => `<span class="paid-badge${badge === "Создано с AI" ? " paid-badge-ai" : ""}">${escapeHtml(badge)}</span>`)
-        .join("");
-    };
-
-    const renderAiMini = (car: Record<string, unknown>) => {
-      const candidates = [car.trust_score, car.listing_quality_score, car.ai_listing_score, car.ai_scan_score];
-      const score = candidates.reduce<number | null>((result, value) => {
-        if (result !== null || value === null || value === undefined || (typeof value === "string" && !value.trim())) return result;
-        const numeric = typeof value === "number" ? value : Number(value);
-        return Number.isFinite(numeric) ? Math.max(0, Math.min(100, Math.round(numeric))) : null;
-      }, null);
-      if (score === null) return "";
-      const tone = score >= 85 ? "good" : score >= 65 ? "medium" : "low";
-
-      return `
-        <div class="ai-analysis-mini ai-analysis-mini-${tone}" aria-label="AI рейтинг объявления ${score}%">
-          <span>AI</span>
-          <strong>${score}%</strong>
-        </div>
-      `;
-    };
-
-    const normalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
-
-    const renderSmartBadges = (car: Record<string, unknown>) => {
-      const mileage = Number(car.mileage || 0);
-      const year = Number(car.year || 0);
-      const age = Number.isFinite(year) && year > 0 ? Math.max(1, new Date().getFullYear() - year) : 0;
-      const bodyType = normalizeText(car.body_type);
-      const seats = Number(car.seats || 0);
-      const badges = [
-        (seats >= 5 || seats === 0) && /(универсал|минивэн|внедорожник|suv|кроссовер)/i.test(bodyType) ? "Семейный авто" : "",
-        normalizeText(car.fuel_type) === "дизель" ? "Экономичный дизель" : "",
-        age > 0 && mileage > 0 && mileage / age < 12000 && mileage < 180000 ? "Низкий пробег" : "",
-      ].filter(Boolean);
-
-      return badges
-        .map((badge) => `<span class="ai-smart-badge" title="Оценка основана на данных объявления.">${escapeHtml(badge)}</span>`)
-        .join("");
-    };
-
-    const normalizeCityLabel = (value: unknown) => {
-      const city = String(value || "").trim();
-
-      if (!city) {
-        return "Не указан";
-      }
-
-      return city
-        .split(/([\s-]+)/)
-        .map((part) => (/^[\p{L}]/u.test(part) ? part.charAt(0).toLocaleUpperCase("ru-RU") + part.slice(1) : part))
-        .join("");
-    };
-
-    const renderCarCard = (car: Record<string, unknown>) => {
-      const rawSlug = String(car.slug ?? "").trim();
-      const detailPath = rawSlug ? `/cars/${encodeURIComponent(rawSlug)}` : "";
-      const title = escapeHtml(car.title);
-      const cardContent = `
-        <div class="car-card-media">
-          ${carImageMarkup(car)}
-          ${isSold(car) ? '<span class="sold-ribbon">Продано</span>' : ""}
-        </div>
-        <div class="car-card-body">
-          <div class="car-card-top">
-            <h3>${detailPath ? `<a href="${detailPath}">${title}</a>` : title}</h3>
-          </div>
-          <div class="car-card-badges">
-            ${renderStatusBadge(car)}
-            ${renderPaidBadges(car)}
-            ${renderAiMini(car)}
-            ${renderSmartBadges(car)}
-          </div>
-          <p class="car-price">${formatPrice(car.price, String(car.currency || "EUR"))}</p>
-          <dl class="car-meta">
-            <div><dt>Год</dt><dd>${escapeHtml(car.year)}</dd></div>
-            <div><dt>Пробег</dt><dd>${Number(car.mileage || 0).toLocaleString("ru-RU")} км</dd></div>
-            <div><dt>Город</dt><dd>${escapeHtml(normalizeCityLabel(car.city))}</dd></div>
-          </dl>
-          ${detailPath ? `<a class="button button-light car-card-details" href="${detailPath}">Подробнее</a>` : ""}
-        </div>
-      `;
-
-      return `
-        <article class="car-card${isSold(car) ? " car-card-sold" : ""}">
-          <div class="car-card-link car-card-composite${detailPath ? "" : " car-card-link-disabled"}"${detailPath ? "" : ' aria-disabled="true"'}>${cardContent}</div>
-        </article>
-      `;
-    };
+    const renderCarCard = (car: Record<string, unknown>, index = 0) =>
+      renderPublicCarCardMarkup(car as CarListing, { priority: index < 4 });
 
     const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
       const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
@@ -633,9 +525,17 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return;
       }
 
-      const orderedCars = newestFirst(cars);
+      const orderedCars = sortCarsByActivePromotion(cars as CarListing[]) as Array<Record<string, unknown>>;
       liveGrid.innerHTML = orderedCars.slice(0, filtered ? 12 : 6).map(renderCarCard).join("");
       liveGrid.hidden = orderedCars.length === 0;
+      refreshPublicCarCardIcons(liveGrid);
+
+      if (homepagePromotions instanceof HTMLElement && homepagePromotionsGrid instanceof HTMLElement) {
+        const promoted = getHomepagePromotedCars(cars as CarListing[]);
+        homepagePromotions.hidden = promoted.length === 0;
+        homepagePromotionsGrid.innerHTML = promoted.map((car, index) => renderPublicCarCardMarkup(car, { priority: index < 2 })).join("");
+        refreshPublicCarCardIcons(homepagePromotionsGrid);
+      }
 
       if (loadingState instanceof HTMLElement) {
         loadingState.hidden = true;
@@ -699,6 +599,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       event.preventDefault();
       applyHomeFilters();
     });
+
+    installPublicCarCardInteractions();
 
     searchForm?.addEventListener("change", applyHomeFilters);
     searchForm?.addEventListener("input", () => {

@@ -9,8 +9,11 @@
 | `deal_finder_searches` | 868287 | Search profiles для `kleinanzeigen_agent` |
 | `deal_finder_listings` | 868288 | Изолированные внешние предложения |
 | `deal_finder_analyses` | 868289 | Версионируемая очередь и история AI-анализов |
+| `deal_finder_listing_translations` | Не создана | Owner-scoped очередь и кэш перевода описаний; blueprint подготовлен, provider отключён |
 
 Полный переносимый blueprint находится в [deal-finder-tables.xs](deal-finder-tables.xs). Machine-readable contract: [deal-finder-schema.json](deal-finder-schema.json).
+
+Очередь перевода вынесена в [deal-finder-translations.xs](deal-finder-translations.xs). Она не изменяет оригинальное `description`, не хранит raw provider response и не выполняет платный запрос.
 
 ## Migration notes
 

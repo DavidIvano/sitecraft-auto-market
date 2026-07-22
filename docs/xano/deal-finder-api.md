@@ -32,6 +32,17 @@ The first authenticated frontend slice is physically present in API group `sitec
 | `POST /deal-finder/listings/{id}/restore` | `3988696` | Restores a hidden record |
 | `POST /deal-finder/listings/{id}/analyze` | `3990128` | Creates or reuses one owner-scoped pending analysis; never calls OpenAI |
 
+### Description translation queue
+
+`POST /deal-finder/listings/{id}/translate-description` is prepared as an installable Xano blueprint but is **not physically installed** and therefore has no endpoint ID yet. The endpoint accepts only `target_language=ru`, derives the source text and SHA-256 hash from the owner-scoped listing, reuses completed/pending rows, and returns only the safe translation envelope. It never accepts `user_id`, role, model, source text, translated text, or a secret from the browser.
+
+Repository sources:
+
+- `docs/xano/deal-finder-translations.xs`
+- `docs/xano/deal-finder-frontend-translate-description.xs`
+
+No provider processor or paid translation call is enabled. Physical table/endpoint installation and the first real translation require separate confirmation.
+
 Runtime checks on 2026-07-17 confirmed: no auth returns 401; an authenticated non-admin returns 403; another owner's record returns 404; list/search/pagination use only current-owner records; save/view/hide/restore preserve unrelated flags. Test mutations on listing 1 were reverted to `new`, unseen, unsaved and visible.
 
 The remaining frontend contracts below are not physically created in this stage:

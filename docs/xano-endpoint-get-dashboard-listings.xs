@@ -125,6 +125,13 @@ query "dashboard/listings" verb=GET {
             created_at       : $car.created_at
             updated_at       : $car.updated_at
             thumbnail_url    : $thumbnail_url
+            boosted_at       : $car.boosted_at
+            boosted_until    : $car.boosted_until
+            featured_at      : $car.featured_at
+            featured_until   : $car.featured_until
+            homepage_at      : $car.homepage_at
+            homepage_until   : $car.homepage_until
+            last_promoted_at : $car.last_promoted_at
           }
         }
       }

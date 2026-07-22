@@ -163,6 +163,18 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
   const scores = getStoredAiScores(source);
   const rawVin = toString(source.vin);
   const seller = normalizeSeller(source.seller);
+  const rawPromotion = toRecord(source.promotion);
+  const promotionStatus = toString(rawPromotion?.status || source.promotion_status);
+  const promotion: CarListing["promotion"] = rawPromotion ? {
+    id: toNumber(rawPromotion.id) || undefined,
+    plan_code: toString(rawPromotion.plan_code),
+    promotion_type: toString(rawPromotion.promotion_type),
+    placement: toString(rawPromotion.placement),
+    status: promotionStatus as NonNullable<CarListing["promotion"]>["status"],
+    priority: toNumber(rawPromotion.priority),
+    starts_at: toOptionalDate(rawPromotion.starts_at),
+    ends_at: toOptionalDate(rawPromotion.ends_at),
+  } : undefined;
 
   const listing: CarListing = {
     id: toNumber(source.id),
@@ -206,6 +218,21 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     moderation_status: (moderationStatus || undefined) as CarListing["moderation_status"],
     sold_at: toOptionalDate(source.sold_at),
     deleted_at: toOptionalDate(source.deleted_at),
+    boosted_at: toOptionalDate(source.boosted_at),
+    boosted_until: toOptionalDate(source.boosted_until),
+    featured_at: toOptionalDate(source.featured_at),
+    featured_until: toOptionalDate(source.featured_until),
+    homepage_at: toOptionalDate(source.homepage_at),
+    homepage_until: toOptionalDate(source.homepage_until),
+    last_promoted_at: toOptionalDate(source.last_promoted_at),
+    published_at: toOptionalDate(source.published_at),
+    promotion_status: (promotionStatus || undefined) as CarListing["promotion_status"],
+    promotion_type: toString(source.promotion_type) || undefined,
+    promotion_placement: toString(source.promotion_placement) || undefined,
+    promotion_priority: toNumber(source.promotion_priority),
+    promotion_started_at: toOptionalDate(source.promotion_started_at),
+    promotion_ends_at: toOptionalDate(source.promotion_ends_at),
+    promotion,
     moderator_approved: source.moderator_approved === true,
     seller_type: toString(source.seller_type) === "dealer" ? "dealer" : "private",
     seller,

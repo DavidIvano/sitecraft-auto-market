@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -10,6 +10,17 @@ const workerDir = join(clientDir, "_worker.js");
 const functionsPluginDir = join(workerDir, "pages-functions");
 const wranglerBin = join(root, "node_modules", ".bin", "wrangler");
 const generatedWranglerDeployDir = join(root, ".wrangler", "deploy");
+
+function removeEnvironmentFiles(directory) {
+  if (!existsSync(directory)) return;
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name);
+    if (entry.isDirectory()) removeEnvironmentFiles(path);
+    else if (entry.name === ".env" || entry.name.startsWith(".env.") || entry.name === ".dev.vars" || entry.name.startsWith(".dev.vars.")) {
+      rmSync(path, { force: true });
+    }
+  }
+}
 
 for (const required of [clientDir, join(serverDir, "entry.mjs"), join(serverDir, "chunks")]) {
   if (!existsSync(required)) {
@@ -59,5 +70,6 @@ export default {
 // Astro's Cloudflare adapter emits a Workers deploy redirect that makes
 // subsequent `wrangler pages` commands use the wrong deployment mode.
 rmSync(generatedWranglerDeployDir, { recursive: true, force: true });
+removeEnvironmentFiles(join(root, "dist"));
 
 console.log("Prepared Cloudflare Pages Advanced Mode bundle in dist/client/_worker.js");

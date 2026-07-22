@@ -1,39 +1,7 @@
 import type { CarListing, PaidProduct } from "./types";
+import { getActiveListingPromotion, parseApiDate, sortCarsByActivePromotion } from "./promotions/model";
 
 export const paidProducts: PaidProduct[] = [
-  {
-    slug: "boost_7_days",
-    name: "Поднять объявление",
-    description: "7 дней выше обычных объявлений в каталоге.",
-    price_cents: 499,
-    currency: "EUR",
-    type: "one_time",
-    duration_days: 7,
-    sort_order: 10,
-    is_active: true,
-  },
-  {
-    slug: "featured_14_days",
-    name: "Выделенное объявление",
-    description: "14 дней с бейджем Featured и приоритетом в каталоге.",
-    price_cents: 999,
-    currency: "EUR",
-    type: "one_time",
-    duration_days: 14,
-    sort_order: 20,
-    is_active: true,
-  },
-  {
-    slug: "homepage_premium_7_days",
-    name: "Премиум на главной",
-    description: "7 дней в блоке Premium cars на главной странице.",
-    price_cents: 1499,
-    currency: "EUR",
-    type: "one_time",
-    duration_days: 7,
-    sort_order: 30,
-    is_active: true,
-  },
   {
     slug: "ai_credits_10",
     name: "10 AI-генераций",
@@ -89,20 +57,9 @@ export const paidProducts: PaidProduct[] = [
   },
 ];
 
-const toDate = (value?: string | number) => {
-  if (!value) {
-    return null;
-  }
+const toDate = (value?: string | number | null) => parseApiDate(value);
 
-  const date =
-    typeof value === "number" || /^\d+$/.test(String(value))
-      ? new Date(Number(value))
-      : new Date(value);
-
-  return Number.isNaN(date.getTime()) ? null : date;
-};
-
-export const isFutureDate = (value?: string | number, now = Date.now()) => {
+export const isFutureDate = (value?: string | number | null, now = Date.now()) => {
   const date = toDate(value);
   return Boolean(date && date.getTime() > now);
 };
@@ -118,10 +75,12 @@ export const getPaidFlags = (car: Pick<CarListing, "boosted_until" | "featured_u
 
 export const getCarPromotionScore = (car: CarListing) => {
   const flags = getPaidFlags(car);
+  const activePromotion = getActiveListingPromotion(car);
   const dealerScore =
     car.dealer_plan === "business" ? 25 : car.dealer_plan === "pro" ? 20 : car.dealer_plan === "basic" ? 10 : 0;
 
   return (
+    (activePromotion?.promotion_type === "premium" ? 2000 + Number(activePromotion.priority || 0) : 0) +
     (flags.isHomepagePremium ? 1000 : 0) +
     (flags.isFeatured ? 700 : 0) +
     (flags.isBoosted ? 400 : 0) +
@@ -129,21 +88,14 @@ export const getCarPromotionScore = (car: CarListing) => {
   );
 };
 
-const toTimestamp = (value?: string | number) => {
+const toTimestamp = (value?: string | number | null) => {
   const date = toDate(value);
   return date?.getTime() ?? 0;
 };
 
-export const sortPromotedCars = (cars: CarListing[]) =>
-  [...cars].sort((left, right) => {
-    const promotionDiff = getCarPromotionScore(right) - getCarPromotionScore(left);
-
-    if (promotionDiff !== 0) {
-      return promotionDiff;
-    }
-
-    return toTimestamp(right.updated_at ?? right.created_at) - toTimestamp(left.updated_at ?? left.created_at);
-  });
+export const sortPromotedCars = (cars: CarListing[]) => sortCarsByActivePromotion(cars, {
+  ordinaryCompare: (left, right) => toTimestamp(right.published_at ?? right.updated_at ?? right.created_at) - toTimestamp(left.published_at ?? left.updated_at ?? left.created_at),
+});
 
 export const formatPaidPrice = (product: Pick<PaidProduct, "price_cents" | "currency">) =>
   new Intl.NumberFormat("ru-RU", {

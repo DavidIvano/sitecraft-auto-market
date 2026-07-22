@@ -39,8 +39,7 @@ test("one global native dialog owns close, navigation, zoom and focus restoratio
 
 test("vehicle galleries use the shared trigger while logos and icons do not", () => {
   const files = [
-    "src/components/CarCard.astro",
-    "src/pages/cars/index.astro",
+    "src/lib/publicCarCard.ts",
     "src/pages/cars/[slug].astro",
     "src/pages/dashboard/listings.astro",
     "src/pages/dashboard/listings/edit.astro",
@@ -49,8 +48,10 @@ test("vehicle galleries use the shared trigger while logos and icons do not", ()
     "src/lib/deal-finder/client.ts",
   ].map(readProjectFile);
   files.forEach((source) => assert.match(source, /data-lightbox-trigger/));
-  assert.match(files[2], /data-lightbox-sources=\{JSON\.stringify\(galleryImages\)\}/);
-  assert.match(files[7], /JSON\.stringify\(lightboxImages\)/);
+  assert.match(files[1], /data-lightbox-sources=\{JSON\.stringify\(galleryImages\)\}/);
+  assert.match(files[6], /JSON\.stringify\(lightboxImages\)/);
+  assert.match(readProjectFile("src/components/CarCard.astro"), /renderPublicCarCardMarkup/);
+  assert.match(readProjectFile("src/pages/cars/index.astro"), /renderPublicCarCardMarkup/);
   const header = readProjectFile("src/components/Header.astro");
   const layout = readProjectFile("src/layouts/BaseLayout.astro");
   assert.doesNotMatch(header, /data-lightbox-trigger/);

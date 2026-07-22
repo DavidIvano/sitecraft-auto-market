@@ -9,6 +9,7 @@ export type ProductEventName =
   | "deal_finder_action_failed"
   | "deal_finder_comparison_opened"
   | "deal_finder_notification_preferences_saved"
+  | "deal_finder_translation_requested"
   | "buyer_search_started"
   | "buyer_search_completed"
   | "buyer_search_clarification_shown"
@@ -16,6 +17,10 @@ export type ProductEventName =
   | "buyer_search_zero_results"
   | "buyer_search_relaxation_applied"
   | "buyer_search_saved"
+  | "promotion_impression"
+  | "promotion_card_open"
+  | "promotion_source_click"
+  | "promotion_favourite"
   | "credits_loaded";
 
 export type ProductEvent = {
@@ -31,6 +36,7 @@ const EVENT_QUEUE_KEY = "sitecraft_product_event_queue";
 const MAX_QUEUED_EVENTS = 50;
 const ALLOWED_PROPERTY_KEYS = new Set([
   "action",
+  "cached",
   "count",
   "criteria_count",
   "has_filters",
@@ -45,6 +51,8 @@ const ALLOWED_PROPERTY_KEYS = new Set([
   "channel_email_enabled",
   "channel_push_enabled",
   "wallet_type",
+  "plan_code",
+  "placement",
 ]);
 
 function createEventId() {

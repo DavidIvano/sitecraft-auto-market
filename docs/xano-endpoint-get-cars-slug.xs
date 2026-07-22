@@ -126,6 +126,13 @@ query "cars/{slug}" verb=GET {
                 listing_quality_score: $seller_car.listing_quality_score
                 photo_quality_score  : $seller_car.photo_quality_score
                 trust_score          : $seller_car.trust_score
+                boosted_at           : $seller_car.boosted_at
+                boosted_until        : $seller_car.boosted_until
+                featured_at          : $seller_car.featured_at
+                featured_until       : $seller_car.featured_until
+                homepage_at          : $seller_car.homepage_at
+                homepage_until       : $seller_car.homepage_until
+                last_promoted_at     : $seller_car.last_promoted_at
                 main_image_url       : $seller_car.main_image_url
                 thumbnail_url        : $seller_car.thumbnail_url
                 primary_image_url    : $seller_car.primary_image_url
@@ -180,6 +187,13 @@ query "cars/{slug}" verb=GET {
           listing_quality_score: $car.listing_quality_score
           photo_quality_score  : $car.photo_quality_score
           trust_score          : $car.trust_score
+          boosted_at           : $car.boosted_at
+          boosted_until        : $car.boosted_until
+          featured_at          : $car.featured_at
+          featured_until       : $car.featured_until
+          homepage_at          : $car.homepage_at
+          homepage_until       : $car.homepage_until
+          last_promoted_at     : $car.last_promoted_at
           ai_analysis          : $car.ai_analysis
           ai_recommendations   : $car.ai_recommendations
           ai_warnings          : $car.ai_warnings

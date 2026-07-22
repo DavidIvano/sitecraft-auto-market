@@ -7,577 +7,151 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 <BaseLayout title="Мои объявления" noindex>
   <section class="section dashboard-listings-hero">
     <div class="container dashboard-listings-heading">
-      <div>
-        <p class="eyebrow">Кабинет</p>
-        <h1>Мои объявления</h1>
-        <p>Управляйте фотографиями, статусами и доступными действиями каждого автомобиля.</p>
-      </div>
+      <div><p class="eyebrow">Кабинет</p><h1>Мои объявления</h1><p>Статусы, активные продвижения и действия по каждому автомобилю.</p></div>
       <a class="button button-dark" href="/dashboard/new">Добавить авто</a>
     </div>
   </section>
 
   <section class="section dashboard-listings-section">
-    <div class="container">
-      <div
-        class="dashboard-listings-panel"
-        id="dashboard-listings"
-        data-api-url={xanoApiUrl}
-        aria-busy="true"
-        aria-live="polite"
-      >
-        <div class="dashboard-listing-skeleton-list" aria-hidden="true">
-          {[0, 1, 2].map(() => (
-            <article class="dashboard-listing-skeleton">
-              <span class="dashboard-listing-skeleton-image"></span>
-              <span class="dashboard-listing-skeleton-copy"></span>
-              <span class="dashboard-listing-skeleton-actions"></span>
-            </article>
-          ))}
-        </div>
+    <div class="container dashboard-listings-workspace" data-api-url={xanoApiUrl} aria-busy="true">
+      <section class="promotion-credit-summary" aria-labelledby="promotion-credit-title">
+        <div><p class="eyebrow">Внутренние кредиты</p><h2 id="promotion-credit-title">Баланс для AI и продвижения</h2><p>Стоимость определяется сервером и списывается только после успешной активации.</p></div>
+        <div><output id="promotion-credit-balance" aria-live="polite">—</output><a href="/dashboard/billing/">История операций</a></div>
+      </section>
+
+      <div class="dashboard-listings-panel" id="dashboard-listings" aria-live="polite">
+        <div class="dashboard-listing-skeleton-list" aria-hidden="true">{[0, 1, 2].map(() => <article class="dashboard-listing-skeleton"><span></span><span></span><span></span></article>)}</div>
       </div>
-      <p class="form-message" id="dashboard-listings-message">Загружаю ваши объявления...</p>
+      <p class="form-message" id="dashboard-listings-message" role="status">Загружаю ваши объявления...</p>
     </div>
   </section>
 
-  <dialog class="dashboard-delete-dialog" id="dashboard-delete-dialog">
+  <dialog class="dashboard-delete-dialog" id="dashboard-delete-dialog" aria-labelledby="dashboard-delete-title">
     <form method="dialog" class="dashboard-delete-dialog-card">
-      <div class="dashboard-delete-preview">
-        <img id="dashboard-delete-image" src="/sitecraft-logo.png" alt="" width="128" height="96" />
-        <div>
-          <p class="eyebrow">Удаление объявления</p>
-          <h2 id="dashboard-delete-title">Удалить объявление?</h2>
-          <p>Оно исчезнет из публичного каталога. Фотографии сохранятся в истории объявления.</p>
-        </div>
-      </div>
-      <div class="dashboard-delete-actions">
-        <button class="button button-light" type="submit" value="cancel">Отмена</button>
-        <button class="button button-danger" id="dashboard-delete-confirm" type="submit" value="confirm">Удалить</button>
-      </div>
+      <div class="dashboard-delete-preview"><img id="dashboard-delete-image" src="/sitecraft-logo.png" alt="" width="128" height="96" /><div><p class="eyebrow">Удаление</p><h2 id="dashboard-delete-title">Удалить объявление?</h2><p>Оно исчезнет из публичного каталога.</p></div></div>
+      <div class="dashboard-delete-actions"><button class="button button-light" value="cancel">Отмена</button><button class="button button-danger" id="dashboard-delete-confirm" value="confirm">Удалить</button></div>
     </form>
   </dialog>
 
   <script>
     import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
     import { API_ROUTES } from "../../lib/apiRoutes";
-    import {
-      DASHBOARD_LISTING_PLACEHOLDER,
-      getDashboardListingActions,
-      getDashboardListingImageUrls,
-      getDashboardListingThumbnail,
-      type DashboardListing,
-    } from "../../lib/dashboardListings";
-    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+    import { DASHBOARD_LISTING_PLACEHOLDER, getDashboardListingActions, getDashboardListingImageUrls, getDashboardListingThumbnail, type DashboardListing } from "../../lib/dashboardListings";
     import { LISTING_STATUS_META, normalizeListingStatus } from "../../lib/listingStatus";
+    import { getActivePromotionProducts, getPromotionEligibilityMessage, parseApiDate, type DashboardSummary } from "../../lib/promotions/model";
 
+    const workspace = document.querySelector<HTMLElement>(".dashboard-listings-workspace");
+    const list = document.querySelector<HTMLElement>("#dashboard-listings");
+    const message = document.querySelector<HTMLElement>("#dashboard-listings-message");
+    const balance = document.querySelector<HTMLOutputElement>("#promotion-credit-balance");
+    const dialog = document.querySelector<HTMLDialogElement>("#dashboard-delete-dialog");
+    const dialogTitle = document.querySelector<HTMLElement>("#dashboard-delete-title");
+    const dialogImage = document.querySelector<HTMLImageElement>("#dashboard-delete-image");
     const token = getAuthToken();
-    const list = document.querySelector("#dashboard-listings");
-    const message = document.querySelector("#dashboard-listings-message");
-    const dialog = document.querySelector("#dashboard-delete-dialog");
-    const dialogTitle = document.querySelector("#dashboard-delete-title");
-    const dialogImage = document.querySelector("#dashboard-delete-image");
-    const dialogConfirm = document.querySelector("#dashboard-delete-confirm");
+    const apiUrl = String(workspace?.dataset.apiUrl || "").replace(/\/+$/, "");
     let pendingDelete: { id: number; card: HTMLElement } | null = null;
 
-    const escapeHtml = (value: unknown) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
+    const formatDate = (value: unknown) => { const date = parseApiDate(value); return date ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(date) : "Дата не указана"; };
+    const formatPrice = (car: DashboardListing) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: String(car.currency || "EUR"), maximumFractionDigits: 0 }).format(Number(car.price || 0));
 
-    const setMessage = (value: string) => {
-      if (message instanceof HTMLElement) message.textContent = value;
-    };
-
-    const getApiUrl = () => list instanceof HTMLElement ? String(list.dataset.apiUrl || "").replace(/\/+$/, "") : "";
-
-    const formatPrice = (car: DashboardListing) => {
-      const price = Number(car.price || 0);
-      const currency = String(car.currency || "EUR");
-      try {
-        return new Intl.NumberFormat("ru-RU", { style: "currency", currency, maximumFractionDigits: 0 }).format(price);
-      } catch {
-        return `${price.toLocaleString("ru-RU")} ${currency}`;
-      }
-    };
-
-    const formatDate = (value: unknown) => {
-      if (!value) return "Дата не указана";
-      const date = typeof value === "number" || /^\d+$/.test(String(value)) ? new Date(Number(value)) : new Date(String(value));
-      return Number.isNaN(date.getTime())
-        ? "Дата не указана"
-        : new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium" }).format(date);
-    };
-
-    const renderSkeleton = () => `
-      <div class="dashboard-listing-skeleton-list" aria-hidden="true">
-        ${[0, 1, 2].map(() => `
-          <article class="dashboard-listing-skeleton">
-            <span class="dashboard-listing-skeleton-image"></span>
-            <span class="dashboard-listing-skeleton-copy"></span>
-            <span class="dashboard-listing-skeleton-actions"></span>
-          </article>
-        `).join("")}
-      </div>
-    `;
-
-    const renderEmpty = () => `
-      <div class="mac-empty-state dashboard-empty-state">
-        <span class="mac-empty-state-icon" aria-hidden="true">+</span>
-        <strong>У вас пока нет объявлений</strong>
-        <p>Создайте первое объявление по фотографиям или заполните данные вручную.</p>
-        <a class="button button-dark" href="/dashboard/new">Создать объявление</a>
-      </div>
-    `;
-
-    const renderError = (text: string) => `
-      <div class="mac-empty-state dashboard-error-state" role="alert">
-        <strong>Не удалось загрузить объявления</strong>
-        <p>${escapeHtml(text)}</p>
-        <button class="button button-light" type="button" data-retry-listings>Повторить</button>
-      </div>
-    `;
+    const promotionBadges = (car: DashboardListing) => getActivePromotionProducts(car).map((product) => `<span class="dashboard-promotion-badge ${escapeHtml(product.cardClass)}">${escapeHtml(product.shortName)} до ${escapeHtml(formatDate(car[product.timestampField]))}</span>`).join("");
 
     const renderListing = (car: DashboardListing) => {
       const title = String(car.title || [car.brand, car.model].filter(Boolean).join(" ") || "Без названия");
       const thumbnail = getDashboardListingThumbnail(car);
-      const gallery = getDashboardListingImageUrls(car);
+      const images = getDashboardListingImageUrls(car);
       const actions = getDashboardListingActions(car);
       const status = normalizeListingStatus(car.status);
       const statusMeta = LISTING_STATUS_META[status];
-      const facts = [
-        car.year ? String(car.year) : "Год не указан",
-        Number(car.mileage) >= 0 && car.mileage !== undefined ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "Пробег не указан",
-        car.fuel_type || "Топливо не указано",
-      ];
-      const actionLinks = [
-        actions.viewHref ? `<a class="button button-light" href="${escapeHtml(actions.viewHref)}">Просмотреть</a>` : "",
-        actions.editHref ? `<a class="button button-light" href="${escapeHtml(actions.editHref)}">Редактировать</a>` : "",
-        actions.promoteHref ? `<a class="button button-dark" href="${escapeHtml(actions.promoteHref)}">Продвинуть</a>` : "",
-        actions.canDelete ? `<button class="button button-danger" type="button" data-delete-listing-id="${escapeHtml(car.id)}">Удалить</button>` : "",
-      ].filter(Boolean).join("");
-
-      return `
-        <article class="dashboard-listing-card" data-listing-id="${escapeHtml(car.id)}">
-          <div class="dashboard-listing-media${thumbnail.isPlaceholder ? " is-placeholder" : ""}">
-            ${thumbnail.isPlaceholder ? `
-              <img src="${escapeHtml(thumbnail.url)}" alt="" width="144" height="108" loading="lazy" decoding="async" data-listing-image />
-            ` : `
-              <button class="vehicle-image-trigger dashboard-listing-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(thumbnail.url)}" data-lightbox-sources="${escapeHtml(JSON.stringify(gallery))}" data-lightbox-alt="${escapeHtml(title)}" aria-label="Увеличить фото: ${escapeHtml(title)}">
-                <img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(`${title}, объявление пользователя`)}" width="144" height="108" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-listing-image />
-                <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
-              </button>
-            `}
-            <span data-photo-placeholder-label${thumbnail.isPlaceholder ? "" : " hidden"}>Нет фотографии</span>
-          </div>
-          <div class="dashboard-listing-copy">
-            <div class="dashboard-listing-title-row">
-              <h2>${escapeHtml(title)}</h2>
-              <span class="status-badge status-tone-${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.label)}</span>
-            </div>
-            <p class="dashboard-listing-price">${escapeHtml(formatPrice(car))}</p>
-            <p class="dashboard-listing-facts">${facts.map(escapeHtml).join(" <span aria-hidden=\"true\">·</span> ")}</p>
-            <dl class="dashboard-listing-meta">
-              <div><dt>Город</dt><dd>${escapeHtml(car.city || "Не указан")}</dd></div>
-              <div><dt>Обновлено</dt><dd>${escapeHtml(formatDate(car.updated_at || car.created_at))}</dd></div>
-            </dl>
-          </div>
-          <div class="dashboard-listing-actions">${actionLinks || '<span class="dashboard-no-actions">Действия недоступны</span>'}</div>
-        </article>
-      `;
+      const eligibilityMessage = getPromotionEligibilityMessage(status);
+      const promoted = getActivePromotionProducts(car).length > 0;
+      const promotionAction = actions.promoteHref
+        ? `<a class="button dashboard-promote-button" href="${escapeHtml(actions.promoteHref)}">${promoted ? "Продлить продвижение" : "Продвинуть"}</a>`
+        : `<span class="dashboard-promotion-unavailable">${escapeHtml(eligibilityMessage)}</span>`;
+      return `<article class="dashboard-listing-card" data-listing-id="${escapeHtml(car.id)}">
+        <div class="dashboard-listing-media${thumbnail.isPlaceholder ? " is-placeholder" : ""}">
+          ${thumbnail.isPlaceholder ? `<img src="${escapeHtml(thumbnail.url)}" alt="" width="176" height="118" data-listing-image>` : `<button class="vehicle-image-trigger dashboard-listing-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(thumbnail.url)}" data-lightbox-sources="${escapeHtml(JSON.stringify(images))}" data-lightbox-alt="${escapeHtml(title)}" aria-label="Открыть фотографии: ${escapeHtml(title)}"><img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(title)}" width="176" height="118" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-listing-image></button>`}
+        </div>
+        <div class="dashboard-listing-copy">
+          <div class="dashboard-listing-title-row"><h2>${escapeHtml(title)}</h2><span class="status-badge status-tone-${escapeHtml(statusMeta.tone)}">${escapeHtml(statusMeta.label)}</span></div>
+          <p class="dashboard-listing-price">${escapeHtml(formatPrice(car))}</p>
+          <p class="dashboard-listing-facts">${escapeHtml(car.year || "Год не указан")} · ${escapeHtml(Number(car.mileage || 0).toLocaleString("ru-RU"))} км · ${escapeHtml(car.city || "Город не указан")}</p>
+          <p class="dashboard-listing-updated">Обновлено: ${escapeHtml(formatDate(car.updated_at || car.created_at))}</p>
+          <div class="dashboard-promotion-badges">${promotionBadges(car)}</div>
+        </div>
+        <div class="dashboard-listing-actions">
+          ${promotionAction}
+          ${actions.viewHref ? `<a class="button button-light" href="${escapeHtml(actions.viewHref)}">Посмотреть</a>` : ""}
+          ${actions.editHref ? `<a class="button button-light" href="${escapeHtml(actions.editHref)}">Редактировать</a>` : ""}
+          ${actions.canDelete ? `<button class="button button-danger" type="button" data-delete-listing-id="${escapeHtml(car.id)}">Удалить</button>` : ""}
+        </div>
+      </article>`;
     };
 
-    const installImageFallbacks = () => {
-      list?.querySelectorAll("[data-listing-image]").forEach((node) => {
-        if (!(node instanceof HTMLImageElement)) return;
-        node.addEventListener("error", () => {
-          if (node.src.endsWith(DASHBOARD_LISTING_PLACEHOLDER)) return;
-          node.src = DASHBOARD_LISTING_PLACEHOLDER;
-          node.closest(".dashboard-listing-media")?.classList.add("is-placeholder");
-          const label = node.closest(".dashboard-listing-media")?.querySelector("[data-photo-placeholder-label]");
-          if (label instanceof HTMLElement) label.hidden = false;
-        }, { once: true });
-      });
-    };
+    const renderError = (text: string) => { if (list) list.innerHTML = `<div class="mac-empty-state dashboard-error-state" role="alert"><strong>Не удалось загрузить объявления</strong><p>${escapeHtml(text)}</p><button class="button button-light" type="button" data-retry-listings>Повторить</button></div>`; };
+
+    async function authenticatedFetch(url: string, init: RequestInit = {}) {
+      const response = await fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
+      if (response.status === 401 && token && await isSessionConfirmedExpired(apiUrl, token)) {
+        redirectToLogin("/dashboard/listings/");
+        throw new Error("Сессия завершена");
+      }
+      return response;
+    }
 
     async function loadListings() {
-      if (!(list instanceof HTMLElement) || !token) return;
-      const apiUrl = getApiUrl();
-      list.setAttribute("aria-busy", "true");
-      list.innerHTML = renderSkeleton();
-      setMessage("Загружаю ваши объявления...");
-
+      if (!list || !workspace || !token) return;
+      workspace.setAttribute("aria-busy", "true");
       try {
-        const response = await fetch(`${apiUrl}${API_ROUTES.dashboardListings}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (response.status === 401) {
-          if (await isSessionConfirmedExpired(apiUrl, token)) {
-            redirectToLogin("/dashboard/listings/");
-            return;
-          }
-          throw new Error("AUTH_STATE_MISMATCH");
-        }
-        if (!response.ok) throw new Error((await response.text()) || "Сервер временно недоступен.");
-
-        const payload = await response.json();
-        const cars = (Array.isArray(payload) ? payload as DashboardListing[] : [])
-          .filter((car) => normalizeListingStatus(car.status) !== "deleted");
-        list.innerHTML = cars.length ? cars.map(renderListing).join("") : renderEmpty();
-        setMessage(cars.length ? `Объявлений: ${cars.length}.` : "Созданные объявления появятся здесь.");
-        installImageFallbacks();
+        const [summaryResponse, listingsResponse] = await Promise.all([
+          authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardSummary}`),
+          authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardListings}`),
+        ]);
+        if (!summaryResponse.ok || !listingsResponse.ok) throw new Error("Сервис кабинета временно недоступен.");
+        const summary = await summaryResponse.json() as DashboardSummary;
+        if (balance) balance.value = `${summary.credits.balance} кредитов`;
+        const payload = await listingsResponse.json();
+        let cars = (Array.isArray(payload) ? payload as DashboardListing[] : []).filter((car) => normalizeListingStatus(car.status) !== "deleted");
+        if (new URLSearchParams(location.search).get("filter") === "promoted") cars = cars.filter((car) => getActivePromotionProducts(car).length > 0);
+        list.innerHTML = cars.length ? cars.map(renderListing).join("") : `<div class="mac-empty-state"><strong>Объявлений не найдено</strong><p>Создайте объявление или измените выбранный фильтр.</p><a class="button button-dark" href="/dashboard/new">Добавить авто</a></div>`;
+        if (message) message.textContent = `Показано объявлений: ${cars.length}.`;
       } catch (error) {
-        const friendly = getFriendlyErrorMessage(error, "Попробуйте ещё раз чуть позже.");
-        list.innerHTML = renderError(friendly);
-        setMessage(friendly);
+        renderError(error instanceof Error ? error.message : "Проверьте соединение и повторите запрос.");
+        if (message) message.textContent = "Загрузка не завершена.";
       } finally {
-        list.setAttribute("aria-busy", "false");
+        workspace.setAttribute("aria-busy", "false");
       }
-    }
-
-    async function deleteListing(id: number) {
-      const response = await fetch(`${getApiUrl()}${API_ROUTES.dashboardListingDelete(id)}`, {
-        method: "PATCH",
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (response.status === 401) {
-        if (await isSessionConfirmedExpired(getApiUrl(), token)) {
-          redirectToLogin("/dashboard/listings/");
-          throw new Error("Сессия завершена.");
-        }
-        throw new Error("AUTH_STATE_MISMATCH");
-      }
-      if (response.status === 404) throw new Error("Объявление не найдено или больше вам не принадлежит.");
-      if (response.status === 403 || response.status === 409) throw new Error("Заблокированное объявление нельзя удалить самостоятельно.");
-      if (!response.ok) throw new Error((await response.text()) || "Не удалось удалить объявление.");
-      return response.json().catch(() => ({ success: true }));
-    }
-
-    if (!token) {
-      redirectToLogin("/dashboard/listings/");
-    } else {
-      void loadListings();
     }
 
     list?.addEventListener("click", (event) => {
       const target = event.target instanceof Element ? event.target : null;
-      if (target?.closest("[data-retry-listings]")) {
-        void loadListings();
-        return;
-      }
-      const button = target?.closest("[data-delete-listing-id]");
-      if (!(button instanceof HTMLButtonElement) || !(dialog instanceof HTMLDialogElement)) return;
-      const card = button.closest("[data-listing-id]");
-      const id = Number(button.dataset.deleteListingId || 0);
-      if (!(card instanceof HTMLElement) || !id) return;
-
-      pendingDelete = { id, card };
-      if (dialogTitle instanceof HTMLElement) dialogTitle.textContent = `Удалить «${card.querySelector("h2")?.textContent || "объявление"}»?`;
-      const image = card.querySelector("[data-listing-image]");
-      if (dialogImage instanceof HTMLImageElement && image instanceof HTMLImageElement) {
-        dialogImage.src = image.src;
-        dialogImage.alt = image.alt;
-      }
+      if (target?.closest("[data-retry-listings]")) { void loadListings(); return; }
+      const button = target?.closest<HTMLButtonElement>("[data-delete-listing-id]");
+      if (!button || !dialog) return;
+      const card = button.closest<HTMLElement>("[data-listing-id]");
+      if (!card) return;
+      pendingDelete = { id: Number(button.dataset.deleteListingId), card };
+      if (dialogTitle) dialogTitle.textContent = `Удалить «${card.querySelector("h2")?.textContent || "объявление"}»?`;
+      const image = card.querySelector<HTMLImageElement>("[data-listing-image]");
+      if (dialogImage && image) dialogImage.src = image.src || DASHBOARD_LISTING_PLACEHOLDER;
       dialog.showModal();
     });
 
     dialog?.addEventListener("close", async () => {
-      if (!(dialog instanceof HTMLDialogElement) || dialog.returnValue !== "confirm" || !pendingDelete) {
-        pendingDelete = null;
-        return;
-      }
+      if (dialog.returnValue !== "confirm" || !pendingDelete) { pendingDelete = null; return; }
       const current = pendingDelete;
       pendingDelete = null;
-      if (dialogConfirm instanceof HTMLButtonElement) dialogConfirm.disabled = true;
-      setMessage("Удаляю объявление...");
       try {
-        await deleteListing(current.id);
+        const response = await authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardListingDelete(current.id)}`, { method: "PATCH" });
+        if (!response.ok) throw new Error("Не удалось удалить объявление.");
         current.card.remove();
-        if (list instanceof HTMLElement && !list.querySelector("[data-listing-id]")) list.innerHTML = renderEmpty();
-        setMessage("Объявление удалено. Фотографии сохранены в истории.");
+        if (message) message.textContent = "Объявление удалено.";
       } catch (error) {
-        setMessage(getFriendlyErrorMessage(error, "Не удалось удалить объявление."));
-      } finally {
-        if (dialogConfirm instanceof HTMLButtonElement) dialogConfirm.disabled = false;
+        if (message) message.textContent = error instanceof Error ? error.message : "Не удалось удалить объявление.";
       }
     });
+
+    if (!token) redirectToLogin("/dashboard/listings/"); else void loadListings();
   </script>
 </BaseLayout>
-
-<style is:global>
-  .dashboard-listings-hero {
-    padding-bottom: 16px;
-  }
-
-  .dashboard-listings-heading {
-    display: flex;
-    align-items: end;
-    justify-content: space-between;
-    gap: 24px;
-  }
-
-  .dashboard-listings-heading h1,
-  .dashboard-listings-heading p,
-  .dashboard-listing-copy h2,
-  .dashboard-listing-copy p {
-    margin: 0;
-  }
-
-  .dashboard-listings-heading > div {
-    display: grid;
-    gap: 8px;
-  }
-
-  .dashboard-listings-section {
-    padding-top: 16px;
-  }
-
-  .dashboard-listings-panel,
-  .dashboard-listing-skeleton-list {
-    display: grid;
-    gap: 16px;
-  }
-
-  .dashboard-listing-card,
-  .dashboard-listing-skeleton {
-    display: grid;
-    min-width: 0;
-    grid-template-columns: 144px minmax(0, 1fr) minmax(156px, auto);
-    align-items: stretch;
-    gap: 20px;
-    overflow: hidden;
-    padding: 16px;
-  }
-
-  .dashboard-listing-media {
-    position: relative;
-    width: 144px;
-    aspect-ratio: 4 / 3;
-    overflow: hidden;
-    align-self: center;
-    border-radius: 16px;
-    background: var(--surface-secondary, var(--input-bg));
-  }
-
-  .dashboard-listing-media img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  .dashboard-listing-media.is-placeholder img {
-    padding: 24px;
-    object-fit: contain;
-    opacity: 0.72;
-  }
-
-  .dashboard-listing-media span {
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    left: 8px;
-    color: var(--text-secondary, var(--muted));
-    font-size: 0.72rem;
-    font-weight: 760;
-    text-align: center;
-  }
-
-  .dashboard-listing-copy {
-    display: grid;
-    min-width: 0;
-    align-content: center;
-    gap: 10px;
-  }
-
-  .dashboard-listing-title-row {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-  }
-
-  .dashboard-listing-title-row h2 {
-    overflow-wrap: anywhere;
-    font-size: 1.08rem;
-    line-height: 1.25;
-  }
-
-  .dashboard-listing-price {
-    font-size: 1.35rem;
-    font-weight: 860;
-  }
-
-  .dashboard-listing-facts {
-    color: var(--text-secondary, var(--muted));
-    font-size: 0.88rem;
-  }
-
-  .dashboard-listing-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 16px 24px;
-    margin: 0;
-  }
-
-  .dashboard-listing-meta div {
-    display: grid;
-    gap: 2px;
-  }
-
-  .dashboard-listing-meta dt {
-    color: var(--text-secondary, var(--muted));
-    font-size: 0.72rem;
-  }
-
-  .dashboard-listing-meta dd {
-    margin: 0;
-    font-size: 0.84rem;
-    font-weight: 760;
-  }
-
-  .dashboard-listing-actions {
-    display: grid;
-    width: min(190px, 100%);
-    align-content: center;
-    gap: 8px;
-  }
-
-  .dashboard-listing-actions .button {
-    width: 100%;
-    min-height: 44px;
-  }
-
-  .dashboard-no-actions {
-    color: var(--text-secondary, var(--muted));
-    font-size: 0.82rem;
-  }
-
-  .dashboard-listing-skeleton > span {
-    display: block;
-    min-height: 88px;
-    border-radius: 16px;
-    background: linear-gradient(90deg, var(--surface-secondary, #25272f), var(--surface-solid, #30323a), var(--surface-secondary, #25272f));
-    background-size: 220% 100%;
-    animation: dashboard-shimmer 1.4s linear infinite;
-  }
-
-  .dashboard-listing-skeleton-image {
-    aspect-ratio: 4 / 3;
-  }
-
-  .dashboard-delete-dialog {
-    width: min(560px, calc(100% - 24px));
-    max-width: none;
-    border: 1px solid var(--border-default, var(--line));
-    border-radius: 24px;
-    background: var(--surface-solid, var(--card));
-    color: var(--text-primary, var(--text));
-    padding: 0;
-  }
-
-  .dashboard-delete-dialog::backdrop {
-    background: rgba(0, 0, 0, 0.58);
-    backdrop-filter: blur(8px);
-  }
-
-  .dashboard-delete-dialog-card {
-    display: grid;
-    gap: 24px;
-    padding: 24px;
-  }
-
-  .dashboard-delete-preview {
-    display: grid;
-    grid-template-columns: 128px minmax(0, 1fr);
-    align-items: center;
-    gap: 16px;
-  }
-
-  .dashboard-delete-preview img {
-    width: 128px;
-    aspect-ratio: 4 / 3;
-    border-radius: 16px;
-    object-fit: cover;
-  }
-
-  .dashboard-delete-preview h2,
-  .dashboard-delete-preview p {
-    margin: 0;
-  }
-
-  .dashboard-delete-preview > div {
-    display: grid;
-    gap: 8px;
-  }
-
-  .dashboard-delete-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 12px;
-  }
-
-  @keyframes dashboard-shimmer {
-    to { background-position: -220% 0; }
-  }
-
-  @media (max-width: 760px) {
-    .dashboard-listings-heading {
-      align-items: stretch;
-      flex-direction: column;
-    }
-
-    .dashboard-listing-card,
-    .dashboard-listing-skeleton {
-      grid-template-columns: 120px minmax(0, 1fr);
-    }
-
-    .dashboard-listing-media {
-      width: 120px;
-    }
-
-    .dashboard-listing-actions,
-    .dashboard-listing-skeleton-actions {
-      width: 100%;
-      grid-column: 1 / -1;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
-  }
-
-  @media (max-width: 520px) {
-    .dashboard-listing-card,
-    .dashboard-listing-skeleton {
-      grid-template-columns: minmax(0, 1fr);
-      gap: 16px;
-      padding: 12px;
-    }
-
-    .dashboard-listing-media,
-    .dashboard-listing-skeleton-image {
-      width: 100%;
-      aspect-ratio: 16 / 9;
-    }
-
-    .dashboard-listing-actions,
-    .dashboard-listing-skeleton-actions {
-      grid-column: auto;
-      grid-template-columns: minmax(0, 1fr);
-    }
-
-    .dashboard-listing-title-row {
-      align-items: flex-start;
-    }
-
-    .dashboard-delete-preview {
-      grid-template-columns: 88px minmax(0, 1fr);
-    }
-
-    .dashboard-delete-preview img {
-      width: 88px;
-    }
-
-    .dashboard-delete-actions {
-      grid-template-columns: minmax(0, 1fr);
-    }
-  }
-</style>

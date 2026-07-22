@@ -61,6 +61,7 @@ export type ModerationQueueGroup =
 
 export type CarListing = {
   id: number;
+  user_id?: number;
   slug: string;
   title: string;
   brand: string;
@@ -118,9 +119,21 @@ export type CarListing = {
   critical_errors?: string[] | string;
   can_submit_to_review?: boolean;
   price_status?: string;
-  boosted_until?: string | number;
-  featured_until?: string | number;
-  homepage_until?: string | number;
+  boosted_at?: string | number | null;
+  boosted_until?: string | number | null;
+  featured_at?: string | number | null;
+  featured_until?: string | number | null;
+  homepage_at?: string | number | null;
+  homepage_until?: string | number | null;
+  last_promoted_at?: string | number | null;
+  published_at?: string | number;
+  promotion_status?: "pending" | "active" | "expired" | "cancelled" | "refunded" | "failed";
+  promotion_type?: "premium" | "featured" | "boost" | string;
+  promotion_placement?: "catalog" | "homepage" | "catalog_and_homepage" | string;
+  promotion_priority?: number;
+  promotion_started_at?: string | number;
+  promotion_ends_at?: string | number;
+  promotion?: Partial<Pick<import("./promotions/model").ListingPromotion, "id" | "plan_code" | "promotion_type" | "placement" | "status" | "priority" | "starts_at" | "ends_at">>;
   seller_type?: "private" | "dealer";
   seller?: PublicSellerSummary;
   seller_listings?: CarListing[];
@@ -268,9 +281,15 @@ export type UserPurchase = {
 
 export type CreditTransaction = {
   id: number;
-  type: "purchase" | "usage" | "monthly_subscription_grant" | "refund" | "admin_adjustment" | "free_grant" | "spend";
+  type: "purchase" | "usage" | "monthly_subscription_grant" | "refund" | "admin_adjustment" | "free_grant" | "spend" | "promotion_purchase";
   amount: number;
+  balance_before?: number;
   balance_after?: number;
+  listing_id?: number;
+  promotion_id?: number;
+  idempotency_key?: string;
+  status?: "pending" | "completed" | "failed";
+  description?: string;
   related_purchase_id?: number;
   related_car_id?: number;
   notes?: string;

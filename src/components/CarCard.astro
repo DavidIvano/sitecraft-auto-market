@@ -1,115 +1,16 @@
 ---
-import StatusBadge from "./StatusBadge.astro";
 import type { CarListing } from "../lib/types";
-import { getCarCardImageUrl, getCarDetailImageUrls } from "../lib/imageUrls";
-import { getPaidFlags } from "../lib/monetization";
-import { getStoredAiScores } from "../lib/aiScores";
+import { renderPublicCarCardMarkup } from "../lib/publicCarCard";
 
 type Props = {
   car: CarListing;
   matchReasons?: string[];
+  priority?: boolean;
 };
 
-const { car, matchReasons = [] } = Astro.props;
-const formatter = new Intl.NumberFormat("ru-RU", {
-  style: "currency",
-  currency: car.currency,
-  maximumFractionDigits: 0,
-});
-
-const coverImageUrl = getCarCardImageUrl(car);
-const lightboxImages = getCarDetailImageUrls(car);
-const rawSlug = String(car.slug || "").trim();
-const detailPath = rawSlug ? `/cars/${encodeURIComponent(rawSlug)}` : "";
-const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
-const paidFlags = getPaidFlags(car);
-const paidBadges = [
-  paidFlags.isHomepagePremium && "Премиум",
-  paidFlags.isFeatured && "Выделенное",
-  paidFlags.isBoosted && "Вверху",
-  paidFlags.isAiGenerated && "Создано с AI",
-  paidFlags.isVerifiedDealer && "Проверенный дилер",
-  !paidFlags.isVerifiedDealer && paidFlags.isDealer && "Дилер",
-].filter((badge): badge is string => Boolean(badge));
-const aiScores = getStoredAiScores(car as Record<string, unknown>);
-const trustScore = aiScores.trustScore ?? aiScores.listingQualityScore;
-const normalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
-const numericMileage = Number(car.mileage || 0);
-const numericYear = Number(car.year || 0);
-const age = Number.isFinite(numericYear) && numericYear > 0 ? Math.max(1, new Date().getFullYear() - numericYear) : 0;
-const bodyType = normalizeText(car.body_type);
-const seats = Number(car.seats || 0);
-const isFamilyCar = (seats >= 5 || seats === 0) && /(универсал|минивэн|внедорожник|suv|кроссовер)/i.test(bodyType);
-const isDiesel = normalizeText(car.fuel_type) === "дизель";
-const hasLowMileage = age > 0 && numericMileage > 0 && numericMileage / age < 12000 && numericMileage < 180000;
-const smartBadges = [
-  isFamilyCar ? "Семейный авто" : "",
-  isDiesel ? "Экономичный дизель" : "",
-  hasLowMileage ? "Низкий пробег" : "",
-].filter((badge): badge is string => Boolean(badge));
-const formatCity = (value?: string) => {
-  const city = String(value || "").trim();
-
-  if (!city) {
-    return "Не указан";
-  }
-
-  return city
-    .split(/([\s-]+)/)
-    .map((part) => (/^[\p{L}]/u.test(part) ? part.charAt(0).toLocaleUpperCase("ru-RU") + part.slice(1) : part))
-    .join("");
-};
+const { car, priority = false } = Astro.props;
+const markup = renderPublicCarCardMarkup(car, { priority });
 
 ---
 
-<article class:list={["car-card", isSold && "car-card-sold", paidFlags.isFeatured && "car-card-featured", paidFlags.isHomepagePremium && "car-card-premium"]}>
-  <div class:list={["car-card-link", "car-card-composite", !detailPath && "car-card-link-disabled"]}>
-    <div class="car-card-media">
-      {coverImageUrl ? (
-        <button
-          class="vehicle-image-trigger car-card-image-button"
-          type="button"
-          data-lightbox-trigger
-          data-lightbox-src={coverImageUrl}
-          data-lightbox-sources={JSON.stringify(lightboxImages.length ? lightboxImages : [coverImageUrl])}
-          data-lightbox-alt={car.title}
-          aria-label={`Увеличить фото: ${car.title}`}
-        >
-          <img src={coverImageUrl} alt={car.title} class="car-image" loading="lazy" decoding="async" width="960" height="720" referrerpolicy="no-referrer" />
-          <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
-        </button>
-      ) : (
-        <div class="car-image car-image-empty">Фото пока не добавлено</div>
-      )}
-      {isSold && <span class="sold-ribbon">Продано</span>}
-    </div>
-    <div class="car-card-body">
-      <div class="car-card-top">
-        <h3>{detailPath ? <a href={detailPath}>{car.title}</a> : car.title}</h3>
-      </div>
-      <div class="car-card-badges">
-        <StatusBadge status={car.status} />
-        {trustScore !== null && (
-          <span class:list={["ai-trust-badge", trustScore >= 85 && "ai-trust-badge-high", trustScore < 60 && "ai-trust-badge-low"]} title="AI-оценка показывает качество заполнения объявления, а не техническое состояние автомобиля.">AI {trustScore}%</span>
-        )}
-        {smartBadges.map((badge) => <span class="ai-smart-badge" title="Оценка основана на полноте данных объявления.">{badge}</span>)}
-        {paidBadges.map((badge) => <span class:list={["paid-badge", badge === "Создано с AI" && "paid-badge-ai"]}>{badge}</span>)}
-      </div>
-      <p class="car-price">{formatter.format(car.price)}</p>
-      {matchReasons.length > 0 && (
-        <div class="buyer-match-reasons" aria-label="Почему автомобиль подходит">
-          <strong>Почему подходит</strong>
-          <ul>
-            {matchReasons.map((reason) => <li>{reason}</li>)}
-          </ul>
-        </div>
-      )}
-      <dl class="car-meta">
-        <div><dt>Год</dt><dd>{car.year}</dd></div>
-        <div><dt>Пробег</dt><dd>{car.mileage.toLocaleString("ru-RU")} км</dd></div>
-        <div><dt>Город</dt><dd>{formatCity(car.city)}</dd></div>
-      </dl>
-      {detailPath && <a class="button button-light car-card-details" href={detailPath}>Подробнее</a>}
-    </div>
-  </div>
-</article>
+<Fragment set:html={markup} />

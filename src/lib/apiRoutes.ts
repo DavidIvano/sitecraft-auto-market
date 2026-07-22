@@ -13,6 +13,9 @@ export const API_ROUTES = {
   dashboardListings: "/dashboard/listings",
   dashboardListing: (id: number | string) => `/dashboard/listings/${id}`,
   dashboardListingDelete: (id: number | string) => `/dashboard/listings/${id}/delete`,
+  dashboardListingPromote: (id: number | string) => `/dashboard/listings/${encodeURIComponent(String(id))}/promote`,
+  dashboardSummary: "/dashboard/summary",
+  dashboardCreditTransactions: "/dashboard/credits/transactions",
 
   dashboardDraft: (id: number | string) => `/dashboard/drafts/${id}`,
   dashboardDraftPublish: (id: number | string) => `/dashboard/drafts/${id}/publish`,
@@ -42,6 +45,7 @@ export const API_ROUTES = {
   dealFinderListingHide: (id: number | string) => `/deal-finder/listings/${encodeURIComponent(String(id))}/hide`,
   dealFinderListingRestore: (id: number | string) => `/deal-finder/listings/${encodeURIComponent(String(id))}/restore`,
   dealFinderListingAnalyze: (id: number | string) => `/deal-finder/listings/${encodeURIComponent(String(id))}/analyze`,
+  dealFinderListingTranslateDescription: (id: number | string) => `/deal-finder/listings/${encodeURIComponent(String(id))}/translate-description`,
   dealFinderListingWorkspace: (id: number | string) => `/deal-finder/listings/${encodeURIComponent(String(id))}/workspace`,
   dealFinderComparison: "/deal-finder/comparison",
   dealFinderNotificationPreferences: "/deal-finder/notifications/preferences",
@@ -74,7 +78,6 @@ export const LOCAL_ROUTES = {
 } as const;
 
 export const BACKEND_ROUTES_REQUIRING_XANO_WORK = [
-  "GET /dashboard/listings/{id}",
   "POST /ai/listing/analyze-photos",
   "POST /ai/listing/generate-description",
   "POST /ai/listing/quality-score",

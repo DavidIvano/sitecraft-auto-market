@@ -52,7 +52,7 @@ const ACTION_POLICIES: Record<CreditAction, CreditActionPolicy> = {
   deal_finder_analysis: { wallet: "ai", cost: 1, chargeOnSuccess: true },
   provider_search: { wallet: "provider", cost: 1, chargeOnSuccess: true },
   provider_detail: { wallet: "provider", cost: 1, chargeOnSuccess: true },
-  apply_promotion: { wallet: "promotion", cost: 1, chargeOnSuccess: true },
+  apply_promotion: { wallet: "ai", cost: 0, chargeOnSuccess: true },
 };
 
 function asRecord(value: unknown): Record<string, unknown> {

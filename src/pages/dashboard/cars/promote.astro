@@ -1,141 +1,267 @@
 ---
 import BaseLayout from "../../../layouts/BaseLayout.astro";
-import { formatPaidPrice, paidProducts } from "../../../lib/monetization";
+import { PROMOTION_PRODUCTS } from "../../../lib/promotions/model";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const promoteProducts = paidProducts.filter((product) =>
-  ["boost_7_days", "featured_14_days", "homepage_premium_7_days"].includes(product.slug),
-);
+const products = Object.values(PROMOTION_PRODUCTS);
 ---
 
-<BaseLayout title="Продвижение объявления" description="Платные функции продвижения объявления" noindex>
-  <section class="section page-hero">
-    <div class="container promote-page" data-api-url={xanoApiUrl}>
-      <p class="eyebrow">Продвижение</p>
-      <h1>Усилить объявление</h1>
-      <p class="lead">Выберите услугу для своего автомобиля. Истёкшие услуги перестают влиять на сортировку автоматически.</p>
-    </div>
-  </section>
+<BaseLayout title="Продвижение объявления" description="Продвижение объявления за внутренние кредиты" noindex>
+  <section class="section promotion-page-section">
+    <div class="container promotion-page" data-api-url={xanoApiUrl} aria-busy="true">
+      <header class="promotion-page-heading">
+        <div><p class="eyebrow">Продвижение</p><h1>Усилить объявление</h1><p class="lead">Выберите услугу и подтвердите списание внутренних кредитов.</p></div>
+        <aside class="promotion-balance-card" aria-label="Текущий баланс"><span>Текущий баланс</span><strong id="promotion-balance">—</strong><small>Для AI и продвижения</small></aside>
+      </header>
 
-  <section class="section">
-    <div class="container promote-layout">
-      <article class="promote-car-card" id="promote-car-card">
-        <p class="form-message">Загружаю объявление...</p>
+      <div class="promotion-page-message" id="promotion-page-message" role="status" aria-live="polite">Загружаю объявление и баланс...</div>
+
+      <article class="promotion-listing-preview" id="promotion-listing-preview" aria-live="polite">
+        <span class="promotion-listing-skeleton" aria-hidden="true"></span>
       </article>
 
-      <div class="promote-products">
-        {promoteProducts.map((product) => (
-          <article class="pricing-card">
-            <div>
-              <h3>{product.name}</h3>
-              <p>{product.description}</p>
-            </div>
-            <strong>{formatPaidPrice(product)}</strong>
-            <button class="button button-dark" type="button" data-product-slug={product.slug}>Активировать</button>
-          </article>
-        ))}
-      </div>
+      <section class="promotion-products-section" aria-labelledby="promotion-products-title">
+        <div class="section-heading"><div><p class="eyebrow">Варианты</p><h2 id="promotion-products-title">Выберите продвижение</h2></div></div>
+        <div class="promotion-products-grid" id="promotion-products">
+          {products.map((product) => (
+            <article class:list={["promotion-product-card", product.cardClass]} data-product-slug={product.slug}>
+              <div class="promotion-product-preview" aria-hidden="true"><span>{product.shortName}</span><strong>Ваш автомобиль</strong><small>Пример оформления</small></div>
+              <div class="promotion-product-copy">
+                <div><h3>{product.name}</h3><p>{product.description}</p></div>
+                <dl><div><dt>Срок</dt><dd>{product.durationDays} дней</dd></div><div><dt>Стоимость</dt><dd>{product.credits} кредитов</dd></div></dl>
+                <p class="promotion-current-state" data-product-current>Сейчас не активно</p>
+                <p class="promotion-future-state" data-product-future>Новая дата окончания появится после загрузки.</p>
+                <p class="promotion-affordability" data-product-affordability></p>
+                <button class="button promotion-product-action" type="button" data-product-action disabled>Загрузка...</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+
+      <nav class="promotion-return-links" aria-label="Навигация после продвижения">
+        <a class="button button-light" href="/dashboard/listings/">Вернуться к моим объявлениям</a>
+        <a class="button button-light" id="promotion-public-link" href="/cars/" hidden>Посмотреть объявление</a>
+      </nav>
     </div>
   </section>
 
+  <dialog class="promotion-confirm-dialog" id="promotion-confirm-dialog" aria-labelledby="promotion-confirm-title">
+    <form method="dialog" class="promotion-confirm-card" id="promotion-confirm-form">
+      <header><div><p class="eyebrow">Подтверждение</p><h2 id="promotion-confirm-title">Активировать продвижение?</h2></div><button class="promotion-dialog-close" value="cancel" aria-label="Закрыть">×</button></header>
+      <dl class="promotion-confirm-summary">
+        <div><dt>Услуга</dt><dd id="confirm-product">—</dd></div>
+        <div><dt>Стоимость</dt><dd id="confirm-cost">—</dd></div>
+        <div><dt>Баланс после операции</dt><dd id="confirm-balance">—</dd></div>
+        <div><dt>Срок</dt><dd id="confirm-until">—</dd></div>
+      </dl>
+      <p class="promotion-confirm-status" id="promotion-confirm-status" role="status" aria-live="assertive"></p>
+      <footer><button class="button button-light" value="cancel">Отмена</button><button class="button button-dark" id="promotion-confirm-submit" type="button">Подтвердить</button></footer>
+    </form>
+  </dialog>
+
+  <div class="promotion-toast" id="promotion-toast" role="status" aria-live="polite" hidden></div>
+
   <script>
-    import { getAuthToken } from "../../../lib/authClient";
+    import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../../lib/authClient";
     import { API_ROUTES } from "../../../lib/apiRoutes";
-    import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
+    import { getDashboardListingThumbnail, type DashboardListing } from "../../../lib/dashboardListings";
+    import { normalizeListingStatus } from "../../../lib/listingStatus";
+    import { PROMOTION_PRODUCTS, calculatePromotionEndDate, getActivePromotionProducts, getPromotionEligibilityMessage, parseApiDate, type DashboardSummary, type PromoteListingResponse, type PromotionApiError, type PromotionProductSlug } from "../../../lib/promotions/model";
 
+    const page = document.querySelector<HTMLElement>(".promotion-page");
+    const pageMessage = document.querySelector<HTMLElement>("#promotion-page-message");
+    const balanceNode = document.querySelector<HTMLElement>("#promotion-balance");
+    const listingPreview = document.querySelector<HTMLElement>("#promotion-listing-preview");
+    const publicLink = document.querySelector<HTMLAnchorElement>("#promotion-public-link");
+    const dialog = document.querySelector<HTMLDialogElement>("#promotion-confirm-dialog");
+    const confirmSubmit = document.querySelector<HTMLButtonElement>("#promotion-confirm-submit");
+    const confirmStatus = document.querySelector<HTMLElement>("#promotion-confirm-status");
+    const toast = document.querySelector<HTMLElement>("#promotion-toast");
     const token = getAuthToken();
-    const page = document.querySelector(".promote-page");
-    const carCard = document.querySelector("#promote-car-card");
-    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
-    const carId = new URLSearchParams(window.location.search).get("id");
+    const apiUrl = String(page?.dataset.apiUrl || "").replace(/\/+$/, "");
+    const listingId = Number(new URLSearchParams(location.search).get("id") || 0);
+    let listing: DashboardListing | null = null;
+    let credits = 0;
+    let selectedSlug: PromotionProductSlug | null = null;
+    let pendingKey: string | null = null;
+    let busy = false;
 
-    const escapeHtml = (value: unknown) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
+    const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
+    const formatDate = (value: unknown) => { const date = parseApiDate(value); return date ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(date) : "не активно"; };
+    const formatPrice = (car: DashboardListing) => new Intl.NumberFormat("ru-RU", { style: "currency", currency: String(car.currency || "EUR"), maximumFractionDigits: 0 }).format(Number(car.price || 0));
 
-    const formatActiveDate = (value: unknown) => {
-      if (!value) return "не активна";
-      const date = /^\d+$/.test(String(value)) ? new Date(Number(value)) : new Date(String(value));
-      return Number.isNaN(date.getTime())
-        ? "не активна"
-        : `активна до ${new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(date)}`;
-    };
+    function setMessage(text: string, tone: "neutral" | "success" | "error" = "neutral") {
+      if (!pageMessage) return;
+      pageMessage.textContent = text;
+      pageMessage.dataset.tone = tone;
+    }
 
-    const loadCar = async () => {
-      if (!token) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-        return;
+    function showToast(text: string) {
+      if (!toast) return;
+      toast.textContent = text;
+      toast.hidden = false;
+      window.setTimeout(() => { toast.hidden = true; }, 5000);
+    }
+
+    async function authenticatedFetch(url: string, init: RequestInit = {}) {
+      const response = await fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
+      if (response.status === 401 && token && await isSessionConfirmedExpired(apiUrl, token)) {
+        redirectToLogin(`/dashboard/cars/promote?id=${encodeURIComponent(String(listingId))}`);
+        throw new Error("UNAUTHORIZED");
       }
+      return response;
+    }
 
-      if (!carId) {
-        if (carCard) carCard.innerHTML = '<p class="form-message">В ссылке нет ID объявления.</p>';
-        return;
-      }
+    function renderListing() {
+      if (!listing || !listingPreview) return;
+      const title = String(listing.title || [listing.brand, listing.model].filter(Boolean).join(" ") || "Объявление");
+      const thumbnail = getDashboardListingThumbnail(listing);
+      const promotions = getActivePromotionProducts(listing);
+      listingPreview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(title)}" width="240" height="150" referrerpolicy="no-referrer"><div><div class="promotion-listing-title-row"><div><p class="eyebrow">Ваш автомобиль</p><h2>${escapeHtml(title)}</h2></div><span class="status-badge">${escapeHtml(normalizeListingStatus(listing.status))}</span></div><strong class="promotion-listing-price">${escapeHtml(formatPrice(listing))}</strong><div class="dashboard-promotion-badges">${promotions.length ? promotions.map((product) => `<span class="dashboard-promotion-badge ${product.cardClass}">${escapeHtml(product.shortName)} до ${escapeHtml(formatDate(listing?.[product.timestampField]))}</span>`).join("") : '<span class="dashboard-promotion-unavailable">Активных продвижений нет</span>'}</div></div>`;
+      if (listing.slug && publicLink) { publicLink.href = `/cars/${encodeURIComponent(listing.slug)}/`; publicLink.hidden = false; }
+    }
 
-      try {
-        const response = await fetch(`${apiUrl}${API_ROUTES.dashboardListing(encodeURIComponent(String(carId)))}`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const car = response.ok ? await response.json() : null;
-
-        if (!car || !(carCard instanceof HTMLElement)) {
-          if (carCard) carCard.innerHTML = '<p class="form-message">Не удалось загрузить объявление.</p>';
-          return;
-        }
-
-        carCard.innerHTML = `
-          <h2>${escapeHtml(car.title || "Объявление")}</h2>
-          <p>${escapeHtml(car.brand || "")} ${escapeHtml(car.model || "")}</p>
-          <dl class="promotion-status-list">
-            <div><dt>Поднятие</dt><dd>${formatActiveDate(car.boosted_until)}</dd></div>
-            <div><dt>Featured</dt><dd>${formatActiveDate(car.featured_until)}</dd></div>
-            <div><dt>Главная</dt><dd>${formatActiveDate(car.homepage_until)}</dd></div>
-          </dl>
-        `;
-      } catch (error) {
-        if (carCard) carCard.innerHTML = `<p class="form-message">${escapeHtml(getFriendlyErrorMessage(error, "Не удалось загрузить объявление."))}</p>`;
-      }
-    };
-
-    document.querySelectorAll("[data-product-slug]").forEach((button) => {
-      button.addEventListener("click", async () => {
-        if (!(button instanceof HTMLButtonElement) || !token || !carId) return;
-        const productSlug = button.dataset.productSlug;
-        button.disabled = true;
-
-        try {
-          const response = await fetch(`${apiUrl}${API_ROUTES.purchaseCreate}`, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ product_slug: productSlug, car_id: Number(carId) }),
-          });
-          const data = await response.json().catch(() => ({}));
-
-          if (!response.ok) {
-            throw new Error(data.message || data.code || "Не удалось создать покупку");
-          }
-
-          if (data.checkout_url || data.checkoutUrl || data.url) {
-            window.location.href = data.checkout_url || data.checkoutUrl || data.url;
-            return;
-          }
-
-          window.location.href = `/payment/success?purchase_id=${encodeURIComponent(String(data.purchase_id || data.id || ""))}&car_id=${encodeURIComponent(String(carId))}`;
-        } catch (error) {
-          alert(getFriendlyErrorMessage(error, "Не удалось создать покупку."));
-        } finally {
-          button.disabled = false;
+    function updateProducts() {
+      if (balanceNode) balanceNode.textContent = `${credits} кредитов`;
+      document.querySelectorAll<HTMLElement>("[data-product-slug]").forEach((card) => {
+        const slug = card.dataset.productSlug as PromotionProductSlug;
+        const product = PROMOTION_PRODUCTS[slug];
+        if (!product || !listing) return;
+        const until = listing[product.timestampField];
+        const current = card.querySelector<HTMLElement>("[data-product-current]");
+        const future = card.querySelector<HTMLElement>("[data-product-future]");
+        const affordability = card.querySelector<HTMLElement>("[data-product-affordability]");
+        const button = card.querySelector<HTMLButtonElement>("[data-product-action]");
+        const eligibleMessage = getPromotionEligibilityMessage(listing.status);
+        const missing = Math.max(0, product.credits - credits);
+        if (current) current.textContent = parseApiDate(until)?.getTime() && parseApiDate(until)!.getTime() > Date.now() ? `Сейчас активно до ${formatDate(until)}` : "Сейчас не активно";
+        if (future) future.textContent = `После активации: до ${formatDate(calculatePromotionEndDate(until, product.durationDays))}`;
+        if (affordability) affordability.textContent = eligibleMessage || (missing ? `Не хватает ${missing} кредитов` : `После активации останется ${credits - product.credits} кредитов`);
+        if (button) {
+          button.disabled = Boolean(eligibleMessage) || missing > 0 || busy;
+          button.textContent = eligibleMessage || (missing ? `Не хватает ${missing} кредитов` : `${product.name} за ${product.credits}`);
         }
       });
-    });
+    }
 
-    loadCar();
+    function openConfirm(slug: PromotionProductSlug) {
+      if (!listing || !dialog) return;
+      const product = PROMOTION_PRODUCTS[slug];
+      selectedSlug = slug;
+      pendingKey = crypto.randomUUID();
+      const futureUntil = calculatePromotionEndDate(listing[product.timestampField], product.durationDays);
+      const fields: Record<string, string> = { "#confirm-product": product.name, "#confirm-cost": `${product.credits} кредитов`, "#confirm-balance": `${credits - product.credits} кредитов`, "#confirm-until": `до ${formatDate(futureUntil)}` };
+      Object.entries(fields).forEach(([selector, text]) => { const node = document.querySelector<HTMLElement>(selector); if (node) node.textContent = text; });
+      if (confirmSubmit) confirmSubmit.textContent = `Подтвердить за ${product.credits} кредитов`;
+      if (confirmStatus) confirmStatus.textContent = "";
+      dialog.showModal();
+      confirmSubmit?.focus();
+    }
+
+    function mapError(code: string) {
+      const messages: Record<string, string> = {
+        UNAUTHORIZED: "Сессия завершена. Войдите снова.",
+        LISTING_NOT_FOUND: "Объявление не найдено.",
+        NOT_LISTING_OWNER: "Это объявление принадлежит другому пользователю.",
+        LISTING_NOT_PUBLISHED: "Продвижение доступно после публикации объявления.",
+        LISTING_BLOCKED: "Заблокированное или удалённое объявление нельзя продвигать.",
+        INVALID_PRODUCT: "Выбранный тип продвижения недоступен.",
+        INSUFFICIENT_CREDITS: "Недостаточно кредитов.",
+        DUPLICATE_OPERATION: "Эта операция уже была обработана. Обновляю данные.",
+        PROMOTION_FAILED: "Продвижение не активировано. Кредиты не списаны.",
+      };
+      return messages[code] || "Сервис продвижения временно недоступен. Повторите запрос.";
+    }
+
+    async function loadContext() {
+      if (!token || !listingId || !page) return;
+      page.setAttribute("aria-busy", "true");
+      setMessage("Загружаю объявление и баланс...");
+      try {
+        const [listingResponse, summaryResponse] = await Promise.all([
+          authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardListing(listingId)}`),
+          authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardSummary}`),
+        ]);
+        if (listingResponse.status === 404) throw new Error("LISTING_NOT_FOUND");
+        if (listingResponse.status === 403) throw new Error("NOT_LISTING_OWNER");
+        if (!listingResponse.ok || !summaryResponse.ok) throw new Error("XANO_UNAVAILABLE");
+        listing = await listingResponse.json() as DashboardListing;
+        const summary = await summaryResponse.json() as DashboardSummary;
+        credits = Number(summary.credits.balance || 0);
+        renderListing();
+        updateProducts();
+        setMessage("Выберите подходящий вариант. Повторная покупка продлевает активный срок.");
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "XANO_UNAVAILABLE";
+        setMessage(mapError(code), "error");
+        if (listingPreview) listingPreview.innerHTML = `<div class="mac-empty-state" role="alert"><strong>Не удалось открыть объявление</strong><p>${escapeHtml(mapError(code))}</p><button class="button button-light" type="button" data-context-retry>Повторить</button></div>`;
+      } finally {
+        page.setAttribute("aria-busy", "false");
+      }
+    }
+
+    async function confirmPromotion() {
+      if (!selectedSlug || !pendingKey || !listing || !confirmSubmit || busy) return;
+      const slug = selectedSlug;
+      const key = pendingKey;
+      busy = true;
+      confirmSubmit.disabled = true;
+      confirmSubmit.setAttribute("aria-busy", "true");
+      if (confirmStatus) confirmStatus.textContent = "Активирую продвижение...";
+      updateProducts();
+      try {
+        const response = await authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardListingPromote(listing.id)}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ product_slug: slug, idempotency_key: key }),
+        });
+        const payload = await response.json().catch(() => ({})) as PromoteListingResponse | PromotionApiError;
+        if (!response.ok) {
+          const code = String((payload as PromotionApiError).code || (payload as PromotionApiError).message || "PROMOTION_FAILED");
+          if (code.includes("DUPLICATE_OPERATION")) {
+            await loadContext();
+            pendingKey = null;
+            if (dialog?.open) dialog.close();
+            showToast("Операция уже обработана. Баланс и сроки обновлены.");
+            return;
+          }
+          if (code.includes("INSUFFICIENT_CREDITS")) pendingKey = null;
+          throw new Error(code);
+        }
+        const result = payload as PromoteListingResponse;
+        credits = result.balance_after;
+        Object.assign(listing, result.promotion);
+        pendingKey = null;
+        renderListing();
+        updateProducts();
+        if (dialog?.open) dialog.close();
+        const successText = `Объявление успешно продвинуто до ${formatDate(result.active_until)}`;
+        setMessage(successText, "success");
+        showToast(successText);
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : "PROMOTION_FAILED";
+        const code = Object.keys({ UNAUTHORIZED: 1, LISTING_NOT_FOUND: 1, NOT_LISTING_OWNER: 1, LISTING_NOT_PUBLISHED: 1, LISTING_BLOCKED: 1, INVALID_PRODUCT: 1, INSUFFICIENT_CREDITS: 1, DUPLICATE_OPERATION: 1 }).find((candidate) => raw.includes(candidate)) || "PROMOTION_FAILED";
+        if (confirmStatus) confirmStatus.textContent = mapError(code);
+      } finally {
+        busy = false;
+        confirmSubmit.disabled = false;
+        confirmSubmit.removeAttribute("aria-busy");
+        updateProducts();
+      }
+    }
+
+    document.querySelector("#promotion-products")?.addEventListener("click", (event) => {
+      const button = event.target instanceof Element ? event.target.closest<HTMLButtonElement>("[data-product-action]") : null;
+      const card = button?.closest<HTMLElement>("[data-product-slug]");
+      if (button && card && !button.disabled) openConfirm(card.dataset.productSlug as PromotionProductSlug);
+    });
+    confirmSubmit?.addEventListener("click", () => void confirmPromotion());
+    listingPreview?.addEventListener("click", (event) => { if (event.target instanceof Element && event.target.closest("[data-context-retry]")) void loadContext(); });
+    dialog?.addEventListener("close", () => { if (!busy) { selectedSlug = null; pendingKey = null; } });
+
+    if (!token) redirectToLogin(`/dashboard/cars/promote?id=${encodeURIComponent(String(listingId))}`);
+    else if (!listingId) setMessage("В ссылке нет ID объявления.", "error");
+    else void loadContext();
   </script>
 </BaseLayout>

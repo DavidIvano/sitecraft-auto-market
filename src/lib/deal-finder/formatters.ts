@@ -1,4 +1,4 @@
-import { DEAL_FINDER_PLACEHOLDER } from "./constants";
+import { DEAL_FINDER_PLACEHOLDER } from "./constants.ts";
 
 export function formatDealFinderPrice(value?: number | null, currency = "EUR") {
   if (!Number.isFinite(value)) return "Цена не указана";

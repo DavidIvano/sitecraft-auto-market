@@ -137,3 +137,10 @@ test("browser modules contain no server secret names", () => {
   ].map(readProjectFile).join("\n");
   assert.doesNotMatch(browserSource, /DEAL_FINDER_WORKER_TRIGGER_SECRET|XANO_DEAL_FINDER_INGEST_SECRET|OPENAI_API_KEY|KLEINANZEIGEN_AGENT_API_KEY/);
 });
+
+test("Cloudflare artifact preparation removes environment files from dist", () => {
+  const prepare = readProjectFile("scripts/prepare-cloudflare-pages.mjs");
+  assert.match(prepare, /removeEnvironmentFiles\(join\(root, "dist"\)\)/);
+  assert.match(prepare, /entry\.name === "\.dev\.vars"/);
+  assert.match(prepare, /entry\.name\.startsWith\("\.env\."\)/);
+});

@@ -12,6 +12,7 @@ import { API_ROUTES } from "../../lib/apiRoutes";
 import type { CarListing } from "../../lib/types";
 import { isPublicListing } from "../../lib/listingStatus";
 import { isValidPublicCarSlug } from "../../lib/publicCar";
+import { getActiveListingPromotion } from "../../lib/promotions/model";
 
 export const prerender = false;
 
@@ -45,6 +46,7 @@ if (!car || !isPublicListing(car)) {
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return Astro.rewrite("/404");
 }
+const activePromotion = getActiveListingPromotion(car);
 
 const getDescriptionFieldFromListing = (listing: CarListing, label: string) => {
   const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
@@ -481,6 +483,7 @@ const breadcrumbSchema = {
           </div>
         </div>
         <div class="detail-panel compact-detail-panel">
+          {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>Продвигается</span></div>}
           <StatusBadge status={car.status} />
           {isSold && <span class="sold-detail-badge">Автомобиль продан</span>}
           <h1>{car.title}</h1>

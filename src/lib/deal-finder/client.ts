@@ -5,6 +5,23 @@ import {
   type AppAccessState,
 } from "../accessState";
 import { trackProductEvent } from "../analytics/events";
+import {
+  ArrowLeft,
+  BadgeCheck,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Columns2,
+  Ellipsis,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Languages,
+  Maximize2,
+  RotateCcw,
+  createIcons,
+} from "lucide";
 import { DEAL_FINDER_ENABLED, DEAL_FINDER_PLACEHOLDER, DEAL_FINDER_USE_MOCK_DATA } from "./constants";
 import {
   DealFinderApiError,
@@ -14,7 +31,7 @@ import {
   type DealFinderStats,
   type DealFinderWorkspacePayload,
 } from "./types";
-import { renderDealFinderAnalysis } from "./analysis-view";
+import { renderDealFinderDetailView } from "./detail-view";
 import {
   formatDealFinderDate,
   formatDealFinderPrice,
@@ -23,7 +40,7 @@ import {
   isSafeDealFinderImageUrl,
 } from "./formatters";
 import { decodeDealFinderText } from "./text";
-import { detailUrl } from "./routes";
+import { DEAL_FINDER_RETURN_URL_KEY, detailUrl, normalizeDealFinderReturnUrl } from "./routes";
 import { DEAL_FINDER_PER_PAGE_OPTIONS } from "./constants";
 import {
   getDealFinderPageItems,
@@ -43,6 +60,7 @@ import {
   hideDealFinderListing,
   markDealFinderViewed,
   requestDealFinderAnalysis,
+  requestDealFinderDescriptionTranslation,
   restoreDealFinderListing,
   saveDealFinderListing,
   saveDealFinderWorkspace,
@@ -73,6 +91,28 @@ import {
   type DealFinderNotificationEvent,
   type DealFinderNotificationPreferences,
 } from "./notifications";
+import { safeTranslationText } from "./translation";
+
+const detailIcons = {
+  ArrowLeft,
+  Bookmark,
+  ChevronLeft,
+  ChevronRight,
+  CircleAlert,
+  Columns2,
+  Ellipsis,
+  ExternalLink,
+  Eye,
+  EyeCheck: BadgeCheck,
+  EyeOff,
+  Languages,
+  Maximize2,
+  RotateCcw,
+};
+
+function renderDetailIcons() {
+  createIcons({ icons: detailIcons, attrs: { width: 18, height: 18, "stroke-width": 2 } });
+}
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
 const escapeDisplayText = (value: string | null | undefined) => escapeHtml(decodeDealFinderText(value));
@@ -395,7 +435,9 @@ function syncComparisonControls(root: ParentNode = document) {
   root.querySelectorAll<HTMLButtonElement>("[data-deal-compare]").forEach((button) => {
     const selected = ids.includes(Number(button.dataset.dealCompare));
     button.setAttribute("aria-pressed", String(selected));
-    button.textContent = selected ? "В сравнении" : "Сравнить";
+    const label = button.querySelector("span");
+    if (label) label.textContent = selected ? "В сравнении" : "Сравнить";
+    else button.textContent = selected ? "В сравнении" : "Сравнить";
   });
 }
 
@@ -537,7 +579,10 @@ export async function mountDealFinderFeed(root: HTMLElement, initialFilters: Dea
       return;
     }
     const detailLink = (event.target as Element | null)?.closest<HTMLAnchorElement>(`a[href^="/dashboard/deal-finder/listing/"]`);
-    if (detailLink) sessionStorage.setItem(`deal-finder-scroll:${window.location.href}`, String(window.scrollY));
+    if (detailLink) {
+      sessionStorage.setItem(DEAL_FINDER_RETURN_URL_KEY, window.location.href);
+      sessionStorage.setItem(`deal-finder-scroll:${window.location.href}`, String(window.scrollY));
+    }
   });
   window.addEventListener("popstate", () => {
     currentFilters = { ...baseFilters, ...parseDealFinderUrlState(new URLSearchParams(window.location.search)) };
@@ -593,19 +638,155 @@ function workspaceMarkup(record: DealFinderWorkspaceRecord) {
       <label>Канал<select name="contact_channel">${option("none", "Не выбран", record.contact_channel)}${option("phone", "Телефон", record.contact_channel)}${option("email", "Email", record.contact_channel)}${option("message", "Сообщение", record.contact_channel)}</select></label>
       <label>Следующее действие<input name="next_action_at" type="datetime-local" value="${escapeHtml(toLocalDateTimeInput(record.next_action_at))}" /></label>
       <label class="deal-finder-workspace-note">Заметка<textarea name="note" rows="4" maxlength="2000" placeholder="Что проверить, о чём спросить, какой результат звонка">${escapeHtml(record.note)}</textarea></label>
-      <div class="deal-finder-workspace-submit"><button class="button button-primary" type="submit">Сохранить запись</button><p role="status" aria-live="polite" data-workspace-status>${record.updated_at ? `Сохранено ${escapeHtml(formatDealFinderDate(record.updated_at))}` : ""}</p></div>
+      <div class="deal-finder-workspace-submit"><button class="button button-primary" type="submit">Сохранить заметку</button><p role="status" aria-live="polite" data-workspace-status>${record.updated_at ? `Сохранено ${escapeHtml(formatDealFinderDate(record.updated_at))}` : ""}</p></div>
     </form>
   </section>`;
 }
 
-function dossierSummary(listing: DealFinderListing, search: DealFinderSearch | null) {
-  const sourceLabel = listing.source_status === "active" ? "Источник активен" : "Источник недоступен";
-  const analysisLabel = listing.analysis?.status === "completed"
-    ? `AI обновлён ${formatDealFinderDate(listing.analysis.completed_at || listing.analysis.analyzed_at)}`
-    : listing.analysis
-      ? "AI-задача выполняется"
-      : "AI ещё не запускался";
-  return `<section class="deal-finder-dossier-summary" aria-label="Состояние досье"><div><span>Источник</span><strong>${escapeHtml(sourceLabel)}</strong></div><div><span>Данные</span><strong>${escapeHtml(formatDealFinderDate(listing.last_checked_at || listing.last_seen_at))}</strong></div><div><span>AI</span><strong>${escapeHtml(analysisLabel)}</strong></div><div><span>Профиль</span><strong>${escapeHtml(search?.name || "Ручное добавление")}</strong></div></section>`;
+function readGallerySources(gallery: HTMLElement) {
+  const script = gallery.querySelector<HTMLScriptElement>("[data-gallery-sources]");
+  try {
+    const parsed = JSON.parse(script?.textContent || "[]");
+    return Array.isArray(parsed) ? parsed.filter(isSafeDealFinderImageUrl) : [];
+  } catch {
+    return [];
+  }
+}
+
+function installDetailGallery(root: HTMLElement) {
+  let pointerStart: { x: number; y: number } | null = null;
+  const show = (gallery: HTMLElement, requestedIndex: number) => {
+    const images = readGallerySources(gallery);
+    if (!images.length) return;
+    const index = (requestedIndex + images.length) % images.length;
+    gallery.dataset.galleryIndex = String(index);
+    const mainButton = gallery.querySelector<HTMLElement>("[data-lightbox-trigger]");
+    const mainImage = gallery.querySelector<HTMLImageElement>("[data-gallery-main-image]");
+    const counter = gallery.querySelector<HTMLOutputElement>("[data-gallery-counter]");
+    if (mainImage) mainImage.src = images[index];
+    if (mainButton) mainButton.dataset.lightboxSrc = images[index];
+    if (counter) counter.value = `${index + 1} / ${images.length}`;
+    gallery.querySelectorAll<HTMLButtonElement>("[data-gallery-thumbnail]").forEach((thumbnail) => {
+      const selected = Number(thumbnail.dataset.galleryThumbnail) === index;
+      thumbnail.setAttribute("aria-pressed", String(selected));
+      if (selected) thumbnail.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    });
+    if (images.length > 1) {
+      [images[(index - 1 + images.length) % images.length], images[(index + 1) % images.length]].forEach((src) => {
+        const preload = new Image();
+        preload.referrerPolicy = "no-referrer";
+        preload.src = src;
+      });
+    }
+  };
+  root.addEventListener("click", (event) => {
+    const target = event.target as Element | null;
+    const gallery = target?.closest<HTMLElement>("[data-detail-gallery]");
+    if (!gallery) return;
+    const current = Number(gallery.dataset.galleryIndex || 0);
+    if (target?.closest("[data-gallery-previous]")) {
+      event.preventDefault();
+      show(gallery, current - 1);
+      return;
+    }
+    if (target?.closest("[data-gallery-next]")) {
+      event.preventDefault();
+      show(gallery, current + 1);
+      return;
+    }
+    const thumbnail = target?.closest<HTMLElement>("[data-gallery-thumbnail]");
+    if (thumbnail) show(gallery, Number(thumbnail.dataset.galleryThumbnail));
+  });
+  root.addEventListener("pointerdown", (event) => {
+    if ((event.target as Element | null)?.closest("[data-gallery-main-image]")) pointerStart = { x: event.clientX, y: event.clientY };
+  });
+  root.addEventListener("pointerup", (event) => {
+    const gallery = (event.target as Element | null)?.closest<HTMLElement>("[data-detail-gallery]");
+    if (!gallery || !pointerStart) return;
+    const deltaX = event.clientX - pointerStart.x;
+    const deltaY = event.clientY - pointerStart.y;
+    pointerStart = null;
+    if (Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY)) {
+      event.preventDefault();
+      show(gallery, Number(gallery.dataset.galleryIndex || 0) + (deltaX < 0 ? 1 : -1));
+    }
+  });
+}
+
+function installDetailControls(root: HTMLElement, id: string) {
+  root.addEventListener("click", async (event) => {
+    const target = event.target as Element | null;
+    const more = target?.closest<HTMLButtonElement>("[data-action-more]");
+    if (more) {
+      const bar = more.closest<HTMLElement>("[data-detail-action-bar]");
+      const expanded = more.getAttribute("aria-expanded") === "true";
+      more.setAttribute("aria-expanded", String(!expanded));
+      bar?.classList.toggle("is-more-open", !expanded);
+      return;
+    }
+
+    const viewToggle = target?.closest<HTMLButtonElement>("[data-translation-view]");
+    if (viewToggle) {
+      const translated = viewToggle.dataset.translationView === "translated";
+      root.querySelector<HTMLElement>("[data-translation-original]")!.hidden = translated;
+      root.querySelector<HTMLElement>("[data-translation-result]")!.hidden = !translated;
+      root.querySelectorAll<HTMLButtonElement>("[data-translation-view]").forEach((button) => {
+        button.setAttribute("aria-pressed", String(button === viewToggle));
+      });
+      return;
+    }
+
+    const translate = target?.closest<HTMLButtonElement>("[data-translation-request]");
+    if (!translate || translate.disabled) return;
+    const status = root.querySelector<HTMLElement>("[data-translation-status]");
+    const original = root.querySelector<HTMLElement>("[data-translation-original]");
+    const result = root.querySelector<HTMLElement>("[data-translation-result]");
+    const toggle = root.querySelector<HTMLElement>("[data-translation-toggle]");
+    const label = translate.querySelector<HTMLElement>("span");
+    if (translate.dataset.translationLoaded === "true") {
+      if (original) original.hidden = false;
+      if (result) result.hidden = true;
+      root.querySelectorAll<HTMLButtonElement>("[data-translation-view]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.translationView === "original")));
+      if (label) label.textContent = "Перевести на русский";
+      delete translate.dataset.translationLoaded;
+      return;
+    }
+    translate.disabled = true;
+    translate.setAttribute("aria-busy", "true");
+    if (label) label.textContent = "Переводим…";
+    if (status) status.textContent = "Запрашиваем безопасный перевод описания…";
+    try {
+      const response = await requestDealFinderDescriptionTranslation(id, "ru");
+      const translation = response.translation;
+      if (translation.status === "completed") {
+        const text = safeTranslationText(translation.translated_text);
+        if (!text) throw new Error("EMPTY_TRANSLATION");
+        if (result) {
+          result.textContent = text;
+          result.hidden = false;
+        }
+        if (original) original.hidden = true;
+        if (toggle) toggle.hidden = false;
+        root.querySelectorAll<HTMLButtonElement>("[data-translation-view]").forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.translationView === "translated")));
+        translate.dataset.translationLoaded = "true";
+        if (label) label.textContent = "Показать оригинал";
+        if (status) status.textContent = translation.cached ? "Автоматический перевод · использован кэш" : "Автоматический перевод";
+      } else if (translation.status === "stale") {
+        if (status) status.textContent = "Описание изменилось. Нужен новый перевод.";
+        if (label) label.textContent = "Обновить перевод";
+      } else {
+        if (status) status.textContent = "Перевод поставлен в очередь. Повторный запрос не создаётся.";
+        if (label) label.textContent = "Перевод в очереди";
+      }
+      trackProductEvent("deal_finder_translation_requested", { listing_id: Number(id), status: translation.status, cached: Boolean(translation.cached) });
+    } catch (error) {
+      if (status) status.textContent = error instanceof DealFinderApiError ? apiErrorMessage(error) : "Перевод временно недоступен. Оригинал сохранён без изменений.";
+      if (label) label.textContent = "Повторить перевод";
+    } finally {
+      translate.disabled = false;
+      translate.removeAttribute("aria-busy");
+    }
+  });
 }
 
 export async function mountDealFinderDetail(root: HTMLElement, id: string) {
@@ -648,23 +829,16 @@ export async function mountDealFinderDetail(root: HTMLElement, id: string) {
         getDealFinderListing(id),
         getDealFinderWorkspace(id),
       ]);
-      const sourceImages = [listing.source_image_url, ...(listing.source_images || [])].filter(isSafeDealFinderImageUrl) as string[];
-      const gallery = [...new Set(sourceImages)];
-      const images = gallery.length ? gallery : [DEAL_FINDER_PLACEHOLDER];
       root.dataset.dealListingId = String(listing.id);
-      root.innerHTML = `<article class="deal-finder-detail">
-        <div class="deal-finder-gallery">${images.map((image, index) => `<button class="deal-finder-image vehicle-image-trigger" type="button" data-lightbox-trigger data-lightbox-group="deal-finder-${listing.id}" data-lightbox-src="${escapeHtml(image)}" data-lightbox-alt="${escapeDisplayText(listing.title)}, фото ${index + 1}" aria-label="Увеличить фото ${index + 1} из ${images.length}"><img src="${escapeHtml(image)}" alt="${escapeDisplayText(listing.title)}${images.length > 1 ? `, фото ${index + 1}` : ""}" loading="${index === 0 ? "eager" : "lazy"}" decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder="${DEAL_FINDER_PLACEHOLDER}"><span class="vehicle-image-zoom" aria-hidden="true">＋</span></button>`).join("")}</div>
-        <div class="glass-panel"><span class="eyebrow">ДОСЬЕ РЕШЕНИЯ · KLEINANZEIGEN</span><h1>${escapeDisplayText(listing.title)}</h1><strong class="deal-finder-price">${escapeHtml(formatDealFinderPrice(listing.price, listing.currency))}</strong>
-          ${dossierSummary({ ...listing, analysis }, search)}
-          <dl class="deal-finder-specs"><div><dt>Марка</dt><dd>${escapeHtml(listing.brand || "—")}</dd></div><div><dt>Модель</dt><dd>${escapeHtml(listing.model || "—")}</dd></div><div><dt>Вариант</dt><dd>${escapeHtml(listing.variant || "—")}</dd></div><div><dt>Год</dt><dd>${listing.year || "—"}</dd></div><div><dt>Пробег</dt><dd>${listing.mileage ? `${Number(listing.mileage).toLocaleString("ru-RU")} км` : "—"}</dd></div><div><dt>Топливо</dt><dd>${escapeHtml(listing.fuel_type || "—")}</dd></div><div><dt>Коробка</dt><dd>${escapeHtml(listing.transmission || "—")}</dd></div><div><dt>Мощность</dt><dd>${listing.power_kw ? `${listing.power_kw} кВт` : "—"}</dd></div><div><dt>Город</dt><dd>${escapeHtml(listing.city || "—")}</dd></div><div><dt>Обнаружено</dt><dd>${escapeHtml(formatDealFinderDate(listing.first_seen_at))}</dd></div><div><dt>Опубликовано</dt><dd>${escapeHtml(formatDealFinderDate(listing.published_at))}</dd></div><div><dt>Проверено</dt><dd>${escapeHtml(formatDealFinderDate(listing.last_checked_at))}</dd></div></dl>
-          <section class="deal-finder-description"><h2>Описание</h2><p>${escapeDisplayText(listing.description || "Описание не предоставлено источником.")}</p></section>
-          ${renderDealFinderAnalysis(analysis, allowed_actions.reanalyze)}
-          ${workspaceMarkup(workspace)}
-          ${actionButtons(listing, false)}<p class="deal-finder-action-status" role="status" aria-live="polite"></p>
-          <p class="deal-finder-notice">Источник: Kleinanzeigen. Это закрытый внутренний аналитический инструмент. Проверяйте данные и актуальность в оригинальном объявлении.</p>
-        </div>
-      </article>`;
+      const returnHref = normalizeDealFinderReturnUrl(sessionStorage.getItem(DEAL_FINDER_RETURN_URL_KEY));
+      root.innerHTML = renderDealFinderDetailView({
+        details: { listing, analysis, search, allowed_actions },
+        workspaceHtml: workspaceMarkup(workspace),
+        returnHref,
+      });
+      root.removeAttribute("aria-busy");
       installImageFallbacks(root);
+      renderDetailIcons();
       trackProductEvent("deal_finder_detail_loaded", { listing_id: listing.id, status: analysis?.status || "not_started" });
     } catch (error) {
       renderApiError(root, error);
@@ -672,6 +846,8 @@ export async function mountDealFinderDetail(root: HTMLElement, id: string) {
   };
   installActions(root, render);
   installComparisonControls(root);
+  installDetailGallery(root);
+  installDetailControls(root, id);
   await render();
 }
 

@@ -5,89 +5,105 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Личный кабинет" noindex>
-  <section class="section page-hero dashboard-hero">
-    <div class="container dashboard-overview">
-      <div class="dashboard-copy">
-        <p class="eyebrow">Кабинет</p>
-        <h1>Личный кабинет продавца</h1>
-        <p class="lead">Здесь собраны ваши объявления, статусы модерации и быстрые действия.</p>
-        <div class="hero-actions">
-          <a class="button button-light" href="/dashboard/listings">Мои объявления</a>
+  <section class="section dashboard-home">
+    <div class="container dashboard-home-shell" data-api-url={xanoApiUrl} aria-busy="true">
+      <header class="dashboard-home-heading">
+        <div>
+          <p class="eyebrow">Кабинет</p>
+          <h1>Обзор продавца</h1>
+          <p class="lead">Баланс, объявления и активные продвижения в одном месте.</p>
+        </div>
+        <div class="dashboard-home-actions">
           <a class="button button-light" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
           <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
         </div>
-        <p class="form-message" id="dashboard-auth-message" data-api-url={xanoApiUrl}>Проверяю вход...</p>
-      </div>
-      <div class="dashboard-stat-grid" aria-label="Обзор кабинета">
-        <article class="dashboard-stat-card">
-          <span>Активные объявления</span>
-          <strong data-dashboard-stat="active">0</strong>
-        </article>
-        <article class="dashboard-stat-card">
-          <span>На модерации</span>
-          <strong data-dashboard-stat="pending">0</strong>
-        </article>
-        <article class="dashboard-stat-card">
-          <span>AI-кредиты</span>
-          <strong data-dashboard-stat="credits">10</strong>
-        </article>
-        <article class="dashboard-stat-card">
-          <span>Просмотры</span>
-          <strong data-dashboard-stat="views">—</strong>
-        </article>
+      </header>
+
+      <p class="form-message" id="dashboard-auth-message" role="status" aria-live="polite">Проверяю вход...</p>
+
+      <div class="dashboard-summary-grid" id="dashboard-summary" aria-live="polite">
+        {[0, 1, 2].map(() => <span class="dashboard-summary-skeleton" aria-hidden="true"></span>)}
       </div>
     </div>
   </section>
+
   <script>
-    import { fetchCurrentUser, getAuthToken, getAuthUser } from "../../lib/authClient";
+    import { fetchCurrentUser, getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+    import { API_ROUTES } from "../../lib/apiRoutes";
+    import type { DashboardSummary } from "../../lib/promotions/model";
 
+    const shell = document.querySelector<HTMLElement>(".dashboard-home-shell");
+    const summaryRoot = document.querySelector<HTMLElement>("#dashboard-summary");
+    const authMessage = document.querySelector<HTMLElement>("#dashboard-auth-message");
     const token = getAuthToken();
+    const apiUrl = String(shell?.dataset.apiUrl || "").replace(/\/+$/, "");
     const userRaw = getAuthUser();
-    const message = document.querySelector("#dashboard-auth-message");
-    const apiUrl = message instanceof HTMLElement ? message.dataset.apiUrl : "";
-    const activeStat = document.querySelector("[data-dashboard-stat='active']");
-    const pendingStat = document.querySelector("[data-dashboard-stat='pending']");
 
-    const goToLogin = () => {
-      window.location.href = `/login?next=${encodeURIComponent("/dashboard")}`;
+    const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
+
+    const renderSummary = (summary: DashboardSummary) => {
+      if (!summaryRoot) return;
+      summaryRoot.innerHTML = `
+        <a class="dashboard-summary-card" href="/dashboard/billing/">
+          <span class="dashboard-summary-label">Баланс</span>
+          <strong>${escapeHtml(summary.credits.balance)} кредитов</strong>
+          <span>Доступно для AI и продвижения</span>
+          <b>История операций</b>
+        </a>
+        <a class="dashboard-summary-card" href="/dashboard/listings/">
+          <span class="dashboard-summary-label">Мои объявления</span>
+          <strong>${escapeHtml(summary.listings.total)} объявлений</strong>
+          <span>${escapeHtml(summary.listings.published)} опубликовано · ${escapeHtml(summary.listings.pending_review)} на модерации · ${escapeHtml(summary.listings.draft)} черновиков</span>
+          <b>Открыть объявления</b>
+        </a>
+        <a class="dashboard-summary-card" href="/dashboard/listings/?filter=promoted">
+          <span class="dashboard-summary-label">Сейчас продвигается</span>
+          <strong>${escapeHtml(summary.listings.promoted)} объявлений</strong>
+          <span>${escapeHtml(summary.active_promotions.homepage)} премиум · ${escapeHtml(summary.active_promotions.featured)} выделено · ${escapeHtml(summary.active_promotions.boosted)} поднято</span>
+          <b>Управлять продвижением</b>
+        </a>`;
     };
 
-    const loadDashboardListings = () => {
-      fetch(`${apiUrl}/dashboard/listings`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((listingsResponse) => listingsResponse.ok ? listingsResponse.json() : [])
-        .then((cars) => {
-          if (!Array.isArray(cars)) return;
-          const active = cars.filter((car) => String(car.status || "") === "approved").length;
-          const pending = cars.filter((car) => String(car.status || "") === "pending_review").length;
-          if (activeStat instanceof HTMLElement) activeStat.textContent = String(active);
-          if (pendingStat instanceof HTMLElement) pendingStat.textContent = String(pending);
-        })
-        .catch(() => {});
+    const renderError = (message: string) => {
+      if (!summaryRoot) return;
+      summaryRoot.innerHTML = `<div class="dashboard-summary-error" role="alert"><strong>Не удалось загрузить обзор</strong><p>${escapeHtml(message)}</p><button class="button button-light" type="button" data-summary-retry>Повторить</button></div>`;
     };
 
-    if (!token) {
-      window.location.href = `/login?next=${encodeURIComponent("/dashboard")}`;
-    } else if (message instanceof HTMLElement) {
-      fetchCurrentUser(apiUrl, token)
-        .then((currentUser) => {
-          if (!currentUser && !getAuthToken()) {
-            goToLogin();
+    async function loadSummary() {
+      if (!token || !shell) return;
+      shell.setAttribute("aria-busy", "true");
+      try {
+        const response = await fetch(`${apiUrl}${API_ROUTES.dashboardSummary}`, { headers: { Authorization: `Bearer ${token}` } });
+        if (response.status === 401) {
+          if (await isSessionConfirmedExpired(apiUrl, token)) {
+            redirectToLogin("/dashboard/");
             return;
           }
-          const user = currentUser ?? userRaw;
-          message.textContent = user?.email
-            ? `Вы вошли как ${user.email}.`
-            : "Вы вошли в личный кабинет.";
-          loadDashboardListings();
-        })
-        .catch(() => {
-          message.textContent = userRaw?.email
-            ? `Вы вошли как ${userRaw.email}. Данные обновятся после восстановления связи.`
-            : "Вход сохранён. Данные обновятся после восстановления связи.";
-          loadDashboardListings();
-        });
+          throw new Error("Вход сохранён, но сервер не подтвердил сессию. Повторите запрос.");
+        }
+        if (!response.ok) throw new Error("Сервис кабинета временно недоступен.");
+        renderSummary(await response.json() as DashboardSummary);
+      } catch (error) {
+        renderError(error instanceof Error ? error.message : "Проверьте соединение и повторите запрос.");
+      } finally {
+        shell.setAttribute("aria-busy", "false");
+      }
+    }
+
+    summaryRoot?.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("[data-summary-retry]")) void loadSummary();
+    });
+
+    if (!token) {
+      redirectToLogin("/dashboard/");
+    } else {
+      fetchCurrentUser(apiUrl, token).then((currentUser) => {
+        const user = currentUser ?? userRaw;
+        if (authMessage) authMessage.textContent = user?.email ? `Вы вошли как ${user.email}.` : "Вход выполнен.";
+      }).catch(() => {
+        if (authMessage) authMessage.textContent = userRaw?.email ? `Вход сохранён для ${userRaw.email}.` : "Вход сохранён.";
+      });
+      void loadSummary();
     }
   </script>
 </BaseLayout>
