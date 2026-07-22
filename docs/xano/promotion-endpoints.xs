@@ -118,13 +118,25 @@ query "dashboard/listings/{id}/promote" verb=POST {
           error_type = "accessdenied"
           error = "NOT_LISTING_OWNER"
         }
-        precondition (($listing.status != "blocked") && ($listing.status != "deleted") && ($listing.status != "archived") && ($listing.status != "sold") && ($listing.moderation_status != "blocked") && ($listing.moderation_status != "deleted") && ($listing.moderation_status != "archived")) {
-          error_type = "accessdenied"
-          error = "LISTING_BLOCKED"
-        }
-        precondition (($listing.status == "approved") || ($listing.status == "published") || ($listing.moderation_status == "approved") || ($listing.moderation_status == "published")) {
-          error_type = "inputerror"
-          error = "LISTING_NOT_PUBLISHED"
+        conditional {
+          if (($listing.status == "blocked") || ($listing.status == "deleted") || ($listing.status == "archived") || ($listing.status == "sold") || ($listing.moderation_status == "blocked") || ($listing.moderation_status == "deleted") || ($listing.moderation_status == "archived")) {
+            util.set_header {
+              value = "HTTP/1.1 409 Conflict"
+              duplicates = "replace"
+            }
+            return {
+              value = {code: "LISTING_BLOCKED", message: "LISTING_BLOCKED"}
+            }
+          }
+          elseif (($listing.status != "approved") && ($listing.status != "published") && ($listing.moderation_status != "approved") && ($listing.moderation_status != "published")) {
+            util.set_header {
+              value = "HTTP/1.1 409 Conflict"
+              duplicates = "replace"
+            }
+            return {
+              value = {code: "LISTING_NOT_PUBLISHED", message: "LISTING_NOT_PUBLISHED"}
+            }
+          }
         }
 
         db.query user_credits {
@@ -144,17 +156,31 @@ query "dashboard/listings/{id}/promote" verb=POST {
           where = (($db.credit_transactions.user_id == $auth.id) && ($db.credit_transactions.idempotency_key == $input.idempotency_key))
           return = {type: "single"}
         } as $existing_transaction
-        precondition ($existing_transaction == null) {
-          error_type = "inputerror"
-          error = "DUPLICATE_OPERATION"
+        conditional {
+          if ($existing_transaction != null) {
+            util.set_header {
+              value = "HTTP/1.1 409 Conflict"
+              duplicates = "replace"
+            }
+            return {
+              value = {code: "DUPLICATE_OPERATION", message: "DUPLICATE_OPERATION"}
+            }
+          }
         }
 
         var $balance_before {
           value = $wallet.ai_credits|first_notnull:0|to_int
         }
-        precondition ($balance_before >= $credits_required) {
-          error_type = "inputerror"
-          error = "INSUFFICIENT_CREDITS"
+        conditional {
+          if ($balance_before < $credits_required) {
+            util.set_header {
+              value = "HTTP/1.1 422 Unprocessable Entity"
+              duplicates = "replace"
+            }
+            return {
+              value = {code: "INSUFFICIENT_CREDITS", message: "INSUFFICIENT_CREDITS"}
+            }
+          }
         }
         var $balance_after {
           value = $balance_before - $credits_required

@@ -70,11 +70,13 @@ test("production frontend uses real credit endpoints and no checkout or test sto
 test("Xano implementation is transactional, owner scoped, locked and idempotent", () => {
   const endpoints = readFileSync(new URL("../docs/xano/promotion-endpoints.xs", import.meta.url), "utf8");
   const ledger = readFileSync(new URL("../docs/xano/promotions-credit-transactions-table.xs", import.meta.url), "utf8");
-  for (const marker of ["db.transaction", "lock = true", "listing.user_id == $auth.id", "DUPLICATE_OPERATION", "INSUFFICIENT_CREDITS", "0 - $credits_required", "add_secs_to_timestamp:$duration_seconds"]) assert.match(endpoints, new RegExp(marker.replaceAll("$", "\\$")));
+  for (const marker of ["db.transaction", "lock = true", "listing.user_id == $auth.id", "DUPLICATE_OPERATION", "INSUFFICIENT_CREDITS", "0 - $credits_required", "add_secs_to_timestamp:$duration_seconds", "HTTP/1.1 409 Conflict", "HTTP/1.1 422 Unprocessable Entity"]) assert.match(endpoints, new RegExp(marker.replaceAll("$", "\\$")));
   assert.match(endpoints, /duration_seconds\s*\{[\s\S]*duration_days \* 86400/);
   assert.doesNotMatch(endpoints, /\|add_days:/);
-  assert.match(endpoints, /listing\.moderation_status != "blocked"/);
-  assert.match(endpoints, /listing\.status == "published"/);
+  assert.match(endpoints, /listing\.moderation_status == "blocked"/);
+  assert.match(endpoints, /listing\.status != "published"/);
+  assert.match(endpoints, /value = \{code: "LISTING_BLOCKED", message: "LISTING_BLOCKED"\}/);
+  assert.match(endpoints, /value = \{code: "LISTING_NOT_PUBLISHED", message: "LISTING_NOT_PUBLISHED"\}/);
   assert.match(ledger, /btree\|unique[\s\S]*user_id[\s\S]*idempotency_key/);
   assert.doesNotMatch(endpoints, /Stripe|PayPal|price_cents|input\.credits/);
 });
