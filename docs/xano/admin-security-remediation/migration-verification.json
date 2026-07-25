@@ -1,0 +1,30 @@
+[
+  {
+    "user_id": 1,
+    "role_before": "admin",
+    "role_after": "admin",
+    "oauth_identity_unchanged": true,
+    "password_unchanged": true,
+    "balance_before": 1000000000,
+    "balance_after": 1000000000,
+    "balance_target": 10000,
+    "ledger_transaction_id": 38,
+    "idempotency_key": "admin-test-grant-v1-1",
+    "amount": 0,
+    "rerun_transaction_count": 1
+  },
+  {
+    "user_id": 15,
+    "role_before": "admin",
+    "role_after": "admin",
+    "oauth_identity_unchanged": true,
+    "password_unchanged": true,
+    "balance_before": 1000000000,
+    "balance_after": 1000000000,
+    "balance_target": 10000,
+    "ledger_transaction_id": 39,
+    "idempotency_key": "admin-test-grant-v1-15",
+    "amount": 0,
+    "rerun_transaction_count": 1
+  }
+]

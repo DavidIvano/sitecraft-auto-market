@@ -85,12 +85,10 @@ export function clearAuth() {
   deleteCookie(AUTH_USER_KEY);
 }
 
-export function isAdminUser(user?: { email?: unknown; role?: unknown } | null) {
+export function isAdminUser(user?: { role?: unknown } | null) {
   const role = String(user?.role || "").trim().toLowerCase();
-  const email = String(user?.email || "").trim().toLowerCase();
-  const ownerEmails = new Set(["ivanovdavid119@gmail.com", "ivanovdavid19@gmail.com"]);
 
-  return role === "admin" || role === "owner" || role === "super_admin" || ownerEmails.has(email);
+  return role === "admin";
 }
 
 export function isDealFinderUser(user?: { email?: unknown; role?: unknown } | null) {
