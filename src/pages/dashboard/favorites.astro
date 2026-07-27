@@ -1,0 +1,84 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout title="Сохранённые автомобили" noindex>
+  <section class="section favorites-page">
+    <div class="container favorites-shell" data-api-url={xanoApiUrl} aria-busy="true">
+      <header class="section-heading favorites-heading">
+        <div>
+          <p class="eyebrow">Кабинет</p>
+          <h1>Сохранённые автомобили</h1>
+          <p class="lead">Сохранённые объявления из общего каталога.</p>
+        </div>
+        <a class="button button-light" href="/cars/">Открыть каталог</a>
+      </header>
+      <p class="form-message" data-favorites-status role="status" aria-live="polite">Загружаю избранное...</p>
+      <div class="catalog-grid favorites-grid" data-favorites-grid></div>
+    </div>
+  </section>
+
+  <script>
+    import { API_ROUTES } from "../../lib/apiRoutes";
+    import { getAuthToken, redirectToLogin } from "../../lib/authClient";
+    import { renderPublicCarCardMarkup } from "../../lib/publicCarCard";
+    import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
+    import type { CarListing } from "../../lib/types";
+
+    const shell = document.querySelector<HTMLElement>("[data-api-url]");
+    const grid = document.querySelector<HTMLElement>("[data-favorites-grid]");
+    const status = document.querySelector<HTMLElement>("[data-favorites-status]");
+    const token = getAuthToken();
+    const apiUrl = String(shell?.dataset.apiUrl || "").replace(/\/+$/, "");
+
+    const renderEmpty = () => {
+      if (grid) grid.innerHTML = `<section class="favorites-empty"><strong>Вы пока не сохранили ни одного автомобиля.</strong><p>Добавляйте машины в избранное с помощью кнопки сердца.</p><a class="button button-primary" href="/cars/">Перейти в каталог</a></section>`;
+      if (status) status.hidden = true;
+    };
+
+    async function loadFavorites() {
+      if (!token) {
+        redirectToLogin("/dashboard/favorites/");
+        return;
+      }
+      try {
+        const response = await fetch(`${apiUrl}${API_ROUTES.favorites}?page=1&per_page=100`, { headers: { Accept: "application/json", Authorization: `Bearer ${token}` } });
+        if (response.status === 401) {
+          redirectToLogin("/dashboard/favorites/");
+          return;
+        }
+        if (!response.ok) throw new Error("favorites unavailable");
+        const payload = await response.json();
+        const rawItems = (Array.isArray(payload) ? payload : payload?.items || []) as Array<CarListing & { listing?: CarListing; created_at?: string }>;
+        const items = rawItems.map((item) => item.listing ? { ...item.listing, is_saved: true, saved_at: item.created_at } : item);
+        if (!items.length) {
+          renderEmpty();
+          return;
+        }
+        if (grid) grid.innerHTML = items.map((car) => renderPublicCarCardMarkup({ ...car, is_saved: true }, { source: "dashboard_favorites" })).join("");
+        if (status) status.textContent = `${items.length} сохранённых объявлений`;
+        refreshPublicCarCardIcons(grid || document);
+      } catch {
+        if (status) status.innerHTML = `Не удалось загрузить избранное. <button class="button button-light" type="button" data-favorites-retry>Повторить</button>`;
+      } finally {
+        shell?.setAttribute("aria-busy", "false");
+      }
+    }
+
+    status?.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest("[data-favorites-retry]")) void loadFavorites();
+    });
+    window.addEventListener("car-favorite-changed", (event) => {
+      const detail = (event as CustomEvent<{ listingId: string; isSaved: boolean }>).detail;
+      if (detail?.isSaved === false) {
+        const card = grid?.querySelector<HTMLElement>(`[data-car-id="${CSS.escape(detail.listingId)}"]`);
+        card?.classList.add("is-removing");
+        window.setTimeout(() => { card?.remove(); if (grid && !grid.querySelector("[data-car-id]")) renderEmpty(); }, 180);
+      }
+    });
+    installPublicCarCardInteractions();
+    void loadFavorites();
+  </script>
+</BaseLayout>

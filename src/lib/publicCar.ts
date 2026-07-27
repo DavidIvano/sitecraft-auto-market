@@ -119,13 +119,24 @@ const normalizeSeller = (value: unknown): PublicSellerSummary | undefined => {
   const href = toString(contact?.href);
   const type = contact?.type === "phone" ? "phone" : contact?.type === "email" ? "email" : null;
   const safeHref = type && /^(tel:|mailto:)/i.test(href) ? href : "";
+  const phoneHref = /^tel:/i.test(toString(contact?.phone_href)) ? toString(contact?.phone_href) : "";
+  const emailHref = /^mailto:/i.test(toString(contact?.email_href)) ? toString(contact?.email_href) : "";
 
   return {
     name: toString(source.name) || "Продавец автомобиля",
     type: toString(source.type),
     city: toString(source.city),
     active_listings_count: toNumber(source.active_listings_count),
-    contact: safeHref && type ? { type, href: safeHref } : null,
+    contact: phoneHref || emailHref || (safeHref && type) ? {
+      phone: phoneHref ? toString(contact?.phone) : null,
+      phone_href: phoneHref || null,
+      email: emailHref ? toString(contact?.email) : null,
+      email_href: emailHref || null,
+      preferred_method: ["phone", "email"].includes(toString(contact?.preferred_method))
+        ? toString(contact?.preferred_method) as "phone" | "email"
+        : null,
+      ...(safeHref && type ? { type, href: safeHref } : {}),
+    } : null,
   };
 };
 
@@ -236,6 +247,8 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     moderator_approved: source.moderator_approved === true,
     seller_type: toString(source.seller_type) === "dealer" ? "dealer" : "private",
     seller,
+    is_saved: source.is_saved === true,
+    saved_at: toOptionalDate(source.saved_at),
     dealer_profile_id: toNumber(source.dealer_profile_id) || undefined,
     dealer_plan: toString(source.dealer_plan) as CarListing["dealer_plan"],
     dealer_verified: source.dealer_verified === true,

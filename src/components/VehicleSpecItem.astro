@@ -1,0 +1,8 @@
+---
+type Props = { icon: string; label: string; value: string };
+const { icon, label, value } = Astro.props;
+---
+<div class="vehicle-spec-item">
+  <dt><i data-lucide={icon} aria-hidden="true"></i>{label}</dt>
+  <dd>{value}</dd>
+</div>

@@ -5,6 +5,7 @@ export type DealFinderSyncEnv = {
   DEAL_FINDER_WORKER_TRIGGER_SECRET?: string;
   OPENAI_API_KEY?: string;
   DEAL_FINDER_OPENAI_MODEL?: string;
+  OPENAI_DEAL_FINDER_MODEL?: string;
   DEAL_FINDER_MAX_AI_ANALYSES_PER_RUN?: string;
   DEAL_FINDER_AI_ENABLED?: string;
   DEAL_FINDER_AI_DRY_RUN?: string;
@@ -62,7 +63,7 @@ export function getDealFinderAiConfig(env: DealFinderSyncEnv): DealFinderAiConfi
   return {
     enabled: env.DEAL_FINDER_AI_ENABLED === "true",
     dryRun: env.DEAL_FINDER_AI_DRY_RUN !== "false",
-    model: env.DEAL_FINDER_OPENAI_MODEL?.trim() || "gpt-5.6-luna",
+    model: env.OPENAI_DEAL_FINDER_MODEL?.trim() || env.DEAL_FINDER_OPENAI_MODEL?.trim() || "gpt-5.6-luna",
     maxAnalysesPerRun: positiveInteger(env.DEAL_FINDER_MAX_AI_ANALYSES_PER_RUN, 1, 1),
     timeoutMs: positiveInteger(env.DEAL_FINDER_AI_TIMEOUT_MS, 30_000, 30_000),
   };

@@ -10,7 +10,7 @@ Implementation status: **implemented and live in Xano**.
 - API group: `sitecraft-auto-market`
 - Auth table: `automarket_users` (`861779`)
 - Audit table: `ai_listing_checks` (`866229`), `type = moderation_check`
-- Model: `$env.OPENAI_CAR_AI_MODEL`, fallback `gpt-5.4-mini`
+- Model: `$env.OPENAI_MODERATION_MODEL`, then `$env.OPENAI_DEFAULT_MODEL`, fallback `gpt-5.6-luna`
 - Rate limit: 100 checks per admin per hour
 
 AI moderation helps the moderator review listing data faster. It does not verify the technical condition of the vehicle and does not replace the final moderator decision.
@@ -77,7 +77,7 @@ Admin email addresses are not returned or written to `ai_listing_checks`.
   "summary": "Объявление содержит основные данные, но требует уточнений.",
   "suggested_rejection_reason": "Пожалуйста, уточните данные и добавьте фотографии салона.",
   "moderator_notes": [],
-  "model": "gpt-5.4-mini"
+  "model": "gpt-5.6-luna"
 }
 ```
 

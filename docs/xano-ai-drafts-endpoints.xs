@@ -17,8 +17,8 @@
 // OPENAI_BEARER_TOKEN = Bearer sk-...
 // Примечание: OPENAI_BEARER_TOKEN нужен только если твой XanoScript не умеет
 // склеивать "Bearer " и OPENAI_API_KEY в header Authorization.
-// OPENAI_CAR_AI_MODEL = gpt-5.4-mini
-// OPENAI_CAR_AI_FALLBACK_MODEL = gpt-5.5
+// OPENAI_DEFAULT_MODEL = gpt-5.6-luna
+// OPENAI_LISTING_MODEL = gpt-5.6-luna
 // AI_MAX_PHOTOS = 4
 // AI_MAX_PHOTO_BYTES = 8388608
 // AI_DAILY_LIMIT_PRIVATE = 5
@@ -181,16 +181,17 @@ query "ai/generate-listing" verb=POST {
     }
 
     var $model {
-      value = $env.OPENAI_CAR_AI_MODEL
+      value = $env.OPENAI_LISTING_MODEL
     }
 
     conditional {
-      if ($model == null) {
+      if (($model == null) || ($model == "")) {
         var.update $model {
-          value = "gpt-5.4-mini"
+          value = $env.OPENAI_DEFAULT_MODEL
         }
       }
     }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
 
     var $photos {
       value = []
@@ -356,6 +357,7 @@ query "ai/generate-listing" verb=POST {
       }
       body = {
         model: $model
+        store: false
         input: [
           {
             role: "developer"

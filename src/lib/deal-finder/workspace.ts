@@ -6,7 +6,7 @@ export const DEAL_FINDER_DEFAULT_DETAIL_BUDGET = 4;
 export type DealFinderDecision = "undecided" | "contact" | "watch" | "skip";
 export type DealFinderContactStatus = "not_contacted" | "planned" | "contacted" | "waiting" | "closed";
 export type DealFinderContactChannel = "none" | "phone" | "email" | "message";
-export type DealFinderWorkspaceStorage = "server" | "device";
+export type DealFinderWorkspaceStorage = "server" | "local";
 
 export type DealFinderWorkspaceRecord = {
   listing_id: number;
@@ -65,7 +65,7 @@ export function createEmptyWorkspaceRecord(listingId: number): DealFinderWorkspa
     next_action_at: null,
     note: "",
     updated_at: null,
-    storage: "device",
+    storage: "local",
   };
 }
 
@@ -86,7 +86,7 @@ export function normalizeWorkspaceRecord(value: unknown, listingId: number): Dea
     next_action_at: validIso(record.next_action_at),
     note: typeof record.note === "string" ? record.note.trim().slice(0, 2000) : "",
     updated_at: validIso(record.updated_at),
-    storage: record.storage === "server" ? "server" : "device",
+    storage: record.storage === "server" ? "server" : "local",
   };
 }
 
@@ -108,7 +108,7 @@ export function writeWorkspaceRecord(
   value: DealFinderWorkspaceRecord,
   now = new Date(),
 ) {
-  const record = normalizeWorkspaceRecord({ ...value, updated_at: now.toISOString(), storage: "device" }, value.listing_id);
+  const record = normalizeWorkspaceRecord({ ...value, updated_at: now.toISOString(), storage: "local" }, value.listing_id);
   storage?.setItem(getWorkspaceStorageKey(value.listing_id), JSON.stringify(record));
   return record;
 }

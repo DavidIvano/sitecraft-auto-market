@@ -1,15 +1,25 @@
 // Xano endpoint: POST /ai/search/intent
-// Public buyer-search intent parser. No account or personal data is required.
+// Authenticated buyer-search intent parser. One AI credit is charged after success.
 query "ai/search/intent" verb=POST {
   api_group = "sitecraft-auto-market"
+  auth = "automarket_users"
 
   input {
     text query? filters=trim
     json current_filters?
     json user_context?
+    text idempotency_key? filters=trim|lower
   }
 
   stack {
+    precondition ($auth.id != null) {
+      error_type = "unauthorized"
+      error = "UNAUTHORIZED"
+    }
+    precondition (($input.idempotency_key|strlen) >= 32) {
+      error_type = "inputerror"
+      error = "INVALID_IDEMPOTENCY_KEY"
+    }
     conditional {
       if (($input.query == null) || ($input.query == "")) {
         db.add ai_search_logs {
@@ -76,17 +86,43 @@ query "ai/search/intent" verb=POST {
       error = "query is too long"
     }
 
-    var $model {
-      value = $env.OPENAI_CAR_AI_MODEL
+    db.query credit_transactions {
+      where = (($db.credit_transactions.user_id == $auth.id) && ($db.credit_transactions.idempotency_key == $input.idempotency_key))
+      return = {type: "single"}
+    } as $existing_transaction
+    conditional {
+      if ($existing_transaction != null) {
+        return {
+          value = {
+            success: true, idempotent_replay: true, fallback: false,
+            filters: ($existing_transaction.metadata|get:"filters":{}),
+            explanation: ($existing_transaction.metadata|get:"explanation":""),
+            confidence: ($existing_transaction.metadata|get:"confidence":0),
+            suggestions: ($existing_transaction.metadata|get:"suggestions":[]),
+            ai_credits: $existing_transaction.balance_after
+          }
+        }
+      }
     }
+    db.query user_credits {
+      where = ($db.user_credits.user_id == $auth.id)
+      return = {type: "single"}
+    } as $wallet
+    precondition (($wallet != null) && (($wallet.ai_credits|first_notnull:0|to_int) >= 1)) {
+      error_type = "accessdenied"
+      error = "INSUFFICIENT_CREDITS"
+    }
+
+    var $model { value = $env.OPENAI_SEARCH_MODEL }
 
     conditional {
       if (($model == null) || ($model == "")) {
         var.update $model {
-          value = "gpt-5.4-mini"
+          value = $env.OPENAI_DEFAULT_MODEL
         }
       }
     }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
 
     var $filters {
       value = {
@@ -148,8 +184,10 @@ query "ai/search/intent" verb=POST {
     api.request {
       url = "https://api.openai.com/v1/responses"
       method = "POST"
+      timeout = 60
       params = {
         model: $model
+        store: false
         input: [
           {
             role: "developer"
@@ -226,15 +264,25 @@ query "ai/search/intent" verb=POST {
 
     conditional {
       if ($openai_response.response.status == 200) {
-        var $openai_output_text {
-          value = $openai_response.response.result.output[0].content[0].text
-        }
-
-        conditional {
-          if (($openai_output_text == null) || ($openai_output_text == "")) {
-            var.update $openai_output_text {
-              value = $openai_response.response.result.output_text
+        var $openai_output_text { value = "" }
+        var $openai_output_items { value = $openai_response|get:"response.result.output":[] }
+        foreach ($openai_output_items) {
+          each as $openai_output_item {
+            var $openai_content_items { value = $openai_output_item|get:"content":[] }
+            foreach ($openai_content_items) {
+              each as $openai_content_item {
+                conditional {
+                  if (($openai_content_item.type == "output_text") && (($openai_content_item.text|first_notnull:"") != "")) {
+                    var.update $openai_output_text { value = $openai_content_item.text }
+                  }
+                }
+              }
             }
+          }
+        }
+        conditional {
+          if ($openai_output_text == "") {
+            var.update $openai_output_text { value = $openai_response|get:"response.result.output_text":"" }
           }
         }
 
@@ -312,6 +360,7 @@ query "ai/search/intent" verb=POST {
 
     db.add ai_search_logs {
       data = {
+        user_id        : $auth.id
         created_at     : now
         updated_at     : now
         query_text     : $input.query
@@ -327,6 +376,52 @@ query "ai/search/intent" verb=POST {
         metadata       : {fallback: $fallback, parse_status: $parse_status, model: $model}
       }
     } as $search_log
+
+    precondition (($status == "success") && ($fallback == false)) {
+      error_type = "inputerror"
+      error = "AI_SEARCH_FAILED"
+    }
+
+    var $credits_after { value = null }
+    db.transaction {
+      stack {
+        db.query user_credits {
+          where = ($db.user_credits.user_id == $auth.id)
+          return = {type: "single"}
+          lock = true
+        } as $locked_wallet
+        db.query credit_transactions {
+          where = (($db.credit_transactions.user_id == $auth.id) && ($db.credit_transactions.idempotency_key == $input.idempotency_key))
+          return = {type: "single"}
+        } as $duplicate_charge
+        conditional {
+          if ($duplicate_charge == null) {
+            var $balance_before { value = $locked_wallet.ai_credits|first_notnull:0|to_int }
+            precondition ($balance_before >= 1) {
+              error_type = "accessdenied"
+              error = "INSUFFICIENT_CREDITS"
+            }
+            var.update $credits_after { value = $balance_before - 1 }
+            db.edit user_credits {
+              field_name = "id"
+              field_value = $locked_wallet.id
+              data = {updated_at: now, ai_credits: $credits_after, ai_daily_generations: (($locked_wallet.ai_daily_generations|first_notnull:0) + 1), ai_monthly_generations: (($locked_wallet.ai_monthly_generations|first_notnull:0) + 1)}
+            } as $wallet_updated
+            db.add credit_transactions {
+              data = {
+                created_at: now, updated_at: now, user_id: $auth.id,
+                type: "ai_search_intent", amount: -1,
+                balance_before: $balance_before, balance_after: $credits_after,
+                related_car_id: null, notes: "AI buyer search intent",
+                status: "completed", idempotency_key: $input.idempotency_key,
+                metadata: {search_log_id: $search_log.id, model: $model, filters: $filters, explanation: $explanation, confidence: $confidence, suggestions: $suggestions}
+              }
+            } as $transaction
+          }
+          else { var.update $credits_after { value = $duplicate_charge.balance_after } }
+        }
+      }
+    }
   }
 
   response = {
@@ -336,6 +431,7 @@ query "ai/search/intent" verb=POST {
     explanation: $explanation
     confidence : $confidence
     suggestions: $suggestions
+    ai_credits : $credits_after
   }
 
   tags = ["sitecraft-auto-market", "ai", "buyer-search"]

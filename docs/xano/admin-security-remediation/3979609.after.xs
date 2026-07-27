@@ -4,6 +4,7 @@ query "ai/listing/analyze-photos" verb=POST {
 
   input {
     text r2_images? filters=trim
+    text idempotency_key? filters=trim|lower
   }
 
   stack {
@@ -12,17 +13,21 @@ query "ai/listing/analyze-photos" verb=POST {
       error = "Войдите в кабинет, чтобы создать AI-черновик."
     }
 
-    var $model {
-      value = $env.OPENAI_CAR_AI_MODEL
+    precondition (($input.idempotency_key|strlen) >= 32) {
+      error_type = "inputerror"
+      error = "INVALID_IDEMPOTENCY_KEY"
     }
+
+    var $model { value = $env.OPENAI_LISTING_MODEL }
 
     conditional {
       if (($model == null) || ($model == "")) {
         var.update $model {
-          value = "gpt-5.4-mini"
+          value = $env.OPENAI_DEFAULT_MODEL
         }
       }
     }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
 
     var $r2_images {
       value = []
@@ -60,49 +65,50 @@ query "ai/listing/analyze-photos" verb=POST {
       error = "Пользователь не найден."
     }
 
-    db.get user_credits {
-      field_name = "user_id"
-      field_value = $auth.id
+    db.query user_credits {
+      where = ($db.user_credits.user_id == $auth.id)
+      return = {type: "single"}
     } as $credits
 
-    conditional {
-      if ($credits == null) {
-        db.add user_credits {
-          data = {
-            user_id               : $auth.id
-            ai_credits            : 10
-            ai_daily_generations  : 0
-            ai_monthly_generations: 0
-            ai_daily_reset_date   : now
-            ai_monthly_reset_date : now
-          }
-        } as $credits
+    precondition ($credits != null) {
+      error_type = "accessdenied"
+      error = "CREDIT_WALLET_NOT_FOUND"
+    }
 
-        db.add credit_transactions {
-          data = {
-            user_id      : $auth.id
-            type         : "free_grant"
-            amount       : 10
-            balance_after: 10
-            notes        : "Welcome demo AI credits"
+    db.query credit_transactions {
+      where = (($db.credit_transactions.user_id == $auth.id) && ($db.credit_transactions.idempotency_key == $input.idempotency_key))
+      return = {type: "single"}
+    } as $existing_transaction
+    conditional {
+      if ($existing_transaction != null) {
+        var $existing_draft_id { value = $existing_transaction.metadata|get:"draft_id":0|to_int }
+        db.get car_drafts {
+          field_name = "id"
+          field_value = $existing_draft_id
+        } as $existing_draft
+        db.query car_draft_images {
+          where = (($db.car_draft_images.draft_id == $existing_draft_id) && ($db.car_draft_images.user_id == $auth.id))
+          return = {type: "list"}
+        } as $existing_images
+        return {
+          value = {
+            success: true, idempotent_replay: true, draft_id: $existing_draft.id, draft: $existing_draft,
+            images: $existing_images, ai_credits: $existing_transaction.balance_after, status: "ai_draft",
+            normalized_fields: $existing_draft.ai_payload.normalized_fields,
+            field_confidence: $existing_draft.ai_payload.field_confidence,
+            auto_fill_allowed: $existing_draft.ai_payload.auto_fill_allowed,
+            field_sources: $existing_draft.ai_payload.field_sources,
+            missing_fields: $existing_draft.ai_payload.missing_fields,
+            warnings: $existing_draft.ai_payload.warnings,
+            recommendations: $existing_draft.ai_payload.recommendations
           }
-        } as $credit_transaction
+        }
       }
     }
 
     precondition ($credits.ai_credits > 0) {
       error_type = "accessdenied"
       error = "Недостаточно AI-кредитов."
-    }
-
-    precondition ($credits.ai_daily_generations < 5) {
-      error_type = "accessdenied"
-      error = "Дневной лимит AI-генераций исчерпан."
-    }
-
-    precondition ($credits.ai_monthly_generations < 30) {
-      error_type = "accessdenied"
-      error = "Месячный лимит AI-генераций исчерпан."
     }
 
     db.add ai_generation_logs {
@@ -177,8 +183,10 @@ query "ai/listing/analyze-photos" verb=POST {
     api.request {
       url = "https://api.openai.com/v1/responses"
       method = "POST"
+      timeout = 60
       params = {
         model: $model
+        store: false
         input: [
           {
             role: "developer"
@@ -573,15 +581,25 @@ query "ai/listing/analyze-photos" verb=POST {
       error = "AI не смог обработать фото. Попробуйте другие изображения."
     }
 
-    var $openai_output_text {
-      value = $openai_response.response.result.output[0].content[0].text
-    }
-
-    conditional {
-      if (($openai_output_text == null) || ($openai_output_text == "")) {
-        var.update $openai_output_text {
-          value = $openai_response.response.result.output_text
+    var $openai_output_text { value = "" }
+    var $openai_output_items { value = $openai_response|get:"response.result.output":[] }
+    foreach ($openai_output_items) {
+      each as $openai_output_item {
+        var $openai_content_items { value = $openai_output_item|get:"content":[] }
+        foreach ($openai_content_items) {
+          each as $openai_content_item {
+            conditional {
+              if (($openai_content_item.type == "output_text") && (($openai_content_item.text|first_notnull:"") != "")) {
+                var.update $openai_output_text { value = $openai_content_item.text }
+              }
+            }
+          }
         }
+      }
+    }
+    conditional {
+      if ($openai_output_text == "") {
+        var.update $openai_output_text { value = $openai_response|get:"response.result.output_text":"" }
       }
     }
 
@@ -784,45 +802,49 @@ query "ai/listing/analyze-photos" verb=POST {
       }
     } as $draft
 
-    var $credits_after {
-      value = $credits.ai_credits - 1
-    }
-
-    var $daily_after {
-      value = $credits.ai_daily_generations + 1
-    }
-
-    var $monthly_after {
-      value = $credits.ai_monthly_generations + 1
-    }
-
-    var $credit_amount {
-      value = -1
-    }
-
-    db.edit user_credits {
-      field_name = "id"
-      field_value = $credits.id
-      data = {
-        ai_credits            : $credits_after
-        ai_daily_generations  : $daily_after
-        ai_monthly_generations: $monthly_after
-        updated_at            : now
-      }
-    } as $credits
-
-    conditional {
-      if ($credit_amount != 0) {
-        db.add credit_transactions {
-          data = {
-            user_id       : $auth.id
-            type          : "usage"
-            amount        : $credit_amount
-            balance_after : $credits_after
-            related_car_id: null
-            notes         : "AI form autofill draft created from photos"
+    var $credits_after { value = null }
+    db.transaction {
+      stack {
+        db.query user_credits {
+          where = ($db.user_credits.user_id == $auth.id)
+          return = {type: "single"}
+          lock = true
+        } as $locked_credits
+        db.query credit_transactions {
+          where = (($db.credit_transactions.user_id == $auth.id) && ($db.credit_transactions.idempotency_key == $input.idempotency_key))
+          return = {type: "single"}
+        } as $duplicate_charge
+        conditional {
+          if ($duplicate_charge == null) {
+            var $balance_before { value = $locked_credits.ai_credits|first_notnull:0|to_int }
+            precondition ($balance_before >= 1) {
+              error_type = "accessdenied"
+              error = "INSUFFICIENT_CREDITS"
+            }
+            var.update $credits_after { value = $balance_before - 1 }
+            db.edit user_credits {
+              field_name = "id"
+              field_value = $locked_credits.id
+              data = {
+                ai_credits: $credits_after,
+                ai_daily_generations: (($locked_credits.ai_daily_generations|first_notnull:0) + 1),
+                ai_monthly_generations: (($locked_credits.ai_monthly_generations|first_notnull:0) + 1),
+                updated_at: now
+              }
+            } as $credits
+            db.add credit_transactions {
+              data = {
+                created_at: now, updated_at: now, user_id: $auth.id,
+                type: "ai_listing_draft", amount: -1,
+                balance_before: $balance_before, balance_after: $credits_after,
+                related_car_id: null, notes: "AI form autofill draft created from photos",
+                status: "completed", idempotency_key: $input.idempotency_key,
+                metadata: {draft_id: $draft.id, model: $model, photo_count: $photo_count}
+              }
+            } as $transaction
           }
-        } as $transaction
+          else { var.update $credits_after { value = $duplicate_charge.balance_after } }
+        }
       }
     }
 

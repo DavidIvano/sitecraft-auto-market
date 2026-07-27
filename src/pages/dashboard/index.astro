@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import ContactProfileForm from "../../components/dashboard/ContactProfileForm.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
@@ -14,6 +15,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           <p class="lead">Баланс, объявления и активные продвижения в одном месте.</p>
         </div>
         <div class="dashboard-home-actions">
+          <a class="button button-light" href="/dashboard/favorites/">Избранное</a>
           <a class="button button-light" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
           <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
         </div>
@@ -26,6 +28,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       </div>
     </div>
   </section>
+  <section class="section dashboard-contact-section"><div class="container"><ContactProfileForm /></div></section>
 
   <script>
     import { fetchCurrentUser, getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
@@ -41,7 +44,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
     const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
 
-    const renderSummary = (summary: DashboardSummary) => {
+    const renderSummary = (summary: DashboardSummary, favoriteCount: number | null = null) => {
       if (!summaryRoot) return;
       summaryRoot.innerHTML = `
         <a class="dashboard-summary-card" href="/dashboard/billing/">
@@ -61,6 +64,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           <strong>${escapeHtml(summary.listings.promoted)} объявлений</strong>
           <span>${escapeHtml(summary.active_promotions.homepage)} премиум · ${escapeHtml(summary.active_promotions.featured)} выделено · ${escapeHtml(summary.active_promotions.boosted)} поднято</span>
           <b>Управлять продвижением</b>
+        </a>
+        <a class="dashboard-summary-card" href="/dashboard/favorites/">
+          <span class="dashboard-summary-label">Сохранённые авто</span>
+          <strong>${favoriteCount === null ? "—" : escapeHtml(favoriteCount)} объявлений</strong>
+          <span>Сохранённые автомобили из общего каталога</span>
+          <b>Открыть избранное</b>
         </a>`;
     };
 
@@ -82,7 +91,18 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           throw new Error("Вход сохранён, но сервер не подтвердил сессию. Повторите запрос.");
         }
         if (!response.ok) throw new Error("Сервис кабинета временно недоступен.");
-        renderSummary(await response.json() as DashboardSummary);
+        const summary = await response.json() as DashboardSummary;
+        let favoriteCount: number | null = null;
+        try {
+          const favoriteResponse = await fetch(`${apiUrl}${API_ROUTES.favorites}?page=1&per_page=1`, { headers: { Authorization: `Bearer ${token}` } });
+          if (favoriteResponse.ok) {
+            const favoritePayload = await favoriteResponse.json();
+            favoriteCount = Number(favoritePayload?.total ?? favoritePayload?.items?.length ?? 0);
+          }
+        } catch {
+          favoriteCount = null;
+        }
+        renderSummary(summary, favoriteCount);
       } catch (error) {
         renderError(error instanceof Error ? error.message : "Проверьте соединение и повторите запрос.");
       } finally {

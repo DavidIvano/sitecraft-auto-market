@@ -29,6 +29,10 @@ import {
   writeWorkspaceRecord,
   type DealFinderWorkspaceRecord,
 } from "./workspace";
+import {
+  loadWorkspaceRecordFromServerOrLocal,
+  saveWorkspaceRecordToServerOrLocal,
+} from "./workspace-fallback";
 
 type RequestOptions = RequestInit & { signal?: AbortSignal };
 
@@ -280,7 +284,7 @@ export async function requestDealFinderDescriptionTranslation(
   }
   return request<DealFinderTranslationResponse>(API_ROUTES.dealFinderListingTranslateDescription(id), {
     method: "POST",
-    body: JSON.stringify({ target_language: targetLanguage }),
+    body: JSON.stringify({ source_language: "de", target_language: targetLanguage }),
     signal,
   });
 }
@@ -318,8 +322,11 @@ export async function getDealFinderWorkspace(id: number | string, signal?: Abort
   if (!DEAL_FINDER_WORKSPACE_API_ENABLED || DEAL_FINDER_USE_MOCK_DATA) {
     return readWorkspaceRecord(browserStorage(), listingId);
   }
-  const payload = await request<unknown>(API_ROUTES.dealFinderListingWorkspace(id), { signal });
-  return normalizeWorkspaceRecord({ ...(payload as Record<string, unknown>), storage: "server" }, listingId);
+  return loadWorkspaceRecordFromServerOrLocal(
+    listingId,
+    () => request<unknown>(API_ROUTES.dealFinderListingWorkspace(id), { signal }),
+    browserStorage(),
+  );
 }
 
 export async function saveDealFinderWorkspace(
@@ -329,14 +336,18 @@ export async function saveDealFinderWorkspace(
 ): Promise<DealFinderWorkspaceRecord> {
   const listingId = Number(id);
   if (!DEAL_FINDER_WORKSPACE_API_ENABLED || DEAL_FINDER_USE_MOCK_DATA) {
-    return writeWorkspaceRecord(browserStorage(), { ...normalizeWorkspaceRecord(input, listingId), storage: "device" });
+    return writeWorkspaceRecord(browserStorage(), normalizeWorkspaceRecord({ ...input, storage: "local" }, listingId));
   }
-  const payload = await request<unknown>(API_ROUTES.dealFinderListingWorkspace(id), {
-    method: "PATCH",
-    body: JSON.stringify(input),
-    signal,
-  });
-  return normalizeWorkspaceRecord({ ...(payload as Record<string, unknown>), storage: "server" }, listingId);
+  return saveWorkspaceRecordToServerOrLocal(
+    listingId,
+    input,
+    () => request<unknown>(API_ROUTES.dealFinderListingWorkspace(id), {
+      method: "PATCH",
+      body: JSON.stringify(input),
+      signal,
+    }),
+    browserStorage(),
+  );
 }
 
 export async function getDealFinderSyncLogs(signal?: AbortSignal): Promise<DealFinderSyncLog[]> {

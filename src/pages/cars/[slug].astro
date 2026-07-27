@@ -1,9 +1,12 @@
 ---
 import StatusBadge from "../../components/StatusBadge.astro";
 import CarCard from "../../components/CarCard.astro";
+import ContactSellerModal from "../../components/ContactSellerModal.astro";
+import VehicleSpecsGrid from "../../components/VehicleSpecsGrid.astro";
+import FavoriteButton from "../../components/cars/FavoriteButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { SITE_URL } from "../../lib/config";
-import { getCarCardImageUrl, getCarDetailImageUrls } from "../../lib/imageUrls";
+import { getCarDetailImageUrls } from "../../lib/imageUrls";
 import { isDisplayValue, maskVin, sanitizePublicDescription } from "../../lib/listingFields";
 import { getStoredAiScores, hasStoredAiAnalysis, parseAiPayload } from "../../lib/aiScores";
 import { formatCount, formatFirstRegistration, formatImportantDetail, formatOwnersCount, formatSellerType, formatTuvDetail } from "../../lib/listingDisplay";
@@ -125,6 +128,7 @@ const staticSellerName = String(staticSeller?.name || "").trim() || "Прода�
 const staticSellerType = String(staticSeller?.type || "").trim() === "dealer" ? "Дилер" : sellerTypeLabel;
 const staticSellerCity = String(staticSeller?.city || car.city || "").trim();
 const staticSellerCount = Number(staticSeller?.active_listings_count) || 0;
+const staticSellerContact = staticSeller?.contact || null;
 const cleanSeoText = (value: unknown) => String(value ?? "")
   .split(/\r?\n/)
   .filter((line) => !/^(телефон|email|e-mail|продавец|vin)\s*:/i.test(line.trim()))
@@ -488,14 +492,8 @@ const breadcrumbSchema = {
           {isSold && <span class="sold-detail-badge">Автомобиль продан</span>}
           <h1>{car.title}</h1>
           <p class="detail-price">{formatter.format(car.price)}</p>
-          <dl class="spec-grid detail-spec-grid detail-quick-spec-grid">
-            {quickSpecItems.map((item) => (
-              <div>
-                <dt>{item.label}</dt>
-                <dd>{item.value}</dd>
-              </div>
-            ))}
-          </dl>
+          <FavoriteButton listingId={car.id} initialSaved={Boolean(car.is_saved)} source="car_detail" class="detail-favorite-button" />
+          <VehicleSpecsGrid items={quickSpecItems} class="detail-spec-grid detail-quick-spec-grid" />
           <a class="button button-primary full-width detail-contact-jump" href="#seller-information">Связаться с продавцом</a>
         </div>
       </article>
@@ -516,14 +514,7 @@ const breadcrumbSchema = {
               {detailGroups.map((group) => (
                 <section class="detail-property-group">
                   <h3>{group.title}</h3>
-                  <dl class="detail-property-grid">
-                    {group.items.map((item) => (
-                      <div>
-                        <dt>{item.label}</dt>
-                        <dd>{item.value}</dd>
-                      </div>
-                    ))}
-                  </dl>
+                  <VehicleSpecsGrid items={group.items} class="detail-property-grid" />
                 </section>
               ))}
             </div>
@@ -634,8 +625,7 @@ const breadcrumbSchema = {
           {staticSellerCity && <span data-seller-city>{staticSellerCity}</span>}
           <span data-seller-count hidden={!staticSellerCount}>{staticSellerCount ? `${staticSellerCount} объявл.` : ""}</span>
         </div>
-        <a class="button button-primary full-width" data-seller-contact hidden>Связаться с продавцом</a>
-        <p class="seller-contact-note" data-seller-contact-note>Контакт появится после загрузки данных продавца.</p>
+        <ContactSellerModal sellerName={staticSellerName} listingTitle={car.title} contact={staticSellerContact} />
       </section>
     </div>
   </section>
@@ -651,7 +641,7 @@ const breadcrumbSchema = {
             <span>{sellerCars.length} из доступных</span>
           </div>
           <div class="seller-listings-grid" aria-label="Другие автомобили продавца">
-            {sellerCars.map((sellerCar) => <CarCard car={sellerCar} />)}
+            {sellerCars.map((sellerCar) => <CarCard car={sellerCar} source="seller_listings" />)}
           </div>
         </div>
       </section>
@@ -665,26 +655,12 @@ const breadcrumbSchema = {
             <h2>Похожие автомобили</h2>
           </div>
           <div class="similar-cars-grid" aria-label="Похожие автомобили">
-            {similarCars.map(({ car: similarCar, reason }) => {
-              const imageUrl = getCarCardImageUrl(similarCar);
-              return (
-                <a class="similar-car-card" data-similar-slug={similarCar.slug} href={`/cars/${similarCar.slug}`} aria-label={`Открыть объявление ${similarCar.title}`}>
-                  {
-                    imageUrl ? (
-                      <img src={imageUrl} alt={similarCar.title} loading="lazy" decoding="async" />
-                    ) : (
-                      <span class="similar-car-empty">Фото</span>
-                    )
-                  }
-                  <span class="similar-car-body">
-                    <strong>{similarCar.title}</strong>
-                    <span>{formatter.format(similarCar.price)}</span>
-                    <small>{similarCar.year} · {similarCar.city}</small>
-                    <em class="similarity-reason">{reason}</em>
-                  </span>
-                </a>
-              );
-            })}
+            {similarCars.map(({ car: similarCar, reason }) => (
+              <div class="similar-car-card-unified" data-similar-slug={similarCar.slug}>
+                <CarCard car={similarCar} source="similar_cars" />
+                <span class="similarity-reason">{reason}</span>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -700,6 +676,9 @@ const breadcrumbSchema = {
   ></script>
   <script>
     import { getOrCreateSessionId } from "../../lib/analytics/session";
+    import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
+
+    installPublicCarCardInteractions();
 
     const sellerSummary = document.querySelector("[data-seller-summary]");
     const loadSellerSummary = async () => {
@@ -720,7 +699,6 @@ const breadcrumbSchema = {
         const type = sellerSummary.querySelector("[data-seller-type]");
         const city = sellerSummary.querySelector("[data-seller-city]");
         const count = sellerSummary.querySelector("[data-seller-count]");
-        const contact = sellerSummary.querySelector("[data-seller-contact]");
         const note = sellerSummary.querySelector("[data-seller-contact-note]");
 
         if (name instanceof HTMLElement && typeof seller.name === "string" && seller.name.trim()) {
@@ -738,16 +716,26 @@ const breadcrumbSchema = {
           count.hidden = false;
         }
 
-        const href = typeof seller.contact?.href === "string" ? seller.contact.href.trim() : "";
-        const contactType = seller.contact?.type === "phone" ? "phone" : "email";
-        if (contact instanceof HTMLAnchorElement && /^(tel:|mailto:)/i.test(href)) {
-          contact.href = href;
-          contact.textContent = contactType === "phone" ? "Позвонить продавцу" : "Написать продавцу";
-          contact.hidden = false;
+        const legacyHref = typeof seller.contact?.href === "string" ? seller.contact.href.trim() : "";
+        const phoneHref = typeof seller.contact?.phone_href === "string" && /^tel:/i.test(seller.contact.phone_href)
+          ? seller.contact.phone_href
+          : /^tel:/i.test(legacyHref) ? legacyHref : "";
+        const emailHref = typeof seller.contact?.email_href === "string" && /^mailto:/i.test(seller.contact.email_href)
+          ? seller.contact.email_href
+          : /^mailto:/i.test(legacyHref) ? legacyHref : "";
+        const triggers = sellerSummary.querySelectorAll<HTMLElement>("[data-seller-contact-trigger]");
+        if (phoneHref || emailHref) {
+          triggers.forEach((trigger) => {
+            trigger.dataset.phoneHref = phoneHref;
+            trigger.dataset.emailHref = emailHref;
+            trigger.dataset.sellerName = typeof seller.name === "string" ? seller.name.trim() : "Продавец";
+            trigger.hidden = false;
+          });
           if (note instanceof HTMLElement) note.hidden = true;
         } else if (note instanceof HTMLElement) {
           note.textContent = "Продавец пока не добавил публичный способ связи.";
         }
+        refreshPublicCarCardIcons(sellerSummary);
       } catch {
         // Карточка остаётся полезной даже при временной недоступности контакта.
       }

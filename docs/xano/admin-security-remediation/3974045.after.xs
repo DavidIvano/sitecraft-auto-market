@@ -21,16 +21,17 @@ query "ai/generate-listing" verb=POST {
     }
 
     var $model {
-      value = $env.OPENAI_CAR_AI_MODEL
+      value = $env.OPENAI_LISTING_MODEL
     }
 
     conditional {
-      if ($model == null) {
+      if (($model == null) || ($model == "")) {
         var.update $model {
-          value = "gpt-5.4-mini"
+          value = $env.OPENAI_DEFAULT_MODEL
         }
       }
     }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
 
     var $r2_images {
       value = []
@@ -191,6 +192,7 @@ query "ai/generate-listing" verb=POST {
       method = "POST"
       params = {
         model: $model
+        store: false
         input: [
           {
             role: "developer"

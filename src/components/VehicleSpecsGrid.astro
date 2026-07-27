@@ -1,0 +1,17 @@
+---
+type SpecItem = { label: string; value: string; icon?: string };
+import VehicleSpecItem from "./VehicleSpecItem.astro";
+type Props = { items: SpecItem[]; class?: string };
+const { items, class: className = "" } = Astro.props;
+const iconByLabel: Record<string, string> = {
+  "Тип транспорта": "car-front", "Марка": "badge", "Модель": "car", "Год": "calendar", "Год выпуска": "calendar",
+  "Первая регистрация": "calendar-check", "Состояние": "shield-check", "Тип продавца": "user-round",
+  "Цена": "euro", "Валюта": "coins", "Город": "map-pin", "Страна": "globe-2", "Топливо": "fuel",
+  "Объём двигателя": "gauge", "Коробка": "settings-2", "Привод": "activity", "Кузов": "car-front",
+  "Цвет": "palette", "Двери": "door-open", "Места": "users", "Пробег": "route", "Владельцы": "user-round",
+  "TÜV / HU": "shield-check", "VIN": "scan-line", "Опубликовано": "calendar-plus", "Обновлено": "refresh-cw",
+};
+---
+<dl class:list={["vehicle-specs-grid", className]}>
+  {items.map((item) => <VehicleSpecItem icon={item.icon || iconByLabel[item.label] || "circle-dot"} label={item.label} value={item.value} />)}
+</dl>

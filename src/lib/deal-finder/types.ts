@@ -312,12 +312,17 @@ export type DealFinderFilters = {
 export type DealFinderSearchInput = Omit<DealFinderSearch, "id" | "user_id" | "created_at" | "updated_at" | "last_email_at" | "last_listing_at">;
 
 export class DealFinderApiError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
   constructor(
     message: string,
-    public readonly status: number,
-    public readonly code?: string,
+    status: number,
+    code?: string,
   ) {
     super(message);
     this.name = "DealFinderApiError";
+    this.status = status;
+    this.code = code;
   }
 }

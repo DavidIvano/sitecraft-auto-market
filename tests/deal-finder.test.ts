@@ -262,9 +262,11 @@ test("Deal Finder AI rendering and source links preserve the privacy boundary", 
   const analysisView = readProjectFile("src/lib/deal-finder/analysis-view.ts");
   const detailPage = readProjectFile("src/pages/dashboard/deal-finder/listing/index.astro");
   const client = readProjectFile("src/lib/deal-finder/client.ts");
+  const actions = readProjectFile("src/lib/deal-finder/action-buttons.ts");
 
   assert.doesNotMatch(analysisView + detailPage, /set:html/);
-  assert.match(client, /target="_blank" rel="noopener noreferrer nofollow"/);
+  assert.match(client, /getSafeDealFinderSourceUrl/);
+  assert.match(actions, /target="_blank" rel="noopener noreferrer nofollow"/);
   assert.doesNotMatch(client, /input_snapshot|provider_response_id|raw OpenAI response/);
 });
 

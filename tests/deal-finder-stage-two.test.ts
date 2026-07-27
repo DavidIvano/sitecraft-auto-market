@@ -52,7 +52,7 @@ test("workspace records are bounded, normalized and recover from invalid storage
 
   let stored = "";
   const saved = writeWorkspaceRecord({ setItem: (_key, value) => { stored = value; } }, normalized, new Date("2026-07-19T09:00:00.000Z"));
-  assert.equal(saved.storage, "device");
+  assert.equal(saved.storage, "local");
   assert.equal(JSON.parse(stored).updated_at, "2026-07-19T09:00:00.000Z");
 });
 

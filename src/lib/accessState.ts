@@ -26,7 +26,7 @@ const STATES: Record<AppAccessStateCode, AppAccessState> = {
   sign_in_required: {
     code: "sign_in_required",
     title: "Требуется вход",
-    message: "Сессия завершена или не была создана. Войдите снова, и мы вернём вас на эту страницу.",
+    message: "Сессия истекла. Войдите снова.",
     actionLabel: "Войти",
     actionHref: "/login",
     retryable: false,
@@ -50,7 +50,7 @@ const STATES: Record<AppAccessStateCode, AppAccessState> = {
   temporarily_unavailable: {
     code: "temporarily_unavailable",
     title: "Сервис временно недоступен",
-    message: "Вход сохранён. Не удалось подтвердить состояние сервиса, поэтому попробуйте запрос ещё раз.",
+    message: "Не удалось загрузить внутренние данные.",
     actionLabel: "Повторить",
     retryable: true,
   },

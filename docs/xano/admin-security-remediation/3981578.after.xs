@@ -6,7 +6,7 @@ query "ai/moderation/check-listing" verb=POST {
   auth = "automarket_users"
 
   input {
-    int listing_id filters=min:1
+    int listing_id?
     json listing?
     json images?
   }
@@ -31,6 +31,11 @@ query "ai/moderation/check-listing" verb=POST {
     precondition ($admin_user.role == "admin") {
       error_type = "accessdenied"
       error = "Admin access required"
+    }
+
+    precondition (($input.listing_id|first_notnull:0|to_int) > 0) {
+      error_type = "inputerror"
+      error = "listing_id is required"
     }
 
     db.get car_listings {
@@ -1244,16 +1249,17 @@ query "ai/moderation/check-listing" verb=POST {
     }
 
     var $model {
-      value = $env.OPENAI_CAR_AI_MODEL
+      value = $env.OPENAI_MODERATION_MODEL
     }
 
     conditional {
       if (($model == null) || ($model == "")) {
         var.update $model {
-          value = "gpt-5.4-mini"
+          value = $env.OPENAI_DEFAULT_MODEL
         }
       }
     }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
 
     var $openai_context {
       value = {
@@ -1276,8 +1282,10 @@ query "ai/moderation/check-listing" verb=POST {
     api.request {
       url = "https://api.openai.com/v1/responses"
       method = "POST"
+      timeout = 60
       params = {
         model: $model
+        store: false
         input: [
             {role: "developer", content: [{type: "input_text", text: "Ты помощник модератора автомобильного маркетплейса. Тебе передают уже рассчитанные правилами risk level, trust score, issues и recommendation. Не изменяй числовые оценки и решение. Не утверждай, что автомобиль технически проверен, исправен, без ДТП или юридически чист. Сформулируй понятное краткое объяснение и корректную причину исправления или отказа. Не раскрывай внутренние security details и персональные данные. Верни только JSON по схеме."}]}
             {role: "user", content: [{type: "input_text", text: $openai_context|json_encode}]}
@@ -1309,15 +1317,25 @@ query "ai/moderation/check-listing" verb=POST {
 
     conditional {
       if ($openai_response.response.status == 200) {
-        var $output_text {
-          value = $openai_response.response.result.output[0].content[0].text
-        }
-
-        conditional {
-          if (($output_text == null) || ($output_text == "")) {
-            var.update $output_text {
-              value = $openai_response.response.result.output_text
+        var $output_text { value = "" }
+        var $output_items { value = $openai_response|get:"response.result.output":[] }
+        foreach ($output_items) {
+          each as $output_item {
+            var $content_items { value = $output_item|get:"content":[] }
+            foreach ($content_items) {
+              each as $content_item {
+                conditional {
+                  if (($content_item.type == "output_text") && (($content_item.text|first_notnull:"") != "")) {
+                    var.update $output_text { value = $content_item.text }
+                  }
+                }
+              }
             }
+          }
+        }
+        conditional {
+          if ($output_text == "") {
+            var.update $output_text { value = $openai_response|get:"response.result.output_text":"" }
           }
         }
 

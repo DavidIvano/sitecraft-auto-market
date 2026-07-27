@@ -1,0 +1,14 @@
+---
+type Props = {
+  label: string; icon: string; variant: "primary" | "success" | "warning" | "danger" | "neutral" | "ai";
+  kind: "source" | "save" | "viewed" | "hide" | "restore" | "compare" | "detail" | "ai";
+  href?: string; action?: string; pressed?: boolean; disabled?: boolean; external?: boolean; compareId?: number | string;
+};
+const { label, icon, variant, kind, href, action, pressed, disabled = false, external = false, compareId } = Astro.props;
+const className = `deal-action is-${variant} is-${kind}`;
+---
+{href ? (
+  <a class={className} href={href} target={external ? "_blank" : undefined} rel={external ? "noopener noreferrer nofollow" : undefined}><i data-lucide={icon} aria-hidden="true"></i><span>{label}</span></a>
+) : (
+  <button class={className} type="button" data-deal-action={action} data-deal-compare={compareId} aria-pressed={pressed} disabled={disabled}><i data-lucide={icon} aria-hidden="true"></i><span>{label}</span></button>
+)}

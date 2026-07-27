@@ -274,8 +274,9 @@ query "ai/listing/quality-score" verb=POST {
     var $status { value = "fallback" }
     var $error_message { value = null }
     var $raw_ai_payload { value = null }
-    var $model { value = $env.OPENAI_CAR_AI_MODEL }
-    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.4-mini" } } }
+    var $model { value = $env.OPENAI_LISTING_MODEL }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = $env.OPENAI_DEFAULT_MODEL } } }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
     var $openai_context {
       value = {
         listing_quality_score: $score
@@ -291,8 +292,10 @@ query "ai/listing/quality-score" verb=POST {
     api.request {
       url = "https://api.openai.com/v1/responses"
       method = "POST"
+      timeout = 60
       params = {
         model: $model
+        store: false
         input: [
           {role: "developer", content: [{type: "input_text", text: "Ты AI-помощник автомобильного маркетплейса в Германии. Числовые оценки уже рассчитаны правилами: не изменяй их и не возвращай новые score. Сформулируй короткие рекомендации продавцу и summary. Не утверждай, что автомобиль технически исправен, проверен на ДТП или имеет гарантированную рыночную цену. Верни только JSON по схеме."}]}
           {role: "user", content: [{type: "input_text", text: $openai_context|json_encode}]}
@@ -329,12 +332,25 @@ query "ai/listing/quality-score" verb=POST {
 
     conditional {
       if ($openai_response.response.status == 200) {
-        var $output_text { value = $openai_response.response.result.output[0].content[0].text }
-        conditional {
-          if (($output_text == null) || ($output_text == "")) {
-            var.update $output_text {
-              value = $openai_response.response.result.output_text
+        var $output_text { value = "" }
+        var $output_items { value = $openai_response|get:"response.result.output":[] }
+        foreach ($output_items) {
+          each as $output_item {
+            var $content_items { value = $output_item|get:"content":[] }
+            foreach ($content_items) {
+              each as $content_item {
+                conditional {
+                  if (($content_item.type == "output_text") && (($content_item.text|first_notnull:"") != "")) {
+                    var.update $output_text { value = $content_item.text }
+                  }
+                }
+              }
             }
+          }
+        }
+        conditional {
+          if ($output_text == "") {
+            var.update $output_text { value = $openai_response|get:"response.result.output_text":"" }
           }
         }
         conditional {

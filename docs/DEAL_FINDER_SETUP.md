@@ -5,7 +5,7 @@
 Keep these variables disabled by default:
 
 ```dotenv
-PUBLIC_DEAL_FINDER_ENABLED=false
+PUBLIC_DEAL_FINDER_ENABLED=true
 PUBLIC_DEAL_FINDER_USE_MOCK_DATA=false
 DEAL_FINDER_SYNC_ENABLED=false
 DEAL_FINDER_DRY_RUN=true
@@ -17,7 +17,7 @@ Set `PUBLIC_DEAL_FINDER_ENABLED=true` only when a signed-in user has `admin` or 
 
 Production was explicitly enabled on 2026-07-18 with real Xano mode. The Worker checks the AI queue every two minutes and performs one bounded source sync daily at `06:15 UTC`. The Free-plan source budget is one search over up to 100 candidates plus at most four detail requests per day, for a hard scheduled maximum of five Kleinanzeigen Agent credits. Manual source sync is disabled; the current limits are one search profile, four new detail records per daily sync and one AI task per queue run. The disabled values above remain the safe defaults for new environments and rollback.
 
-Worker-only required secrets are `KLEINANZEIGEN_AGENT_API_KEY`, `XANO_API_BASE_URL`, `XANO_DEAL_FINDER_INGEST_SECRET`, `DEAL_FINDER_WORKER_TRIGGER_SECRET`, and `OPENAI_API_KEY`. They belong only in ignored local Worker vars or, after a separately approved Worker deployment, Cloudflare Worker Secrets. AI defaults are `DEAL_FINDER_OPENAI_MODEL=gpt-5.6-luna`, `DEAL_FINDER_MAX_AI_ANALYSES_PER_RUN=1`, `DEAL_FINDER_AI_ENABLED=false`, `DEAL_FINDER_AI_DRY_RUN=true`, and `DEAL_FINDER_AI_TIMEOUT_MS=30000`. Sync remains separately locked to zero AI analyses.
+Worker-only required secrets are `KLEINANZEIGEN_AGENT_API_KEY`, `XANO_API_BASE_URL`, `XANO_DEAL_FINDER_INGEST_SECRET`, `DEAL_FINDER_WORKER_TRIGGER_SECRET`, and `OPENAI_API_KEY`. They belong only in ignored local Worker vars or, after a separately approved Worker deployment, Cloudflare Worker Secrets. The reviewed live configuration uses `OPENAI_DEAL_FINDER_MODEL=gpt-5.6-luna`, `DEAL_FINDER_MAX_AI_ANALYSES_PER_RUN=1`, `DEAL_FINDER_AI_ENABLED=true`, `DEAL_FINDER_AI_DRY_RUN=false`, and `DEAL_FINDER_AI_TIMEOUT_MS=30000`. Sync remains separately limited to zero automatic AI analyses.
 
 ## Worker security boundary
 

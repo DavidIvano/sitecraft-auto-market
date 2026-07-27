@@ -17,8 +17,8 @@
 ```text
 OPENAI_API_KEY=sk-...
 OPENAI_BEARER_TOKEN=Bearer sk-...
-OPENAI_CAR_AI_MODEL=gpt-5.4-mini
-OPENAI_CAR_AI_FALLBACK_MODEL=gpt-5.5
+OPENAI_DEFAULT_MODEL=gpt-5.6-luna
+OPENAI_LISTING_MODEL=gpt-5.6-luna
 AI_MAX_PHOTOS=4
 AI_MAX_PHOTO_BYTES=8388608
 AI_DAILY_LIMIT_PRIVATE=5
@@ -38,4 +38,3 @@ Frontend уже готов:
 Если Xano ругается на `car_listings`, а твоя таблица называется `cars`, замени `car_listings` на `cars`.
 
 Если Xano ругается на `car_listing_images`, а твоя таблица называется `car_images`, замени `car_listing_images` на `car_images`.
-

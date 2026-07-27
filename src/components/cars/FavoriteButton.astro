@@ -1,0 +1,7 @@
+---
+import { renderFavoriteButtonMarkup } from "../../lib/favorites";
+type Props = { listingId: number | string; initialSaved?: boolean; source?: string; class?: string };
+const { listingId, initialSaved = false, source = "detail", class: className = "" } = Astro.props;
+const markup = renderFavoriteButtonMarkup(listingId, initialSaved, source).replace('class="car-card-favourite"', `class="car-card-favourite ${className}"`);
+---
+<Fragment set:html={markup} />

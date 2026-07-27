@@ -284,8 +284,9 @@ query "ai/listing/generate-description" verb=POST {
     var $status { value = "fallback" }
     var $error_message { value = null }
     var $response_model { value = "local-template" }
-    var $provider_model { value = $env.OPENAI_CAR_AI_MODEL }
-    conditional { if (($provider_model == null) || ($provider_model == "")) { var.update $provider_model { value = "gpt-5.4-mini" } } }
+    var $provider_model { value = $env.OPENAI_LISTING_MODEL }
+    conditional { if (($provider_model == null) || ($provider_model == "")) { var.update $provider_model { value = $env.OPENAI_DEFAULT_MODEL } } }
+    conditional { if (($provider_model == null) || ($provider_model == "")) { var.update $provider_model { value = "gpt-5.6-luna" } } }
 
     var $user_text {
       value = {mode: $input.mode, normalized_facts: $facts, analysis: $analysis_summary}|json_encode
@@ -304,8 +305,10 @@ query "ai/listing/generate-description" verb=POST {
     api.request {
       url = "https://api.openai.com/v1/responses"
       method = "POST"
+      timeout = 60
       params = {
         model: $provider_model
+        store: false
         input: [
           {role: "developer", content: [{type: "input_text", text: "Ты редактор объявлений автомобильного маркетплейса в Германии. Создавай честные тексты только на основе переданных фактов и осторожных видимых признаков фото. Не придумывай техническое состояние, сервисную историю, ДТП, комплектацию, TÜV/HU, владельцев, гарантию или рыночную стоимость. Если данных нет — не добавляй их. Не включай телефон, email, VIN или персональные данные. Соблюдай режим: sales 700-1400 символов на русском; short 250-500 на языке исходного текста; technical 500-1000 на русском без рекламы; de 700-1400 на немецком; kleinanzeigen 600-1200 на немецком без Privatverkauf, если это не указано; whatsapp 200-500 на немецком. Верни только JSON по схеме."}]}
           {role: "user", content: $user_content}
@@ -345,10 +348,25 @@ query "ai/listing/generate-description" verb=POST {
 
     conditional {
       if ($openai_response.response.status == 200) {
-        var $output_text { value = $openai_response.response.result.output[0].content[0].text }
+        var $output_text { value = "" }
+        var $output_items { value = $openai_response|get:"response.result.output":[] }
+        foreach ($output_items) {
+          each as $output_item {
+            var $content_items { value = $output_item|get:"content":[] }
+            foreach ($content_items) {
+              each as $content_item {
+                conditional {
+                  if (($content_item.type == "output_text") && (($content_item.text|first_notnull:"") != "")) {
+                    var.update $output_text { value = $content_item.text }
+                  }
+                }
+              }
+            }
+          }
+        }
         conditional {
-          if (($output_text == null) || ($output_text == "")) {
-            var.update $output_text { value = $openai_response.response.result.output_text }
+          if ($output_text == "") {
+            var.update $output_text { value = $openai_response|get:"response.result.output_text":"" }
           }
         }
         conditional {
