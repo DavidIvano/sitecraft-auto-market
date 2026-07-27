@@ -174,7 +174,7 @@ test("translation queue reuses completed and active hashes, and creates after a 
   assert.equal(safeTranslationText('<script>alert(1)</script><b>Текст</b>'), "alert(1)Текст");
 });
 
-test("translation Xano blueprint is owner-scoped, queue-only and does not mutate the original description", () => {
+test("translation Xano endpoint is owner-scoped, cached and uses Luna without mutating the source", () => {
   const endpoint = readProjectFile("docs/xano/deal-finder-frontend-translate-description.xs");
   const table = readProjectFile("docs/xano/deal-finder-translations.xs");
   assert.match(endpoint, /auth = "automarket_users"/);
@@ -183,14 +183,17 @@ test("translation Xano blueprint is owner-scoped, queue-only and does not mutate
   assert.match(endpoint, /deal_finder_listings\.user_id == \$current_user\.id/);
   assert.match(endpoint, /error_type = "notfound"/);
   assert.match(endpoint, /\$input\.target_language == "ru"/);
+  assert.match(endpoint, /\$input\.source_language == "de"/);
   assert.match(endpoint, /\$listing\.description\|sha256/);
   assert.match(endpoint, /status == "completed"/);
-  assert.match(endpoint, /status == "pending"/);
-  assert.match(endpoint, /status == "processing"/);
+  assert.match(endpoint, /status: "processing"/);
+  assert.match(endpoint, /api\.openai\.com\/v1\/responses/);
+  assert.match(endpoint, /gpt-5\.6-luna/);
+  assert.match(endpoint, /store: false/);
+  assert.match(endpoint, /strict: true/);
   assert.doesNotMatch(endpoint, /db\.edit deal_finder_listings/);
-  assert.doesNotMatch(endpoint, /OpenAI|api\.openai|provider_response|token_usage/i);
-  assert.match(table, /user_id[\s\S]*listing_id[\s\S]*target_language[\s\S]*source_text_hash/);
-  assert.match(table, /type: "unique"/);
+  assert.match(table, /user_id[\s\S]*deal_finder_listing_id[\s\S]*target_language[\s\S]*source_hash/);
+  assert.match(table, /type: "btree\|unique"/);
 });
 
 test("detail remains noindex and absent from the public sitemap", () => {

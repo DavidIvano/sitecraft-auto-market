@@ -18,8 +18,10 @@ import {
   Eye,
   EyeOff,
   Languages,
+  Info,
   Maximize2,
   RotateCcw,
+  Sparkles,
   createIcons,
 } from "lucide";
 import { DEAL_FINDER_ENABLED, DEAL_FINDER_PLACEHOLDER, DEAL_FINDER_USE_MOCK_DATA } from "./constants";
@@ -92,9 +94,12 @@ import {
   type DealFinderNotificationPreferences,
 } from "./notifications";
 import { safeTranslationText } from "./translation";
+import { renderDealFinderAction } from "./action-buttons";
+import { loadDealFinderDetailData } from "./detail-loader";
 
 const detailIcons = {
   ArrowLeft,
+  BadgeCheck,
   Bookmark,
   ChevronLeft,
   ChevronRight,
@@ -108,6 +113,8 @@ const detailIcons = {
   Languages,
   Maximize2,
   RotateCcw,
+  Info,
+  Sparkles,
 };
 
 function renderDetailIcons() {
@@ -120,19 +127,20 @@ const escapeDisplayText = (value: string | null | undefined) => escapeHtml(decod
 function actionButtons(listing: DealFinderListing, includeDetail = true) {
   const sourceUrl = getSafeDealFinderSourceUrl(listing.source_url);
   const saveAction = listing.is_saved
-    ? `<button class="button button-dark" type="button" data-deal-action="unsave">Убрать из сохранённых</button>`
-    : `<button class="button button-dark" type="button" data-deal-action="save">Сохранить</button>`;
+    ? renderDealFinderAction({ action: "unsave", icon: "bookmark", label: "Сохранено", pressed: true, variant: "success", kind: "save" })
+    : renderDealFinderAction({ action: "save", icon: "bookmark", label: "Сохранить", pressed: false, variant: "success", kind: "save" });
   const hideAction = listing.is_hidden
-    ? `<button class="button button-dark" type="button" data-deal-action="restore">Восстановить</button>`
-    : `<button class="button button-dark" type="button" data-deal-action="hide">Скрыть</button>`;
+    ? renderDealFinderAction({ action: "restore", icon: "rotate-ccw", label: "Вернуть", variant: "success", kind: "restore" })
+    : renderDealFinderAction({ action: "hide", icon: "eye-off", label: "Скрыть", variant: "warning", kind: "hide" });
   const compared = typeof window !== "undefined" && isComparisonSelected(window.localStorage, listing.id);
   return `<div class="deal-finder-actions">
-    ${sourceUrl ? `<a class="button button-dark" href="${escapeHtml(sourceUrl)}" target="_blank" rel="noopener noreferrer nofollow">Открыть оригинал</a>` : ""}
+    ${sourceUrl ? renderDealFinderAction({ href: sourceUrl, external: true, icon: "external-link", label: "Источник", variant: "neutral", kind: "source" }) : ""}
     ${saveAction}
-    <button class="button button-dark" type="button" data-deal-action="view" ${listing.is_viewed ? "disabled" : ""}>${listing.is_viewed ? "Просмотрено" : "Отметить просмотренным"}</button>
+    ${renderDealFinderAction({ action: "view", icon: listing.is_viewed ? "badge-check" : "eye", label: "Просмотрено", pressed: listing.is_viewed, disabled: listing.is_viewed, variant: "primary", kind: "viewed" })}
     ${hideAction}
-    <button class="button button-dark" type="button" data-deal-compare="${listing.id}" aria-pressed="${compared}">${compared ? "В сравнении" : "Сравнить"}</button>
-    ${includeDetail ? `<a class="button button-primary" href="${detailUrl(listing.id)}">Подробнее</a>` : ""}
+    ${renderDealFinderAction({ compareId: listing.id, icon: "columns-2", label: compared ? "В сравнении" : "Сравнить", pressed: compared, variant: "neutral", kind: "compare" })}
+    ${(!listing.analysis || listing.analysis.status === "failed") ? renderDealFinderAction({ action: "analyze", icon: "sparkles", label: "AI-анализ", variant: "ai", kind: "ai" }) : ""}
+    ${includeDetail ? renderDealFinderAction({ href: detailUrl(listing.id), icon: "info", label: "Открыть", variant: "primary", kind: "detail" }) : ""}
   </div>`;
 }
 
@@ -825,10 +833,14 @@ export async function mountDealFinderDetail(root: HTMLElement, id: string) {
   });
   const render = async () => {
     try {
-      const [{ listing, analysis, search, allowed_actions }, workspace] = await Promise.all([
-        getDealFinderListing(id),
-        getDealFinderWorkspace(id),
-      ]);
+      const {
+        details: { listing, analysis, search, allowed_actions },
+        workspace,
+      } = await loadDealFinderDetailData(id, {
+        listing: (listingId) => getDealFinderListing(listingId),
+        workspace: (listingId) => getDealFinderWorkspace(listingId),
+        localWorkspace: (listingId) => readWorkspaceRecord(window.localStorage, Number(listingId)),
+      });
       root.dataset.dealListingId = String(listing.id);
       const returnHref = normalizeDealFinderReturnUrl(sessionStorage.getItem(DEAL_FINDER_RETURN_URL_KEY));
       root.innerHTML = renderDealFinderDetailView({

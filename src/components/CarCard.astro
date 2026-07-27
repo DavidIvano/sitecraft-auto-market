@@ -6,10 +6,11 @@ type Props = {
   car: CarListing;
   matchReasons?: string[];
   priority?: boolean;
+  source?: string;
 };
 
-const { car, priority = false } = Astro.props;
-const markup = renderPublicCarCardMarkup(car, { priority });
+const { car, priority = false, source = "public_car_card" } = Astro.props;
+const markup = renderPublicCarCardMarkup(car, { priority, source });
 
 ---
 

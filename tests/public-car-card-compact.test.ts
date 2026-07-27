@@ -18,9 +18,8 @@ test("compact public card has no details button or description and keeps require
   const html = renderPublicCarCardMarkup(car());
   assert.doesNotMatch(html, /Подробнее|This must never/);
   for (const value of ["Volkswagen Golf", "15", "2020", "54", "Diesel", "Automatik", "Berlin"]) assert.match(html, new RegExp(value));
-  assert.match(html, /data-car-card-href="\/cars\/vw-golf\/"/);
-  assert.match(html, /data-lightbox-sources=/);
-  assert.match(html, /Открыть фотографии автомобиля/);
+  assert.match(html, /class="car-card-link" href="\/cars\/vw-golf\/"/);
+  assert.doesNotMatch(html, /data-lightbox-trigger|car-card-image-button/);
 });
 
 test("premium is disclosed and unsafe card images are rejected", () => {
@@ -32,12 +31,12 @@ test("premium is disclosed and unsafe card images are rejected", () => {
   assert.match(unsafe, /Фото пока не добавлено/);
 });
 
-test("card client separates navigation, lightbox and favourite targets", () => {
+test("card client keeps native navigation and Xano-backed favourite targets", () => {
   const client = readProjectFile("src/lib/publicCarCardsClient.ts");
-  assert.match(client, /target\?\.closest\("a,button,input,select,textarea,\[role='button'\]"\)/);
-  assert.match(client, /event\.key !== "Enter" && event\.key !== " "/);
-  assert.match(client, /event\.stopPropagation\(\)/);
-  assert.match(client, /window\.location\.assign/);
+  assert.match(client, /API_ROUTES\.favorite\(id\)/);
+  assert.match(client, /method: nextSaved \? "POST" : "DELETE"/);
+  assert.match(client, /redirectToLogin/);
+  assert.doesNotMatch(client, /localStorage|FAVOURITES_KEY|window\.location\.assign/);
 });
 
 test("compact card CSS clamps titles, fixes media ratio and has responsive columns", () => {

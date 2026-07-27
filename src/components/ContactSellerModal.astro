@@ -1,0 +1,57 @@
+---
+import type { PublicSellerContact } from "../lib/types";
+type Props = { sellerName: string; listingTitle: string; contact?: PublicSellerContact | null };
+const { sellerName, listingTitle, contact = null } = Astro.props;
+const legacyHref = /^(tel:|mailto:)/i.test(String(contact?.href || "")) ? String(contact?.href) : "";
+const phoneHref = String(contact?.phone_href || (legacyHref.startsWith("tel:") ? legacyHref : ""));
+const emailHref = String(contact?.email_href || (legacyHref.startsWith("mailto:") ? legacyHref : ""));
+const hasContact = Boolean(phoneHref || emailHref);
+---
+<button
+  class="button button-primary full-width"
+  type="button"
+  data-seller-contact-trigger
+  data-seller-name={sellerName}
+  data-phone-href={phoneHref}
+  data-email-href={emailHref}
+  data-listing-title={listingTitle}
+  hidden={!hasContact}
+>Связаться с продавцом</button>
+<p class="seller-contact-note" data-seller-contact-note hidden={hasContact}>Продавец пока не добавил публичный способ связи.</p>
+<dialog class="contact-seller-modal" data-contact-modal role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
+  <form method="dialog" class="contact-seller-modal-panel">
+    <header><div><p class="eyebrow">Контакты продавца</p><h2 id="contact-modal-title" data-contact-modal-title>{sellerName}</h2></div><button class="icon-button" value="cancel" aria-label="Закрыть"><i data-lucide="x" aria-hidden="true"></i></button></header>
+    <p>Используйте только способы связи, которые продавец сделал публичными.</p>
+    <div class="contact-seller-actions">
+      <a class="button button-primary" data-contact-phone hidden><i data-lucide="phone" aria-hidden="true"></i>Позвонить</a>
+      <a class="button button-light" data-contact-email hidden><i data-lucide="mail" aria-hidden="true"></i>Написать email</a>
+    </div>
+  </form>
+</dialog>
+<script>
+  const dialog = document.querySelector<HTMLDialogElement>("[data-contact-modal]");
+  let lastTrigger: HTMLElement | null = null;
+  document.addEventListener("click", (event) => {
+    const trigger = (event.target as Element | null)?.closest<HTMLElement>("[data-seller-contact-trigger]");
+    if (!trigger || !dialog) return;
+    lastTrigger = trigger;
+    const phone = dialog.querySelector<HTMLAnchorElement>("[data-contact-phone]");
+    const email = dialog.querySelector<HTMLAnchorElement>("[data-contact-email]");
+    const title = dialog.querySelector<HTMLElement>("[data-contact-modal-title]");
+    const phoneHref = trigger.dataset.phoneHref || "";
+    const emailHref = trigger.dataset.emailHref || "";
+    if (title) title.textContent = trigger.dataset.sellerName || "Продавец";
+    if (phone) { phone.hidden = !/^tel:/i.test(phoneHref); if (!phone.hidden) phone.href = phoneHref; }
+    if (email) {
+      email.hidden = !/^mailto:/i.test(emailHref);
+      if (!email.hidden) email.href = `${emailHref.split("?")[0]}?subject=${encodeURIComponent(`Вопрос по объявлению ${trigger.dataset.listingTitle || "автомобиля"}`)}`;
+    }
+    dialog.showModal();
+  });
+  dialog?.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+  dialog?.addEventListener("cancel", (event) => {
+    event.preventDefault();
+    dialog.close();
+  });
+  dialog?.addEventListener("close", () => lastTrigger?.focus());
+</script>

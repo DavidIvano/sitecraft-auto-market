@@ -242,7 +242,8 @@ const collectionSchema = {
   </section>
 
   <script>
-    import { getAuthToken } from "../../lib/authClient";
+    import { createAiIdempotencyKey } from "../../lib/ai/idempotency";
+    import { getAuthToken, redirectToLogin } from "../../lib/authClient";
     import { parseCarSearchIntent } from "../../lib/ai/parseCarSearchIntent";
     import { getOrCreateSessionId } from "../../lib/analytics/session";
     import { trackProductEvent } from "../../lib/analytics/events";
@@ -288,6 +289,7 @@ const collectionSchema = {
     const LAST_AI_SEARCH_KEY = "sitecraft_last_ai_search";
     const RECENT_VIEWS_KEY = "sitecraft_recent_listing_views";
     let latestCatalogCars: Array<Record<string, unknown>> = [];
+    let pendingAiSearch: { query: string; idempotencyKey: string } | null = null;
     let activeRelaxations = getBuyerSearchRelaxations(getBuyerSearchCriteriaFromParams(new URLSearchParams(window.location.search)));
 
     const formatPrice = (price: unknown, currency: unknown) =>
@@ -713,11 +715,22 @@ const collectionSchema = {
       const apiUrl = filterPanel instanceof HTMLElement ? filterPanel.dataset.apiUrl : "";
       const aiPath = filterPanel instanceof HTMLElement ? filterPanel.dataset.aiSearchIntentPath || "/ai/search/intent" : "/ai/search/intent";
       let result = parseCarSearchIntent(cleanQuery);
-      let usedFallback = true;
+      let usedFallback = options.forceFallback === true;
 
-      if (!options.forceFallback && apiUrl) {
+      if (!options.forceFallback) {
+        const token = getAuthToken();
+        if (!token) {
+          redirectToLogin(window.location.pathname + window.location.search);
+          return;
+        }
+        if (!apiUrl) {
+          setAiExplanation("AI-поиск временно недоступен: API не настроен.");
+          return;
+        }
+        if (!pendingAiSearch || pendingAiSearch.query !== cleanQuery) {
+          pendingAiSearch = { query: cleanQuery, idempotencyKey: createAiIdempotencyKey("ai-search") };
+        }
         try {
-          const token = getAuthToken();
           const response = await fetch(`${apiUrl}${aiPath}`, {
             method: "POST",
             headers: {
@@ -728,6 +741,7 @@ const collectionSchema = {
               query: cleanQuery,
               current_filters: getCurrentFiltersObject(),
               user_context: getBuyerContext(),
+              idempotency_key: pendingAiSearch.idempotencyKey,
             }),
           });
 
@@ -740,18 +754,27 @@ const collectionSchema = {
               suggestions: Array.isArray(payload?.suggestions) ? payload.suggestions : result.suggestions,
             };
             usedFallback = false;
-          } else if (response.status !== 404) {
-            console.warn("AI search intent failed", response.status);
+            pendingAiSearch = null;
+          } else {
+            if (response.status === 401) {
+              redirectToLogin(window.location.pathname + window.location.search);
+              return;
+            }
+            const payload = await response.json().catch(() => ({}));
+            const code = String(payload?.code || payload?.message || "");
+            setAiExplanation(code === "INSUFFICIENT_CREDITS" ? "Недостаточно AI-кредитов для подбора." : "AI-поиск временно недоступен. Повторите запрос.");
+            return;
           }
-        } catch (error) {
-          console.warn("AI search intent unavailable", error);
+        } catch {
+          setAiExplanation("Не удалось связаться с AI-сервисом. Повторите запрос.");
+          return;
         }
       }
 
       applyAiFilters(result.filters || {});
       renderAiSuggestions(result.suggestions || []);
       saveLastAiSearch(cleanQuery, result.filters || {}, result.explanation || "");
-      setAiExplanation(usedFallback ? "AI endpoint ещё не подключён, применён базовый подбор по тексту." : result.explanation || "Фильтры применены.");
+      setAiExplanation(usedFallback ? "Применён локальный разбор запроса." : result.explanation || "Фильтры применены.");
       renderClarifications(cleanQuery, getActiveCriteria());
       trackProductEvent("buyer_search_completed", {
         source: usedFallback ? "local" : "ai",

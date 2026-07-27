@@ -1,5 +1,7 @@
 import { AUTH_TOKEN_KEY, AUTH_USER_KEY, type AuthUser } from "./auth";
 import { API_ROUTES, buildApiUrl } from "./apiRoutes";
+import { normalizeInternalReturnTo } from "./returnTo";
+export { normalizeInternalReturnTo } from "./returnTo";
 
 export const AUTH_DEBUG_KEY = "sitecraft_auto_market_auth_debug";
 export const AUTH_NEXT_KEY = "sitecraft_auto_market_auth_next";
@@ -177,8 +179,9 @@ export async function fetchCurrentUser(
 }
 
 export function redirectToLogin(nextPath = window.location.pathname + window.location.search) {
-  rememberNext(nextPath);
-  window.location.href = `/login?next=${encodeURIComponent(nextPath)}`;
+  const returnTo = normalizeInternalReturnTo(nextPath);
+  rememberNext(returnTo);
+  window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
 }
 
 export async function requireUserClient(apiUrl?: string) {
@@ -222,14 +225,14 @@ export async function isSessionConfirmedExpired(
 }
 
 export function rememberNext(path: string) {
-  window.localStorage.setItem(AUTH_NEXT_KEY, path);
+  window.localStorage.setItem(AUTH_NEXT_KEY, normalizeInternalReturnTo(path));
 }
 
 export function consumeNext(fallback = "/dashboard") {
   const next = window.localStorage.getItem(AUTH_NEXT_KEY) || fallback;
   window.localStorage.removeItem(AUTH_NEXT_KEY);
 
-  return next;
+  return normalizeInternalReturnTo(next, fallback);
 }
 
 export function acceptCookieNotice() {

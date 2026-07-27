@@ -34,7 +34,9 @@ query "deal-finder/listings/{id}/analyze" verb=POST {
     }
 
     var $analysis_version { value = "deal-finder-v1" }
-    var $model { value = "gpt-5.6-luna" }
+    var $model { value = $env.OPENAI_DEAL_FINDER_MODEL }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = $env.OPENAI_DEFAULT_MODEL } } }
+    conditional { if (($model == null) || ($model == "")) { var.update $model { value = "gpt-5.6-luna" } } }
     var $input_snapshot {
       value = {
         id: $listing.id, content_hash: $listing.content_hash, title: $listing.title,
@@ -72,6 +74,14 @@ query "deal-finder/listings/{id}/analyze" verb=POST {
         var.update $reused { value = true }
       }
       else {
+        db.query user_credits {
+          where = ($db.user_credits.user_id == $current_user.id)
+          return = {type: "single"}
+        } as $wallet
+        precondition (($wallet != null) && (($wallet.ai_credits|first_notnull:0|to_int) >= 1)) {
+          error_type = "accessdenied"
+          error = "INSUFFICIENT_CREDITS"
+        }
         db.add deal_finder_analyses {
           data = {
             created_at: "now", updated_at: "now", user_id: $current_user.id, listing_id: $listing.id,
@@ -88,6 +98,6 @@ query "deal-finder/listings/{id}/analyze" verb=POST {
     }
   }
 
-  response = {analysis: {id: $analysis.id, listing_id: $analysis.listing_id, status: $analysis.status, created_at: $analysis.created_at, reused: $reused}}
-  tags = ["deal-finder", "frontend", "owner-only", "analysis-queue"]
+  response = {analysis: {id: $analysis.id, listing_id: $analysis.listing_id, status: $analysis.status, created_at: $analysis.created_at, reused: $reused, credits_required: 1}}
+  tags = ["deal-finder", "frontend", "owner-only", "analysis-queue", "credits-precheck"]
 }

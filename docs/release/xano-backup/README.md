@@ -1,0 +1,36 @@
+# Xano pre-change backup manifest
+
+The complete Xano metadata pull is intentionally outside the repository:
+
+`/Users/david/.codex/audits/sitecraft-auto-market/xano-prechange-2026-07-26`
+
+Command characteristics:
+
+- workspace `115940`;
+- branch `v1`;
+- draft versions included;
+- records excluded;
+- environment variables excluded.
+
+Relevant SHA-256 checksums:
+
+```text
+119c235eef618f27837817c14565516df93b7c97a74de6d49a8992b7af846963  table/automarket_users.xs
+b80fb03b415de17ac30dd3f6d35c2a1bb63174be4a76e7e0cebcd444b508a63d  table/car_listings.xs
+149d628105b6707da03df9cd5dee07ada1f9eb945a3afba04a2a5524acf2e4c1  table/user_credits.xs
+dfc8ee201769b941346080c568fc792a492765dcaf6317dab342bfc7f3e941a7  table/credit_transactions.xs
+19c7eba7f95fec8bda51c6c3059d28fef52330fcfbc4b2e94684108c0f8be286  table/deal_finder_analyses.xs
+0b99c7b2c9975aa36254f5910137cb268ab002ebeb68e893de3f118fceef9036  api/sitecraft_auto_market/cars_GET.xs
+ecc0ccebb141129c67cd29c4b71385ae3de58ebe92c19d312bd04770a05e6a64  api/sitecraft_auto_market/cars/slug_GET.xs
+2c6645d19d12fc2f455d7ee69f0b4511073f5eb39ff48f50df6769a95fbda7af  api/sitecraft_auto_market/cars/slug/seller_listings_GET.xs
+a5cc5b30408682cfc551b7ff14531d9c07d8c84d1b93a21f4875ee0fd1849990  api/sitecraft_auto_market/ai/listing/analyze_photos_POST.xs
+8aa7205a49b18f2380f3072b3577d2d268dc732e4879734a49669ae79fdfbec4  api/sitecraft_auto_market/ai/listing/generate_description_POST.xs
+bf76361896f24f5fd18757709d43d42525967b6929e19679488005b0f704db2b  api/sitecraft_auto_market/ai/listing/quality_score_POST.xs
+4b05bcee8e62fe1981373e1787dfcb9bbe1f4a15af022a2d6349a942155dd396  api/sitecraft_auto_market/ai/search/intent_POST.xs
+e00373d77be6633303e19c85745742bdd1949fe55ae6314bc9fcfd34d7e73b77  api/sitecraft_auto_market/ai/moderation/check_listing_POST.xs
+38c7eafb83d456d9537ff5f3be951cd9198426ef8c1f7670572708eb252e678a  api/sitecraft_auto_market/deal_finder/listings/id/analyze_POST.xs
+9ad67d4fc3e3ce6c0254ad26e5dfa243585a0789b4beeea3292443f18fbe529d  api/sitecraft_auto_market/deal_finder/internal/analyses/id/complete_POST.xs
+```
+
+Do not copy credentials, environment values, records, cookies or tokens into this directory.
+

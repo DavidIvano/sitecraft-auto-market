@@ -695,6 +695,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
       <script>
         import { fetchCurrentUser, getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
         import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+        import { createAiIdempotencyKey } from "../../lib/ai/idempotency";
         import { normalizeAiDraftFields } from "../../lib/ai/normalizeAiDraftFields";
         import {
           BACKEND_FIELD_TO_CONTROL,
@@ -787,6 +788,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const selectedAiPhotos: File[] = [];
         const photoUrls = new Map<File, string>();
         const aiPhotoUrls = new Map<File, string>();
+        let aiPhotoRequestIdempotencyKey = "";
         let activeQuizStep = 0;
         let currentAiDraftId: string | number | null = null;
         let currentAiListingId: string | number | null = null;
@@ -1607,6 +1609,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           currentAiDraftId = analysis.draft_id || currentAiDraftId;
           currentAiListingId = analysis.listing_id || currentAiListingId;
 
+          if (currentAiDraftId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("draft_id", String(currentAiDraftId));
+            window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+          }
+
           if (aiDraftPreview instanceof HTMLElement) {
             aiDraftPreview.hidden = false;
             aiDraftPreview.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -2134,6 +2142,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const remainingSlots = Math.max(maxFiles - selectedAiPhotos.length, 0);
 
           selectedAiPhotos.push(...validFiles.slice(0, remainingSlots));
+          aiPhotoRequestIdempotencyKey = "";
           if (validFiles.length > 0) markAiDraftDirty();
 
           if (imageFiles.length !== validFiles.length) {
@@ -2161,6 +2170,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
 
           syncAiPhotoInput();
+          aiPhotoRequestIdempotencyKey = "";
           renderAiPhotoPreview();
           markAiDraftDirty();
         }
@@ -2169,6 +2179,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           selectedAiPhotos.splice(0, selectedAiPhotos.length);
           aiPhotoUrls.forEach((url) => URL.revokeObjectURL(url));
           aiPhotoUrls.clear();
+          aiPhotoRequestIdempotencyKey = "";
           syncAiPhotoInput();
           renderAiPhotoPreview();
           markAiDraftDirty();
@@ -2285,6 +2296,42 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         validateAuthToken();
+
+        async function restoreAiDraftFromUrl() {
+          const draftId = Number(new URLSearchParams(window.location.search).get("draft_id") || 0);
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+          const authToken = getActiveAuthToken();
+          if (!Number.isInteger(draftId) || draftId <= 0 || !apiUrl || !authToken) return;
+
+          try {
+            setAiMessage("Восстанавливаю сохранённый AI-черновик...");
+            const response = await fetch(`${apiUrl}/dashboard/drafts/${draftId}`, {
+              headers: { Accept: "application/json", Authorization: `Bearer ${authToken}` },
+            });
+            if (response.status === 401) {
+              recoverAuthOrRelogin();
+              return;
+            }
+            if (!response.ok) throw new Error("DRAFT_RESTORE_FAILED");
+            const payload = await response.json() as Record<string, any>;
+            const images = Array.isArray(payload.images) ? payload.images : Array.isArray(payload.draft?.images) ? payload.draft.images : [];
+            currentAiUploadedImages = images
+              .map((image: Record<string, any>) => ({
+                url: String(image.url || image.image_url || ""),
+                key: String(image.key || image.original_filename || ""),
+                contentType: String(image.contentType || image.mime_type || "image/webp"),
+                size: Number(image.size || image.size_bytes || 0),
+              }))
+              .filter((image: { url: string }) => isPublicImageUrl(image.url));
+            renderAiDraftPreview(payload);
+            markAiDraftSaved();
+            setAiMessage("AI-черновик восстановлен. Проверьте данные перед отправкой.");
+          } catch {
+            setAiMessage("Не удалось восстановить AI-черновик. Откройте его из кабинета или создайте новый.");
+          }
+        }
+
+        void restoreAiDraftFromUrl();
 
         function getCreditsFromPayload(payload: Record<string, any> | null | undefined) {
           const value = payload?.ai_credits ?? payload?.credits ?? payload?.ai_credits_total ?? payload?.balance_after;
@@ -2562,16 +2609,16 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             const r2Images = toAiR2Images(currentAiUploadedImages);
             const r2ImagesJson = JSON.stringify(r2Images);
             const payload = new FormData();
+            aiPhotoRequestIdempotencyKey ||= createAiIdempotencyKey("ai-listing-draft");
             payload.set("r2_images", r2ImagesJson);
             payload.set("mode", "analyze_only");
             payload.set("expected_status", "ai_draft");
+            payload.set("idempotency_key", aiPhotoRequestIdempotencyKey);
 
             setAiMessage("AI анализирует фото и готовит черновик...");
             const analyzeRoute = shouldUseNewAiEndpoints()
               ? apiRoute("aiAnalyzePhotos", "/ai/listing/analyze-photos")
-              : allowLegacyAiEndpoint()
-                ? apiRoute("aiGenerateListing", "/ai/generate-listing")
-                : "";
+              : "";
 
             if (!analyzeRoute) {
               throw new Error("Функция AI-черновика пока не подключена в Xano. Нужен endpoint POST /ai/listing/analyze-photos.");
@@ -2617,6 +2664,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             }
 
             renderAiDraftPreview(data);
+            aiPhotoRequestIdempotencyKey = "";
             await syncAiCreditsAfterUsage(data);
             setAiMessage("AI-черновик готов. Проверьте поля и подтвердите данные перед модерацией.");
           } catch (error) {

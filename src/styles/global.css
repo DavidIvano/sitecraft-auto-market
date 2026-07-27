@@ -4236,6 +4236,13 @@ textarea {
   outline-offset: 2px;
 }
 
+.car-card-favourite:disabled { cursor: wait; opacity: .72; }
+.car-card-favourite[data-state="saved"] svg { fill: currentColor; }
+.detail-panel .detail-favorite-button { position: static; justify-self: start; border-color: var(--border-default); background: var(--surface-secondary); color: var(--danger); }
+.favorites-grid [data-favorite-card] { transition: opacity 180ms ease, transform 180ms ease; }
+.favorites-grid [data-favorite-card].is-removing { opacity: 0; transform: scale(.98); }
+@media (prefers-reduced-motion: reduce) { .favorites-grid [data-favorite-card] { transition: none; } }
+
 .public-car-card.car-card-premium {
   border-color: color-mix(in srgb, #7767d8 52%, var(--border-default));
   background: color-mix(in srgb, #7767d8 6%, var(--surface-solid));
@@ -4992,6 +4999,134 @@ textarea:focus {
   .breadcrumbs-inner {
     padding: 10px 12px;
   }
+}
+
+/* Unified public-card interaction: one real link plus an independent favorite action. */
+.public-car-card {
+  position: relative;
+  cursor: default;
+}
+
+.public-car-card .car-card-link {
+  border-radius: inherit;
+}
+
+.public-car-card .car-card-media {
+  pointer-events: none;
+}
+
+.public-car-card .car-card-specs dt,
+.public-car-card .car-card-footer span {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 5px;
+}
+
+.public-car-card .car-card-specs dt svg,
+.public-car-card .car-card-footer svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.app-toast {
+  position: fixed;
+  right: 18px;
+  bottom: calc(18px + env(safe-area-inset-bottom));
+  z-index: 1200;
+  max-width: min(360px, calc(100vw - 36px));
+  border: 1px solid color-mix(in srgb, var(--success) 45%, var(--border-default));
+  border-radius: var(--radius-control);
+  background: var(--surface-solid);
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
+  padding: 12px 16px;
+  font-weight: 750;
+}
+
+.app-toast[data-tone="error"] { border-color: color-mix(in srgb, var(--danger) 50%, var(--border-default)); }
+
+.favorites-heading { align-items: end; }
+.favorites-grid { margin-top: var(--space-4); }
+.favorites-empty {
+  grid-column: 1 / -1;
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-card);
+  background: var(--surface-solid);
+  padding: clamp(24px, 5vw, 48px);
+}
+.favorites-empty p { margin: 0; color: var(--text-secondary); }
+.similar-car-card-unified { position: relative; min-width: 0; }
+.similar-car-card-unified > .similarity-reason {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 4;
+  max-width: calc(100% - 24px);
+  border-radius: 999px;
+  background: var(--surface-solid);
+  color: var(--text-secondary);
+  padding: 5px 9px;
+  box-shadow: var(--shadow-card);
+  font-size: .72rem;
+  font-style: normal;
+}
+
+.vehicle-specs-grid {
+  display: grid;
+  margin: 0;
+}
+.vehicle-spec-item { min-width: 0; }
+.vehicle-spec-item dt { display: flex; align-items: center; gap: 7px; color: var(--text-secondary); }
+.vehicle-spec-item dt svg { width: 16px; height: 16px; flex: 0 0 auto; color: var(--accent); }
+.vehicle-spec-item dd { margin-left: 0; overflow-wrap: anywhere; }
+
+.contact-seller-modal {
+  width: min(500px, calc(100vw - 28px));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-solid);
+  color: var(--text-primary);
+  padding: 0;
+  box-shadow: var(--shadow-card);
+}
+.contact-seller-modal::backdrop { background: rgba(0, 0, 0, 0.62); }
+.contact-seller-modal-panel { display: grid; gap: 18px; padding: clamp(20px, 4vw, 30px); }
+.contact-seller-modal-panel header { display: flex; align-items: start; justify-content: space-between; gap: 16px; }
+.contact-seller-modal-panel h2, .contact-seller-modal-panel p { margin: 0; }
+.contact-seller-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.contact-seller-actions .button { gap: 8px; }
+
+.dashboard-contact-section { padding-top: 0; }
+.contact-profile-panel {
+  display: grid;
+  grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr);
+  gap: clamp(24px, 5vw, 56px);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-panel);
+  background: var(--surface-solid);
+  padding: clamp(20px, 4vw, 36px);
+}
+.contact-profile-panel header p, .contact-profile-panel h2 { margin-top: 0; }
+.contact-profile-form { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+.contact-profile-form label { display: grid; gap: 7px; min-width: 0; font-weight: 750; }
+.contact-profile-check { grid-template-columns: 22px minmax(0, 1fr); align-items: center; }
+.contact-profile-check input { width: 20px; height: 20px; }
+.contact-profile-form .form-message { grid-column: 1 / -1; }
+
+@media (max-width: 760px) {
+  .contact-profile-panel { grid-template-columns: 1fr; }
+  .contact-profile-form { grid-template-columns: 1fr; }
+  .contact-seller-actions { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  .favorites-heading { align-items: start; flex-direction: column; }
+  .app-toast { right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); }
 }
 
 @media (max-width: 520px) {
@@ -10296,6 +10431,17 @@ textarea:focus {
 
 .deal-action.is-save[aria-pressed="true"] svg { fill: currentColor; }
 .deal-action.is-source { background: var(--surface-solid); }
+.deal-action.is-primary { border-color: color-mix(in srgb, var(--accent-strong) 48%, var(--border-default)); }
+.deal-action.is-success { border-color: color-mix(in srgb, var(--success) 52%, var(--border-default)); color: var(--success); }
+.deal-action.is-warning { border-color: color-mix(in srgb, var(--warning) 52%, var(--border-default)); color: var(--warning); }
+.deal-action.is-danger { border-color: color-mix(in srgb, var(--danger) 52%, var(--border-default)); color: var(--danger); }
+.deal-action.is-neutral { background: var(--surface-solid); }
+.deal-action.is-ai { border-color: color-mix(in srgb, #7756c2 50%, var(--border-default)); background: color-mix(in srgb, #7756c2 10%, var(--surface-solid)); color: color-mix(in srgb, #7756c2 82%, var(--text-primary)); }
+.deal-action.is-detail {
+  border-color: var(--accent-strong);
+  background: color-mix(in srgb, var(--accent-strong) 10%, var(--surface-solid));
+  color: var(--accent-strong);
+}
 
 .deal-action.is-viewed {
   border-color: color-mix(in srgb, #0a8f9d 44%, var(--border-default));

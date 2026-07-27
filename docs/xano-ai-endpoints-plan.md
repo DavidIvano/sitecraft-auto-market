@@ -336,7 +336,7 @@ Implemented and live in Xano on 2026-07-11.
 - API group: `sitecraft-auto-market` (`jAAj839u`)
 - Auth: `automarket_users` (`861779`)
 - Provider: OpenAI Responses API with strict JSON Schema
-- Model: `$env.OPENAI_CAR_AI_MODEL`, fallback `gpt-5.4-mini`
+- Model: `$env.OPENAI_LISTING_MODEL`, then `$env.OPENAI_DEFAULT_MODEL`, fallback `gpt-5.6-luna`
 - Local fallback model label: `local-template`
 - Full XanoScript artifact: `docs/xano-endpoint-post-ai-listing-generate-description.xs`
 
@@ -477,7 +477,7 @@ Implemented and live in Xano on 2026-07-11.
 - API group: `sitecraft-auto-market` (`jAAj839u`)
 - Auth: `automarket_users` (`861779`)
 - Deterministic scoring version: `quality-v1`
-- OpenAI model: `$env.OPENAI_CAR_AI_MODEL`, fallback `gpt-5.4-mini`
+- OpenAI model: `$env.OPENAI_LISTING_MODEL`, then `$env.OPENAI_DEFAULT_MODEL`, fallback `gpt-5.6-luna`
 - Full XanoScript artifact: `docs/xano-endpoint-post-ai-listing-quality-score.xs`
 
 ### Auth
@@ -609,7 +609,7 @@ Implemented and live in Xano on 2026-07-11.
 - API group: `sitecraft-auto-market` (`jAAj839u`)
 - Auth: public (`false`)
 - Provider: OpenAI Responses API
-- Model: `$env.OPENAI_CAR_AI_MODEL`, fallback `gpt-5.4-mini`
+- Model: `$env.OPENAI_MODERATION_MODEL`, then `$env.OPENAI_DEFAULT_MODEL`, fallback `gpt-5.6-luna`
 - Full XanoScript artifact: `docs/xano-endpoint-post-ai-search-intent.xs`
 
 ### Auth
@@ -735,7 +735,7 @@ Implementation status as of 2026-07-11:
 - API group: `sitecraft-auto-market`.
 - Auth: `automarket_users` (`861779`), admin-only.
 - Audit table: `ai_listing_checks` (`866229`), `type = moderation_check`.
-- Active model: `$env.OPENAI_CAR_AI_MODEL`, currently `gpt-5.4-mini`.
+- Active model: `$env.OPENAI_DEFAULT_MODEL`, currently `gpt-5.6-luna`.
 - Xano rules own score, risk, issues, recommendation, and action.
 - OpenAI only improves human-readable explanation fields.
 - Provider failure returns HTTP 200 deterministic fallback.

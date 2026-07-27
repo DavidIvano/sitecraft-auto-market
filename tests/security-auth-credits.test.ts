@@ -96,11 +96,13 @@ for (const endpointId of aiEndpointIds) {
     assert.match(script, /\$auth\.id/);
     assert.match(script, /error_type = "unauthorized"/);
     assert.match(script, /precondition \(\$credits\.ai_credits > 0\)/);
-    assert.match(script, /\$credits\.ai_credits - 1/);
+    assert.match(script, /(?:\$credits\.ai_credits|\$balance_before) - 1/);
     assert.match(script, /db\.edit user_credits/);
     assert.match(script, /db\.add credit_transactions/);
     assert.doesNotMatch(script, /ivanovdavid|1000000000|is_unlimited_admin/i);
     assert.doesNotMatch(script, /db\.edit automarket_users/);
+    assert.match(script, /gpt-5\.6-luna/);
+    assert.match(script, /store: false/);
   });
 }
 

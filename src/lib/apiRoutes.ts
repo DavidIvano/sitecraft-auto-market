@@ -9,6 +9,10 @@ export const API_ROUTES = {
   carBySlug: (slug: string) => `/cars/${encodeURIComponent(slug)}`,
   carSellerListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/seller-listings`,
   carSubmit: (id: number | string) => `/cars/${id}/submit`,
+  favorites: "/favorites",
+  favorite: (listingId: number | string) => `/favorites/${encodeURIComponent(String(listingId))}`,
+  favoriteStatuses: "/favorites/status",
+  contactProfile: "/me/contact-profile",
 
   dashboardListings: "/dashboard/listings",
   dashboardListing: (id: number | string) => `/dashboard/listings/${id}`,
@@ -25,7 +29,6 @@ export const API_ROUTES = {
   purchaseCreate: "/purchases/create",
   purchaseApply: "/purchases/apply",
 
-  aiGenerateListing: "/ai/generate-listing",
   aiAnalyzePhotos: "/ai/listing/analyze-photos",
   aiGenerateDescription: "/ai/listing/generate-description",
   aiQualityScore: "/ai/listing/quality-score",
@@ -78,19 +81,12 @@ export const LOCAL_ROUTES = {
 } as const;
 
 export const BACKEND_ROUTES_REQUIRING_XANO_WORK = [
-  "POST /ai/listing/analyze-photos",
-  "POST /ai/listing/generate-description",
-  "POST /ai/listing/quality-score",
-  "POST /ai/search/intent",
-  "POST /ai/moderation/check-listing",
   "POST /analytics/listing-view",
   "POST /saved-searches",
   "POST /deal-finder/searches",
   "PATCH /deal-finder/searches/{id}",
   "DELETE /deal-finder/searches/{id}",
   "GET /deal-finder/sync-logs",
-  "POST /listings/create-draft",
-  "POST /listings/submit-moderation",
   "POST /purchases/create",
   "POST /purchases/apply",
   "GET /me/purchases",

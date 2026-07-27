@@ -9,9 +9,9 @@ test("public CarCard delegates to one compact safe renderer", () => {
   const source = readProjectFile("src/components/CarCard.astro");
   const renderer = readProjectFile("src/lib/publicCarCard.ts");
   assert.match(source, /renderPublicCarCardMarkup/);
-  assert.match(renderer, /data-lightbox-trigger/);
-  assert.match(renderer, /data-car-card-href/);
-  assert.match(renderer, /role=\"link\" tabindex=\"0\"/);
+  assert.match(renderer, /class=\"car-card-link\" href=/);
+  assert.match(renderer, /data-car-card-link/);
+  assert.doesNotMatch(renderer, /role=\"link\" tabindex=\"0\"/);
   assert.doesNotMatch(renderer, /Подробнее/);
 });
 
@@ -29,16 +29,15 @@ test("dynamic home and catalog cards use the same safe public-card contract", ()
 test("seller and similar public cards retain semantic detail links", () => {
   const detail = readProjectFile("src/pages/cars/[slug].astro");
 
-  assert.match(detail, /sellerCars\.map\(\(sellerCar\) => <CarCard car=\{sellerCar\} \/>\)/);
-  assert.match(detail, /<a class="similar-car-card"[\s\S]*?href=\{`\/cars\/\$\{similarCar\.slug\}`\}/);
-  assert.match(detail, /aria-label=\{`Открыть объявление \$\{similarCar\.title\}`\}/);
+  assert.match(detail, /sellerCars\.map\(\(sellerCar\) => <CarCard car=\{sellerCar\} source="seller_listings" \/>\)/);
+  assert.match(detail, /<CarCard car=\{similarCar\} source="similar_cars" \/>/);
 });
 
 test("public-card styles provide zoom, focus, list-view and touch-safe behavior", () => {
   const styles = readProjectFile("src/styles/global.css");
 
-  assert.match(styles, /\.public-car-card,[\s\S]*?cursor:\s*pointer/);
-  assert.match(styles, /\.vehicle-image-trigger:focus-visible[\s\S]*?outline/);
+  assert.match(styles, /\.public-car-card \{[\s\S]*?cursor:\s*default/);
+  assert.match(styles, /\.car-card-link:focus-visible[\s\S]*?outline/);
   assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.car-card:hover/);
   assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?transform:\s*none/);
   assert.match(styles, /\.catalog-grid-list \.public-car-card\s*\{[\s\S]*?grid-template-columns/);

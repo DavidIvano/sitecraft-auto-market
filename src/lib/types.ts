@@ -137,6 +137,8 @@ export type CarListing = {
   seller_type?: "private" | "dealer";
   seller?: PublicSellerSummary;
   seller_listings?: CarListing[];
+  is_saved?: boolean;
+  saved_at?: string | number | null;
   dealer_profile_id?: number;
   dealer_plan?: "none" | "basic" | "pro" | "business";
   dealer_verified?: boolean;
@@ -184,10 +186,29 @@ export type PublicSellerSummary = {
   type?: "private" | "dealer" | string;
   city?: string;
   active_listings_count?: number;
-  contact?: {
-    type: "phone" | "email";
-    href: string;
-  } | null;
+  contact?: PublicSellerContact | null;
+};
+
+export type PublicSellerContact = {
+  phone?: string | null;
+  phone_href?: string | null;
+  email?: string | null;
+  email_href?: string | null;
+  preferred_method?: "phone" | "email" | null;
+  // Legacy public DTO retained while the Xano endpoint is migrated.
+  type?: "phone" | "email";
+  href?: string;
+};
+
+export type SellerContactProfile = {
+  first_name: string | null;
+  last_name: string | null;
+  display_name: string | null;
+  contact_phone: string | null;
+  contact_email: string | null;
+  show_phone: boolean;
+  show_email: boolean;
+  preferred_contact_method: "phone" | "email" | null;
 };
 
 export type XanoFileMetadata = {
