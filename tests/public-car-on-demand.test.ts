@@ -120,6 +120,6 @@ test("Cloudflare workflow fails fast and deploys the advanced-mode bundle", () =
   assert.match(workflow, /pages deploy \. --project-name sitecraft-auto-market --branch main/);
   assert.match(packager, /generatedWranglerDeployDir/);
   assert.match(packager, /rmSync\(generatedWranglerDeployDir/);
-  assert.match(routes, /"\/cars\/\*"/);
-  assert.match(routes, /"\/sitemap\.xml"/);
+  assert.match(routes, /"\/\*"/);
+  assert.doesNotMatch(routes, /"include"\s*:\s*\[[\s\S]*?"\/cars\/\*"/);
 });
