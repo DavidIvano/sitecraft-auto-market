@@ -15,6 +15,13 @@ test("public CarCard delegates to one compact safe renderer", () => {
   assert.doesNotMatch(renderer, /Подробнее/);
 });
 
+test("public card links preserve the selected page language", () => {
+  const renderer = readProjectFile("src/lib/publicCarCard.ts");
+
+  assert.match(renderer, /safeSlugPath\(car\.slug, locale\)/);
+  assert.match(renderer, /\?lang=\$\{encodeURIComponent\(locale\)\}/);
+});
+
 test("dynamic home and catalog cards use the same safe public-card contract", () => {
   const home = readProjectFile("src/pages/index.astro");
   const catalog = readProjectFile("src/pages/cars/index.astro");
@@ -29,8 +36,8 @@ test("dynamic home and catalog cards use the same safe public-card contract", ()
 test("seller and similar public cards retain semantic detail links", () => {
   const detail = readProjectFile("src/pages/cars/[slug].astro");
 
-  assert.match(detail, /sellerCars\.map\(\(sellerCar\) => <CarCard car=\{sellerCar\} source="seller_listings" \/>\)/);
-  assert.match(detail, /<CarCard car=\{similarCar\} source="similar_cars" \/>/);
+  assert.match(detail, /sellerCars\.map\(\(sellerCar\) => <CarCard car=\{sellerCar\} source="seller_listings" locale=\{locale\} \/>\)/);
+  assert.match(detail, /<CarCard car=\{similarCar\} source="similar_cars" locale=\{locale\} \/>/);
 });
 
 test("public-card styles provide zoom, focus, list-view and touch-safe behavior", () => {

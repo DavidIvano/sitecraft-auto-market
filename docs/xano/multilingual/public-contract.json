@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "supported_locales": ["de", "ru", "uk", "en"],
+  "default_source_locale": "ru",
+  "public_endpoints": {
+    "locales": "GET /locales",
+    "taxonomies": "GET /taxonomies?lang={locale}",
+    "cars": "GET /cars?lang={locale}",
+    "car": "GET /cars/{slug}?lang={locale}",
+    "seller_listings": "GET /cars/{slug}/seller-listings?lang={locale}",
+    "related": "GET /cars/{slug}/related?lang={locale}"
+  },
+  "translation": {
+    "required_fields": ["locale", "source_locale", "source_hash", "status"],
+    "allowed_statuses": ["completed", "processing", "failed", "missing", "stale"],
+    "translatable_fields": [
+      "title",
+      "description",
+      "seo_title",
+      "seo_description",
+      "image_alt_texts",
+      "search_keywords"
+    ],
+    "immutable_fields": [
+      "id",
+      "user_id",
+      "slug",
+      "brand",
+      "model",
+      "year",
+      "mileage",
+      "price",
+      "currency",
+      "vin",
+      "status",
+      "moderation_status"
+    ],
+    "apply_when": "translation.status == completed && translation.locale == requested_locale",
+    "fallback": "return original seller content and source_locale",
+    "cache_key": ["car_listing_id", "locale", "source_hash"]
+  }
+}

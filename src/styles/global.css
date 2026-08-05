@@ -262,6 +262,28 @@ textarea {
   color: var(--text);
 }
 
+.locale-switcher {
+  display: inline-flex;
+  align-items: center;
+}
+
+.locale-switcher select {
+  min-width: 112px;
+  min-height: 38px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--input-bg);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: 700;
+  padding: 0 30px 0 10px;
+}
+
+.locale-switcher select:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--accent-strong) 34%, transparent);
+  outline-offset: 2px;
+}
+
 .compact-button {
   min-height: 36px;
   padding: 8px 14px;
@@ -8542,6 +8564,13 @@ textarea:focus {
   margin: 0;
   overflow: visible;
   white-space: pre-line;
+}
+
+.translation-disclosure {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  line-height: 1.45;
 }
 
 .seller-information-section .seller-summary-card {

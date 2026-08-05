@@ -1,0 +1,29 @@
+---
+import { LOCALE_COOKIE, LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
+
+type Props = { locale: Locale };
+const { locale } = Astro.props;
+const messages = getMessages(locale);
+---
+
+<label class="locale-switcher">
+  <span class="sr-only">{messages.language}</span>
+  <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE}>
+    {SUPPORTED_LOCALES.map((code) => <option value={code} selected={code === locale}>{LOCALE_LABELS[code]}</option>)}
+  </select>
+</label>
+
+<script>
+  document.querySelectorAll("[data-locale-switcher]").forEach((element) => {
+    if (!(element instanceof HTMLSelectElement) || element.dataset.localeReady === "true") return;
+    element.dataset.localeReady = "true";
+    element.addEventListener("change", () => {
+      const cookieName = element.dataset.localeCookie || "sitecraft-locale";
+      document.cookie = `${cookieName}=${encodeURIComponent(element.value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      const nextUrl = new URL(window.location.href);
+      nextUrl.searchParams.set("lang", element.value);
+      window.location.assign(nextUrl.toString());
+    });
+  });
+</script>

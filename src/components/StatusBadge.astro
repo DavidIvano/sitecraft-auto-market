@@ -1,26 +1,21 @@
 ---
 import type { CarListingStatus } from "../lib/types";
-
-const statusLabels: Record<CarListingStatus, string> = {
-  draft: "Черновик",
-  ai_draft: "AI-черновик",
-  ready_for_review: "Готово к проверке",
-  pending_review: "На модерации",
-  approved: "Проверено",
-  published: "Опубликовано",
-  rejected: "Отклонено",
-  needs_fix: "Нужно исправить",
-  archived: "В архиве",
-  blocked: "Заблокировано",
-  deleted: "Удалено",
-  sold: "Продано",
-};
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales";
+import { getDetailMessages } from "../i18n/detailMessages";
 
 type Props = {
   status: CarListingStatus;
+  locale?: Locale;
 };
 
-const { status } = Astro.props;
+const { status, locale = DEFAULT_LOCALE } = Astro.props;
+const messages = getDetailMessages(locale);
+const statusLabels: Record<CarListingStatus, string> = {
+  draft: messages.statusDraft, ai_draft: messages.statusAiDraft, ready_for_review: messages.statusReady,
+  pending_review: messages.statusPending, approved: messages.statusApproved, published: messages.statusPublished,
+  rejected: messages.statusRejected, needs_fix: messages.statusNeedsFix, archived: messages.statusArchived,
+  blocked: messages.statusBlocked, deleted: messages.statusDeleted, sold: messages.statusSold,
+};
 ---
 
 <span class={`status-badge status-${status}`}>{statusLabels[status]}</span>

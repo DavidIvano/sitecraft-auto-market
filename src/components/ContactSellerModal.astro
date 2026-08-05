@@ -1,7 +1,10 @@
 ---
 import type { PublicSellerContact } from "../lib/types";
-type Props = { sellerName: string; listingTitle: string; contact?: PublicSellerContact | null };
-const { sellerName, listingTitle, contact = null } = Astro.props;
+import type { Locale } from "../i18n/locales";
+import { getDetailMessages } from "../i18n/detailMessages";
+type Props = { sellerName: string; listingTitle: string; contact?: PublicSellerContact | null; locale: Locale };
+const { sellerName, listingTitle, contact = null, locale } = Astro.props;
+const messages = getDetailMessages(locale);
 const legacyHref = /^(tel:|mailto:)/i.test(String(contact?.href || "")) ? String(contact?.href) : "";
 const phoneHref = String(contact?.phone_href || (legacyHref.startsWith("tel:") ? legacyHref : ""));
 const emailHref = String(contact?.email_href || (legacyHref.startsWith("mailto:") ? legacyHref : ""));
@@ -15,16 +18,18 @@ const hasContact = Boolean(phoneHref || emailHref);
   data-phone-href={phoneHref}
   data-email-href={emailHref}
   data-listing-title={listingTitle}
+  data-seller-fallback={messages.seller}
+  data-email-subject={messages.emailSubject}
   hidden={!hasContact}
->Связаться с продавцом</button>
-<p class="seller-contact-note" data-seller-contact-note hidden={hasContact}>Продавец пока не добавил публичный способ связи.</p>
+>{messages.contactSeller}</button>
+<p class="seller-contact-note" data-seller-contact-note hidden={hasContact}>{messages.noPublicContact}</p>
 <dialog class="contact-seller-modal" data-contact-modal role="dialog" aria-modal="true" aria-labelledby="contact-modal-title">
   <form method="dialog" class="contact-seller-modal-panel">
-    <header><div><p class="eyebrow">Контакты продавца</p><h2 id="contact-modal-title" data-contact-modal-title>{sellerName}</h2></div><button class="icon-button" value="cancel" aria-label="Закрыть"><i data-lucide="x" aria-hidden="true"></i></button></header>
-    <p>Используйте только способы связи, которые продавец сделал публичными.</p>
+    <header><div><p class="eyebrow">{messages.sellerContacts}</p><h2 id="contact-modal-title" data-contact-modal-title>{sellerName}</h2></div><button class="icon-button" value="cancel" aria-label={messages.close}><i data-lucide="x" aria-hidden="true"></i></button></header>
+    <p>{messages.contactSafety}</p>
     <div class="contact-seller-actions">
-      <a class="button button-primary" data-contact-phone hidden><i data-lucide="phone" aria-hidden="true"></i>Позвонить</a>
-      <a class="button button-light" data-contact-email hidden><i data-lucide="mail" aria-hidden="true"></i>Написать email</a>
+      <a class="button button-primary" data-contact-phone hidden><i data-lucide="phone" aria-hidden="true"></i>{messages.call}</a>
+      <a class="button button-light" data-contact-email hidden><i data-lucide="mail" aria-hidden="true"></i>{messages.email}</a>
     </div>
   </form>
 </dialog>
@@ -40,11 +45,11 @@ const hasContact = Boolean(phoneHref || emailHref);
     const title = dialog.querySelector<HTMLElement>("[data-contact-modal-title]");
     const phoneHref = trigger.dataset.phoneHref || "";
     const emailHref = trigger.dataset.emailHref || "";
-    if (title) title.textContent = trigger.dataset.sellerName || "Продавец";
+    if (title) title.textContent = trigger.dataset.sellerName || trigger.dataset.sellerFallback || "Seller";
     if (phone) { phone.hidden = !/^tel:/i.test(phoneHref); if (!phone.hidden) phone.href = phoneHref; }
     if (email) {
       email.hidden = !/^mailto:/i.test(emailHref);
-      if (!email.hidden) email.href = `${emailHref.split("?")[0]}?subject=${encodeURIComponent(`Вопрос по объявлению ${trigger.dataset.listingTitle || "автомобиля"}`)}`;
+      if (!email.hidden) email.href = `${emailHref.split("?")[0]}?subject=${encodeURIComponent((trigger.dataset.emailSubject || "Question about listing {value}").replace("{value}", trigger.dataset.listingTitle || ""))}`;
     }
     dialog.showModal();
   });

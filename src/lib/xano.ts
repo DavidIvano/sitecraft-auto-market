@@ -3,10 +3,15 @@ import { parseOptionalScore } from "./aiScores";
 import { sortPromotedCars } from "./monetization";
 import { API_ROUTES, buildApiUrl, getXanoApiUrl, isXanoConfigured } from "./apiRoutes";
 import { normalizePublicCarList, normalizePublicCarListing } from "./publicCar";
+import { applyListingTranslation, applyListingTranslations, normalizeListingTranslation } from "./listingTranslation.ts";
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales.ts";
 
 const API_URL = getXanoApiUrl();
 const PUBLIC_API_TIMEOUT_MS = 8_000;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
+
+const withLocale = (path: string, locale: Locale) =>
+  `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}`;
 
 export class XanoPublicApiError extends Error {
   status: number;
@@ -57,31 +62,32 @@ const queueSellerListingsRequest = <T>(request: () => Promise<T>) => {
   return result;
 };
 
-export async function getApprovedCars(): Promise<CarListing[]> {
+export async function getApprovedCars(locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) {
     console.warn("PUBLIC_XANO_API_URL is not configured");
     return [];
   }
 
-  const payload = await fetchPublicJson(API_ROUTES.cars);
-  return sortPromotedCars(normalizePublicCarList(payload));
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.cars, locale));
+  return sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
 }
 
-export async function getCarBySlug(slug: string): Promise<CarListing | null> {
+export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing | null> {
   if (!isXanoConfigured(API_URL)) {
     console.warn("PUBLIC_XANO_API_URL is not configured");
     return null;
   }
 
-  const payload = await fetchPublicJson(API_ROUTES.carBySlug(slug));
-  return payload ? normalizePublicCarListing(payload) : null;
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carBySlug(slug), locale));
+  const listing = payload ? normalizePublicCarListing(payload) : null;
+  return listing ? applyListingTranslation(listing, locale) : null;
 }
 
-export async function getSellerListingsBySlug(slug: string): Promise<CarListing[]> {
+export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
   return queueSellerListingsRequest(async () => {
-    const url = buildApiUrl(API_ROUTES.carSellerListings(slug), API_URL);
+    const url = buildApiUrl(withLocale(API_ROUTES.carSellerListings(slug), locale), API_URL);
     let response: Response | null = null;
     for (let attempt = 0; attempt < 4; attempt += 1) {
       response = await fetch(url);
@@ -103,7 +109,7 @@ export async function getSellerListingsBySlug(slug: string): Promise<CarListing[
       const title = String(source.title || "").trim();
       if (!slugValue || !title) return [];
 
-      return [{
+      return [applyListingTranslation({
         id: Number(source.id) || 0,
         slug: slugValue,
         title,
@@ -128,12 +134,29 @@ export async function getSellerListingsBySlug(slug: string): Promise<CarListing[
         photo_quality_score: parseOptionalScore(source.photo_quality_score) ?? undefined,
         trust_score: parseOptionalScore(source.trust_score) ?? undefined,
         description: "",
+        source_locale: String(source.source_locale || "ru"),
+        translation: normalizeListingTranslation(source.translation || source.localized_translation),
         status: "approved",
         moderation_status: "approved",
         moderator_approved: true,
-      }];
+      }, locale)];
     });
   });
+}
+
+export async function getRelatedCarsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
+  if (!isXanoConfigured(API_URL)) return [];
+
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carRelated(slug), locale));
+  if (!Array.isArray(payload)) return [];
+
+  const publicPayload = payload.map((item) => (
+    item && typeof item === "object"
+      ? { ...item, status: "approved", moderation_status: "approved" }
+      : item
+  ));
+
+  return applyListingTranslations(normalizePublicCarList(publicPayload), locale).slice(0, 6);
 }
 
 export async function createCarListing(formData: FormData, authToken?: string): Promise<CarListing> {

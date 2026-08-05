@@ -8,6 +8,7 @@ export const API_ROUTES = {
   cars: "/cars",
   carBySlug: (slug: string) => `/cars/${encodeURIComponent(slug)}`,
   carSellerListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/seller-listings`,
+  carRelated: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,
   carSubmit: (id: number | string) => `/cars/${id}/submit`,
   favorites: "/favorites",
   favorite: (listingId: number | string) => `/favorites/${encodeURIComponent(String(listingId))}`,

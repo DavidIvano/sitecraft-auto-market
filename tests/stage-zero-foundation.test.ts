@@ -69,6 +69,7 @@ test("product analytics keeps a strict non-PII property allowlist", () => {
   const events = readProjectFile("src/lib/analytics/events.ts");
   const privacy = readProjectFile("src/pages/privacy.astro");
   const cookieNotice = readProjectFile("src/components/CookieNotice.astro");
+  const i18nMessages = readProjectFile("src/i18n/messages.ts");
   assert.match(events, /MAX_QUEUED_EVENTS = 50/);
   assert.match(events, /ALLOWED_PROPERTY_KEYS/);
   assert.match(events, /if \(!ALLOWED_PROPERTY_KEYS\.has\(key\)\) return \[\]/);
@@ -76,5 +77,6 @@ test("product analytics keeps a strict non-PII property allowlist", () => {
   assert.match(events, /Analytics must never interrupt a product action/);
   assert.match(privacy, /до 50 технических событий/);
   assert.match(privacy, /без email, телефона, имени/);
-  assert.match(cookieNotice, /Рекламных и аналитических cookie нет/);
+  assert.match(cookieNotice, /messages\.cookieText/);
+  assert.match(i18nMessages, /Рекламных и аналитических cookie нет/);
 });

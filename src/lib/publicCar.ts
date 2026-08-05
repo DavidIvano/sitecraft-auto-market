@@ -1,6 +1,7 @@
 import { getStoredAiScores } from "./aiScores.ts";
 import { maskVin, sanitizePublicDescription } from "./listingFields.ts";
 import { isPublicListing } from "./listingStatus.ts";
+import { normalizeListingTranslation } from "./listingTranslation.ts";
 import type { CarListing, CarListingImage, PublicSellerSummary } from "./types.ts";
 
 const PUBLIC_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/i;
@@ -175,6 +176,7 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
   const rawVin = toString(source.vin);
   const seller = normalizeSeller(source.seller);
   const rawPromotion = toRecord(source.promotion);
+  const translation = normalizeListingTranslation(source.translation || source.localized_translation);
   const promotionStatus = toString(rawPromotion?.status || source.promotion_status);
   const promotion: CarListing["promotion"] = rawPromotion ? {
     id: toNumber(rawPromotion.id) || undefined,
@@ -277,6 +279,8 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     seo_description: toString(source.seo_description),
     image_alt_texts: source.image_alt_texts as CarListing["image_alt_texts"],
     search_keywords: source.search_keywords as CarListing["search_keywords"],
+    source_locale: toString(source.source_locale || source.content_locale) || "ru",
+    translation,
     seller_rating: source.seller_rating as CarListing["seller_rating"],
     user_rating: source.user_rating as CarListing["user_rating"],
     main_image_url: readImageUrl(source.main_image_url),
