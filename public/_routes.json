@@ -1,11 +1,7 @@
 {
   "version": 1,
   "include": [
-    "/cars/*",
-    "/sitemap.xml",
-    "/dashboard/cars/*/promote",
-    "/dashboard/drafts/*",
-    "/api/*"
+    "/*"
   ],
   "exclude": [
     "/_astro/*",
