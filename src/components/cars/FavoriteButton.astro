@@ -1,7 +1,8 @@
 ---
 import { renderFavoriteButtonMarkup } from "../../lib/favorites";
-type Props = { listingId: number | string; initialSaved?: boolean; source?: string; class?: string };
-const { listingId, initialSaved = false, source = "detail", class: className = "" } = Astro.props;
-const markup = renderFavoriteButtonMarkup(listingId, initialSaved, source).replace('class="car-card-favourite"', `class="car-card-favourite ${className}"`);
+import type { Locale } from "../../i18n/locales";
+type Props = { listingId: number | string; initialSaved?: boolean; source?: string; class?: string; locale?: Locale };
+const { listingId, initialSaved = false, source = "detail", class: className = "", locale } = Astro.props;
+const markup = renderFavoriteButtonMarkup(listingId, initialSaved, source, locale).replace('class="car-card-favourite"', `class="car-card-favourite ${className}"`);
 ---
 <Fragment set:html={markup} />

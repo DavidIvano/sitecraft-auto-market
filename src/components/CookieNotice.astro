@@ -1,14 +1,20 @@
+---
+import type { Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
+
+type Props = { locale: Locale };
+const { locale } = Astro.props;
+const messages = getMessages(locale);
+---
+
 <div class="cookie-notice" id="cookie-notice" hidden>
   <div>
-    <strong>Cookie и приватность</strong>
-    <p>
-      Мы используем только необходимые cookie: для входа в кабинет, сохранения сессии и запоминания этого уведомления.
-      Рекламных и аналитических cookie нет.
-    </p>
+    <strong>{messages.cookieTitle}</strong>
+    <p>{messages.cookieText}</p>
   </div>
   <div class="cookie-actions">
-    <a class="button button-light" href="/privacy">Подробнее</a>
-    <button class="button button-dark" type="button" id="cookie-accept">Понятно</button>
+    <a class="button button-light" href="/privacy">{messages.cookieMore}</a>
+    <button class="button button-dark" type="button" id="cookie-accept">{messages.cookieAccept}</button>
   </div>
 </div>
 

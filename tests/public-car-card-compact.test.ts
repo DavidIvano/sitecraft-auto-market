@@ -17,8 +17,8 @@ const car = (overrides: Partial<CarListing> = {}): CarListing => ({
 test("compact public card has no details button or description and keeps required facts", () => {
   const html = renderPublicCarCardMarkup(car());
   assert.doesNotMatch(html, /Подробнее|This must never/);
-  for (const value of ["Volkswagen Golf", "15", "2020", "54", "Diesel", "Automatik", "Berlin"]) assert.match(html, new RegExp(value));
-  assert.match(html, /class="car-card-link" href="\/cars\/vw-golf\/"/);
+  for (const value of ["Volkswagen Golf", "15", "2020", "54", "Дизель", "Автомат", "Berlin"]) assert.match(html, new RegExp(value));
+  assert.match(html, /class="car-card-link" href="\/cars\/vw-golf\/\?lang=ru"/);
   assert.doesNotMatch(html, /data-lightbox-trigger|car-card-image-button/);
 });
 

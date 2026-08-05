@@ -2,10 +2,6 @@
 import BaseLayout from "../../../../layouts/BaseLayout.astro";
 import { formatPaidPrice, paidProducts } from "../../../../lib/monetization";
 
-export function getStaticPaths() {
-  return [];
-}
-
 const { id } = Astro.params;
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const promoteProducts = paidProducts.filter((product) =>

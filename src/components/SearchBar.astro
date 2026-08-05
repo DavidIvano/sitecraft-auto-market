@@ -1,16 +1,27 @@
 ---
-import { bodyTypes, carBrands, fuelTypes, transmissions, vehicleTypes } from "../data/carOptions";
+import { carBrands } from "../data/carOptions";
+import { getBackendValueOptions, normalizeBackendValue } from "../i18n/backendValues";
+import { getCatalogMessages } from "../i18n/catalogMessages";
+import type { Locale } from "../i18n/locales";
+
+type Props = { locale: Locale };
+const { locale } = Astro.props;
+const messages = getCatalogMessages(locale);
+const vehicleTypes = getBackendValueOptions("vehicle_type", locale);
+const bodyTypes = getBackendValueOptions("body_type", locale);
+const fuelTypes = getBackendValueOptions("fuel_type", locale);
+const transmissions = getBackendValueOptions("transmission", locale);
 
 const params = Astro.url.searchParams;
-const selectedVehicleType = params.get("vehicle_type") || "";
-const selectedBodyType = params.get("body_type") || "";
+const selectedVehicleType = normalizeBackendValue("vehicle_type", params.get("vehicle_type"));
+const selectedBodyType = normalizeBackendValue("body_type", params.get("body_type"));
 const selectedBrand = params.get("brand") || "";
 const selectedModel = params.get("model") || "";
 const selectedCity = params.get("city") || "";
 const selectedPriceMin = params.get("price_min") || "";
 const selectedPriceMax = params.get("price_max") || params.get("price") || "";
-const selectedFuelType = params.get("fuel_type") || "";
-const selectedTransmission = params.get("transmission") || "";
+const selectedFuelType = normalizeBackendValue("fuel_type", params.get("fuel_type"));
+const selectedTransmission = normalizeBackendValue("transmission", params.get("transmission"));
 const selectedYearMin = params.get("year_min") || "";
 const selectedYearMax = params.get("year_max") || "";
 const selectedMileageMax = params.get("mileage_max") || "";
@@ -18,70 +29,70 @@ const selectedMileageMax = params.get("mileage_max") || "";
 
 <form class="search-bar" action="/cars" method="get">
   <label class="search-field search-field-vehicle">
-    <span>Тип транспорта</span>
+    <span>{messages.vehicleType}</span>
     <select name="vehicle_type">
-      <option value="">Любой</option>
-      {vehicleTypes.map((type) => <option value={type} selected={selectedVehicleType === type}>{type}</option>)}
+      <option value="">{messages.anyMasculine}</option>
+      {vehicleTypes.map((type) => <option value={type.value} selected={selectedVehicleType === type.value}>{type.label}</option>)}
     </select>
   </label>
   <label class="search-field search-field-body">
-    <span>Тип кузова</span>
+    <span>{messages.bodyType}</span>
     <select name="body_type">
-      <option value="">Любой</option>
-      {bodyTypes.map((type) => <option value={type} selected={selectedBodyType === type}>{type}</option>)}
+      <option value="">{messages.anyMasculine}</option>
+      {bodyTypes.map((type) => <option value={type.value} selected={selectedBodyType === type.value}>{type.label}</option>)}
     </select>
   </label>
   <label class="search-field search-field-brand">
-    <span>Марка</span>
+    <span>{messages.brand}</span>
     <select name="brand">
-      <option value="">Любая</option>
+      <option value="">{messages.anyFeminine}</option>
       {carBrands.map((brand) => <option value={brand} selected={selectedBrand === brand}>{brand}</option>)}
     </select>
   </label>
   <label class="search-field search-field-model">
-    <span>Модель</span>
+    <span>{messages.model}</span>
     <input type="text" name="model" placeholder="X5" value={selectedModel} />
   </label>
   <label class="search-field search-field-city">
-    <span>Город</span>
-    <input type="text" name="city" placeholder="Берлин" value={selectedCity} />
+    <span>{messages.city}</span>
+    <input type="text" name="city" placeholder={messages.cityExample} value={selectedCity} />
   </label>
   <label class="search-field search-field-price-min">
-    <span>Цена от</span>
+    <span>{messages.priceFrom}</span>
     <input type="number" name="price_min" placeholder="5000" min="0" value={selectedPriceMin} />
   </label>
   <label class="search-field search-field-price-max">
-    <span>Цена до</span>
+    <span>{messages.priceTo}</span>
     <input type="number" name="price_max" placeholder="50000" min="0" value={selectedPriceMax} />
   </label>
   <label class="search-field search-field-fuel">
-    <span>Топливо</span>
+    <span>{messages.fuel}</span>
     <select name="fuel_type">
-      <option value="">Любое</option>
-      {fuelTypes.map((type) => <option value={type} selected={selectedFuelType === type}>{type}</option>)}
+      <option value="">{messages.anyNeutral}</option>
+      {fuelTypes.map((type) => <option value={type.value} selected={selectedFuelType === type.value}>{type.label}</option>)}
     </select>
   </label>
   <label class="search-field search-field-transmission">
-    <span>Коробка</span>
+    <span>{messages.transmission}</span>
     <select name="transmission">
-      <option value="">Любая</option>
-      {transmissions.map((type) => <option value={type} selected={selectedTransmission === type}>{type}</option>)}
+      <option value="">{messages.anyFeminine}</option>
+      {transmissions.map((type) => <option value={type.value} selected={selectedTransmission === type.value}>{type.label}</option>)}
     </select>
   </label>
   <label class="search-field search-field-year-min">
-    <span>Год от</span>
+    <span>{messages.yearFrom}</span>
     <input type="number" name="year_min" placeholder="2015" min="1950" max="2030" value={selectedYearMin} />
   </label>
   <label class="search-field search-field-year-max">
-    <span>Год до</span>
+    <span>{messages.yearTo}</span>
     <input type="number" name="year_max" placeholder="2026" min="1950" max="2030" value={selectedYearMax} />
   </label>
   <label class="search-field search-field-mileage-max">
-    <span>Пробег до</span>
+    <span>{messages.mileageTo}</span>
     <input type="number" name="mileage_max" placeholder="150000" min="0" step="1000" value={selectedMileageMax} />
   </label>
   <div class="search-bar-actions">
-    <button class="button button-dark search-submit" type="submit">Применить бесплатно</button>
-    <button class="button button-light" type="reset" id="catalog-filter-reset">Сбросить</button>
+    <button class="button button-dark search-submit" type="submit">{messages.applyFree}</button>
+    <button class="button button-light" type="reset" id="catalog-filter-reset">{messages.reset}</button>
   </div>
 </form>

@@ -1,9 +1,16 @@
 ---
+import LocaleSwitcher from "./LocaleSwitcher.astro";
+import type { Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
+
+type Props = { locale: Locale };
+const { locale } = Astro.props;
+const messages = getMessages(locale);
 const navItems = [
-  { href: "/", label: "Главная" },
-  { href: "/cars", label: "Авто" },
-  { href: "/sell", label: "Продать авто" },
-  { href: "/pricing", label: "Тарифы" },
+  { href: "/", label: messages.navHome },
+  { href: "/cars", label: messages.navCars },
+  { href: "/sell", label: messages.navSell },
+  { href: "/pricing", label: messages.navPricing },
 ];
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
@@ -16,7 +23,16 @@ const isCurrentPath = (href: string) => {
 };
 ---
 
-<header class="site-header" data-api-url={xanoApiUrl}>
+<header
+  class="site-header"
+  data-api-url={xanoApiUrl}
+  data-label-menu-open={messages.menuOpen}
+  data-label-menu-close={messages.menuClose}
+  data-label-theme-dark={messages.themeEnableDark}
+  data-label-theme-light={messages.themeEnableLight}
+  data-label-login={messages.navLogin}
+  data-label-dashboard={messages.navDashboard}
+>
   <div class="container header-inner">
     <a class="brand" href="/" aria-label="SiteCraft Auto Market">
       <img class="brand-logo" src="/sitecraft-logo.png" alt="" width="44" height="44" decoding="async" />
@@ -25,7 +41,7 @@ const isCurrentPath = (href: string) => {
     <button
       class="menu-toggle"
       type="button"
-      aria-label="Открыть меню"
+      aria-label={messages.menuOpen}
       aria-controls="site-header-menu"
       aria-expanded="false"
     >
@@ -34,19 +50,20 @@ const isCurrentPath = (href: string) => {
       <span aria-hidden="true"></span>
     </button>
     <div class="header-menu" id="site-header-menu">
-      <nav class="main-nav" aria-label="Основная навигация">
+      <nav class="main-nav" aria-label={messages.mainNavigation}>
         {navItems.map((item) => <a href={item.href} aria-current={isCurrentPath(item.href) ? "page" : undefined}>{item.label}</a>)}
       </nav>
       <div class="header-actions">
-        <button class="button button-light theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+        <LocaleSwitcher locale={locale} />
+        <button class="button button-light theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
           <span aria-hidden="true">◐</span>
         </button>
         <a class="button button-light deal-finder-link" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
-        <a class="button button-light admin-link" href="/admin/moderation" data-admin-only="true" hidden>Модерация</a>
-        <a class="button button-light auth-register" href="/register">Регистрация</a>
-        <a class="button button-light auth-link" href="/login">Войти</a>
-        <button class="button button-light auth-logout" type="button" hidden>Выйти</button>
-        <a class="button button-dark header-action" href="/dashboard/new">Добавить объявление</a>
+        <a class="button button-light admin-link" href="/admin/moderation" data-admin-only="true" hidden>{messages.navModeration}</a>
+        <a class="button button-light auth-register" href="/register">{messages.navRegister}</a>
+        <a class="button button-light auth-link" href="/login">{messages.navLogin}</a>
+        <button class="button button-light auth-logout" type="button" hidden>{messages.navLogout}</button>
+        <a class="button button-dark header-action" href="/dashboard/new">{messages.navAddListing}</a>
       </div>
     </div>
   </div>
@@ -64,6 +81,14 @@ const isCurrentPath = (href: string) => {
     const themeToggles = document.querySelectorAll(".theme-toggle");
     const token = getAuthToken();
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
+    const labels = {
+      menuOpen: header instanceof HTMLElement ? header.dataset.labelMenuOpen || "Open menu" : "Open menu",
+      menuClose: header instanceof HTMLElement ? header.dataset.labelMenuClose || "Close menu" : "Close menu",
+      themeDark: header instanceof HTMLElement ? header.dataset.labelThemeDark || "Enable dark theme" : "Enable dark theme",
+      themeLight: header instanceof HTMLElement ? header.dataset.labelThemeLight || "Enable light theme" : "Enable light theme",
+      login: header instanceof HTMLElement ? header.dataset.labelLogin || "Sign in" : "Sign in",
+      dashboard: header instanceof HTMLElement ? header.dataset.labelDashboard || "Dashboard" : "Dashboard",
+    };
     let lastScrollY = window.scrollY;
 
     const setMenuOpen = (isOpen: boolean) => {
@@ -74,7 +99,7 @@ const isCurrentPath = (href: string) => {
       menu.classList.toggle("is-open", isOpen);
       menuToggle.classList.toggle("is-open", isOpen);
       menuToggle.setAttribute("aria-expanded", String(isOpen));
-      menuToggle.setAttribute("aria-label", isOpen ? "Закрыть меню" : "Открыть меню");
+      menuToggle.setAttribute("aria-label", isOpen ? labels.menuClose : labels.menuOpen);
     };
 
     menuToggle?.addEventListener("click", () => {
@@ -90,7 +115,7 @@ const isCurrentPath = (href: string) => {
       themeToggles.forEach((toggle) => {
         if (toggle instanceof HTMLButtonElement) {
           toggle.setAttribute("aria-pressed", String(isDark));
-          toggle.setAttribute("aria-label", isDark ? "Включить светлую тему" : "Включить тёмную тему");
+          toggle.setAttribute("aria-label", isDark ? labels.themeLight : labels.themeDark);
         }
       });
     };
@@ -108,7 +133,7 @@ const isCurrentPath = (href: string) => {
     const showGuestHeader = () => {
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/login";
-        authLink.textContent = "Войти";
+        authLink.textContent = labels.login;
         authLink.hidden = false;
       }
 
@@ -133,7 +158,7 @@ const isCurrentPath = (href: string) => {
     const showUserHeader = (user: { email?: unknown; role?: unknown } | null) => {
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/dashboard";
-        authLink.textContent = "Кабинет";
+        authLink.textContent = labels.dashboard;
         authLink.hidden = false;
       }
 

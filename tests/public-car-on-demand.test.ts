@@ -84,10 +84,10 @@ test("car detail is on-demand and uses direct slug lookup with safe state routes
   const unavailable = readProjectFile("src/pages/service-unavailable.astro");
   assert.match(page, /export const prerender = false/);
   assert.doesNotMatch(page, /getStaticPaths/);
-  assert.match(page, /await getCarBySlug\(slug\)/);
+  assert.match(page, /await getCarBySlug\(slug, locale\)/);
   assert.match(page, /Astro\.response\.status = 404/);
   assert.match(page, /Astro\.response\.headers\.set\("Cache-Control", "no-store"\)/);
-  assert.match(page, /safeCarDescription[\s\S]*Продавец пока не добавил описание автомобиля/);
+  assert.match(page, /detailDescription \|\| messages\.noDescription/);
   assert.match(page, /\/deal-finder-placeholder\.svg/);
   assert.match(xano, /API_ROUTES\.carBySlug\(slug\)/);
   assert.match(xano, /AbortSignal\.timeout/);

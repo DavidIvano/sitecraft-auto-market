@@ -1,0 +1,44 @@
+{
+  "batch": "translation-batch-01",
+  "source_hash_schema": "car_listing_translation_source_v1",
+  "prompt_version": "listing-translation-v1",
+  "provider": "openai",
+  "model": "gpt-5.6-luna",
+  "target_locales": ["de", "uk", "en"],
+  "listings": [
+    {
+      "id": 96,
+      "slug": "audi-80-2026-75",
+      "source_locale": "ru",
+      "source_hash": "42d7b7348b0f6cd567f0c6f4a9bbe8c6e44cfc9bf93c903e33f1620e7f1b5e8d",
+      "targets": ["uk", "en"]
+    },
+    {
+      "id": 95,
+      "slug": "mercedes-benz-vito-2006-74",
+      "source_locale": "ru",
+      "source_hash": "cbc8983bf23721e881716955deb2e2525a0b99425e4accce27fc3f3e4b4e64e2",
+      "targets": ["de", "uk", "en"]
+    },
+    {
+      "id": 94,
+      "slug": "bmw-520-2004-73",
+      "source_locale": "ru",
+      "source_hash": "191678ec98f27344e45c1ebd5b254fec307e657aed709b54fa025d2bc61c6649",
+      "targets": ["de", "uk", "en"]
+    }
+  ],
+  "expected_jobs": 8,
+  "executed_at": "2026-08-05T21:34:21Z",
+  "status": "queued",
+  "created_jobs": [
+    { "id": 1, "listing_id": 96, "target_locale": "uk" },
+    { "id": 2, "listing_id": 96, "target_locale": "en" },
+    { "id": 3, "listing_id": 95, "target_locale": "de" },
+    { "id": 4, "listing_id": 95, "target_locale": "uk" },
+    { "id": 5, "listing_id": 95, "target_locale": "en" },
+    { "id": 6, "listing_id": 94, "target_locale": "de" },
+    { "id": 7, "listing_id": 94, "target_locale": "uk" },
+    { "id": 8, "listing_id": 94, "target_locale": "en" }
+  ]
+}

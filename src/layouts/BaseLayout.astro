@@ -4,6 +4,8 @@ import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
+import { LOCALE_COOKIE, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
 import "../styles/global.css";
 import "../styles/promotions.css";
 
@@ -15,6 +17,7 @@ type Props = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   breadcrumbs?: Array<{ href?: string; label: string }>;
   noindex?: boolean;
+  locale?: Locale;
 };
 
 const {
@@ -25,7 +28,10 @@ const {
   jsonLd,
   breadcrumbs,
   noindex = false,
+  locale: localeProp,
 } = Astro.props;
+const locale = localeProp ?? resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const messages = getMessages(locale);
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
@@ -37,22 +43,22 @@ const buildEnvironment =
   || import.meta.env.ENVIRONMENT
   || (import.meta.env.CF_PAGES_BRANCH ? "cloudflare-pages" : "local");
 const labelBySegment: Record<string, string> = {
-  admin: "Админ",
-  auth: "Авторизация",
-  cars: "Авто",
-  dashboard: "Кабинет",
+  admin: messages.navModeration,
+  auth: messages.navLogin,
+  cars: messages.navCars,
+  dashboard: messages.navDashboard,
   detail: "Автомобиль",
   edit: "Редактирование",
   google: "Google",
   listings: "Мои объявления",
-  login: "Вход",
-  moderation: "Модерация",
+  login: messages.navLogin,
+  moderation: messages.navModeration,
   "deal-finder": "Deal Finder",
   new: "Новое объявление",
-  privacy: "Конфиденциальность",
-  register: "Регистрация",
-  sell: "Продать авто",
-  support: "Поддержка",
+  privacy: messages.navPrivacy,
+  register: messages.navRegister,
+  sell: messages.navSell,
+  support: messages.navSupport,
 };
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isWorkspacePath = pathname === "/dashboard"
@@ -60,15 +66,15 @@ const isWorkspacePath = pathname === "/dashboard"
   || pathname === "/admin"
   || pathname.startsWith("/admin/");
 const shellNavItems = [
-  { href: "/", label: "Главная", short: "Г" },
-  { href: "/cars", label: "Авто", short: "А" },
-  { href: "/dashboard", label: "Кабинет", short: "К" },
+  { href: "/", label: messages.navHome, short: "H" },
+  { href: "/cars", label: messages.navCars, short: "A" },
+  { href: "/dashboard", label: messages.navDashboard, short: "D" },
   ...(DEAL_FINDER_ENABLED
     ? [{ href: "/dashboard/deal-finder", label: "Deal Finder", short: "DF", dealFinderOnly: true }]
     : []),
-  { href: "/sell", label: "Продать авто", short: "П" },
-  { href: "/pricing", label: "Тарифы", short: "Т" },
-  { href: "/admin/moderation", label: "Модерация", short: "✓", adminOnly: true },
+  { href: "/sell", label: messages.navSell, short: "+" },
+  { href: "/pricing", label: messages.navPricing, short: "€" },
+  { href: "/admin/moderation", label: messages.navModeration, short: "✓", adminOnly: true },
 ];
 const getShellNavClass = (href: string) => {
   const normalizedHref = href.replace(/\/$/, "") || "/";
@@ -85,7 +91,7 @@ const generatedBreadcrumbs =
   pathname === "/"
     ? []
     : [
-        { href: "/", label: "Главная" },
+        { href: "/", label: messages.navHome },
         ...pathname
           .split("/")
           .filter(Boolean)
@@ -131,7 +137,7 @@ const schemaItems = [
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -173,15 +179,15 @@ const schemaItems = [
   </head>
   <body>
     <div class:list={["mac-app-shell", isWorkspacePath ? "is-workspace-shell" : "is-public-shell"]}>
-      <aside class="mac-sidebar" aria-label="Навигация SiteCraft Auto Market">
+      <aside class="mac-sidebar" aria-label={messages.navigation}>
         <div class="mac-sidebar-top">
           <a class="mac-sidebar-brand" href="/" aria-label="SiteCraft Auto Market">
             <img src="/sitecraft-logo.png" alt="" width="38" height="38" decoding="async" />
             <strong>Auto Market</strong>
           </a>
-          <button class="mac-sidebar-toggle" type="button" aria-label="Скрыть боковое меню" aria-expanded="true">‹</button>
+          <button class="mac-sidebar-toggle" type="button" aria-label={messages.sidebarClose} aria-expanded="true" data-open-label={messages.sidebarOpen} data-close-label={messages.sidebarClose}>‹</button>
         </div>
-        <nav class="mac-sidebar-nav" aria-label="Разделы сайта">
+        <nav class="mac-sidebar-nav" aria-label={messages.siteSections}>
           {
             shellNavItems.map((item) => (
               <a
@@ -198,18 +204,18 @@ const schemaItems = [
             ))
           }
         </nav>
-        <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+        <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
           <span aria-hidden="true">◐</span>
-          <strong>Тема</strong>
+          <strong>{messages.theme}</strong>
         </button>
-        <a class="mac-sidebar-cta" href="/dashboard/new">Добавить авто</a>
+        <a class="mac-sidebar-cta" href="/dashboard/new">{messages.navAddListing}</a>
       </aside>
       <div class="mac-workspace">
-        <Header />
+        <Header locale={locale} />
         <main class="mac-main">
           {
             pageBreadcrumbs.length > 0 && (
-              <nav class="breadcrumbs" aria-label="Хлебные крошки">
+              <nav class="breadcrumbs" aria-label={messages.breadcrumbs}>
                 <div class="container breadcrumbs-inner">
                   {pageBreadcrumbs.map((item, index) => (
                     <>
@@ -223,11 +229,11 @@ const schemaItems = [
           }
           <slot />
         </main>
-        <Footer />
+        <Footer locale={locale} />
       </div>
     </div>
   <ImageLightbox />
-  <CookieNotice />
+  <CookieNotice locale={locale} />
   <script>
     import { installImageLightbox } from "../lib/media/lightbox";
     installImageLightbox();
@@ -241,7 +247,7 @@ const schemaItems = [
         const setCollapsed = (collapsed) => {
           shell.classList.toggle("is-sidebar-collapsed", collapsed);
           toggle.textContent = collapsed ? "›" : "‹";
-          toggle.setAttribute("aria-label", collapsed ? "Открыть боковое меню" : "Скрыть боковое меню");
+          toggle.setAttribute("aria-label", collapsed ? toggle.dataset.openLabel || "Open sidebar" : toggle.dataset.closeLabel || "Close sidebar");
           toggle.setAttribute("aria-expanded", String(!collapsed));
           localStorage.setItem("sitecraft-sidebar-collapsed", collapsed ? "true" : "false");
         };

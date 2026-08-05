@@ -95,14 +95,19 @@ test("match explanations use listing facts and zero-result actions change one cr
 test("catalog exposes one workflow, editable criteria, cost, reasons and recovery", () => {
   const catalog = readProjectFile("src/pages/cars/index.astro");
   const searchBar = readProjectFile("src/components/SearchBar.astro");
+  const messages = readProjectFile("src/i18n/catalogMessages.ts");
 
-  assert.match(catalog, /Найдите автомобиль одним запросом/);
-  assert.match(catalog, /Подобрать с AI · \{aiSearchPolicy\.cost\} кредит/);
+  assert.match(catalog, /messages\.aiTitle/);
+  assert.match(catalog, /interpolate\(messages\.aiSubmit, \{ count: aiSearchPolicy\.cost \}\)/);
   assert.match(catalog, /id="buyer-applied-criteria"/);
   assert.match(catalog, /id="buyer-search-clarifications"/);
   assert.match(catalog, /getBuyerSearchMatchReasons/);
   assert.match(catalog, /data-relaxation-id/);
-  assert.match(searchBar, /Применить бесплатно/);
+  assert.match(searchBar, /messages\.applyFree/);
+  assert.match(messages, /aiTitle: "Найдите автомобиль одним запросом"/);
+  assert.match(messages, /aiTitle: "Finden Sie ein Auto mit einer Anfrage"/);
+  assert.match(messages, /aiTitle: "Знайдіть автомобіль одним запитом"/);
+  assert.match(messages, /aiTitle: "Find a car with one request"/);
   assert.match(searchBar, /name="fuel_type"/);
   assert.match(searchBar, /name="transmission"/);
   assert.match(searchBar, /name="mileage_max"/);
