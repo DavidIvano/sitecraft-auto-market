@@ -8,6 +8,8 @@ import { DEFAULT_LOCALE, type Locale } from "../i18n/locales.ts";
 
 const API_URL = getXanoApiUrl();
 const PUBLIC_API_TIMEOUT_MS = 8_000;
+const PUBLIC_API_RATE_LIMIT_RETRY_MS = 5_000;
+const PUBLIC_API_RATE_LIMIT_ATTEMPTS = 5;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
 
 const withLocale = (path: string, locale: Locale) =>
@@ -24,21 +26,27 @@ export class XanoPublicApiError extends Error {
 }
 
 async function fetchPublicJson(path: string) {
-  let response: Response;
-  try {
-    response = await fetch(buildApiUrl(path, API_URL), {
-      headers: { Accept: "application/json" },
-      signal: AbortSignal.timeout(PUBLIC_API_TIMEOUT_MS),
-    });
-  } catch (error) {
-    throw new XanoPublicApiError(
-      error instanceof Error && error.name === "TimeoutError"
-        ? "Xano public API timed out"
-        : "Xano public API is unavailable",
-      503,
-    );
+  let response: Response | null = null;
+  for (let attempt = 0; attempt < PUBLIC_API_RATE_LIMIT_ATTEMPTS; attempt += 1) {
+    try {
+      response = await fetch(buildApiUrl(path, API_URL), {
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(PUBLIC_API_TIMEOUT_MS),
+      });
+    } catch (error) {
+      throw new XanoPublicApiError(
+        error instanceof Error && error.name === "TimeoutError"
+          ? "Xano public API timed out"
+          : "Xano public API is unavailable",
+        503,
+      );
+    }
+
+    if (response.status !== 429 || attempt === PUBLIC_API_RATE_LIMIT_ATTEMPTS - 1) break;
+    await new Promise((resolve) => setTimeout(resolve, PUBLIC_API_RATE_LIMIT_RETRY_MS));
   }
 
+  if (!response) throw new XanoPublicApiError("Xano public API is unavailable", 503);
   if (response.status === 404) return null;
   if (!response.ok) {
     throw new XanoPublicApiError("Xano public API request failed", response.status >= 500 ? 503 : 502);

@@ -51,3 +51,12 @@ test("Cloudflare and compatibility redirects keep every page and locale reachabl
   assert.match(redirect, /const locale = url\.searchParams\.get\("lang"\)/);
   assert.match(redirect, /url\.searchParams\.set\("lang", locale\)/);
 });
+
+test("car detail fallbacks retain the requested locale and retry Xano rate limits", () => {
+  const detailPage = readProjectFile("src/pages/cars/[slug].astro");
+  const xanoClient = readProjectFile("src/lib/xano.ts");
+  assert.match(detailPage, /Astro\.rewrite\(`\/404\?lang=\$\{encodeURIComponent\(locale\)\}`\)/);
+  assert.match(detailPage, /Astro\.rewrite\(`\/service-unavailable\?lang=\$\{encodeURIComponent\(locale\)\}`\)/);
+  assert.match(xanoClient, /response\.status !== 429/);
+  assert.match(xanoClient, /PUBLIC_API_RATE_LIMIT_ATTEMPTS = 5/);
+});

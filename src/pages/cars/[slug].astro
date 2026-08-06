@@ -42,7 +42,7 @@ try {
 
 if (!isValidPublicCarSlug(slug)) {
   Astro.response.status = 404;
-  return Astro.rewrite("/404");
+  return Astro.rewrite(`/404?lang=${encodeURIComponent(locale)}`);
 }
 
 let car: CarListing | null = null;
@@ -51,13 +51,13 @@ try {
 } catch (error) {
   Astro.response.status = error instanceof XanoPublicApiError ? error.status : 503;
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
-  return Astro.rewrite("/service-unavailable");
+  return Astro.rewrite(`/service-unavailable?lang=${encodeURIComponent(locale)}`);
 }
 
 if (!car || !isPublicListing(car)) {
   Astro.response.status = 404;
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
-  return Astro.rewrite("/404");
+  return Astro.rewrite(`/404?lang=${encodeURIComponent(locale)}`);
 }
 const activePromotion = getActiveListingPromotion(car);
 const translationMeta = car.translation_meta;
