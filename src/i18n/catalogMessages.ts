@@ -1,4 +1,5 @@
 import type { Locale } from "./locales.ts";
+import { translateArTrRecord } from "./arTrTranslations.ts";
 
 const ru = {
   title: "Автомобили", description: "Каталог проверенных автомобилей SiteCraft Auto Market", eyebrow: "Каталог автомобилей", lead: "Свежие проверенные объявления с фотографиями, ценами и быстрым поиском по главным параметрам.", view: "Вид каталога", grid: "Плитка", list: "Список", filters: "Фильтры каталога",
@@ -34,5 +35,12 @@ const en: CatalogMessages = {
   removeCriterion: "Remove parameter {label}: {value}", emptyTitle: "No cars match these parameters", emptyLead: "Change one criterion or save the search for later.", expandSearch: "Ways to expand the search", showAll: "Show full catalogue", lastAiSearch: "Last AI search: {value}", queryRequired: "Describe the car you are looking for.", applyingFilters: "Creating filters...", apiMissing: "AI search is temporarily unavailable: the API is not configured.", insufficientCredits: "Not enough AI credits.", aiUnavailable: "AI search is temporarily unavailable. Try again.", aiConnectionFailed: "Could not reach the AI service. Try again.", localFallback: "Local request analysis was applied.", filtersApplied: "Filters applied.", noPublished: "There are no published listings yet.", cachedCatalog: "A saved catalogue is shown. You can refresh it again.", catalogFailed: "The catalogue could not be loaded. Check your connection and try again.", refreshing: "Refreshing catalogue...", clarificationFailed: "Could not apply the refinement. Select a parameter manually.", loginToSave: "Sign in to save the search and receive similar cars later.", savedSearchesSoon: "Saved searches are coming soon.", searchSaved: "Search saved.", repeatFailed: "Could not repeat the last search.", carFallback: "Vehicle",
 };
 
-const dictionaries: Record<Locale, CatalogMessages> = { de, ru, uk, en };
+const dictionaries: Record<Locale, CatalogMessages> = {
+  de,
+  ru,
+  uk,
+  en,
+  ar: translateArTrRecord(ru, "ar"),
+  tr: translateArTrRecord(ru, "tr"),
+};
 export const getCatalogMessages = (locale: Locale) => dictionaries[locale];

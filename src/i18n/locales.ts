@@ -1,4 +1,4 @@
-export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en"] as const;
+export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
 
 export type Locale = typeof SUPPORTED_LOCALES[number];
 
@@ -11,6 +11,8 @@ export const LOCALE_LABELS: Record<Locale, string> = {
   ru: "Русский",
   uk: "Українська",
   en: "English",
+  ar: "العربية",
+  tr: "Türkçe",
 };
 
 export const LOCALE_TAGS: Record<Locale, string> = {
@@ -18,6 +20,17 @@ export const LOCALE_TAGS: Record<Locale, string> = {
   ru: "ru-RU",
   uk: "uk-UA",
   en: "en-GB",
+  ar: "ar",
+  tr: "tr-TR",
+};
+
+export const LOCALE_DIRECTIONS: Record<Locale, "ltr" | "rtl"> = {
+  de: "ltr",
+  ru: "ltr",
+  uk: "ltr",
+  en: "ltr",
+  ar: "rtl",
+  tr: "ltr",
 };
 
 export const LOCALE_COOKIE = "sitecraft-locale";

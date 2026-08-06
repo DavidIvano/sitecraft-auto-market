@@ -9,19 +9,24 @@ import {
   toLegacyRussianValue,
   translateBackendValue,
 } from "../src/i18n/backendValues.ts";
+import { AR_TR_TRANSLATIONS } from "../src/i18n/arTrTranslations.ts";
 import { getCatalogMessages } from "../src/i18n/catalogMessages.ts";
 import { getDetailMessages } from "../src/i18n/detailMessages.ts";
 import { getMessages, interpolate, UI_MESSAGES } from "../src/i18n/messages.ts";
-import { resolveLocale, resolveRequestLocale, SUPPORTED_LOCALES } from "../src/i18n/locales.ts";
+import { LOCALE_DIRECTIONS, resolveLocale, resolveRequestLocale, SUPPORTED_LOCALES } from "../src/i18n/locales.ts";
 import { formatOwnersCount, formatSellerType, formatTuvDetail } from "../src/lib/listingDisplay.ts";
 import { applyListingTranslation, normalizeListingTranslation } from "../src/lib/listingTranslation.ts";
 import { renderPublicCarCardMarkup } from "../src/lib/publicCarCard.ts";
 import type { CarListing } from "../src/lib/types.ts";
 
-test("the migration supports the four documented locales", () => {
-  assert.deepEqual(SUPPORTED_LOCALES, ["de", "ru", "uk", "en"]);
+test("the migration supports all six documented locales and Arabic RTL", () => {
+  assert.deepEqual(SUPPORTED_LOCALES, ["de", "ru", "uk", "en", "ar", "tr"]);
   assert.equal(resolveLocale("de-DE"), "de");
   assert.equal(resolveLocale("uk-UA"), "uk");
+  assert.equal(resolveLocale("ar-SA"), "ar");
+  assert.equal(resolveLocale("tr-TR"), "tr");
+  assert.equal(LOCALE_DIRECTIONS.ar, "rtl");
+  assert.equal(LOCALE_DIRECTIONS.tr, "ltr");
   assert.equal(resolveLocale("unsupported"), "ru");
 });
 
@@ -40,6 +45,8 @@ test("canonical backend codes render in every supported page language", () => {
   assert.equal(translateBackendValue("fuel_type", "petrol", "ru"), "Бензин");
   assert.equal(translateBackendValue("fuel_type", "petrol", "uk"), "Бензин");
   assert.equal(translateBackendValue("fuel_type", "petrol", "en"), "Petrol");
+  assert.notEqual(translateBackendValue("fuel_type", "petrol", "ar"), "Бензин");
+  assert.notEqual(translateBackendValue("fuel_type", "petrol", "tr"), "Бензин");
   assert.equal(translateBackendValue("country", "DE", "de"), "Deutschland");
   assert.equal(translateBackendValue("country", "DE", "en"), "Germany");
 });
@@ -82,6 +89,22 @@ test("every supported language has a complete interface dictionary", () => {
   assert.equal(interpolate(getMessages("en").foundCars, { count: 12 }), "Listings found: 12.");
 });
 
+test("Arabic and Turkish generated UI dictionaries are complete and contain no Russian fallback", () => {
+  assert.ok(Object.keys(AR_TR_TRANSLATIONS).length > 1_300);
+  for (const translations of Object.values(AR_TR_TRANSLATIONS)) {
+    assert.ok(translations.ar.length > 0);
+    assert.ok(translations.tr.length > 0);
+    assert.doesNotMatch(translations.ar, /[А-Яа-яЁё]/u);
+    assert.doesNotMatch(translations.tr, /[А-Яа-яЁё]/u);
+  }
+});
+
+test("the shared layout declares language direction for every page", () => {
+  const layout = readFileSync(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8");
+  assert.match(layout, /<html lang=\{locale\} dir=\{LOCALE_DIRECTIONS\[locale\]\}>/);
+  assert.match(layout, /hreflang=\{LOCALE_TAGS\[code\]\}/);
+});
+
 test("catalog and vehicle detail dictionaries stay complete in every language", () => {
   const catalogKeys = Object.keys(getCatalogMessages("ru")).sort();
   const detailKeys = Object.keys(getDetailMessages("ru")).sort();
@@ -93,6 +116,8 @@ test("catalog and vehicle detail dictionaries stay complete in every language", 
 
   assert.equal(getCatalogMessages("de").applyFree, "Kostenlos anwenden");
   assert.equal(getDetailMessages("uk").similarCars, "Схожі автомобілі");
+  assert.notEqual(getCatalogMessages("ar").title, getCatalogMessages("ru").title);
+  assert.notEqual(getDetailMessages("tr").contactSeller, getDetailMessages("ru").contactSeller);
 });
 
 test("dynamic listing values use the page language", () => {
@@ -189,7 +214,7 @@ test("the public Xano contract is locale-aware, cache-safe and preserves origina
   const relatedEndpoint = readFileSync(new URL("../docs/xano/multilingual/GET_cars_slug_related.draft.xs", import.meta.url), "utf8");
   const xanoClient = readFileSync(new URL("../src/lib/xano.ts", import.meta.url), "utf8");
 
-  assert.deepEqual(contract.supported_locales, ["de", "ru", "uk", "en"]);
+  assert.deepEqual(contract.supported_locales, ["de", "ru", "uk", "en", "ar", "tr"]);
   assert.deepEqual(contract.translation.cache_key, ["car_listing_id", "locale", "source_hash"]);
   assert.ok(contract.translation.immutable_fields.includes("price"));
   assert.match(resolver, /status == "completed"/);

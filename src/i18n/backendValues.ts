@@ -1,4 +1,5 @@
 import type { Locale } from "./locales.ts";
+import { translateArTrPhrase } from "./arTrTranslations.ts";
 
 export type BackendValueField =
   | "vehicle_type"
@@ -24,7 +25,18 @@ const value = (
   uk: string,
   en: string,
   legacy: string[] = [],
-): LocalizedValue => ({ code, labels: { de, ru, uk, en }, legacy });
+): LocalizedValue => ({
+  code,
+  labels: {
+    de,
+    ru,
+    uk,
+    en,
+    ar: translateArTrPhrase(ru, "ar"),
+    tr: translateArTrPhrase(ru, "tr"),
+  },
+  legacy,
+});
 
 export const BACKEND_VALUE_CATALOG: Record<BackendValueField, readonly LocalizedValue[]> = {
   vehicle_type: [

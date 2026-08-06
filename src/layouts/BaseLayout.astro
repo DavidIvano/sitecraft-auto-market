@@ -4,7 +4,7 @@ import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
-import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_TAGS, SUPPORTED_LOCALES, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_DIRECTIONS, LOCALE_TAGS, SUPPORTED_LOCALES, resolveRequestLocale, type Locale } from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
 import { getUiPhraseMap, translateUiData } from "../i18n/uiTranslator";
 import "../styles/global.css";
@@ -146,7 +146,7 @@ const localizedSchemaItems = translateUiData(schemaItems, locale);
 ---
 
 <!doctype html>
-<html lang={locale}>
+<html lang={locale} dir={LOCALE_DIRECTIONS[locale]}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -198,12 +198,12 @@ const localizedSchemaItems = translateUiData(schemaItems, locale);
           if (!value || !/[А-Яа-яЁё]/u.test(value)) return value;
           const normalized = value.replace(/\s+/gu, " ").trim();
           const dynamicPatterns = [
-            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів` }],
-            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів` }],
-            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень` }],
-            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця` }],
-            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}` }],
-            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.` }],
+            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів`, ar: (n) => `${n} أيام`, tr: (n) => `${n} gün` }],
+            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів`, ar: (n) => `${n} رصيد`, tr: (n) => `${n} kredi` }],
+            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень`, ar: (n) => `حتى ${n} إعلانات نشطة`, tr: (n) => `${n} adede kadar aktif ilan` }],
+            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця`, ar: (n) => `${n} رصيد AI كل شهر`, tr: (n) => `Her ay ${n} AI kredisi` }],
+            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}`, ar: (n) => `أولوية التاجر: ${n}`, tr: (n) => `Bayi önceliği: ${n}` }],
+            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.`, ar: (n) => `${n} / شهر`, tr: (n) => `${n} / ay` }],
           ];
           for (const [pattern, handlers] of dynamicPatterns) {
             const match = normalized.match(pattern);

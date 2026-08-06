@@ -120,7 +120,7 @@ export function buildTranslationJobs({
   listings,
   translations = [],
   existingJobs = [],
-  targetLocales = ["de", "uk", "en"],
+  targetLocales = ["de", "uk", "en", "ar", "tr"],
 }: {
   listings: ListingRecord[];
   translations?: ListingRecord[];

@@ -1,7 +1,7 @@
 // Generated from dynamic static UI literals. Never include user or listing content here.
 import type { Locale } from "./locales.ts";
 
-export const UI_PHRASE_TRANSLATIONS_DYNAMIC: Record<string, Record<Locale, string>> = {
+export const UI_PHRASE_TRANSLATIONS_DYNAMIC: Record<string, Partial<Record<Locale, string>>> = {
   "0.8 л": {
     "ru": "0.8 л",
     "de": "0,8 l",

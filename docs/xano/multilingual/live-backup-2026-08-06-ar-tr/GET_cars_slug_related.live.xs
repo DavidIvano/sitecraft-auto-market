@@ -4,7 +4,7 @@ query "cars/{slug}/related" verb=GET {
 
   input {
     text slug filters=trim|lower
-    text lang?="ru" filters=trim|lower
+    text lang?=ru filters=trim|lower
   }
 
   stack {
@@ -26,8 +26,8 @@ query "cars/{slug}/related" verb=GET {
       error_type = "notfound"
       error = "Listing not found"
     }
-
-    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en") || ($input.lang == "ar") || ($input.lang == "tr")) {
+  
+    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en")) {
       error_type = "inputerror"
       error = "Unsupported locale"
     }
@@ -125,7 +125,7 @@ query "cars/{slug}/related" verb=GET {
     var $public_views {
       value = []
     }
-
+  
     var $translation_rows {
       value = []
     }
@@ -150,13 +150,13 @@ query "cars/{slug}/related" verb=GET {
             }
           }
         }
-
+      
         db.query car_listing_translations {
           where = (($db.car_listing_translations.car_listing_id in $candidate_ids) && ($db.car_listing_translations.locale_code == $input.lang) && ($db.car_listing_translations.translation_status == "completed"))
           sort = {car_listing_translations.updated_at: "desc"}
           return = {type: "list"}
         } as $all_translation_rows
-
+      
         var.update $translation_rows {
           value = $all_translation_rows
         }
@@ -188,21 +188,23 @@ query "cars/{slug}/related" verb=GET {
         conditional {
           if (($already_selected == false) && (($related|count) < 6)) {
             var $source_locale {
-              value = $candidate.source_locale|first_notnull:"ru"|trim|lower
+              value = $candidate.source_locale
+                |first_notnull:"ru"
+                |trim
+                |to_lower
             }
-
+          
             var $source_hash {
               value = $candidate.translation_source_hash|first_notnull:""
             }
-
+          
             var $translation {
               value = null
             }
-
+          
             conditional {
               if (($input.lang != $source_locale) && ($source_hash != "")) {
                 array.filter ($translation_rows) if (($this.car_listing_id == $candidate.id) && ($this.locale_code == $input.lang) && ($this.source_locale == $source_locale) && ($this.source_hash == $source_hash) && ($this.translation_status == "completed")) as $matching_translations
-
                 foreach ($matching_translations) {
                   each as $translation_row {
                     conditional {
@@ -231,7 +233,7 @@ query "cars/{slug}/related" verb=GET {
                 }
               }
             }
-
+          
             array.filter ($public_views) if ($this.car_id == $candidate.id) as $candidate_views
             array.push $related {
               value = {
@@ -281,4 +283,3 @@ query "cars/{slug}/related" verb=GET {
     "i18n-draft"
   ]
 }
-

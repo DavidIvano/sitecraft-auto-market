@@ -3,7 +3,7 @@ query "cars/{slug}" verb=GET {
 
   input {
     text slug filters=trim|lower
-    text lang?="ru" filters=trim|lower
+    text lang?=ru filters=trim|lower
   }
 
   stack {
@@ -25,24 +25,27 @@ query "cars/{slug}" verb=GET {
       error_type = "notfound"
       error = "Listing not found"
     }
-
-    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en") || ($input.lang == "ar") || ($input.lang == "tr")) {
+  
+    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en")) {
       error_type = "inputerror"
       error = "Unsupported locale"
     }
-
+  
     var $source_locale {
-      value = $car.source_locale|first_notnull:"ru"|trim|lower
+      value = $car.source_locale
+        |first_notnull:"ru"
+        |trim
+        |to_lower
     }
-
+  
     var $source_hash {
       value = $car.translation_source_hash|first_notnull:""
     }
-
+  
     var $translation {
       value = null
     }
-
+  
     conditional {
       if (($input.lang != $source_locale) && ($source_hash != "")) {
         db.query car_listing_translations {
@@ -50,7 +53,7 @@ query "cars/{slug}" verb=GET {
           sort = {car_listing_translations.updated_at: "desc"}
           return = {type: "single"}
         } as $translation_row
-
+      
         conditional {
           if (($translation_row != null) && ($translation_row.locale_code == $input.lang) && ($translation_row.source_locale == $source_locale) && ($translation_row.source_hash == $source_hash) && ($translation_row.translation_status == "completed")) {
             var.update $translation {
@@ -383,20 +386,6 @@ query "cars/{slug}" verb=GET {
   }
 
   response = $model
-
-  test "missing translation falls back to source" {
-    input = {slug: "audi-80-2026-75", lang: "de"}
-    expect.to_equal ($response.source_locale) {
-      value = "ru"
-    }
-    expect.to_be_null ($response.translation)
-  }
-
-  test "unsupported locale is rejected" {
-    input = {slug: "audi-80-2026-75", lang: "fr"}
-    expect.to_throw
-  }
-
   tags = [
     "sitecraft-auto-market"
     "cars"
@@ -406,4 +395,22 @@ query "cars/{slug}" verb=GET {
     "views-public"
     "i18n-draft"
   ]
+
+  test "missing translation falls back to source" {
+    input = {slug: "audi-80-2026-75", lang: "de"}
+  
+    expect.to_equal ($response.source_locale) {
+      value = "ru"
+    }
+  
+    expect.to_be_null ($response.translation)
+  }
+
+  test "unsupported locale is rejected" {
+    input = {slug: "audi-80-2026-75", lang: "fr"}
+  
+    expect.to_throw {
+      exception = ""
+    }
+  }
 }

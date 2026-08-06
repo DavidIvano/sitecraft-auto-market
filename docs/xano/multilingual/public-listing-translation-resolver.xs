@@ -5,7 +5,7 @@ input {
   text lang?="ru" filters=trim|lower
 }
 
-precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en")) {
+precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en") || ($input.lang == "ar") || ($input.lang == "tr")) {
   error_type = "inputerror"
   error = "Unsupported locale"
 }

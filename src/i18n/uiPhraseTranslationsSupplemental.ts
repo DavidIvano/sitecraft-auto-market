@@ -1,7 +1,7 @@
 // Generated from static UI literals in src/lib. Never include user or listing content here.
 import type { Locale } from "./locales.ts";
 
-export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Record<Locale, string>> = {
+export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Partial<Record<Locale, string>>> = {
   "10 AI-генераций": {
     "ru": "10 AI-генераций",
     "de": "10 KI-Generationen",

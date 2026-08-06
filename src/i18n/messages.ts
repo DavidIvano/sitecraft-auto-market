@@ -1,4 +1,5 @@
 import type { Locale } from "./locales.ts";
+import { translateArTrRecord } from "./arTrTranslations.ts";
 
 const ruMessages = {
   language: "Язык",
@@ -142,6 +143,8 @@ export const UI_MESSAGES: Record<Locale, UiMessages> = {
   ru: ruMessages,
   uk: ukMessages,
   en: enMessages,
+  ar: translateArTrRecord(ruMessages, "ar"),
+  tr: translateArTrRecord(ruMessages, "tr"),
 };
 
 export function getMessages(locale: Locale): UiMessages {

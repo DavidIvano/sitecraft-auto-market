@@ -1,7 +1,7 @@
 // Generated from UI literals by scripts/i18n/*. Do not include user or listing content here.
 import type { Locale } from "./locales.ts";
 
-export const UI_PHRASE_TRANSLATIONS: Record<string, Record<Locale, string>> = {
+export const UI_PHRASE_TRANSLATIONS: Record<string, Partial<Record<Locale, string>>> = {
   "0 / 8 новых фото": {
     "ru": "0 / 8 новых фото",
     "de": "0 / 8 neue Fotos",

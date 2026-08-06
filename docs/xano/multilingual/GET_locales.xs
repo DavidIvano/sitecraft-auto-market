@@ -15,7 +15,7 @@ query locales verb=GET {
     foreach ($locale_rows) {
       each as $locale_row {
         conditional {
-          if (($locale_row.code == "de") || ($locale_row.code == "ru") || ($locale_row.code == "uk") || ($locale_row.code == "en")) {
+          if (($locale_row.code == "de") || ($locale_row.code == "ru") || ($locale_row.code == "uk") || ($locale_row.code == "en") || ($locale_row.code == "ar") || ($locale_row.code == "tr")) {
             array.push $public_locales {
               value = {
                 code        : $locale_row.code
