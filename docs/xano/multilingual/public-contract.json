@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "supported_locales": ["de", "ru", "uk", "en"],
+  "supported_locales": ["de", "ru", "uk", "en", "ar", "tr"],
   "default_source_locale": "ru",
   "public_endpoints": {
     "locales": "GET /locales",

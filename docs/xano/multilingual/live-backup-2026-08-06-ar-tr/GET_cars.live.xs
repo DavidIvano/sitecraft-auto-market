@@ -2,25 +2,25 @@ query cars verb=GET {
   api_group = "sitecraft-auto-market"
 
   input {
-    text lang?="ru" filters=trim|lower
+    text lang?=ru filters=trim|lower
   }
 
   stack {
-    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en") || ($input.lang == "ar") || ($input.lang == "tr")) {
+    precondition (($input.lang == "de") || ($input.lang == "ru") || ($input.lang == "uk") || ($input.lang == "en")) {
       error_type = "inputerror"
       error = "Unsupported locale"
     }
-
+  
     db.query car_listings {
       where = ((($db.car_listings.status == "approved") || ($db.car_listings.status == "published") || ($db.car_listings.status == "sold") || ($db.car_listings.moderation_status == "approved") || ($db.car_listings.moderation_status == "published") || ($db.car_listings.moderation_status == "sold")) && (($db.car_listings.status == null) || (($db.car_listings.status != "draft") && ($db.car_listings.status != "ai_draft") && ($db.car_listings.status != "pending_review") && ($db.car_listings.status != "needs_fix") && ($db.car_listings.status != "rejected") && ($db.car_listings.status != "blocked") && ($db.car_listings.status != "deleted") && ($db.car_listings.status != "archived"))) && (($db.car_listings.moderation_status == null) || (($db.car_listings.moderation_status != "draft") && ($db.car_listings.moderation_status != "ai_draft") && ($db.car_listings.moderation_status != "pending_review") && ($db.car_listings.moderation_status != "needs_fix") && ($db.car_listings.moderation_status != "rejected") && ($db.car_listings.moderation_status != "blocked") && ($db.car_listings.moderation_status != "deleted") && ($db.car_listings.moderation_status != "archived"))))
       sort = {car_listings.created_at: "desc"}
       return = {type: "list"}
     } as $cars
-
+  
     var $public_car_ids {
       value = []
     }
-
+  
     foreach ($cars) {
       each as $public_car {
         array.push $public_car_ids {
@@ -28,15 +28,15 @@ query cars verb=GET {
         }
       }
     }
-
+  
     var $public_views {
       value = []
     }
-
+  
     var $translation_rows {
       value = []
     }
-
+  
     conditional {
       if (($public_car_ids|count) > 0) {
         try_catch {
@@ -45,53 +45,55 @@ query cars verb=GET {
               where = $db.listing_views.car_id in $public_car_ids
               return = {type: "list"}
             } as $all_public_views
-
+          
             var.update $public_views {
               value = $all_public_views
             }
           }
-
+        
           catch {
             var.update $public_views {
               value = []
             }
           }
         }
-
+      
         db.query car_listing_translations {
           where = (($db.car_listing_translations.car_listing_id in $public_car_ids) && ($db.car_listing_translations.locale_code == $input.lang) && ($db.car_listing_translations.translation_status == "completed"))
           sort = {car_listing_translations.updated_at: "desc"}
           return = {type: "list"}
         } as $all_translation_rows
-
+      
         var.update $translation_rows {
           value = $all_translation_rows
         }
       }
     }
-
+  
     var $public_cars {
       value = []
     }
-
+  
     foreach ($cars) {
       each as $car {
         var $source_locale {
-          value = $car.source_locale|first_notnull:"ru"|trim|lower
+          value = $car.source_locale
+            |first_notnull:"ru"
+            |trim
+            |to_lower
         }
-
+      
         var $source_hash {
           value = $car.translation_source_hash|first_notnull:""
         }
-
+      
         var $translation {
           value = null
         }
-
+      
         conditional {
           if (($input.lang != $source_locale) && ($source_hash != "")) {
             array.filter ($translation_rows) if (($this.car_listing_id == $car.id) && ($this.locale_code == $input.lang) && ($this.source_locale == $source_locale) && ($this.source_hash == $source_hash) && ($this.translation_status == "completed")) as $matching_translations
-
             foreach ($matching_translations) {
               each as $translation_row {
                 conditional {
@@ -120,7 +122,7 @@ query cars verb=GET {
             }
           }
         }
-
+      
         array.filter ($public_views) if ($this.car_id == $car.id) as $car_views
         array.push $public_cars {
           value = {

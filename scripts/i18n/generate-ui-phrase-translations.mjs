@@ -4,7 +4,7 @@ const inputPath = process.argv[2];
 if (!inputPath) throw new Error("Usage: node generate-ui-phrase-translations.mjs <phrases.json>");
 
 const phrases = JSON.parse(readFileSync(inputPath, "utf8"));
-const targetLocales = ["de", "en", "uk"];
+const targetLocales = ["de", "en", "uk", "ar", "tr"];
 // Punctuation-only separators survive the translation endpoint unchanged.
 const separator = "|||||";
 const batchSize = 18;

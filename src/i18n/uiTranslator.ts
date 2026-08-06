@@ -1,4 +1,5 @@
 import type { Locale } from "./locales.ts";
+import { AR_TR_TRANSLATIONS } from "./arTrTranslations.ts";
 import { UI_PHRASE_TRANSLATIONS } from "./uiPhraseTranslations.ts";
 import { UI_PHRASE_TRANSLATIONS_DYNAMIC } from "./uiPhraseTranslationsDynamic.ts";
 import { UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL } from "./uiPhraseTranslationsSupplemental.ts";
@@ -22,7 +23,7 @@ export function getUiPhraseMap(locale: Locale): Record<string, string> {
   if (locale === "ru") return {};
   return Object.fromEntries(
     Object.entries(UI_TRANSLATIONS)
-      .map(([source, translations]) => [source, translations[locale]] as const)
+      .map(([source, translations]) => [source, translations[locale] || AR_TR_TRANSLATIONS[source]?.[locale as "ar" | "tr"]] as const)
       .filter(([, translation]) => Boolean(translation)),
   );
 }
@@ -37,21 +38,27 @@ const translateDynamicValue = (value: string, locale: Locale) => {
   const patterns: Array<[RegExp, Record<Exclude<Locale, "ru">, (...values: string[]) => string>]> = [
     [/^(\d+) (?:день|дня|дней)$/u, {
       de: (count) => `${count} Tage`, en: (count) => `${count} days`, uk: (count) => `${count} днів`,
+      ar: (count) => `${count} أيام`, tr: (count) => `${count} gün`,
     }],
     [/^(\d+) кредит(?:ов|а)?$/u, {
       de: (count) => `${count} Credits`, en: (count) => `${count} credits`, uk: (count) => `${count} кредитів`,
+      ar: (count) => `${count} رصيد`, tr: (count) => `${count} kredi`,
     }],
     [/^До (\d+) активных объявлений$/u, {
       de: (count) => `Bis zu ${count} aktive Anzeigen`, en: (count) => `Up to ${count} active listings`, uk: (count) => `До ${count} активних оголошень`,
+      ar: (count) => `حتى ${count} إعلانات نشطة`, tr: (count) => `${count} adede kadar aktif ilan`,
     }],
     [/^(\d+) AI-кредитов каждый месяц$/u, {
       de: (count) => `${count} AI-Credits pro Monat`, en: (count) => `${count} AI credits every month`, uk: (count) => `${count} AI-кредитів щомісяця`,
+      ar: (count) => `${count} رصيد AI كل شهر`, tr: (count) => `Her ay ${count} AI kredisi`,
     }],
     [/^Приоритет дилера: (\d+)$/u, {
       de: (count) => `Händlerpriorität: ${count}`, en: (count) => `Dealer priority: ${count}`, uk: (count) => `Пріоритет дилера: ${count}`,
+      ar: (count) => `أولوية التاجر: ${count}`, tr: (count) => `Bayi önceliği: ${count}`,
     }],
     [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, {
       de: (price) => `${price} / Monat`, en: (price) => `${price} / month`, uk: (price) => `${price} / міс.`,
+      ar: (price) => `${price} / شهر`, tr: (price) => `${price} / ay`,
     }],
   ];
   for (const [pattern, translators] of patterns) {
@@ -70,7 +77,8 @@ export function translateUiValue(value: string, locale: Locale) {
   const source = normalized.endsWith(titleSuffix)
     ? normalized.slice(0, -titleSuffix.length)
     : normalized;
-  const phraseTranslation = UI_TRANSLATIONS[source]?.[locale];
+  const phraseTranslation = UI_TRANSLATIONS[source]?.[locale]
+    || AR_TR_TRANSLATIONS[source]?.[locale as "ar" | "tr"];
   const translation = phraseTranslation
     ? `${phraseTranslation}${normalized.endsWith(titleSuffix) ? titleSuffix : ""}`
     : undefined;

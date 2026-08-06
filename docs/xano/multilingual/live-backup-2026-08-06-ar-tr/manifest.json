@@ -1,0 +1,60 @@
+{
+  "workspace_id": 115940,
+  "api_group_id": 421515,
+  "endpoints": [
+    {
+      "api_id": 3966698,
+      "name": "cars",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:50:11+0000",
+      "sha256": "a1d81a9c7e04e9b8de244d140e9a6bf1f6604351624dc6b90049d85c36ed5b80",
+      "file": "GET_cars.live.xs",
+      "compile_status": "ok"
+    },
+    {
+      "api_id": 3966699,
+      "name": "cars/{slug}",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:49:35+0000",
+      "sha256": "90c3a84382da5a4fff3a8265b2e1d4773141487167930411f4d13a459e32819a",
+      "file": "GET_cars_slug.live.xs",
+      "compile_status": "ok"
+    },
+    {
+      "api_id": 3985671,
+      "name": "cars/{slug}/seller-listings",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:50:45+0000",
+      "sha256": "f066206ebff54f6056e055772fb68830315831fc81d66b2ee05498c3efa116f8",
+      "file": "GET_cars_slug_seller-listings.live.xs",
+      "compile_status": "ok"
+    },
+    {
+      "api_id": 3999920,
+      "name": "cars/{slug}/related",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:51:17+0000",
+      "sha256": "92a9644c666e1fba74318f6b064abad0cadf010904b358a3cd3062ec83de9384",
+      "file": "GET_cars_slug_related.live.xs",
+      "compile_status": "ok"
+    },
+    {
+      "api_id": 4005564,
+      "name": "locales",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:59:40+0000",
+      "sha256": "f4c4bba1f395eb653772c3f31eb8b77cf9090c11deeb1b56bf949569f537c247",
+      "file": "GET_locales.live.xs",
+      "compile_status": "ok"
+    },
+    {
+      "api_id": 4005565,
+      "name": "taxonomies",
+      "verb": "GET",
+      "updated_at": "2026-08-04 23:55:11+0000",
+      "sha256": "8790c143a704111196493214f5658da6da8a6c9d969c4e0ae7e0bdd54f3990a2",
+      "file": "GET_taxonomies.live.xs",
+      "compile_status": "ok"
+    }
+  ]
+}
