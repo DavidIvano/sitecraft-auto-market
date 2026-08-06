@@ -4,8 +4,9 @@ import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
-import { LOCALE_COOKIE, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_TAGS, SUPPORTED_LOCALES, resolveRequestLocale, type Locale } from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
+import { getUiPhraseMap, translateUiData } from "../i18n/uiTranslator";
 import "../styles/global.css";
 import "../styles/promotions.css";
 
@@ -32,9 +33,16 @@ const {
 } = Astro.props;
 const locale = localeProp ?? resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
 const messages = getMessages(locale);
+const uiPhraseMap = getUiPhraseMap(locale);
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
-const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
+const canonicalPathname = canonicalPath ?? Astro.url.pathname;
+const localeUrl = (targetLocale: Locale) => {
+  const url = new URL(canonicalPathname, siteUrl);
+  if (targetLocale !== DEFAULT_LOCALE) url.searchParams.set("lang", targetLocale);
+  return url.toString();
+};
+const canonicalUrl = localeUrl(locale);
 const imageUrl = new URL(image, siteUrl).toString();
 const buildSha = import.meta.env.PUBLIC_BUILD_SHA || import.meta.env.CF_PAGES_COMMIT_SHA || "local";
 const buildTimestamp = import.meta.env.PUBLIC_BUILD_TIMESTAMP || new Date().toISOString();
@@ -134,6 +142,7 @@ const schemaItems = [
   ...defaultSchemaItems,
   ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
 ];
+const localizedSchemaItems = translateUiData(schemaItems, locale);
 ---
 
 <!doctype html>
@@ -153,6 +162,8 @@ const schemaItems = [
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />
+    {SUPPORTED_LOCALES.map((code) => <link rel="alternate" hreflang={LOCALE_TAGS[code]} href={localeUrl(code)} />)}
+    <link rel="alternate" hreflang="x-default" href={localeUrl(DEFAULT_LOCALE)} />
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
@@ -165,7 +176,7 @@ const schemaItems = [
     <meta name="twitter:image" content={imageUrl} />
     <title>{pageTitle}</title>
     {
-      schemaItems.map((item) => (
+      localizedSchemaItems.map((item) => (
         <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />
       ))
     }
@@ -174,6 +185,103 @@ const schemaItems = [
         const savedTheme = localStorage.getItem("sitecraft-theme");
         const systemTheme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
         document.documentElement.dataset.theme = savedTheme || systemTheme;
+      })();
+    </script>
+    <script is:inline define:vars={{ uiPhraseMap }}>
+      (() => {
+        const initializeI18n = () => {
+        const translations = uiPhraseMap || {};
+        const activeLocale = document.documentElement.lang;
+        const ignored = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA"]);
+        const attributes = ["alt", "aria-label", "data-close-label", "data-open-label", "placeholder", "title"];
+        const translate = (value) => {
+          if (!value || !/[А-Яа-яЁё]/u.test(value)) return value;
+          const normalized = value.replace(/\s+/gu, " ").trim();
+          const dynamicPatterns = [
+            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів` }],
+            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів` }],
+            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень` }],
+            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця` }],
+            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}` }],
+            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.` }],
+          ];
+          for (const [pattern, handlers] of dynamicPatterns) {
+            const match = normalized.match(pattern);
+            const handler = handlers[activeLocale];
+            if (match && handler) return `${value.match(/^\s*/u)?.[0] || ""}${handler(...match.slice(1))}${value.match(/\s*$/u)?.[0] || ""}`;
+          }
+          const suffix = " | SiteCraft Auto Market";
+          const source = normalized.endsWith(suffix) ? normalized.slice(0, -suffix.length) : normalized;
+          const phrase = translations[source];
+          const translated = phrase ? `${phrase}${normalized.endsWith(suffix) ? suffix : ""}` : undefined;
+          if (!translated) return value;
+          return `${value.match(/^\s*/u)?.[0] || ""}${translated}${value.match(/\s*$/u)?.[0] || ""}`;
+        };
+        const shouldSkip = (element) => Boolean(element?.closest?.("[data-i18n-skip]"));
+        const translateElement = (element) => {
+          if (!(element instanceof Element) || shouldSkip(element)) return;
+          for (const name of attributes) {
+            if (!element.hasAttribute(name)) continue;
+            const value = element.getAttribute(name) || "";
+            const translated = translate(value);
+            if (translated !== value) element.setAttribute(name, translated);
+          }
+        };
+        const translateTree = (root) => {
+          if (root instanceof Element) translateElement(root);
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            if (node instanceof Element) {
+              translateElement(node);
+              continue;
+            }
+            const parent = node.parentElement;
+            if (!parent || ignored.has(parent.tagName) || shouldSkip(parent)) continue;
+            const translated = translate(node.nodeValue || "");
+            if (translated !== node.nodeValue) node.nodeValue = translated;
+          }
+        };
+        translateTree(document.body);
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === "characterData") {
+              const node = mutation.target;
+              const parent = node.parentElement;
+              if (!parent || ignored.has(parent.tagName) || shouldSkip(parent)) continue;
+              const translated = translate(node.nodeValue || "");
+              if (translated !== node.nodeValue) node.nodeValue = translated;
+              continue;
+            }
+            mutation.addedNodes.forEach((node) => translateTree(node));
+          }
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+
+        const localizeLinks = (root) => {
+          const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+          for (const link of links) {
+            if (!(link instanceof HTMLAnchorElement)) continue;
+            const rawHref = link.getAttribute("href") || "";
+            if (!rawHref || rawHref.startsWith("#") || /^(?:mailto:|tel:|javascript:)/iu.test(rawHref)) continue;
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin || url.pathname.startsWith("/api/")) continue;
+            url.searchParams.set("lang", activeLocale);
+            link.href = `${url.pathname}${url.search}${url.hash}`;
+          }
+        };
+        localizeLinks(document);
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) mutation.addedNodes.forEach((node) => {
+            if (node instanceof Element) localizeLinks(node);
+          });
+        }).observe(document.body, { childList: true, subtree: true });
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initializeI18n, { once: true });
+        } else {
+          initializeI18n();
+        }
       })();
     </script>
   </head>
