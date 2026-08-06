@@ -508,7 +508,7 @@ const breadcrumbSchema = {
           {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>{messages.promoted}</span></div>}
           <StatusBadge status={car.status} locale={locale} />
           {isSold && <span class="sold-detail-badge">{messages.sold}</span>}
-          <h1>{car.title}</h1>
+          <h1 data-i18n-skip>{car.title}</h1>
           <p class="detail-price">{formatter.format(car.price)}</p>
           <FavoriteButton listingId={car.id} initialSaved={Boolean(car.is_saved)} source="car_detail" class="detail-favorite-button" locale={locale} />
           <VehicleSpecsGrid items={quickSpecItems} class="detail-spec-grid detail-quick-spec-grid" />
@@ -551,7 +551,7 @@ const breadcrumbSchema = {
           </div>
         </div>
         {translationNotice && <p class="translation-disclosure" role="status">{translationNotice}</p>}
-        <p class="detail-description">{detailDescription || messages.noDescription}</p>
+        <p class="detail-description" data-i18n-skip={detailDescription ? "true" : undefined}>{detailDescription || messages.noDescription}</p>
       </div>
     </div>
   </section>
@@ -643,7 +643,7 @@ const breadcrumbSchema = {
         data-label-no-contact={messages.noPublicContact}
       >
         <p class="eyebrow">{messages.seller}</p>
-        <h2 data-seller-name>{staticSellerName}</h2>
+        <h2 data-seller-name data-i18n-skip>{staticSellerName}</h2>
         <div class="seller-summary-meta">
           <span data-seller-type>{staticSellerType}</span>
           {staticSellerCity && <span data-seller-city>{staticSellerCity}</span>}

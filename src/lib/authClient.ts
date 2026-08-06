@@ -179,9 +179,16 @@ export async function fetchCurrentUser(
 }
 
 export function redirectToLogin(nextPath = window.location.pathname + window.location.search) {
-  const returnTo = normalizeInternalReturnTo(nextPath);
+  const localeCandidate = new URLSearchParams(window.location.search).get("lang") || document.documentElement.lang;
+  const locale = ["de", "ru", "uk", "en"].includes(localeCandidate) ? localeCandidate : "ru";
+  const localizedNext = new URL(nextPath, window.location.origin);
+  if (localizedNext.origin === window.location.origin) localizedNext.searchParams.set("lang", locale);
+  const returnTo = normalizeInternalReturnTo(`${localizedNext.pathname}${localizedNext.search}${localizedNext.hash}`);
   rememberNext(returnTo);
-  window.location.href = `/login?returnTo=${encodeURIComponent(returnTo)}`;
+  const loginUrl = new URL("/login", window.location.origin);
+  loginUrl.searchParams.set("returnTo", returnTo);
+  loginUrl.searchParams.set("lang", locale);
+  window.location.href = `${loginUrl.pathname}${loginUrl.search}`;
 }
 
 export async function requireUserClient(apiUrl?: string) {
@@ -203,7 +210,8 @@ export async function requireAdminClient(apiUrl?: string) {
   }
 
   if (!isAdminUser(user)) {
-    window.location.href = "/support";
+    const locale = new URLSearchParams(window.location.search).get("lang") || document.documentElement.lang || "ru";
+    window.location.href = `/support?lang=${encodeURIComponent(locale)}`;
     return null;
   }
 

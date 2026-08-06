@@ -2243,7 +2243,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         if (!getActiveAuthToken()) {
-          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new/")}`;
+          redirectToLogin("/dashboard/new/");
         }
 
         enableFastFieldActivation();
