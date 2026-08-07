@@ -17,7 +17,7 @@ test("build and Pages pipeline verify hashed assets and static routing", async (
   assert.match(prepare, /text\\\\\/html/);
   assert.match(prepare, /status: 404/);
   assert.match(verify, /statSync\(localPath\)\.size === 0/);
-  assert.match(routes, /"\/_astro\/\*"/);
+  assert.match(routes, /"\/\*"/);
   assert.match(headers, /\/dashboard\/\*[\s\S]*private, no-store, max-age=0/);
   assert.match(headers, /\/_astro\/\*[\s\S]*immutable/);
 });

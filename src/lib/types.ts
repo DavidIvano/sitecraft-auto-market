@@ -37,6 +37,38 @@ export type CarListingStatus =
   | "deleted"
   | "sold";
 
+export type ListingTranslationStatus = "completed" | "processing" | "failed" | "missing" | "stale";
+
+export type ListingTranslatableContent = {
+  title?: string;
+  description?: string | null;
+  city?: string;
+  seo_title?: string;
+  seo_description?: string;
+  image_alt_texts?: string[];
+  ai_highlights?: string[];
+  ai_recommendations?: string[];
+  ai_warnings?: string[];
+};
+
+export type CarListingTranslation = ListingTranslatableContent & {
+  id?: number;
+  locale: string;
+  source_locale?: string;
+  source_hash?: string;
+  status: ListingTranslationStatus;
+  updated_at?: string | number;
+};
+
+export type ListingTranslationMeta = {
+  requested_locale: string;
+  content_locale: string;
+  source_locale: string;
+  fallback_locale?: string;
+  status: ListingTranslationStatus;
+  used_fallback: boolean;
+};
+
 export type ListingLifecycleStatus = CarListingStatus | "unknown";
 
 export type ModerationStatus =
@@ -88,7 +120,7 @@ export type CarListing = {
   source_locale?: string;
   translation_version?: number;
   translations_ready?: boolean;
-  translation?: TranslationResolution;
+  translation?: TranslationResolution | CarListingTranslation | null;
   brand: string;
   model: string;
   vehicle_type?: string;
@@ -196,6 +228,8 @@ export type CarListing = {
   seo_description?: string;
   image_alt_texts?: string[] | string;
   search_keywords?: string[] | string;
+  translation_meta?: ListingTranslationMeta;
+  original_content?: ListingTranslatableContent;
   seller_rating?: number | string;
   user_rating?: number | string;
   main_image_url?: string;

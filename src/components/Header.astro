@@ -1,22 +1,23 @@
 ---
-import { translate } from "../i18n/translate";
+import LocaleSwitcher from "./LocaleSwitcher.astro";
+import type { Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
 
 type Props = {
   variant?: "public" | "workspace";
-  locale?: string;
+  locale: Locale;
   alternateLocales?: Array<{ locale: string; path: string; label?: string }>;
 };
 
-const { variant = "public", locale = "ru", alternateLocales = [] } = Astro.props;
-const isGerman = locale === "de";
-const homeHref = isGerman ? "/de/" : "/";
-const navItems = isGerman
-  ? [{ href: "/de/cars/", label: translate(locale, "nav.cars") }]
-  : [
-      { href: "/cars", label: translate(locale, "nav.cars") },
-      { href: "/pricing", label: translate(locale, "nav.pricing") },
-      { href: "/support", label: translate(locale, "nav.support") },
-    ];
+const { variant = "public", locale, alternateLocales = [] } = Astro.props;
+const messages = getMessages(locale);
+const homeHref = Astro.url.pathname.startsWith("/de") ? "/de/" : "/";
+const navItems = [
+  { href: "/", label: messages.navHome },
+  { href: "/cars", label: messages.navCars },
+  { href: "/sell", label: messages.navSell },
+  { href: "/pricing", label: messages.navPricing },
+];
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const currentPath = Astro.url.pathname.replace(/\/$/, "") || "/";
@@ -33,25 +34,25 @@ const isCurrentPath = (href: string) => {
   data-api-url={xanoApiUrl}
   data-header-variant={variant}
   data-home-path={homeHref}
-  data-label-open-menu={translate(locale, "nav.openMenu")}
-  data-label-close-menu={translate(locale, "nav.closeMenu")}
-  data-label-dark-theme={translate(locale, "theme.dark")}
-  data-label-light-theme={translate(locale, "theme.light")}
-  data-label-login={translate(locale, "nav.login")}
-  data-label-dashboard={translate(locale, "nav.dashboard")}
+  data-label-menu-open={messages.menuOpen}
+  data-label-menu-close={messages.menuClose}
+  data-label-theme-dark={messages.themeEnableDark}
+  data-label-theme-light={messages.themeEnableLight}
+  data-label-login={messages.navLogin}
+  data-label-dashboard={messages.navDashboard}
 >
   <div class="container header-inner">
     <a class="brand" href={homeHref} aria-label="SiteCraft Auto Market">
       <img class="brand-logo" src="/sitecraft-logo.png" alt="" width="44" height="44" decoding="async" />
       <span>{variant === "workspace" ? "Кабинет Auto Market" : "SiteCraft Auto Market"}</span>
     </a>
-    {variant === "public" && <button class="button button-light theme-toggle mobile-theme-toggle" type="button" aria-label={translate(locale, "theme.toggle")} aria-pressed="false">
+    {variant === "public" && <button class="button button-light theme-toggle mobile-theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
       <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
     </button>}
     <button
       class="menu-toggle"
       type="button"
-      aria-label={translate(locale, "nav.openMenu")}
+      aria-label={messages.menuOpen}
       aria-controls="site-header-menu"
       aria-expanded="false"
     >
@@ -59,27 +60,28 @@ const isCurrentPath = (href: string) => {
       <span class="menu-toggle-icon" data-menu-close-icon aria-hidden="true" hidden><i data-lucide="x"></i></span>
     </button>
     <div class="header-menu" id="site-header-menu">
-      {variant === "public" && <nav class="main-nav" aria-label={translate(locale, "nav.mainNavigation")}>
+      {variant === "public" && <nav class="main-nav" aria-label={messages.mainNavigation}>
           {navItems.map((item) => <a href={item.href} aria-current={isCurrentPath(item.href) ? "page" : undefined}>{item.label}</a>)}
           {alternateLocales.filter((item) => item.locale !== locale).map((item) => (
-            <a href={item.path} hreflang={item.locale}>{item.label || (item.locale === "ru" ? translate(locale, "nav.russianVersion") : item.locale.toUpperCase())}</a>
+            <a href={item.path} hreflang={item.locale}>{item.label || item.locale.toUpperCase()}</a>
           ))}
         </nav>}
       <div class="header-actions">
-        <button class="button button-light theme-toggle desktop-theme-toggle" type="button" aria-label={translate(locale, "theme.toggle")} aria-pressed="false">
+        <LocaleSwitcher locale={locale} />
+        <button class="button button-light theme-toggle desktop-theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
         </button>
-        {variant === "workspace" && <a class="button button-light workspace-home-link" href="/"><i data-lucide="arrow-left" aria-hidden="true"></i><span>На сайт</span></a>}
-        <a class="button button-light auth-register" href="/register" hreflang="ru" hidden={variant === "workspace"}>{translate(locale, "nav.register")}</a>
-        <a class="button button-light auth-link" href="/login" hreflang="ru">{translate(locale, "nav.login")}</a>
-        <button class="button button-light auth-logout" type="button" hidden>{translate(locale, "nav.logout")}</button>
-        {variant === "public" && (isGerman
-          ? <a class="button button-dark header-action" href="/dashboard/new" hreflang="ru"><i data-lucide="plus" aria-hidden="true"></i><span>{translate(locale, "nav.sell")}</span></a>
-          : <a class="button button-dark header-action" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>)}
+        <a class="button button-light deal-finder-link" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
+        <a class="button button-light admin-link" href="/admin/moderation" data-admin-only="true" hidden>{messages.navModeration}</a>
+        {variant === "workspace" && <a class="button button-light workspace-home-link" href="/"><i data-lucide="arrow-left" aria-hidden="true"></i><span>{messages.navHome}</span></a>}
+        <a class="button button-light auth-register" href="/register" hidden={variant === "workspace"}>{messages.navRegister}</a>
+        <a class="button button-light auth-link" href="/login">{messages.navLogin}</a>
+        <button class="button button-light auth-logout" type="button" hidden>{messages.navLogout}</button>
+        {variant === "public" && <a class="button button-dark header-action" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>{messages.navAddListing}</span></a>}
       </div>
     </div>
   </div>
-  {variant === "public" && <button class="header-backdrop" type="button" aria-label={translate(locale, "nav.closeMenu")} tabindex="-1"></button>}
+  {variant === "public" && <button class="header-backdrop" type="button" aria-label={messages.menuClose} tabindex="-1"></button>}
   <script>
     import { clearAuth, fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isDealFinderUser } from "../lib/authClient";
     import { refreshAppIcons } from "../lib/appIcons";
@@ -100,14 +102,14 @@ const isCurrentPath = (href: string) => {
     const apiUrl = header instanceof HTMLElement ? header.dataset.apiUrl : "";
     const headerVariant = header instanceof HTMLElement ? header.dataset.headerVariant : "public";
     const homePath = header instanceof HTMLElement ? header.dataset.homePath || "/" : "/";
-    const labels = header instanceof HTMLElement ? {
-      openMenu: header.dataset.labelOpenMenu || "Открыть меню",
-      closeMenu: header.dataset.labelCloseMenu || "Закрыть меню",
-      darkTheme: header.dataset.labelDarkTheme || "Включить тёмную тему",
-      lightTheme: header.dataset.labelLightTheme || "Включить светлую тему",
-      login: header.dataset.labelLogin || "Войти",
-      dashboard: header.dataset.labelDashboard || "Кабинет",
-    } : null;
+    const labels = {
+      menuOpen: header instanceof HTMLElement ? header.dataset.labelMenuOpen || "Open menu" : "Open menu",
+      menuClose: header instanceof HTMLElement ? header.dataset.labelMenuClose || "Close menu" : "Close menu",
+      themeDark: header instanceof HTMLElement ? header.dataset.labelThemeDark || "Enable dark theme" : "Enable dark theme",
+      themeLight: header instanceof HTMLElement ? header.dataset.labelThemeLight || "Enable light theme" : "Enable light theme",
+      login: header instanceof HTMLElement ? header.dataset.labelLogin || "Sign in" : "Sign in",
+      dashboard: header instanceof HTMLElement ? header.dataset.labelDashboard || "Dashboard" : "Dashboard",
+    };
     let lastScrollY = window.scrollY;
 
     const setMenuOpen = (isOpen: boolean) => {
@@ -118,7 +120,7 @@ const isCurrentPath = (href: string) => {
       menu.classList.toggle("is-open", isOpen);
       menuToggle.classList.toggle("is-open", isOpen);
       menuToggle.setAttribute("aria-expanded", String(isOpen));
-      menuToggle.setAttribute("aria-label", isOpen ? labels?.closeMenu || "Закрыть меню" : labels?.openMenu || "Открыть меню");
+      menuToggle.setAttribute("aria-label", isOpen ? labels.menuClose : labels.menuOpen);
       menuBackdrop?.classList.toggle("is-open", isOpen);
       document.body.classList.toggle("is-drawer-open", isOpen);
       if (menuOpenIcon) menuOpenIcon.hidden = isOpen;
@@ -159,7 +161,7 @@ const isCurrentPath = (href: string) => {
       themeToggles.forEach((toggle) => {
         if (toggle instanceof HTMLButtonElement) {
           toggle.setAttribute("aria-pressed", String(isDark));
-          toggle.setAttribute("aria-label", isDark ? labels?.lightTheme || "Включить светлую тему" : labels?.darkTheme || "Включить тёмную тему");
+          toggle.setAttribute("aria-label", isDark ? labels.themeLight : labels.themeDark);
           const icon = toggle.querySelector(".theme-toggle-icon");
           if (icon instanceof HTMLElement) {
             icon.innerHTML = `<i data-lucide="${isDark ? "sun" : "moon"}" aria-hidden="true"></i>`;
@@ -182,7 +184,7 @@ const isCurrentPath = (href: string) => {
     const showGuestHeader = () => {
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/login";
-        authLink.textContent = labels?.login || "Войти";
+        authLink.textContent = labels.login;
         authLink.hidden = false;
       }
 
@@ -207,7 +209,7 @@ const isCurrentPath = (href: string) => {
     const showUserHeader = (user: { email?: unknown; role?: unknown } | null) => {
       if (authLink instanceof HTMLAnchorElement) {
         authLink.href = "/dashboard";
-        authLink.textContent = labels?.dashboard || "Кабинет";
+        authLink.textContent = labels.dashboard;
         authLink.hidden = false;
       }
 

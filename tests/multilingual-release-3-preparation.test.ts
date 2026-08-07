@@ -228,7 +228,7 @@ test("German SEO uses a German canonical and complete structured data", () => {
   assert.equal(seo.breadcrumb["@type"], "BreadcrumbList");
 
   const layout = read("../src/layouts/BaseLayout.astro");
-  assert.match(layout, /hreflang=\{alternate\.locale\}/);
+  assert.match(layout, /SUPPORTED_LOCALES\.map\(\(code\) => <link rel="alternate" hreflang=\{LOCALE_TAGS\[code\]\}/);
   assert.match(layout, /hreflang="x-default"/);
   const sitemap = read("../src/pages/sitemap.xml.ts");
   assert.match(sitemap, /GERMAN_PUBLIC_ROUTES_ENABLED \? \[/);
@@ -269,8 +269,8 @@ test("candidate Xano locale reads are additive, bounded, fail-closed, and privac
   const detail = read("../docs/xano/multilingual-stage-10/release-3/GET_public_locale_cars_slug.xs");
   assert.match(routes, /localizedCars: "\/public\/locale\/cars"/);
   assert.match(routes, /localizedCarBySlug/);
-  assert.match(client, /API_ROUTES\.localizedCars/);
-  assert.match(client, /API_ROUTES\.localizedCarBySlug/);
+  assert.match(client, /withLocale\(API_ROUTES\.cars, locale\)/);
+  assert.match(client, /withLocale\(API_ROUTES\.carBySlug\(slug\), locale\)/);
 
   for (const source of [catalog, detail]) {
     assert.match(source, /\$input\.locale == "de"/);

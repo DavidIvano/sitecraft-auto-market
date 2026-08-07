@@ -17,11 +17,23 @@ import { isPublicListing } from "../../lib/listingStatus";
 import { isValidPublicCarSlug } from "../../lib/publicCar";
 import { getActiveListingPromotion } from "../../lib/promotions/model";
 import { buildVehicleSeo } from "../../lib/seo/vehicleSeo";
-import { formatPublicViewCount, shouldShowPublicViewCount } from "../../lib/listingViews";
+import { shouldShowPublicViewCount } from "../../lib/listingViews";
 import { toGermanPublicListing } from "../../i18n/publicListing";
+import { getDetailMessages } from "../../i18n/detailMessages";
+import { LOCALE_COOKIE, LOCALE_LABELS, LOCALE_TAGS, resolveRequestLocale, type Locale } from "../../i18n/locales";
+import { getMessages, interpolate } from "../../i18n/messages";
+import { normalizeBackendValue, translateBackendValue, type BackendValueField } from "../../i18n/backendValues";
 
 export const prerender = false;
 
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const messages = getDetailMessages(locale);
+const localeTag = LOCALE_TAGS[locale];
+const localizedValue = (field: BackendValueField, value: unknown) =>
+  isDisplayValue(value) ? translateBackendValue(field, value, locale) : "";
+
+Astro.response.headers.set("Cache-Control", "no-store");
+Astro.response.headers.set("X-Robots-Tag", "index, follow");
 const rawSlug = typeof Astro.params.slug === "string" ? Astro.params.slug.trim() : "";
 let slug = rawSlug;
 try {
@@ -34,25 +46,25 @@ if (!isValidPublicCarSlug(slug)) {
   Astro.response.status = 404;
   Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
-  return Astro.rewrite("/404");
+  return Astro.rewrite(`/404?lang=${encodeURIComponent(locale)}`);
 }
 
 let car: CarListing | null = null;
 try {
-  car = await getCarBySlug(slug);
+  car = await getCarBySlug(slug, locale);
 } catch (error) {
   Astro.response.status = 503;
   Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
   Astro.response.headers.set("Retry-After", "300");
-  return Astro.rewrite("/service-unavailable");
+  return Astro.rewrite(`/service-unavailable?lang=${encodeURIComponent(locale)}`);
 }
 
 if (!car || !isPublicListing(car)) {
   Astro.response.status = 404;
   Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
-  return Astro.rewrite("/404");
+  return Astro.rewrite(`/404?lang=${encodeURIComponent(locale)}`);
 }
 let germanAlternateAvailable = false;
 if (GERMAN_PUBLIC_ROUTES_ENABLED) {
@@ -66,10 +78,18 @@ if (GERMAN_PUBLIC_ROUTES_ENABLED) {
 Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
 Astro.response.headers.set("X-Robots-Tag", "index, follow");
 const activePromotion = getActiveListingPromotion(car);
+const translationMeta = car.translation_meta;
+const sourceLocale = translationMeta?.source_locale as Locale | undefined;
+const translationNotice = translationMeta && sourceLocale && sourceLocale !== locale
+  ? interpolate(
+      translationMeta.used_fallback ? messages.translationFallback : messages.translationApplied,
+      { language: LOCALE_LABELS[sourceLocale] || sourceLocale },
+    )
+  : "";
 
 const getDescriptionFieldFromListing = (listing: CarListing, label: string) => {
   const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
-  const match = String(listing.description ?? "").match(expression);
+  const match = String(listing.original_content?.description ?? listing.description ?? "").match(expression);
   return match?.[1]?.trim() || "";
 };
 const getListingBodyType = (listing: CarListing) =>
@@ -85,8 +105,8 @@ const getRelatedScore = (currentCar: CarListing, candidate: CarListing) => {
 };
 
 const [sellerResult, relatedResult] = await Promise.allSettled([
-  getSellerListingsBySlug(slug),
-  getRelatedListingsBySlug(slug),
+  getSellerListingsBySlug(slug, locale),
+  getRelatedListingsBySlug(slug, locale),
 ]);
 const sellerCars = (sellerResult.status === "fulfilled"
   ? sellerResult.value
@@ -104,7 +124,7 @@ const relatedCars = (relatedResult.status === "fulfilled" ? relatedResult.value 
 
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const formatter = new Intl.NumberFormat("ru-RU", {
+const formatter = new Intl.NumberFormat(localeTag, {
   style: "currency",
   currency: car.currency || "EUR",
   maximumFractionDigits: 0,
@@ -125,15 +145,15 @@ const toDate = (value?: string | number) => {
 
 const createdAt = toDate(car.created_at);
 const createdAtLabel = createdAt
-  ? new Intl.DateTimeFormat("ru-RU", {
+  ? new Intl.DateTimeFormat(localeTag, {
       dateStyle: "medium",
       timeStyle: "short",
     }).format(createdAt)
-  : "дата уточняется";
-const publicViewLabel = formatPublicViewCount(car.views_total);
+  : messages.datePending;
+const publicViewCount = new Intl.NumberFormat(localeTag).format(Number(car.views_total) || 0);
 const publicViewText = shouldShowPublicViewCount(car.views_total)
-  ? publicViewLabel
-  : "Новое объявление";
+  ? interpolate(messages.viewsCount, { count: publicViewCount })
+  : messages.newListing;
 
 const listingGalleryImages = getCarDetailImageUrls(car).slice(0, 8);
 const galleryImages = listingGalleryImages.length > 0
@@ -142,13 +162,25 @@ const galleryImages = listingGalleryImages.length > 0
 const galleryImage = galleryImages[0] ?? "";
 const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
 const vehicleSeo = buildVehicleSeo(car, siteUrl);
-const sellerTypeLabel = car.seller_type === "dealer" ? "Дилер" : "Частный продавец";
+const sellerTypeLabel = formatSellerType(car.seller_type, locale) || messages.privateSeller;
 const staticSeller = car.seller && typeof car.seller === "object" ? car.seller : null;
-const staticSellerName = String(staticSeller?.name || "").trim() || "Продавец автомобиля";
-const staticSellerType = String(staticSeller?.type || "").trim() === "dealer" ? "Дилер" : sellerTypeLabel;
+const staticSellerName = String(staticSeller?.name || "").trim() || messages.carSeller;
+const staticSellerType = formatSellerType(staticSeller?.type, locale) || sellerTypeLabel;
 const staticSellerCity = String(staticSeller?.city || car.city || "").trim();
 const staticSellerCount = Number(staticSeller?.active_listings_count) || 0;
 const staticSellerContact = staticSeller?.contact || null;
+const cleanSeoText = (value: unknown) => String(value ?? "")
+  .split(/\r?\n/)
+  .filter((line) => !/^(телефон|email|e-mail|продавец|vin)\s*:/i.test(line.trim()))
+  .join(" ")
+  .replace(/\s+/g, " ")
+  .trim();
+const safeCarDescription = typeof car.description === "string" ? car.description.trim() : "";
+const seoDescriptionText = cleanSeoText(safeCarDescription);
+const fallbackSeoTitle = interpolate(messages.buyIn, { brand: car.brand, model: car.model, year: car.year, city: car.city }).replace(/\s+/g, " ").trim();
+const fallbackSeoDescription = `${car.brand} ${car.model}, ${car.year}, ${localizedValue("fuel_type", car.fuel_type)}, ${localizedValue("transmission", car.transmission)}, ${interpolate(messages.seoMileage, { value: car.mileage.toLocaleString(localeTag) })}, ${messages.price.toLocaleLowerCase(localeTag)} ${formatter.format(car.price)}.${seoDescriptionText ? ` ${seoDescriptionText}` : ""}`.slice(0, 260);
+const pageTitle = String(car.seo_title || "").trim() || fallbackSeoTitle || car.title;
+const description = String(car.seo_description || "").trim() || fallbackSeoDescription;
 
 const parseJsonObject = parseAiPayload;
 
@@ -184,7 +216,7 @@ const getDescriptionField = (labels: string | string[]) => {
   const availableLabels = Array.isArray(labels) ? labels : [labels];
   for (const label of availableLabels) {
     const escapedLabel = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const match = String(car.description || "").match(new RegExp(`^${escapedLabel}:\\s*(.+)$`, "im"));
+    const match = String(car.original_content?.description || car.description || "").match(new RegExp(`^${escapedLabel}:\\s*(.+)$`, "im"));
     const value = match?.[1]?.trim() || "";
     if (value && !/^(не указан|не указана|не указано|нет)$/i.test(value)) return value;
   }
@@ -202,7 +234,7 @@ const ownerCountValue = firstDetailValue(
   car.owner_count,
   getDescriptionField(["Количество владельцев", "Владельцы"]),
 );
-const visibleOwnerCount = formatOwnersCount(ownerCountValue);
+const visibleOwnerCount = formatOwnersCount(ownerCountValue, locale);
 const legacyTuvHuValue = firstDetailValue(
   car.tuv_hu,
   car.tuv_until,
@@ -211,69 +243,69 @@ const legacyTuvHuValue = firstDetailValue(
   aiAnalysis.tuv_hu,
   getDescriptionField(["TÜV/HU", "TÜV", "HU"]),
 );
-const tuvHuValue = legacyTuvHuValue || formatTuvDetail(car.has_valid_tuv, car.tuv_valid_until);
+const tuvHuValue = legacyTuvHuValue || formatTuvDetail(car.has_valid_tuv, car.tuv_valid_until, locale);
 const vinMasked = firstDetailValue(car.vin_masked, maskVin(car.vin));
 const conditionValue = firstDetailValue(car.vehicle_condition, car.condition, getDescriptionField(["Состояние автомобиля", "Состояние"]));
-const sellerTypeValue = formatSellerType(car.seller_type || staticSeller?.type);
+const sellerTypeValue = formatSellerType(car.seller_type || staticSeller?.type, locale);
 const quickSpecItems = [
-  { label: "Год", value: Number(car.year) > 0 ? String(car.year) : "" },
-  { label: "Пробег", value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "" },
-  { label: "Топливо", value: firstDetailValue(car.fuel_type) },
-  { label: "Коробка", value: firstDetailValue(car.transmission) },
-  { label: "Город", value: firstDetailValue(car.city) },
-  { label: "Состояние", value: formatImportantDetail(conditionValue) },
-  ...(registrationValue ? [{ label: "Первая регистрация", value: formatFirstRegistration(registrationValue) }] : []),
-  ...(((car.has_valid_tuv !== null && car.has_valid_tuv !== undefined) || Boolean(legacyTuvHuValue)) ? [{ label: "TÜV / HU", value: tuvHuValue }] : []),
+  { label: messages.year, value: Number(car.year) > 0 ? String(car.year) : "", icon: "calendar" },
+  { label: messages.mileage, value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString(localeTag)} ${messages.kilometre}` : "", icon: "route" },
+  { label: messages.fuel, value: localizedValue("fuel_type", car.fuel_type), icon: "fuel" },
+  { label: messages.transmission, value: localizedValue("transmission", car.transmission), icon: "settings-2" },
+  { label: messages.city, value: firstDetailValue(car.city), icon: "map-pin" },
+  { label: messages.condition, value: formatImportantDetail(localizedValue("vehicle_condition", conditionValue), locale), icon: "shield-check" },
+  ...(registrationValue ? [{ label: messages.firstRegistration, value: formatFirstRegistration(registrationValue), icon: "calendar-check" }] : []),
+  ...(((car.has_valid_tuv !== null && car.has_valid_tuv !== undefined) || Boolean(legacyTuvHuValue)) ? [{ label: "TÜV / HU", value: tuvHuValue, icon: "shield-check" }] : []),
 ].filter((item) => isDisplayValue(item.value));
 const detailGroups = [
   {
-    title: "Основные данные",
+    title: messages.mainData,
     items: [
-      { label: "Тип транспорта", value: formatImportantDetail(firstDetailValue(car.vehicle_type, getDescriptionField("Тип транспорта"))) },
-      { label: "Марка", value: firstDetailValue(car.brand) },
-      { label: "Модель", value: firstDetailValue(car.model) },
-      { label: "Год выпуска", value: Number(car.year) > 0 ? String(car.year) : "" },
-      { label: "Первая регистрация", value: registrationValue ? formatFirstRegistration(registrationValue) : "Не указано продавцом" },
-      { label: "Состояние", value: formatImportantDetail(conditionValue) },
-      { label: "Тип продавца", value: formatImportantDetail(sellerTypeValue) },
+      { label: messages.vehicleType, value: formatImportantDetail(localizedValue("vehicle_type", firstDetailValue(car.vehicle_type, getDescriptionField("Тип транспорта"))), locale), icon: "car-front" },
+      { label: messages.brand, value: firstDetailValue(car.brand), icon: "badge" },
+      { label: messages.model, value: firstDetailValue(car.model), icon: "car" },
+      { label: messages.productionYear, value: Number(car.year) > 0 ? String(car.year) : "", icon: "calendar" },
+      { label: messages.firstRegistration, value: registrationValue ? formatFirstRegistration(registrationValue) : messages.notProvided, icon: "calendar-check" },
+      { label: messages.condition, value: formatImportantDetail(localizedValue("vehicle_condition", conditionValue), locale), icon: "shield-check" },
+      { label: messages.sellerType, value: formatImportantDetail(sellerTypeValue, locale), icon: "user-round" },
     ],
   },
   {
-    title: "Цена и местоположение",
+    title: messages.priceLocation,
     items: [
-      { label: "Цена", value: Number(car.price) > 0 ? formatter.format(car.price) : "" },
-      { label: "Валюта", value: firstDetailValue(car.currency) },
-      { label: "Город", value: firstDetailValue(car.city) },
-      { label: "Страна", value: formatImportantDetail(firstDetailValue(car.country)) },
+      { label: messages.price, value: Number(car.price) > 0 ? formatter.format(car.price) : "", icon: "euro" },
+      { label: messages.currency, value: firstDetailValue(car.currency), icon: "coins" },
+      { label: messages.city, value: firstDetailValue(car.city), icon: "map-pin" },
+      { label: messages.country, value: formatImportantDetail(localizedValue("country", car.country), locale), icon: "globe-2" },
     ],
   },
   {
-    title: "Двигатель и трансмиссия",
+    title: messages.engineTransmission,
     items: [
-      { label: "Топливо", value: formatImportantDetail(firstDetailValue(car.fuel_type)) },
-      { label: "Объём двигателя", value: formatImportantDetail(firstDetailValue(car.engine_volume, getDescriptionField(["Объём двигателя", "Объем двигателя"]))) },
-      { label: "Коробка", value: formatImportantDetail(firstDetailValue(car.transmission)) },
-      { label: "Привод", value: formatImportantDetail(firstDetailValue(car.drivetrain, getDescriptionField("Привод"))) },
+      { label: messages.fuel, value: formatImportantDetail(localizedValue("fuel_type", car.fuel_type), locale), icon: "fuel" },
+      { label: messages.engineVolume, value: formatImportantDetail(firstDetailValue(car.engine_volume, getDescriptionField(["Объём двигателя", "Объем двигателя"])), locale), icon: "gauge" },
+      { label: messages.transmission, value: formatImportantDetail(localizedValue("transmission", car.transmission), locale), icon: "settings-2" },
+      { label: messages.drivetrain, value: formatImportantDetail(localizedValue("drivetrain", firstDetailValue(car.drivetrain, getDescriptionField("Привод"))), locale), icon: "activity" },
     ],
   },
   {
-    title: "Кузов и вместимость",
+    title: messages.bodyCapacity,
     items: [
-      { label: "Кузов", value: formatImportantDetail(firstDetailValue(car.body_type, getDescriptionField("Кузов"))) },
-      { label: "Цвет", value: formatImportantDetail(firstDetailValue(car.color, getDescriptionField("Цвет"))) },
-      { label: "Двери", value: formatImportantDetail(formatCount(firstDetailValue(car.doors, getDescriptionField("Двери")), "door")) },
-      { label: "Места", value: formatImportantDetail(formatCount(firstDetailValue(car.seats, getDescriptionField("Места")), "seat")) },
+      { label: messages.body, value: formatImportantDetail(localizedValue("body_type", firstDetailValue(car.body_type, getDescriptionField("Кузов"))), locale), icon: "car-front" },
+      { label: messages.color, value: formatImportantDetail(localizedValue("color", firstDetailValue(car.color, getDescriptionField("Цвет"))), locale), icon: "palette" },
+      { label: messages.doors, value: formatImportantDetail(formatCount(firstDetailValue(car.doors, getDescriptionField("Двери")), "door", locale), locale), icon: "door-open" },
+      { label: messages.seats, value: formatImportantDetail(formatCount(firstDetailValue(car.seats, getDescriptionField("Места")), "seat", locale), locale), icon: "users" },
     ],
   },
   {
-    title: "Пробег и история",
+    title: messages.mileageHistory,
     items: [
-      { label: "Пробег", value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString("ru-RU")} км` : "" },
-      { label: "Владельцы", value: visibleOwnerCount || "Не указано продавцом" },
-      { label: "TÜV / HU", value: tuvHuValue },
-      { label: "VIN", value: vinMasked },
-      { label: "Дата публикации", value: createdAtLabel },
-      { label: "Дата обновления", value: car.updated_at && String(car.updated_at) !== String(car.created_at) ? (toDate(car.updated_at) ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(toDate(car.updated_at)!) : "") : "" },
+      { label: messages.mileage, value: Number(car.mileage) > 0 ? `${Number(car.mileage).toLocaleString(localeTag)} ${messages.kilometre}` : "", icon: "route" },
+      { label: messages.owners, value: visibleOwnerCount || messages.notProvided, icon: "user-round" },
+      { label: "TÜV / HU", value: tuvHuValue, icon: "shield-check" },
+      { label: "VIN", value: vinMasked, icon: "scan-line" },
+      { label: messages.publishedAt, value: createdAtLabel, icon: "calendar-plus" },
+      { label: messages.updatedAt, value: car.updated_at && String(car.updated_at) !== String(car.created_at) ? (toDate(car.updated_at) ? new Intl.DateTimeFormat(localeTag, { dateStyle: "medium", timeStyle: "short" }).format(toDate(car.updated_at)!) : "") : "", icon: "refresh-cw" },
     ],
   },
 ].map((group) => ({
@@ -299,19 +331,18 @@ const aiRecommendations = parseTextList(car.ai_recommendations ?? aiAnalysis.rec
 const aiWarnings = parseTextList(car.ai_warnings ?? aiAnalysis.warnings);
 const aiMissingFields = parseTextList(car.ai_missing_fields ?? aiAnalysis.missing_fields);
 const hasAiAnalysis = hasStoredAiAnalysis(car as Record<string, unknown>);
-const detailNormalizeText = (value: unknown) => String(value || "").trim().toLocaleLowerCase("ru-RU");
 const detailMileage = Number(car.mileage || 0);
 const detailYear = Number(car.year || 0);
 const detailAge = Number.isFinite(detailYear) && detailYear > 0 ? Math.max(1, new Date().getFullYear() - detailYear) : 0;
 const explicitAiHighlights = parseTextList(car.ai_highlights ?? aiPayload.ai_highlights ?? aiPayload.highlights);
 const heuristicAiHighlights = [
-  car.fuel_type ? `Топливо: ${car.fuel_type}` : "",
-  car.transmission ? `Коробка: ${car.transmission}` : "",
-  car.body_type ? `Кузов: ${car.body_type}` : "",
-  trustScore !== null && trustScore >= 80 ? "Хорошая заполненность объявления" : "",
-  trustScore !== null && trustScore < 60 ? "Данные требуют уточнения" : "",
-  detailAge > 0 && detailMileage > 0 && detailMileage / detailAge < 12000 && detailMileage < 180000 ? "Низкий пробег по данным объявления" : "",
-  detailNormalizeText(car.fuel_type) === "дизель" ? "Экономичный дизель" : "",
+  car.fuel_type ? `${messages.fuel}: ${localizedValue("fuel_type", car.fuel_type)}` : "",
+  car.transmission ? `${messages.transmission}: ${localizedValue("transmission", car.transmission)}` : "",
+  car.body_type ? `${messages.body}: ${localizedValue("body_type", car.body_type)}` : "",
+  trustScore !== null && trustScore >= 80 ? messages.goodCompleteness : "",
+  trustScore !== null && trustScore < 60 ? messages.dataNeedsClarification : "",
+  detailAge > 0 && detailMileage > 0 && detailMileage / detailAge < 12000 && detailMileage < 180000 ? messages.lowMileage : "",
+  normalizeBackendValue("fuel_type", car.fuel_type) === "diesel" ? messages.economicalDiesel : "",
 ];
 const aiHighlights = [...new Set([...explicitAiHighlights, ...heuristicAiHighlights].map((item) => item.trim()).filter(Boolean))].slice(0, 7);
 const listingViewPayload = {
@@ -332,41 +363,41 @@ const getSimilarityDetails = (candidate: CarListing) => {
 
   if (normalizeComparable(candidate.brand) === normalizeComparable(car.brand)) {
     score += 3;
-    reasons.push("Та же марка");
+    reasons.push(messages.sameBrand);
   }
 
   if (normalizeComparable(candidate.body_type) && normalizeComparable(candidate.body_type) === normalizeComparable(car.body_type)) {
     score += 2;
-    reasons.push("Похожий кузов");
+    reasons.push(messages.similarBody);
   }
 
   if (normalizeComparable(candidate.fuel_type) === normalizeComparable(car.fuel_type)) {
     score += 2;
-    reasons.push("То же топливо");
+    reasons.push(messages.sameFuel);
   }
 
   if (normalizeComparable(candidate.city) === normalizeComparable(car.city)) {
     score += 1;
-    reasons.push("Тот же город");
+    reasons.push(messages.sameCity);
   }
 
   if (Math.abs(Number(candidate.year || 0) - Number(car.year || 0)) <= 3) {
     score += 1;
-    reasons.push("Похожий год");
+    reasons.push(messages.similarYear);
   }
 
   if (Number(candidate.price || 0) > 0 && Number(car.price || 0) > 0) {
     const priceRatio = Math.abs(Number(candidate.price) - Number(car.price)) / Math.max(Number(car.price), 1);
     if (priceRatio <= 0.2) {
       score += 2;
-      reasons.push("Похожий бюджет");
+      reasons.push(messages.similarBudget);
     }
   }
 
   return {
     car: candidate,
     score,
-    reason: reasons[0] || "Похожее объявление",
+    reason: reasons[0] || messages.similarListing,
   };
 };
 const similarCars = relatedCars
@@ -375,25 +406,27 @@ const similarCars = relatedCars
   .sort((left, right) => right.score - left.score)
   .slice(0, 6);
 
+const siteMessages = getMessages(locale);
 ---
 
 <BaseLayout
   variant="public"
-  title={vehicleSeo.title}
-  description={vehicleSeo.description}
+  title={pageTitle}
+  description={description}
   canonicalPath={`/cars/${car.slug}`}
   image={vehicleSeo.imageUrl}
   jsonLd={[vehicleSeo.vehicle, vehicleSeo.offer, vehicleSeo.breadcrumb]}
   ogType="product"
   breadcrumbs={[
-    { href: "/", label: "Главная" },
-    { href: "/cars", label: "Автомобили" },
-    { label: vehicleSeo.heading },
+    { href: "/", label: siteMessages.navHome },
+    { href: "/cars", label: siteMessages.navCars },
+    { label: car.title },
   ]}
   alternateLocales={germanAlternateAvailable ? [
     { locale: "ru", path: `/cars/${car.slug}/`, label: "Русский" },
     { locale: "de", path: `/de/cars/${car.slug}/`, label: "Deutsch" },
   ] : []}
+  locale={locale}
 >
   <section class="section car-detail-section">
     <div class="container detail-container">
@@ -402,7 +435,7 @@ const similarCars = relatedCars
           <div class="gallery-stage">
             {
               galleryImages.length > 1 && (
-                <button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+                <button class="gallery-nav gallery-prev" type="button" aria-label={messages.previousPhoto}><i data-lucide="chevron-left" aria-hidden="true"></i></button>
               )
             }
             <button
@@ -412,7 +445,7 @@ const similarCars = relatedCars
               data-lightbox-src={galleryImage}
               data-lightbox-sources={JSON.stringify(galleryImages)}
               data-lightbox-alt={car.title}
-              aria-label="Открыть фото на весь экран"
+              aria-label={messages.fullscreenPhoto}
             >
               {
                 <img
@@ -427,7 +460,7 @@ const similarCars = relatedCars
             </button>
             {
               galleryImages.length > 1 && (
-                <button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
+                <button class="gallery-nav gallery-next" type="button" aria-label={messages.nextPhoto}><i data-lucide="chevron-right" aria-hidden="true"></i></button>
               )
             }
             <span class="gallery-count">{`1 / ${galleryImages.length}`}</span>
@@ -440,12 +473,12 @@ const similarCars = relatedCars
                     type="button"
                     data-slide-index={index}
                     data-slide-src={imageUrl}
-                    aria-label={`Фото ${index + 1}`}
+                    aria-label={interpolate(messages.photoNumber, { count: index + 1 })}
                     aria-pressed={index === 0 ? "true" : "false"}
                   >
                     <img
                       src={imageUrl}
-                      alt={imageAltTexts[index] || `${car.title}, фото ${index + 1}`}
+                      alt={imageAltTexts[index] || `${car.title}, ${interpolate(messages.photoNumber, { count: index + 1 }).toLocaleLowerCase(localeTag)}`}
                       loading="lazy"
                       decoding="async"
                     />
@@ -455,20 +488,21 @@ const similarCars = relatedCars
           </div>
         </div>
         <div class="detail-panel compact-detail-panel">
-          {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>Продвигается</span></div>}
-          <StatusBadge status={car.status} />
-          {isSold && <span class="sold-detail-badge">Автомобиль продан</span>}
-          <h1>{vehicleSeo.heading}</h1>
+          {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>{messages.promoted}</span></div>}
+          <StatusBadge status={car.status} locale={locale} />
+          {isSold && <span class="sold-detail-badge">{messages.sold}</span>}
+          <h1 data-i18n-skip>{car.title}</h1>
           <p class="detail-public-meta">
-            <span>{`Опубликовано ${createdAtLabel}`}</span>
-            <span class="detail-public-views" aria-label={publicViewLabel}>
+            <span>{`${messages.publishedAt}: ${createdAtLabel}`}</span>
+            <span class="detail-public-views" aria-label={publicViewText}>
               <i data-lucide="eye" aria-hidden="true"></i>
               <span>{publicViewText}</span>
             </span>
           </p>
           <p class="detail-price">{formatter.format(car.price)}</p>
-          <FavoriteButton listingId={car.id} initialSaved={Boolean(car.is_saved)} source="car_detail" class="detail-favorite-button" />
+          <FavoriteButton listingId={car.id} initialSaved={Boolean(car.is_saved)} source="car_detail" class="detail-favorite-button" locale={locale} />
           <VehicleSpecsGrid items={quickSpecItems} class="detail-spec-grid detail-quick-spec-grid" />
+          <a class="button button-primary full-width detail-contact-jump" href="#seller-information">{messages.contactSeller}</a>
         </div>
       </article>
     </div>
@@ -480,8 +514,8 @@ const similarCars = relatedCars
           <div class="detail-properties-panel">
             <div class="section-heading compact-section-heading">
               <div>
-                <p class="eyebrow">Характеристики</p>
-                <h2 id="all-car-specs">Все характеристики автомобиля</h2>
+                <p class="eyebrow">{messages.characteristics}</p>
+                <h2 id="all-car-specs">{messages.allSpecs}</h2>
               </div>
             </div>
             <div class="detail-properties-groups">
@@ -502,11 +536,12 @@ const similarCars = relatedCars
       <div class="detail-description-panel">
         <div class="section-heading compact-section-heading">
           <div>
-            <p class="eyebrow">От продавца</p>
-            <h2 id="seller-description">Описание автомобиля</h2>
+            <p class="eyebrow">{messages.fromSeller}</p>
+            <h2 id="seller-description">{messages.description}</h2>
           </div>
         </div>
-        <p class="detail-description">{detailDescription || "Продавец пока не добавил описание автомобиля."}</p>
+        {translationNotice && <p class="translation-disclosure" role="status">{translationNotice}</p>}
+        <p class="detail-description" data-i18n-skip={detailDescription ? "true" : undefined}>{detailDescription || messages.noDescription}</p>
       </div>
     </div>
   </section>
@@ -518,13 +553,13 @@ const similarCars = relatedCars
             <div class="section-heading compact-section-heading">
               <div>
                 <p class="eyebrow">AI Highlights</p>
-                <h2>Что AI увидел в объявлении</h2>
+                <h2>{messages.aiSaw}</h2>
               </div>
             </div>
             <div class="ai-highlight-chips">
               {aiHighlights.map((highlight) => <span class="ai-highlight-chip">{highlight}</span>)}
             </div>
-            <p class="ai-microcopy">AI Highlights основаны на данных объявления и не заменяют техническую проверку автомобиля.</p>
+            <p class="ai-microcopy">{messages.aiHighlightsDisclaimer}</p>
           </div>
         </div>
       </section>
@@ -537,45 +572,45 @@ const similarCars = relatedCars
           <div class="ai-analysis-panel detail-ai-analysis">
             <div class="section-heading compact-section-heading">
               <div>
-                <h2>AI-анализ объявления</h2>
-                <p class="section-subtitle">AI-оценка показывает качество заполнения объявления, а не техническое состояние автомобиля.</p>
+                <h2>{messages.aiAnalysis}</h2>
+                <p class="section-subtitle">{messages.aiAnalysisLead}</p>
               </div>
             </div>
             <div class="ai-analysis-grid">
               <article>
-                <span>Качество объявления</span>
-                <strong>{aiScore !== null ? `${aiScore}/100` : "не рассчитано"}</strong>
+                <span>{messages.listingQuality}</span>
+                <strong>{aiScore !== null ? `${aiScore}/100` : messages.notCalculated}</strong>
               </article>
               <article>
-                <span>Качество фото</span>
-                <strong>{photoScore !== null ? `${photoScore}/100` : "не рассчитано"}</strong>
+                <span>{messages.photoQuality}</span>
+                <strong>{photoScore !== null ? `${photoScore}/100` : messages.notCalculated}</strong>
               </article>
               <article>
-                <span>Доверие к данным</span>
-                <strong>{trustScore !== null ? `${trustScore}/100` : "не рассчитано"}</strong>
+                <span>{messages.dataTrust}</span>
+                <strong>{trustScore !== null ? `${trustScore}/100` : messages.notCalculated}</strong>
               </article>
               <article>
-                <span>Статус проверки</span>
-                <strong>{aiMissingFields.length ? "нужно уточнить" : "данные заполнены"}</strong>
+                <span>{messages.reviewStatus}</span>
+                <strong>{aiMissingFields.length ? messages.needsClarification : messages.dataComplete}</strong>
               </article>
             </div>
             <div class="ai-analysis-notes">
               <div>
-                <h3>Рекомендации продавцу</h3>
+                <h3>{messages.sellerRecommendations}</h3>
                 {aiRecommendations.length ? (
                   <ul>{aiRecommendations.slice(0, 5).map((item) => <li>{item}</li>)}</ul>
                 ) : (
-                  <p>Критичных рекомендаций нет.</p>
+                  <p>{messages.noCriticalRecommendations}</p>
                 )}
               </div>
               <div>
-                <h3>Предупреждения</h3>
+                <h3>{messages.warnings}</h3>
                 {aiWarnings.length || aiMissingFields.length ? (
                   <ul>
-                    {[...aiWarnings, ...aiMissingFields.map((field) => `Уточните поле: ${field}`)].slice(0, 6).map((item) => <li>{item}</li>)}
+                    {[...aiWarnings, ...aiMissingFields.map((field) => interpolate(messages.clarifyField, { value: field }))].slice(0, 6).map((item) => <li>{item}</li>)}
                   </ul>
                 ) : (
-                  <p>Серьезных предупреждений нет.</p>
+                  <p>{messages.noSeriousWarnings}</p>
                 )}
               </div>
             </div>
@@ -591,15 +626,20 @@ const similarCars = relatedCars
         data-seller-summary
         data-api-url={xanoApiUrl}
         data-detail-path={API_ROUTES.carBySlug(car.slug)}
+        data-label-dealer={messages.dealer}
+        data-label-private={messages.privateSeller}
+        data-label-active-listings={messages.activeListings}
+        data-label-seller={messages.seller}
+        data-label-no-contact={messages.noPublicContact}
       >
-        <p class="eyebrow">Продавец</p>
-        <h2 data-seller-name>{staticSellerName}</h2>
+        <p class="eyebrow">{messages.seller}</p>
+        <h2 data-seller-name data-i18n-skip>{staticSellerName}</h2>
         <div class="seller-summary-meta">
           <span data-seller-type>{staticSellerType}</span>
           {staticSellerCity && <span data-seller-city>{staticSellerCity}</span>}
-          <span data-seller-count hidden={!staticSellerCount}>{staticSellerCount ? `${staticSellerCount} объявл.` : ""}</span>
+          <span data-seller-count hidden={!staticSellerCount}>{staticSellerCount ? interpolate(messages.shortListings, { count: staticSellerCount }) : ""}</span>
         </div>
-        <ContactSellerModal sellerName={staticSellerName} listingTitle={car.title} contact={staticSellerContact} />
+        <ContactSellerModal sellerName={staticSellerName} listingTitle={car.title} contact={staticSellerContact} locale={locale} />
       </section>
     </div>
   </section>
@@ -609,13 +649,13 @@ const similarCars = relatedCars
         <div class="container">
           <div class="section-heading compact-section-heading seller-listings-heading">
             <div>
-              <p class="eyebrow">Продавец</p>
-              <h2>Другие автомобили продавца</h2>
+              <p class="eyebrow">{messages.seller}</p>
+              <h2>{messages.otherSellerCars}</h2>
             </div>
-            <span>{sellerCars.length} из доступных</span>
+            <span>{interpolate(messages.availableCount, { count: sellerCars.length })}</span>
           </div>
-          <div class="seller-listings-grid" aria-label="Другие автомобили продавца">
-            {sellerCars.map((sellerCar) => <CarCard car={sellerCar} source="seller_listings" />)}
+          <div class="seller-listings-grid" aria-label={messages.otherSellerCars}>
+            {sellerCars.map((sellerCar) => <CarCard car={sellerCar} source="seller_listings" locale={locale} />)}
           </div>
         </div>
       </section>
@@ -626,12 +666,12 @@ const similarCars = relatedCars
       <section class="section related-cars-section">
         <div class="container">
           <div class="section-heading compact-section-heading">
-            <h2>Похожие автомобили</h2>
+            <h2>{messages.similarCars}</h2>
           </div>
-          <div class="similar-cars-grid" aria-label="Похожие автомобили">
+          <div class="similar-cars-grid" aria-label={messages.similarCars}>
             {similarCars.map(({ car: similarCar, reason }) => (
               <div class="similar-car-card-unified" data-similar-slug={similarCar.slug}>
-                <CarCard car={similarCar} source="similar_cars" />
+                <CarCard car={similarCar} source="similar_cars" locale={locale} />
                 <span class="similarity-reason">{reason}</span>
               </div>
             ))}
@@ -681,14 +721,14 @@ const similarCars = relatedCars
           name.textContent = seller.name.trim();
         }
         if (type instanceof HTMLElement && typeof seller.type === "string") {
-          type.textContent = seller.type === "dealer" ? "Дилер" : "Частный продавец";
+          type.textContent = seller.type === "dealer" ? sellerSummary.dataset.labelDealer || "Dealer" : sellerSummary.dataset.labelPrivate || "Private seller";
         }
         if (city instanceof HTMLElement && typeof seller.city === "string" && seller.city.trim()) {
           city.textContent = seller.city.trim();
         }
         const activeCount = Number(seller.active_listings_count);
         if (count instanceof HTMLElement && Number.isInteger(activeCount) && activeCount > 0) {
-          count.textContent = `${activeCount} активных объявлений`;
+          count.textContent = (sellerSummary.dataset.labelActiveListings || "{count} active listings").replace("{count}", String(activeCount));
           count.hidden = false;
         }
 
@@ -716,7 +756,7 @@ const similarCars = relatedCars
             trigger.dataset.contactPhoneValue = phoneValue;
             trigger.dataset.contactEmailValue = emailValue;
             trigger.dataset.preferredMethod = preferredMethod;
-            trigger.dataset.sellerName = typeof seller.name === "string" ? seller.name.trim() : "Продавец";
+            trigger.dataset.sellerName = typeof seller.name === "string" ? seller.name.trim() : sellerSummary.dataset.labelSeller || "Seller";
             trigger.hidden = false;
           });
           if (note instanceof HTMLElement) note.hidden = true;
@@ -730,7 +770,7 @@ const similarCars = relatedCars
             trigger.hidden = true;
           });
           if (note instanceof HTMLElement) {
-            note.textContent = "Продавец пока не добавил публичный способ связи.";
+            note.textContent = sellerSummary.dataset.labelNoContact || "No public contact method.";
             note.hidden = false;
           }
         }

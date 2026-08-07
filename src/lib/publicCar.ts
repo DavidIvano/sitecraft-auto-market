@@ -3,6 +3,7 @@ import { maskVin, sanitizePublicDescription } from "./listingFields.ts";
 import { isPublicListing } from "./listingStatus.ts";
 import { normalizePublicViewCount } from "./listingViews.ts";
 import type { CarListing, CarListingImage, PublicSellerSummary, TranslationResolution } from "./types.ts";
+import { normalizeListingTranslation } from "./listingTranslation.ts";
 
 const PUBLIC_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/i;
 
@@ -210,6 +211,7 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
   const rawVin = toString(source.vin);
   const seller = normalizeSeller(source.seller);
   const rawPromotion = toRecord(source.promotion);
+  const translation = normalizeListingTranslation(source.translation || source.localized_translation);
   const promotionStatus = toString(rawPromotion?.status || source.promotion_status);
   const promotion: CarListing["promotion"] = rawPromotion ? {
     id: toNumber(rawPromotion.id) || undefined,
@@ -227,10 +229,8 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     slug,
     title,
     locale: toString(source.locale) || undefined,
-    source_locale: toString(source.source_locale) || undefined,
     translation_version: toNumber(source.translation_version) || undefined,
     translations_ready: source.translations_ready === true,
-    translation: normalizeTranslationResolution(source.translation),
     brand,
     model,
     vehicle_type: toString(source.vehicle_type),
@@ -318,6 +318,8 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     seo_description: toString(source.seo_description),
     image_alt_texts: source.image_alt_texts as CarListing["image_alt_texts"],
     search_keywords: source.search_keywords as CarListing["search_keywords"],
+    source_locale: toString(source.source_locale || source.content_locale) || "ru",
+    translation: translation || normalizeTranslationResolution(source.translation),
     seller_rating: source.seller_rating as CarListing["seller_rating"],
     user_rating: source.user_rating as CarListing["user_rating"],
     main_image_url: readImageUrl(source.main_image_url),

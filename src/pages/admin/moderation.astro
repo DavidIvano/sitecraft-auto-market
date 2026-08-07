@@ -86,7 +86,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
   </section>
 
   <script>
-    import { fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isSessionConfirmedExpired, rememberNext } from "../../lib/authClient";
+    import { fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isSessionConfirmedExpired, redirectToLogin as redirectToSharedLogin } from "../../lib/authClient";
     import { buildModerationReason, runModerationFallback } from "../../lib/ai/moderationFallback";
     import { refreshAppIcons } from "../../lib/appIcons";
     import {
@@ -192,12 +192,12 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const translationStates = new Map<string, { loading?: boolean; error?: string; data?: AdminListingTranslationsResponse }>();
 
     const redirectToLogin = () => {
-      rememberNext("/admin/moderation");
-      window.location.href = `/login?next=${encodeURIComponent("/admin/moderation/")}`;
+      redirectToSharedLogin("/admin/moderation/");
     };
 
     const redirectToSupport = () => {
-      window.location.href = "/support";
+      const locale = new URLSearchParams(window.location.search).get("lang") || document.documentElement.lang || "ru";
+      window.location.href = `/support?lang=${encodeURIComponent(locale)}`;
     };
 
     const setAccessMessage = (value: string) => {

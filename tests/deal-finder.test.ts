@@ -83,7 +83,9 @@ test("authorized users can reach Deal Finder from tablet navigation and workspac
     assert.match(source, /data-deal-finder-only/);
     assert.match(source, /\/dashboard\/deal-finder/);
   });
-  assert.doesNotMatch(header, /deal-finder-link/);
+  assert.match(header, /deal-finder-link/);
+  assert.match(header, /data-deal-finder-only/);
+  assert.match(header, /\/dashboard\/deal-finder/);
 });
 
 test("Deal Finder detail URL supports every positive Xano id without static paths", () => {

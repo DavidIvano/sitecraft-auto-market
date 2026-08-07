@@ -3,10 +3,10 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
-import { LEGACY_PUBLIC_LOCALE } from "../i18n/config";
-import { getLocaleDefinition, normalizeLocale } from "../i18n/locale";
-import { translate } from "../i18n/translate";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
+import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_DIRECTIONS, LOCALE_TAGS, SUPPORTED_LOCALES, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { getMessages } from "../i18n/messages";
+import { getUiPhraseMap, translateUiData } from "../i18n/uiTranslator";
 import "../styles/global.css";
 import "../styles/tokens.css";
 import "../styles/base.css";
@@ -34,7 +34,7 @@ type Props = {
   noindex?: boolean;
   ogType?: "website" | "product";
   variant?: LayoutVariant;
-  locale?: string;
+  locale?: Locale;
   alternateLocales?: Array<{ locale: string; path: string; label?: string }>;
 };
 
@@ -48,19 +48,26 @@ const {
   noindex = false,
   ogType = "website",
   variant: requestedVariant,
-  locale: requestedLocale = LEGACY_PUBLIC_LOCALE,
+  locale: localeProp,
   alternateLocales = [],
 } = Astro.props;
-const pageLocale = normalizeLocale(requestedLocale, { activeOnly: true }) || LEGACY_PUBLIC_LOCALE;
-const localeDefinition = getLocaleDefinition(pageLocale);
+const locale = localeProp ?? resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const messages = getMessages(locale);
+const uiPhraseMap = getUiPhraseMap(locale);
+const pageLocale = locale;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
-const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
+const canonicalPathname = canonicalPath ?? Astro.url.pathname;
+const localeUrl = (targetLocale: Locale) => {
+  const url = new URL(canonicalPathname, siteUrl);
+  if (targetLocale !== DEFAULT_LOCALE) url.searchParams.set("lang", targetLocale);
+  return url.toString();
+};
+const canonicalUrl = localeUrl(locale);
 const imageUrl = new URL(image, siteUrl).toString();
 const pageAlternates = alternateLocales.flatMap((alternate) => {
-  const locale = normalizeLocale(alternate.locale, { activeOnly: true });
-  if (!locale || !alternate.path.startsWith("/")) return [];
-  return [{ ...alternate, locale, href: new URL(alternate.path, siteUrl).toString() }];
+  if (!SUPPORTED_LOCALES.includes(alternate.locale as Locale) || !alternate.path.startsWith("/")) return [];
+  return [{ ...alternate, locale: alternate.locale as Locale, href: new URL(alternate.path, siteUrl).toString() }];
 });
 const buildSha = import.meta.env.PUBLIC_BUILD_SHA || import.meta.env.CF_PAGES_COMMIT_SHA || "local";
 const buildTimestamp = import.meta.env.PUBLIC_BUILD_TIMESTAMP || new Date().toISOString();
@@ -69,22 +76,22 @@ const buildEnvironment =
   || import.meta.env.ENVIRONMENT
   || (import.meta.env.CF_PAGES_BRANCH ? "cloudflare-pages" : "local");
 const labelBySegment: Record<string, string> = {
-  admin: "Админ",
-  auth: "Авторизация",
-  cars: "Авто",
-  dashboard: "Кабинет",
+  admin: messages.navModeration,
+  auth: messages.navLogin,
+  cars: messages.navCars,
+  dashboard: messages.navDashboard,
   detail: "Автомобиль",
   edit: "Редактирование",
   google: "Google",
   listings: "Мои объявления",
-  login: "Вход",
-  moderation: "Модерация",
+  login: messages.navLogin,
+  moderation: messages.navModeration,
   "deal-finder": "Deal Finder",
   new: "Новое объявление",
-  privacy: "Конфиденциальность",
-  register: "Регистрация",
-  sell: "Продать авто",
-  support: "Поддержка",
+  privacy: messages.navPrivacy,
+  register: messages.navRegister,
+  sell: messages.navSell,
+  support: messages.navSupport,
 };
 const pathname = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isWorkspacePath = pathname === "/dashboard"
@@ -100,16 +107,16 @@ const layoutVariant: LayoutVariant = requestedVariant
         ? "legal"
         : "public");
 const shellNavItems = [
-  { href: "/dashboard", label: "Обзор", short: "О", icon: "layout-dashboard" },
+  { href: "/dashboard", label: messages.navDashboard, short: "О", icon: "layout-dashboard" },
   { href: "/dashboard/listings", label: "Мои объявления", short: "МО", icon: "car-front" },
-  { href: "/dashboard/new", label: "Добавить объявление", short: "+", icon: "plus" },
+  { href: "/dashboard/new", label: messages.navAddListing, short: "+", icon: "plus" },
   { href: "/dashboard/favorites", label: "Сохранённые", short: "С", icon: "heart" },
   ...(DEAL_FINDER_ENABLED
     ? [{ href: "/dashboard/deal-finder", label: "Deal Finder", short: "DF", icon: "radar", dealFinderOnly: true }]
     : []),
   { href: "/dashboard/billing", label: "Баланс", short: "Б", icon: "coins" },
   { href: "/dashboard/dealer", label: "Дилер", short: "Д", icon: "users" },
-  { href: "/admin/moderation", label: "Модерация", short: "М", icon: "shield-check", adminOnly: true },
+  { href: "/admin/moderation", label: messages.navModeration, short: "М", icon: "shield-check", adminOnly: true },
   { href: "/dashboard/#contact-profile", label: "Настройки", short: "Н", icon: "settings" },
 ];
 const getShellNavClass = (href: string) => {
@@ -127,7 +134,7 @@ const generatedBreadcrumbs =
   pathname === "/"
     ? []
     : [
-        { href: "/", label: "Главная" },
+        { href: "/", label: messages.navHome },
         ...pathname
           .split("/")
           .filter(Boolean)
@@ -170,10 +177,11 @@ const schemaItems = [
   ...defaultSchemaItems,
   ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
 ];
+const localizedSchemaItems = translateUiData(schemaItems, locale);
 ---
 
 <!doctype html>
-<html lang={pageLocale} dir={localeDefinition.direction}>
+<html lang={locale} dir={LOCALE_DIRECTIONS[locale]}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -186,14 +194,12 @@ const schemaItems = [
     <meta name="sitecraft-build-timestamp" content={buildTimestamp} />
     <meta name="sitecraft-build-environment" content={buildEnvironment} />
     <meta name="description" content={description} />
-    <meta http-equiv="Content-Language" content={pageLocale} />
+    <meta http-equiv="Content-Language" content={locale} />
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />
-    {pageAlternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={alternate.href} />)}
-    {pageAlternates.some((alternate) => alternate.locale === "ru") && (
-      <link rel="alternate" hreflang="x-default" href={pageAlternates.find((alternate) => alternate.locale === "ru")?.href} />
-    )}
+    {SUPPORTED_LOCALES.map((code) => <link rel="alternate" hreflang={LOCALE_TAGS[code]} href={localeUrl(code)} />)}
+    <link rel="alternate" hreflang="x-default" href={localeUrl(DEFAULT_LOCALE)} />
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
@@ -206,7 +212,7 @@ const schemaItems = [
     <meta name="twitter:image" content={imageUrl} />
     <title>{pageTitle}</title>
     {
-      schemaItems.map((item) => (
+      localizedSchemaItems.map((item) => (
         <script is:inline type="application/ld+json" set:html={JSON.stringify(item)} />
       ))
     }
@@ -217,18 +223,115 @@ const schemaItems = [
         document.documentElement.dataset.theme = savedTheme || systemTheme;
       })();
     </script>
+    <script is:inline define:vars={{ uiPhraseMap }}>
+      (() => {
+        const initializeI18n = () => {
+        const translations = uiPhraseMap || {};
+        const activeLocale = document.documentElement.lang;
+        const ignored = new Set(["SCRIPT", "STYLE", "CODE", "PRE", "TEXTAREA"]);
+        const attributes = ["alt", "aria-label", "data-close-label", "data-open-label", "placeholder", "title"];
+        const translate = (value) => {
+          if (!value || !/[А-Яа-яЁё]/u.test(value)) return value;
+          const normalized = value.replace(/\s+/gu, " ").trim();
+          const dynamicPatterns = [
+            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів`, ar: (n) => `${n} أيام`, tr: (n) => `${n} gün` }],
+            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів`, ar: (n) => `${n} رصيد`, tr: (n) => `${n} kredi` }],
+            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень`, ar: (n) => `حتى ${n} إعلانات نشطة`, tr: (n) => `${n} adede kadar aktif ilan` }],
+            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця`, ar: (n) => `${n} رصيد AI كل شهر`, tr: (n) => `Her ay ${n} AI kredisi` }],
+            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}`, ar: (n) => `أولوية التاجر: ${n}`, tr: (n) => `Bayi önceliği: ${n}` }],
+            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.`, ar: (n) => `${n} / شهر`, tr: (n) => `${n} / ay` }],
+          ];
+          for (const [pattern, handlers] of dynamicPatterns) {
+            const match = normalized.match(pattern);
+            const handler = handlers[activeLocale];
+            if (match && handler) return `${value.match(/^\s*/u)?.[0] || ""}${handler(...match.slice(1))}${value.match(/\s*$/u)?.[0] || ""}`;
+          }
+          const suffix = " | SiteCraft Auto Market";
+          const source = normalized.endsWith(suffix) ? normalized.slice(0, -suffix.length) : normalized;
+          const phrase = translations[source];
+          const translated = phrase ? `${phrase}${normalized.endsWith(suffix) ? suffix : ""}` : undefined;
+          if (!translated) return value;
+          return `${value.match(/^\s*/u)?.[0] || ""}${translated}${value.match(/\s*$/u)?.[0] || ""}`;
+        };
+        const shouldSkip = (element) => Boolean(element?.closest?.("[data-i18n-skip]"));
+        const translateElement = (element) => {
+          if (!(element instanceof Element) || shouldSkip(element)) return;
+          for (const name of attributes) {
+            if (!element.hasAttribute(name)) continue;
+            const value = element.getAttribute(name) || "";
+            const translated = translate(value);
+            if (translated !== value) element.setAttribute(name, translated);
+          }
+        };
+        const translateTree = (root) => {
+          if (root instanceof Element) translateElement(root);
+          const walker = document.createTreeWalker(root, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+          let node;
+          while ((node = walker.nextNode())) {
+            if (node instanceof Element) {
+              translateElement(node);
+              continue;
+            }
+            const parent = node.parentElement;
+            if (!parent || ignored.has(parent.tagName) || shouldSkip(parent)) continue;
+            const translated = translate(node.nodeValue || "");
+            if (translated !== node.nodeValue) node.nodeValue = translated;
+          }
+        };
+        translateTree(document.body);
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) {
+            if (mutation.type === "characterData") {
+              const node = mutation.target;
+              const parent = node.parentElement;
+              if (!parent || ignored.has(parent.tagName) || shouldSkip(parent)) continue;
+              const translated = translate(node.nodeValue || "");
+              if (translated !== node.nodeValue) node.nodeValue = translated;
+              continue;
+            }
+            mutation.addedNodes.forEach((node) => translateTree(node));
+          }
+        }).observe(document.body, { childList: true, subtree: true, characterData: true });
+
+        const localizeLinks = (root) => {
+          const links = root instanceof HTMLAnchorElement ? [root] : root.querySelectorAll?.("a[href]") || [];
+          for (const link of links) {
+            if (!(link instanceof HTMLAnchorElement)) continue;
+            const rawHref = link.getAttribute("href") || "";
+            if (!rawHref || rawHref.startsWith("#") || /^(?:mailto:|tel:|javascript:)/iu.test(rawHref)) continue;
+            const url = new URL(link.href, window.location.href);
+            if (url.origin !== window.location.origin || url.pathname.startsWith("/api/")) continue;
+            url.searchParams.set("lang", activeLocale);
+            link.href = `${url.pathname}${url.search}${url.hash}`;
+          }
+        };
+        localizeLinks(document);
+        new MutationObserver((mutations) => {
+          for (const mutation of mutations) mutation.addedNodes.forEach((node) => {
+            if (node instanceof Element) localizeLinks(node);
+          });
+        }).observe(document.body, { childList: true, subtree: true });
+        };
+
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", initializeI18n, { once: true });
+        } else {
+          initializeI18n();
+        }
+      })();
+    </script>
   </head>
   <body>
     <div class:list={["app-shell", `app-shell-${layoutVariant}`, layoutVariant === "workspace" && "mac-app-shell is-workspace-shell"]}>
-      {layoutVariant === "workspace" && <aside class="mac-sidebar" aria-label="Навигация кабинета SiteCraft Auto Market">
+      {layoutVariant === "workspace" && <aside class="mac-sidebar" aria-label={messages.navigation}>
         <div class="mac-sidebar-top">
           <a class="mac-sidebar-brand" href="/dashboard/" aria-label="SiteCraft Auto Market: кабинет">
             <img src="/sitecraft-logo.png" alt="" width="38" height="38" decoding="async" />
             <strong>Auto Market</strong>
           </a>
-          <button class="mac-sidebar-toggle" type="button" aria-label="Скрыть боковое меню" aria-expanded="true"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
+          <button class="mac-sidebar-toggle" type="button" aria-label={messages.sidebarClose} aria-expanded="true" data-open-label={messages.sidebarOpen} data-close-label={messages.sidebarClose}><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
         </div>
-        <nav class="mac-sidebar-nav" aria-label="Разделы кабинета">
+        <nav class="mac-sidebar-nav" aria-label={messages.siteSections}>
           {
             shellNavItems.map((item) => (
               <a
@@ -246,11 +349,11 @@ const schemaItems = [
           }
         </nav>
         <div class="mac-sidebar-footer">
-          <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+          <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
             <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
-            <strong>Тема</strong>
+            <strong>{messages.theme}</strong>
           </button>
-          <a class="mac-sidebar-return" href="/"><i data-lucide="arrow-left" aria-hidden="true"></i><span>Вернуться на сайт</span></a>
+          <a class="mac-sidebar-return" href="/"><i data-lucide="arrow-left" aria-hidden="true"></i><span>{messages.navHome}</span></a>
         </div>
       </aside>}
       <div class="mac-workspace">
@@ -262,7 +365,7 @@ const schemaItems = [
         <main class="mac-main">
           {
             pageBreadcrumbs.length > 0 && (
-              <nav class="breadcrumbs" aria-label={translate(pageLocale, "common.breadcrumbs")}>
+              <nav class="breadcrumbs" aria-label={messages.breadcrumbs}>
                 <div class="container breadcrumbs-inner">
                   {pageBreadcrumbs.map((item, index) => (
                     <>
@@ -300,7 +403,7 @@ const schemaItems = [
             ? '<i data-lucide="panel-left-open" aria-hidden="true"></i>'
             : '<i data-lucide="panel-left-close" aria-hidden="true"></i>';
           window.dispatchEvent(new CustomEvent("app-icons-refresh"));
-          toggle.setAttribute("aria-label", collapsed ? "Открыть боковое меню" : "Скрыть боковое меню");
+          toggle.setAttribute("aria-label", collapsed ? toggle.dataset.openLabel || "Open sidebar" : toggle.dataset.closeLabel || "Close sidebar");
           toggle.setAttribute("aria-expanded", String(!collapsed));
           localStorage.setItem("sitecraft-sidebar-collapsed", collapsed ? "true" : "false");
         };

@@ -11,7 +11,7 @@ const car: CarListing = { id: 7, slug: "renault-megane", title: "Renault Megane"
 
 test("public card has one native destination and independent saved control", () => {
   const html = renderPublicCarCardMarkup(car, { source: "seller_listings" });
-  assert.match(html, /<a class="car-card-link" href="\/cars\/renault-megane\/"/);
+  assert.match(html, /<a class="car-card-link" href="\/cars\/renault-megane\/\?lang=ru"/);
   assert.match(html, /data-car-favourite="7"[\s\S]*aria-pressed="true"/);
   assert.match(html, /data-favorite-source="seller_listings"/);
   assert.doesNotMatch(html, /role="link"|data-car-card-href|data-lightbox-trigger/);

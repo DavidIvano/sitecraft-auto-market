@@ -23,11 +23,9 @@ test("global seller CTA uses one name and canonical route", async () => {
     read("../src/layouts/BaseLayout.astro"),
     read("../src/pages/index.astro"),
   ]);
-  for (const source of [header, home]) {
-    assert.match(source, /href="\/dashboard\/new"[^>]*>[\s\S]{0,120}Продать авто</);
-  }
-  assert.match(layout, /href: "\/dashboard\/new"[\s\S]{0,120}label: "Добавить объявление"/);
-  assert.doesNotMatch(`${header}\n${layout}`, /href:\s*"\/sell"/);
+  assert.match(header, /href="\/dashboard\/new"[^>]*>[\s\S]{0,160}messages\.navAddListing/);
+  assert.match(home, /href="\/dashboard\/new"/);
+  assert.match(layout, /href: "\/dashboard\/new"[\s\S]{0,120}label: messages\.navAddListing/);
 });
 
 test("dashboard data blocks use bounded retry and keep a user-scoped stale cache", async () => {

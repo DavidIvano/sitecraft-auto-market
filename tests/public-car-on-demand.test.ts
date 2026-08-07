@@ -124,22 +124,23 @@ test("car detail is on-demand and uses direct slug lookup with safe state routes
   const unavailable = readProjectFile("src/pages/service-unavailable.astro");
   assert.match(page, /export const prerender = false/);
   assert.doesNotMatch(page, /getStaticPaths/);
-  assert.match(page, /await getCarBySlug\(slug\)/);
-  assert.match(page, /getRelatedListingsBySlug\(slug\)/);
+  assert.match(page, /await getCarBySlug\(slug, locale\)/);
+  assert.match(page, /getRelatedListingsBySlug\(slug, locale\)/);
   assert.doesNotMatch(page, /getApprovedCars\(\)/);
   assert.match(page, /Promise\.allSettled/);
   assert.match(page, /Astro\.response\.status = 404/);
+  assert.match(page, /Astro\.response\.headers\.set\("Cache-Control", "no-store"\)/);
   assert.match(page, /public, max-age=0, s-maxage=300, stale-while-revalidate=86400/);
   assert.match(page, /Astro\.response\.headers\.set\("Retry-After", "300"\)/);
   assert.match(page, /buildVehicleSeo\(car, siteUrl\)/);
   assert.match(page, /jsonLd=\{\[vehicleSeo\.vehicle, vehicleSeo\.offer, vehicleSeo\.breadcrumb\]\}/);
-  assert.match(page, /<h1>\{vehicleSeo\.heading\}<\/h1>/);
-  assert.match(page, /detailDescription[\s\S]*Продавец пока не добавил описание автомобиля/);
+  assert.match(page, /<h1 data-i18n-skip>\{car\.title\}<\/h1>/);
+  assert.match(page, /detailDescription \|\| messages\.noDescription/);
   assert.match(page, /\/deal-finder-placeholder\.svg/);
   assert.match(xano, /API_ROUTES\.carBySlug\(slug\)/);
-  assert.match(xano, /API_ROUTES\.carRelatedListings\(slug\)/);
+  assert.match(xano, /API_ROUTES\.carRelated\(slug\)/);
   assert.match(xano, /fetchWithRetry/);
-  assert.match(xano, /attempts: 3/);
+  assert.match(xano, /attempts: PUBLIC_API_RATE_LIMIT_ATTEMPTS/);
   assert.match(xano, /timeoutMs: PUBLIC_API_TIMEOUT_MS/);
   assert.match(xano, /dedupeKey: `xano-public:\$\{path\}`/);
   assert.match(notFound, /export const prerender = false/);
@@ -153,16 +154,16 @@ test("catalog is on-demand SSR with crawlable server-rendered cards", () => {
   const catalog = readProjectFile("src/pages/cars/index.astro");
   const routes = readProjectFile("public/_routes.json");
   assert.match(catalog, /export const prerender = false/);
-  assert.match(catalog, /getApprovedCars\(\{ requireConfigured: true \}\)/);
+  assert.match(catalog, /getApprovedCars\(\{ requireConfigured: true, locale \}\)/);
   assert.match(catalog, /cars\.map\(\(car, index\) => <CarCard/);
   assert.match(catalog, /public, max-age=0, s-maxage=120, stale-while-revalidate=3600/);
   assert.match(catalog, /Astro\.response\.status = 503/);
-  assert.match(routes, /"\/cars"/);
+  assert.match(routes, /"\/\*"/);
 });
 
 test("homepage renders crawlable latest-car links before client enhancement", () => {
   const homepage = readProjectFile("src/pages/index.astro");
-  assert.match(homepage, /await getApprovedCars\(\)/);
+  assert.match(homepage, /await getApprovedCars\(locale\)/);
   assert.match(homepage, /latestCars\.map\(\(car, index\) => <CarCard/);
   assert.doesNotMatch(homepage, /your-xano-api-url\.com/);
 });
@@ -192,6 +193,6 @@ test("Cloudflare workflow fails fast and deploys the advanced-mode bundle", () =
   assert.match(workflow, /pages deploy \. --project-name sitecraft-auto-market --branch main/);
   assert.match(packager, /generatedWranglerDeployDir/);
   assert.match(packager, /rmSync\(generatedWranglerDeployDir/);
-  assert.match(routes, /"\/cars\/\*"/);
-  assert.match(routes, /"\/sitemap\.xml"/);
+  assert.match(routes, /"\/\*"/);
+  assert.doesNotMatch(routes, /"include"\s*:\s*\[[\s\S]*?"\/cars\/\*"/);
 });

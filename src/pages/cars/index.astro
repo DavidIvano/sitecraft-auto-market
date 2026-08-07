@@ -14,6 +14,13 @@ import {
 import type { CarListing } from "../../lib/types";
 import { isPublicListing } from "../../lib/listingStatus";
 import { buildVehicleTaxonomy } from "../../lib/seo/vehicleTaxonomy";
+import { normalizeBackendValue } from "../../i18n/backendValues";
+import { getCatalogMessages } from "../../i18n/catalogMessages";
+import { LOCALE_COOKIE, resolveRequestLocale } from "../../i18n/locales";
+import { interpolate } from "../../i18n/messages";
+
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const messages = getCatalogMessages(locale);
 
 export const prerender = false;
 
@@ -28,7 +35,7 @@ const initialCriteria = getBuyerSearchCriteriaFromParams(searchParams);
 const aiSearchPolicy = getCreditActionPolicy("ai_search_intent");
 
 try {
-  const xanoCars = await getApprovedCars({ requireConfigured: true });
+  const xanoCars = await getApprovedCars({ requireConfigured: true, locale });
   cars = xanoCars.filter(isPublicListing);
 } catch {
   Astro.response.status = 503;
@@ -42,38 +49,39 @@ const vehicleTaxonomy = buildVehicleTaxonomy(cars);
 
 const getFieldFromDescription = (car: CarListing, label: string) => {
   const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
-  const match = car.description?.match(expression);
+  const sourceDescription = car.original_content?.description || car.description;
+  const match = sourceDescription?.match(expression);
   return match?.[1]?.trim() || "";
 };
 
-const getBodyType = (car: CarListing) => car.body_type || getFieldFromDescription(car, "Кузов");
+const getBodyType = (car: CarListing) => normalizeBackendValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов"));
 const getVehicleType = (car: CarListing) => {
-  const explicit = car.vehicle_type || getFieldFromDescription(car, "Тип транспорта");
+  const explicit = normalizeBackendValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта"));
 
   if (explicit && explicit !== "не указан") {
     return explicit;
   }
 
-  if (/электро/i.test(car.fuel_type || "")) {
-    return "Электромобиль";
+  if (normalizeBackendValue("fuel_type", car.fuel_type) === "electric") {
+    return "electric_vehicle";
   }
 
-  if (/фургон|пикап/i.test(getBodyType(car))) {
-    return "Коммерческий транспорт";
+  if (["van", "pickup"].includes(getBodyType(car))) {
+    return "commercial_vehicle";
   }
 
-  return "Легковой автомобиль";
+  return "passenger_car";
 };
 
 const normalize = (value: unknown) => String(value || "").trim().toLowerCase();
 const serverFilters = {
-  vehicleType: normalize(searchParams.get("vehicle_type")),
-  bodyType: normalize(searchParams.get("body_type")),
+  vehicleType: normalizeBackendValue("vehicle_type", searchParams.get("vehicle_type")),
+  bodyType: normalizeBackendValue("body_type", searchParams.get("body_type")),
   brand: normalize(searchParams.get("brand")),
   model: normalize(searchParams.get("model")),
   city: normalize(searchParams.get("city")),
-  fuelType: normalize(searchParams.get("fuel_type")),
-  transmission: normalize(searchParams.get("transmission")),
+  fuelType: normalizeBackendValue("fuel_type", searchParams.get("fuel_type")),
+  transmission: normalizeBackendValue("transmission", searchParams.get("transmission")),
   priceMin: Number(searchParams.get("price_min") || 0),
   priceMax: Number(searchParams.get("price_max") || searchParams.get("price") || 0),
   yearMin: Number(searchParams.get("year_min") || 0),
@@ -83,13 +91,13 @@ const serverFilters = {
 const selectedSort = searchParams.get("sort") || "newest";
 
 const matchesServerFilters = (car: CarListing) =>
-  (!serverFilters.vehicleType || normalize(getVehicleType(car)) === serverFilters.vehicleType) &&
-  (!serverFilters.bodyType || normalize(getBodyType(car)) === serverFilters.bodyType) &&
+  (!serverFilters.vehicleType || getVehicleType(car) === serverFilters.vehicleType) &&
+  (!serverFilters.bodyType || getBodyType(car) === serverFilters.bodyType) &&
   (!serverFilters.brand || normalize(car.brand) === serverFilters.brand) &&
   (!serverFilters.model || normalize(car.model).includes(serverFilters.model)) &&
   (!serverFilters.city || normalize(car.city).includes(serverFilters.city)) &&
-  (!serverFilters.fuelType || normalize(car.fuel_type) === serverFilters.fuelType) &&
-  (!serverFilters.transmission || normalize(car.transmission) === serverFilters.transmission) &&
+  (!serverFilters.fuelType || normalizeBackendValue("fuel_type", car.fuel_type) === serverFilters.fuelType) &&
+  (!serverFilters.transmission || normalizeBackendValue("transmission", car.transmission) === serverFilters.transmission) &&
   (!serverFilters.priceMin || Number(car.price || 0) >= serverFilters.priceMin) &&
   (!serverFilters.priceMax || Number(car.price || 0) <= serverFilters.priceMax) &&
   (!serverFilters.yearMin || Number(car.year || 0) >= serverFilters.yearMin) &&
@@ -118,8 +126,8 @@ cars = sortCarsByMode(cars.filter(matchesServerFilters), selectedSort);
 const collectionSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
-  name: "Автомобили",
-  description: "Каталог опубликованных автомобилей SiteCraft Auto Market",
+  name: messages.title,
+  description: messages.description,
   mainEntity: {
     "@type": "ItemList",
     itemListElement: cars.map((car, index) => ({
@@ -134,10 +142,11 @@ const collectionSchema = {
 
 <BaseLayout
   variant="public"
-  title="Автомобили"
-  description="Каталог проверенных автомобилей SiteCraft Auto Market"
+  title={messages.title}
+  description={messages.description}
   canonicalPath="/cars"
   jsonLd={collectionSchema}
+  locale={locale}
   alternateLocales={GERMAN_PUBLIC_ROUTES_ENABLED ? [
     { locale: "ru", path: "/cars/", label: "Русский" },
     { locale: "de", path: "/de/cars/", label: "Deutsch" },
@@ -146,11 +155,11 @@ const collectionSchema = {
   <section class="section page-hero catalog-hero">
     <div class="container catalog-hero-grid">
       <div class="catalog-hero-copy">
-        <p class="eyebrow">Каталог автомобилей</p>
-        <h1>Автомобили</h1>
-        <p class="lead">Свежие проверенные объявления с фотографиями, ценами и быстрым поиском по главным параметрам.</p>
+        <p class="eyebrow">{messages.eyebrow}</p>
+        <h1>{messages.title}</h1>
+        <p class="lead">{messages.lead}</p>
       </div>
-      <button class="button button-secondary catalog-mobile-filter-button" type="button" aria-controls="catalog-filter-panel" aria-expanded="false"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>Фильтры</span></button>
+      <button class="button button-secondary catalog-mobile-filter-button" type="button" aria-controls="catalog-filter-panel" aria-expanded="false"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>{messages.filters}</span></button>
     </div>
   </section>
 
@@ -160,10 +169,12 @@ const collectionSchema = {
       <aside
         class="catalog-filter-panel"
         id="catalog-filter-panel"
-        aria-label="Фильтры каталога"
+        aria-label={messages.filters}
         data-api-url={xanoApiUrl}
         data-ai-search-intent-path={API_ROUTES.aiSearchIntent}
         data-saved-searches-path={API_ROUTES.savedSearches}
+        data-locale={locale}
+        data-messages={JSON.stringify(messages)}
       >
         <div class="catalog-filter-heading">
           <h2>Фильтры</h2>
@@ -171,67 +182,67 @@ const collectionSchema = {
         </div>
         <section class="ai-buyer-search-panel" aria-labelledby="ai-buyer-search-title">
           <div class="ai-buyer-search-copy">
-            <span class="mac-badge mac-badge-blue">Умный подбор</span>
-            <h2 id="ai-buyer-search-title">Опишите нужный автомобиль</h2>
-            <p>Напишите обычными словами. Мы превратим запрос в понятные фильтры.</p>
+            <span class="mac-badge mac-badge-blue">{messages.smartSearch}</span>
+            <h2 id="ai-buyer-search-title">{messages.aiTitle}</h2>
+            <p>{messages.aiLead}</p>
           </div>
           <form class="ai-buyer-search-form" id="ai-buyer-search-form">
             <label class="ai-search-input">
-              <span>Что вы ищете?</span>
-              <textarea id="ai-car-search-query" rows="3" placeholder="Например: Volkswagen Golf до 10 000 €, дизель, автомат"></textarea>
+              <span>{messages.query}</span>
+              <textarea id="ai-car-search-query" rows="3" placeholder={messages.queryPlaceholder}></textarea>
             </label>
             <div class="ai-buyer-search-actions action-grid">
-              <button class="button button-primary" type="submit"><i data-lucide="sparkles" aria-hidden="true"></i><span>Подобрать с AI · {aiSearchPolicy.cost} кредит</span></button>
-              <button class="button button-secondary" type="button" id="ai-car-search-save"><i data-lucide="heart" aria-hidden="true"></i><span>Сохранить поиск</span></button>
-              <button class="button button-secondary" type="button" id="ai-car-search-reset"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>Сбросить</span></button>
-              <button class="button button-secondary" type="button" id="ai-car-search-filters"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>Настроить вручную</span></button>
+              <button class="button button-primary" type="submit"><i data-lucide="sparkles" aria-hidden="true"></i><span>{interpolate(messages.aiSubmit, { count: aiSearchPolicy.cost })}</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-save"><i data-lucide="heart" aria-hidden="true"></i><span>{messages.saveSearch}</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-reset"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>{messages.resetAll}</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-filters"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>{messages.manual}</span></button>
             </div>
           </form>
-          <p class="ai-search-privacy">Изменение фильтров и просмотр каталога бесплатны. {aiSearchPolicy.cost} AI-кредит списывается только после успешного AI-разбора; при ошибке применяется бесплатный базовый разбор.</p>
+          <p class="ai-search-privacy">{messages.aiPrivacy}</p>
           <div class="ai-search-explanation" id="ai-search-explanation" hidden></div>
-          <div class="ai-search-suggestions" id="ai-search-suggestions" hidden aria-label="Быстрые уточнения"></div>
+          <div class="ai-search-suggestions" id="ai-search-suggestions" hidden aria-label={messages.quickRefinements}></div>
           <section class="buyer-clarifications" id="buyer-search-clarifications" hidden aria-labelledby="buyer-clarifications-title">
             <div>
-              <strong id="buyer-clarifications-title">Уточните выбор</strong>
-              <span>Ответы сразу станут редактируемыми параметрами.</span>
+              <strong id="buyer-clarifications-title">{messages.clarify}</strong>
+              <span>{messages.clarifyLead}</span>
             </div>
             <div class="buyer-clarification-list"></div>
           </section>
           <div class="ai-last-search" id="ai-last-search" hidden>
             <span></span>
-            <button class="button button-light compact-button" type="button">Повторить</button>
+            <button class="button button-light compact-button" type="button">{messages.repeat}</button>
           </div>
         </section>
         <section class="buyer-applied-criteria" id="buyer-applied-criteria" hidden aria-labelledby="buyer-applied-criteria-title">
           <div class="buyer-criteria-heading">
-            <strong id="buyer-applied-criteria-title">Применённые параметры</strong>
-            <span>Нажмите на параметр, чтобы убрать его.</span>
+            <strong id="buyer-applied-criteria-title">{messages.applied}</strong>
+            <span>{messages.appliedLead}</span>
           </div>
           <div class="buyer-criteria-chips"></div>
         </section>
         <details class="buyer-criteria-editor" open={Object.keys(initialCriteria).length > 0}>
           <summary>
-            <span>Все параметры</span>
-            <strong>Настроить подбор вручную</strong>
+            <span>{messages.allParameters}</span>
+            <strong>{messages.manual}</strong>
             <i data-lucide="chevron-down" aria-hidden="true"></i>
           </summary>
-          <SearchBar />
+          <SearchBar locale={locale} />
         </details>
       </aside>
       <div class="catalog-results-main">
         <div class="catalog-results-toolbar">
           <div>
-            <span>Результаты</span>
-            <strong id="catalog-results-count">{cars.length} авто</strong>
+            <span>{messages.results}</span>
+            <strong id="catalog-results-count">{interpolate(messages.carsCount, { count: cars.length })}</strong>
           </div>
           <div class="catalog-toolbar-actions">
             <label class="catalog-sort-control">
-              <span>Сортировка</span>
-              <select id="catalog-sort" name="sort" aria-label="Сортировка каталога">
-                <option value="newest" selected={selectedSort === "newest"}>Сначала новые</option>
-                <option value="price_asc" selected={selectedSort === "price_asc"}>Дешевле</option>
-                <option value="price_desc" selected={selectedSort === "price_desc"}>Дороже</option>
-                <option value="mileage_asc" selected={selectedSort === "mileage_asc"}>Меньше пробег</option>
+              <span>{messages.sort}</span>
+              <select id="catalog-sort" name="sort" aria-label={messages.sort}>
+                <option value="newest" selected={selectedSort === "newest"}>{messages.newest}</option>
+                <option value="price_asc" selected={selectedSort === "price_asc"}>{messages.cheaper}</option>
+                <option value="price_desc" selected={selectedSort === "price_desc"}>{messages.expensive}</option>
+                <option value="mileage_asc" selected={selectedSort === "mileage_asc"}>{messages.lowerMileage}</option>
               </select>
             </label>
             <div class="catalog-view-switch" aria-label="Вид каталога">
@@ -242,11 +253,11 @@ const collectionSchema = {
           </div>
         </div>
         <div class="cards-grid catalog-grid" id="live-cars-grid" data-api-url={xanoApiUrl}>
-          {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} />)}
+          {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} locale={locale} />)}
         </div>
         <div class="form-message live-cars-message" id="live-cars-message" hidden>
-          <span id="live-cars-message-text">{cars.length > 0 ? "" : "Загружаю каталог автомобилей..."}</span>
-          <button class="button button-secondary compact-button" id="live-cars-retry" type="button" hidden>Обновить каталог</button>
+          <span id="live-cars-message-text">{cars.length > 0 ? "" : messages.loading}</span>
+          <button class="button button-secondary compact-button" id="live-cars-retry" type="button" hidden>{messages.retry}</button>
         </div>
         <section class="ai-recommended-section" id="ai-recommended-section" hidden aria-labelledby="ai-recommended-title">
           <div class="section-heading compact-section-heading"><div><h2 id="ai-recommended-title">Похожие на то, что вы смотрели</h2><p class="section-subtitle">На основе просмотров на этом сайте.</p></div></div>
@@ -295,10 +306,14 @@ const collectionSchema = {
     } from "../../lib/buyer-search/model";
     import { isPublicListing } from "../../lib/listingStatus";
     import { renderPublicCarCardMarkup } from "../../lib/publicCarCard";
+    import { normalizePublicCarList } from "../../lib/publicCar";
+    import { applyListingTranslations } from "../../lib/listingTranslation";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
     import { fetchWithRetry } from "../../lib/http/fetchWithRetry";
     import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
     import type { CarListing } from "../../lib/types";
+    import { normalizeBackendValue } from "../../i18n/backendValues";
+    import { resolveLocale } from "../../i18n/locales";
 
     const grid = document.querySelector("#live-cars-grid");
     const message = document.querySelector("#live-cars-message");
@@ -312,6 +327,19 @@ const collectionSchema = {
     const filterOpenButton = document.querySelector<HTMLButtonElement>(".catalog-mobile-filter-button");
     const filterCloseButton = document.querySelector<HTMLButtonElement>(".catalog-filter-close");
     const filterBackdrop = document.querySelector<HTMLButtonElement>(".catalog-filter-backdrop");
+    const locale = resolveLocale(filterPanel instanceof HTMLElement ? filterPanel.dataset.locale : "ru");
+    const catalogMessages = (() => {
+      try {
+        return JSON.parse(filterPanel instanceof HTMLElement ? filterPanel.dataset.messages || "{}" : "{}") as Record<string, string>;
+      } catch {
+        return {} as Record<string, string>;
+      }
+    })();
+    const text = (key: string, values: Record<string, string | number> = {}) =>
+      Object.entries(values).reduce(
+        (result, [name, value]) => result.replaceAll(`{${name}}`, String(value)),
+        catalogMessages[key] || key,
+      );
     const aiSearchForm = document.querySelector("#ai-buyer-search-form");
     const aiSearchSubmit = aiSearchForm?.querySelector<HTMLButtonElement>('button[type="submit"]');
     const aiSearchQuery = document.querySelector("#ai-car-search-query");
@@ -355,7 +383,7 @@ const collectionSchema = {
     });
 
     const formatPrice = (price: unknown, currency: unknown) =>
-      new Intl.NumberFormat("ru-RU", {
+      new Intl.NumberFormat(locale, {
         style: "currency",
         currency: String(currency || "EUR"),
         maximumFractionDigits: 0,
@@ -373,12 +401,12 @@ const collectionSchema = {
       const city = String(value || "").trim();
 
       if (!city) {
-        return "Не указан";
+        return text("missing");
       }
 
       return city
         .split(/([\s-]+)/)
-        .map((part) => (/^[\p{L}]/u.test(part) ? part.charAt(0).toLocaleUpperCase("ru-RU") + part.slice(1) : part))
+        .map((part) => (/^[\p{L}]/u.test(part) ? part.charAt(0).toLocaleUpperCase(locale) + part.slice(1) : part))
         .join("");
     };
 
@@ -436,29 +464,30 @@ const collectionSchema = {
 
     const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
       const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
-      const match = String(car.description || "").match(expression);
+      const originalDescription = (car.original_content as { description?: unknown } | undefined)?.description;
+      const match = String(originalDescription || car.description || "").match(expression);
       return match?.[1]?.trim() || "";
     };
 
     const getBodyType = (car: Record<string, unknown>) =>
-      String(car.body_type || getFieldFromDescription(car, "Кузов") || "");
+      normalizeBackendValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов") || "");
 
     const getVehicleType = (car: Record<string, unknown>) => {
-      const explicit = String(car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
+      const explicit = normalizeBackendValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
 
       if (explicit && explicit !== "не указан") {
         return explicit;
       }
 
-      if (/электро/i.test(String(car.fuel_type || ""))) {
-        return "Электромобиль";
+      if (normalizeBackendValue("fuel_type", car.fuel_type) === "electric") {
+        return "electric_vehicle";
       }
 
-      if (/фургон|пикап/i.test(getBodyType(car))) {
-        return "Коммерческий транспорт";
+      if (["van", "pickup"].includes(getBodyType(car))) {
+        return "commercial_vehicle";
       }
 
-      return "Легковой автомобиль";
+      return "passenger_car";
     };
 
     const getActiveCriteria = () => getBuyerSearchCriteriaFromParams(new URLSearchParams(window.location.search));
@@ -466,13 +495,13 @@ const collectionSchema = {
     const getActiveFilters = () => {
       const criteria = getActiveCriteria();
       return {
-        vehicleType: String(criteria.vehicle_type || "").toLowerCase(),
-        bodyType: String(criteria.body_type || "").toLowerCase(),
+        vehicleType: normalizeBackendValue("vehicle_type", criteria.vehicle_type),
+        bodyType: normalizeBackendValue("body_type", criteria.body_type),
         brand: String(criteria.brand || "").toLowerCase(),
         model: String(criteria.model || "").toLowerCase(),
         city: String(criteria.city || "").toLowerCase(),
-        fuelType: String(criteria.fuel_type || "").toLowerCase(),
-        transmission: String(criteria.transmission || "").toLowerCase(),
+        fuelType: normalizeBackendValue("fuel_type", criteria.fuel_type),
+        transmission: normalizeBackendValue("transmission", criteria.transmission),
         priceMin: Number(criteria.price_min || 0),
         priceMax: Number(criteria.price_max || 0),
         yearMin: Number(criteria.year_min || 0),
@@ -519,7 +548,7 @@ const collectionSchema = {
       const items = getBuyerSearchCriteriaList(getActiveCriteria());
       appliedCriteria.hidden = items.length === 0;
       appliedCriteriaChips.innerHTML = items.map((item) => `
-        <button class="buyer-criteria-chip" type="button" data-remove-criterion="${item.key}" aria-label="Убрать параметр ${escapeHtml(item.label)}: ${escapeHtml(item.value)}">
+        <button class="buyer-criteria-chip" type="button" data-remove-criterion="${item.key}" aria-label="${escapeHtml(text("removeCriterion", { label: item.label, value: item.value }))}">
           <span>${escapeHtml(item.label)}</span>
           <strong>${escapeHtml(item.value)}</strong>
           <i data-lucide="x" aria-hidden="true"></i>
@@ -549,13 +578,13 @@ const collectionSchema = {
       const filters = getActiveFilters();
 
       return (
-        (!filters.vehicleType || getVehicleType(car).toLowerCase() === filters.vehicleType) &&
-        (!filters.bodyType || getBodyType(car).toLowerCase() === filters.bodyType) &&
+        (!filters.vehicleType || getVehicleType(car) === filters.vehicleType) &&
+        (!filters.bodyType || getBodyType(car) === filters.bodyType) &&
         (!filters.brand || String(car.brand || "").toLowerCase() === filters.brand) &&
         (!filters.model || String(car.model || "").toLowerCase().includes(filters.model)) &&
         (!filters.city || String(car.city || "").toLowerCase().includes(filters.city)) &&
-        (!filters.fuelType || String(car.fuel_type || "").toLowerCase() === filters.fuelType) &&
-        (!filters.transmission || String(car.transmission || "").toLowerCase() === filters.transmission) &&
+        (!filters.fuelType || normalizeBackendValue("fuel_type", car.fuel_type) === filters.fuelType) &&
+        (!filters.transmission || normalizeBackendValue("transmission", car.transmission) === filters.transmission) &&
         (!filters.priceMin || Number(car.price || 0) >= filters.priceMin) &&
         (!filters.priceMax || Number(car.price || 0) <= filters.priceMax) &&
         (!filters.yearMin || Number(car.year || 0) >= filters.yearMin) &&
@@ -612,12 +641,12 @@ const collectionSchema = {
 
       return `
         <div class="catalog-empty-state">
-          <strong>По этим параметрам пока нет автомобилей</strong>
-          <p>Измените один критерий или сохраните поиск, чтобы вернуться к нему позже.</p>
-          ${actions ? `<div class="catalog-relaxations" aria-label="Как расширить поиск">${actions}</div>` : ""}
+          <strong>${escapeHtml(text("emptyTitle"))}</strong>
+          <p>${escapeHtml(text("emptyLead"))}</p>
+          ${actions ? `<div class="catalog-relaxations" aria-label="${escapeHtml(text("expandSearch"))}">${actions}</div>` : ""}
           <div class="catalog-empty-actions">
-            <button class="button button-light compact-button" type="button" data-save-empty-search>Сохранить поиск</button>
-            <a class="button button-light compact-button" href="/cars">Показать весь каталог</a>
+            <button class="button button-light compact-button" type="button" data-save-empty-search>${escapeHtml(text("saveSearch"))}</button>
+            <a class="button button-light compact-button" href="/cars">${escapeHtml(text("showAll"))}</a>
           </div>
         </div>
       `;
@@ -629,7 +658,7 @@ const collectionSchema = {
       }
 
       if (resultsCount instanceof HTMLElement) {
-        resultsCount.textContent = `${filteredCars.length} авто`;
+        resultsCount.textContent = text("carsCount", { count: filteredCars.length });
       }
       renderAppliedCriteria();
 
@@ -641,7 +670,7 @@ const collectionSchema = {
       }
 
       grid.innerHTML = filteredCars
-        .map((car, index) => renderPublicCarCardMarkup(car as CarListing, { priority: index < 4 }))
+        .map((car, index) => renderPublicCarCardMarkup(car as CarListing, { priority: index < 4, locale }))
         .join("");
       refreshPublicCarCardIcons(grid);
 
@@ -721,10 +750,10 @@ const collectionSchema = {
 
       try {
         const parsed = JSON.parse(localStorage.getItem(LAST_AI_SEARCH_KEY) || "null");
-        const label = parsed?.query ? `Последний AI-поиск: ${parsed.query}` : "";
-        const text = aiLastSearch.querySelector("span");
-        if (text instanceof HTMLElement) {
-          text.textContent = label;
+        const label = parsed?.query ? text("lastAiSearch", { value: parsed.query }) : "";
+        const labelNode = aiLastSearch.querySelector("span");
+        if (labelNode instanceof HTMLElement) {
+          labelNode.textContent = label;
         }
         aiLastSearch.hidden = !label;
       } catch {
@@ -774,28 +803,25 @@ const collectionSchema = {
       const cleanQuery = query.trim();
 
       if (!cleanQuery) {
-        setAiExplanation("Напишите, какую машину ищете.");
+        setAiExplanation(text("queryRequired"));
         return;
       }
 
       getOrCreateSessionId();
-      setAiExplanation("Подбираю фильтры...");
+      setAiExplanation(text("applyingFilters"));
       trackProductEvent("buyer_search_started", { source: "ai", criteria_count: getBuyerSearchCriteriaList(getActiveCriteria()).length });
 
       const apiUrl = filterPanel instanceof HTMLElement ? filterPanel.dataset.apiUrl : "";
       const aiPath = filterPanel instanceof HTMLElement ? filterPanel.dataset.aiSearchIntentPath || "/ai/search/intent" : "/ai/search/intent";
       let result = parseCarSearchIntent(cleanQuery);
       let usedFallback = options.forceFallback === true;
-      let fallbackMessage = options.forceFallback ? "Применён бесплатный быстрый подбор." : "";
 
       if (!options.forceFallback) {
         const token = getAuthToken();
         if (!token) {
           usedFallback = true;
-          fallbackMessage = "Применён бесплатный быстрый подбор. Войдите, чтобы использовать расширенный AI-разбор.";
         } else if (!apiUrl) {
           usedFallback = true;
-          fallbackMessage = "Применён бесплатный быстрый подбор: AI-сервис временно недоступен.";
         } else {
           if (!pendingAiSearch || pendingAiSearch.query !== cleanQuery) {
             pendingAiSearch = { query: cleanQuery, idempotencyKey: createAiIdempotencyKey("ai-search") };
@@ -829,15 +855,10 @@ const collectionSchema = {
               const payload = await response.json().catch(() => ({}));
               const code = String(payload?.code || payload?.message || "").toUpperCase();
               usedFallback = true;
-              fallbackMessage = code.includes("INSUFFICIENT_CREDITS")
-                ? "AI-кредитов недостаточно, поэтому применён бесплатный быстрый подбор."
-                : response.status === 401
-                  ? "Сессия AI истекла, но бесплатный быстрый подбор уже применён."
-                  : "AI-сервис временно недоступен, поэтому применён бесплатный быстрый подбор.";
+              void code;
             }
           } catch {
             usedFallback = true;
-            fallbackMessage = "Нет связи с AI-сервисом, поэтому применён бесплатный быстрый подбор.";
           }
         }
       }
@@ -845,7 +866,7 @@ const collectionSchema = {
       applyAiFilters(result.filters || {});
       renderAiSuggestions(result.suggestions || []);
       saveLastAiSearch(cleanQuery, result.filters || {}, result.explanation || "");
-      setAiExplanation(usedFallback ? fallbackMessage : result.explanation || "Фильтры применены.");
+      setAiExplanation(usedFallback ? text("localFallback") : result.explanation || text("filtersApplied"));
       renderClarifications(cleanQuery, getActiveCriteria());
       trackProductEvent("buyer_search_completed", {
         source: usedFallback ? "local" : "ai",
@@ -914,8 +935,8 @@ const collectionSchema = {
         const slug = String(car.slug || "");
         return `
           <a class="ai-recommended-card" href="/cars/${encodeURIComponent(slug)}">
-            <span>${escapeHtml(car.brand || "Авто")}</span>
-            <strong>${escapeHtml(car.title || "Автомобиль")}</strong>
+            <span>${escapeHtml(car.brand || text("title"))}</span>
+            <strong>${escapeHtml(car.title || text("carFallback"))}</strong>
             <small>${formatPrice(car.price, car.currency)} · ${escapeHtml(normalizeCityLabel(car.city))}</small>
           </a>
         `;
@@ -926,7 +947,7 @@ const collectionSchema = {
       syncSearchFormFromUrl();
       const apiUrl = grid.dataset.apiUrl;
       if (apiUrl) {
-        const loadCars = () => fetchWithRetry(`${apiUrl}/cars`, {}, { dedupeKey: `catalog-cars:${window.location.search}` })
+        const loadCars = () => fetchWithRetry(`${apiUrl}/cars?lang=${encodeURIComponent(locale)}`, {}, { dedupeKey: `catalog-cars:${locale}:${window.location.search}` })
           .then((response) => {
             if (!response.ok) {
               throw new Error("cars load failed");
@@ -938,11 +959,11 @@ const collectionSchema = {
             if (!Array.isArray(cars) || cars.length === 0) {
               latestCatalogCars = [];
               grid.innerHTML = "";
-              setCatalogMessage("Пока нет опубликованных объявлений.");
+              setCatalogMessage(text("noPublished"));
               return;
             }
 
-            latestCatalogCars = cars.filter(isPublicListing);
+            latestCatalogCars = applyListingTranslations(normalizePublicCarList(cars), locale).filter(isPublicListing);
             const filteredCars = sortCars(latestCatalogCars.filter(matchesActiveFilters));
 
             renderCatalogCars(filteredCars);
@@ -952,8 +973,8 @@ const collectionSchema = {
           const hasStaticCars = grid.children.length > 0;
           setCatalogMessage(
             hasStaticCars
-              ? "Каталог показан из сохранённой версии. Можно обновить список ещё раз."
-              : "Каталог временно не загрузился. Проверьте соединение и попробуйте ещё раз.",
+              ? text("cachedCatalog")
+              : text("catalogFailed"),
             { showRetry: true },
           );
         };
@@ -962,7 +983,7 @@ const collectionSchema = {
           if (retryButton instanceof HTMLButtonElement) {
             retryButton.disabled = true;
           }
-          setCatalogMessage("Обновляю каталог...");
+          setCatalogMessage(text("refreshing"));
           loadCars()
             .catch(handleCatalogLoadError)
             .finally(() => {
@@ -1039,7 +1060,7 @@ const collectionSchema = {
         trackProductEvent("buyer_search_filter_changed", { action: "clarify", source: "clarification", criteria_count: getBuyerSearchCriteriaList(criteria).length });
         refreshCatalogFromCurrentFilters();
       } catch {
-        setAiExplanation("Не удалось применить уточнение. Выберите параметр вручную.", true);
+        setAiExplanation(text("clarificationFailed"), true);
       }
     });
 
@@ -1080,7 +1101,7 @@ const collectionSchema = {
       const token = getAuthToken();
 
       if (!token) {
-        setAiExplanation("Войдите, чтобы сохранить поиск и позже получать похожие авто.", true);
+        setAiExplanation(text("loginToSave"), true);
         return;
       }
 
@@ -1088,7 +1109,7 @@ const collectionSchema = {
       const savedSearchesPath = filterPanel instanceof HTMLElement ? filterPanel.dataset.savedSearchesPath || "/saved-searches" : "/saved-searches";
 
       if (!apiUrl) {
-        setAiExplanation("Сохранённые поиски скоро появятся.", true);
+        setAiExplanation(text("savedSearchesSoon"), true);
         return;
       }
 
@@ -1109,7 +1130,7 @@ const collectionSchema = {
         });
 
         if (response.status === 404) {
-          setAiExplanation("Сохранённые поиски скоро появятся.", true);
+          setAiExplanation(text("savedSearchesSoon"), true);
           return;
         }
 
@@ -1117,11 +1138,11 @@ const collectionSchema = {
           throw new Error("saved search failed");
         }
 
-        setAiExplanation("Поиск сохранён.");
+        setAiExplanation(text("searchSaved"));
         trackProductEvent("buyer_search_saved", { criteria_count: getBuyerSearchCriteriaList(getActiveCriteria()).length, status: "success" });
       } catch (error) {
         console.warn("Saved search unavailable", error);
-        setAiExplanation("Сохранённые поиски скоро появятся.", true);
+        setAiExplanation(text("savedSearchesSoon"), true);
       }
     });
 
@@ -1143,7 +1164,7 @@ const collectionSchema = {
           void submitAiSearch(lastSearch.query);
         }
       } catch {
-        setAiExplanation("Не удалось повторить последний поиск.", true);
+        setAiExplanation(text("repeatFailed"), true);
       }
     });
 

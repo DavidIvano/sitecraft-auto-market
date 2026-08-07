@@ -1,21 +1,7 @@
 {
   "version": 1,
   "include": [
-    "/cars",
-    "/cars/*",
-    "/de",
-    "/de/*",
-    "/en",
-    "/en/*",
-    "/uk",
-    "/uk/*",
-    "/zh-Hans",
-    "/zh-Hans/*",
-    "/sitemap.xml",
-    "/dashboard/cars/*/promote",
-    "/dashboard/drafts/*",
-    "/api/*",
-    "/_astro/*"
+    "/*"
   ],
   "exclude": [
     "/favicon.ico",

@@ -4,11 +4,16 @@ import { sortPromotedCars } from "./monetization";
 import { API_ROUTES, buildApiUrl, getXanoApiUrl, isXanoConfigured } from "./apiRoutes";
 import { fetchWithRetry } from "./http/fetchWithRetry";
 import { normalizePublicCarList, normalizePublicCarListing } from "./publicCar";
-import { withLocale } from "../i18n/routes";
+import { applyListingTranslation, applyListingTranslations, normalizeListingTranslation } from "./listingTranslation.ts";
+import { DEFAULT_LOCALE, type Locale } from "../i18n/locales.ts";
 
 const API_URL = getXanoApiUrl();
 const PUBLIC_API_TIMEOUT_MS = 8_000;
+const PUBLIC_API_RATE_LIMIT_ATTEMPTS = 5;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
+
+const withLocale = (path: string, locale: Locale) =>
+  `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}`;
 
 export class XanoPublicApiError extends Error {
   status: number;
@@ -26,9 +31,9 @@ async function fetchPublicJson(path: string) {
     response = await fetchWithRetry(buildApiUrl(path, API_URL), {
       headers: { Accept: "application/json" },
     }, {
-      attempts: 3,
+      attempts: PUBLIC_API_RATE_LIMIT_ATTEMPTS,
       timeoutMs: PUBLIC_API_TIMEOUT_MS,
-      delaysMs: [1_000, 3_000],
+      delaysMs: [1_000, 3_000, 5_000, 5_000],
       dedupeKey: `xano-public:${path}`,
     });
   } catch (error) {
@@ -63,7 +68,7 @@ const queueSellerListingsRequest = <T>(request: () => Promise<T>) => {
   return result;
 };
 
-const normalizeLimitedPublicCards = (payload: unknown): CarListing[] => {
+const normalizeLimitedPublicCards = (payload: unknown, locale: Locale): CarListing[] => {
   if (!Array.isArray(payload)) return [];
 
   return payload.slice(0, 6).flatMap((item): CarListing[] => {
@@ -73,7 +78,7 @@ const normalizeLimitedPublicCards = (payload: unknown): CarListing[] => {
     const title = String(source.title || "").trim();
     if (!slugValue || !title) return [];
 
-    return [{
+    return [applyListingTranslation({
       id: Number(source.id) || 0,
       slug: slugValue,
       title,
@@ -98,19 +103,21 @@ const normalizeLimitedPublicCards = (payload: unknown): CarListing[] => {
       photo_quality_score: parseOptionalScore(source.photo_quality_score) ?? undefined,
       trust_score: parseOptionalScore(source.trust_score) ?? undefined,
       description: "",
+      source_locale: String(source.source_locale || "ru"),
+      translation: normalizeListingTranslation(source.translation || source.localized_translation),
       status: "approved",
       moderation_status: "approved",
       moderator_approved: true,
-    }];
+    }, locale)];
   });
 };
 
-type ApprovedCarsOptions = { requireConfigured?: boolean; locale?: string };
+type ApprovedCarsOptions = { requireConfigured?: boolean; locale?: Locale };
 
-export async function getApprovedCars(locale?: string, options?: ApprovedCarsOptions): Promise<CarListing[]>;
+export async function getApprovedCars(locale?: Locale, options?: ApprovedCarsOptions): Promise<CarListing[]>;
 export async function getApprovedCars(options?: ApprovedCarsOptions): Promise<CarListing[]>;
 export async function getApprovedCars(
-  localeOrOptions: string | ApprovedCarsOptions = {},
+  localeOrOptions: Locale | ApprovedCarsOptions = {},
   explicitOptions: ApprovedCarsOptions = {},
 ): Promise<CarListing[]> {
   const options = typeof localeOrOptions === "string"
@@ -124,28 +131,28 @@ export async function getApprovedCars(
     return [];
   }
 
-  const path = options.locale ? withLocale(API_ROUTES.localizedCars, options.locale) : API_ROUTES.cars;
+  const locale = options.locale || DEFAULT_LOCALE;
+  const path = withLocale(API_ROUTES.cars, locale);
   const payload = await fetchPublicJson(path);
-  return sortPromotedCars(normalizePublicCarList(payload));
+  return sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
 }
 
-export async function getCarBySlug(slug: string, locale?: string): Promise<CarListing | null> {
+export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing | null> {
   if (!isXanoConfigured(API_URL)) {
     console.warn("PUBLIC_XANO_API_URL is not configured");
     return null;
   }
 
-  const route = locale ? API_ROUTES.localizedCarBySlug(slug) : API_ROUTES.carBySlug(slug);
-  const payload = await fetchPublicJson(locale ? withLocale(route, locale) : route);
-  return payload ? normalizePublicCarListing(payload) : null;
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carBySlug(slug), locale));
+  const listing = payload ? normalizePublicCarListing(payload) : null;
+  return listing ? applyListingTranslation(listing, locale) : null;
 }
 
-export async function getSellerListingsBySlug(slug: string, locale?: string): Promise<CarListing[]> {
+export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
   return queueSellerListingsRequest(async () => {
-    const route = API_ROUTES.carSellerListings(slug);
-    const url = buildApiUrl(locale ? withLocale(route, locale) : route, API_URL);
+    const url = buildApiUrl(withLocale(API_ROUTES.carSellerListings(slug), locale), API_URL);
     let response: Response | null = null;
     for (let attempt = 0; attempt < 4; attempt += 1) {
       response = await fetch(url);
@@ -157,18 +164,26 @@ export async function getSellerListingsBySlug(slug: string, locale?: string): Pr
     if (response.status === 404) return [];
     if (!response.ok) throw new Error("Failed to fetch seller listings");
 
-    return normalizeLimitedPublicCards(await response.json());
+    return normalizeLimitedPublicCards(await response.json(), locale);
   });
 }
 
-export async function getRelatedListingsBySlug(slug: string, locale?: string): Promise<CarListing[]> {
+export async function getRelatedCarsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
-  const payload = locale
-    ? await fetchPublicJson(withLocale(API_ROUTES.carRelatedListings(slug), locale))
-    : await fetchPublicJson(API_ROUTES.carRelatedListings(slug));
-  return normalizeLimitedPublicCards(payload);
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carRelated(slug), locale));
+  if (!Array.isArray(payload)) return [];
+
+  const publicPayload = payload.map((item) => (
+    item && typeof item === "object"
+      ? { ...item, status: "approved", moderation_status: "approved" }
+      : item
+  ));
+
+  return applyListingTranslations(normalizePublicCarList(publicPayload), locale).slice(0, 6);
 }
+
+export const getRelatedListingsBySlug = getRelatedCarsBySlug;
 
 export async function createCarListing(formData: FormData, authToken?: string): Promise<CarListing> {
   if (!isXanoConfigured(API_URL)) {

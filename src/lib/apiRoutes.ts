@@ -11,6 +11,7 @@ export const API_ROUTES = {
   localizedCarBySlug: (slug: string) => `/public/locale/cars/${encodeURIComponent(slug)}`,
   carRelatedListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,
   carSellerListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/seller-listings`,
+  carRelated: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,
   carSubmit: (id: number | string) => `/cars/${id}/submit`,
   favorites: "/favorites",
   favorite: (listingId: number | string) => `/favorites/${encodeURIComponent(String(listingId))}`,

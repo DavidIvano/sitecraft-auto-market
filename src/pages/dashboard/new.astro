@@ -2665,6 +2665,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           input.click();
         }
 
+        if (!getActiveAuthToken()) {
+          redirectToLogin("/dashboard/new/");
+        }
+
         enableFastFieldActivation();
         restoreLocalDraft();
         setListingMode("manual");

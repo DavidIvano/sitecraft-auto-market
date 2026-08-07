@@ -1,16 +1,18 @@
 ---
 import type { CarListing } from "../lib/types";
 import { renderPublicCarCardMarkup } from "../lib/publicCarCard";
+import type { Locale } from "../i18n/locales";
 
 type Props = {
   car: CarListing;
   matchReasons?: string[];
   priority?: boolean;
   source?: string;
+  locale?: Locale;
 };
 
-const { car, priority = false, source = "public_car_card" } = Astro.props;
-const markup = renderPublicCarCardMarkup(car, { priority, source });
+const { car, priority = false, source = "public_car_card", locale } = Astro.props;
+const markup = renderPublicCarCardMarkup(car, { priority, source, locale });
 
 ---
 

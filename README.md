@@ -2,6 +2,12 @@
 
 Базовая Astro-архитектура для будущей доски объявлений авто / интернет-магазина с Xano REST API, GitHub и Cloudflare Pages.
 
+Актуальный русскоязычный отчёт о состоянии проекта, выполненных этапах и следующем плане разработки:
+
+```txt
+PROJECT_STATUS_AND_ROADMAP_RU.md
+```
+
 ## Local development
 
 ```sh

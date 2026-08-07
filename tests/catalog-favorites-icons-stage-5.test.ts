@@ -42,7 +42,7 @@ test("card is a crawlable link with an independent accessible heart and exact vi
     const html = renderPublicCarCardMarkup(car(value));
     const linkEnd = html.indexOf("</a>");
     const heart = html.indexOf("data-car-favourite=\"95\"");
-    assert.match(html, /<a class="car-card-link" href="\/cars\/bmw-520-2004-95\/"/);
+    assert.match(html, /<a class="car-card-link" href="\/cars\/bmw-520-2004-95\/\?lang=ru"/);
     assert.match(html, /data-lucide="eye"/);
     assert.match(html, /data-lucide="heart"/);
     assert.match(html, new RegExp(`<span>${value}<\\/span>`));

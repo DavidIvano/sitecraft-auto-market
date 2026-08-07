@@ -139,7 +139,7 @@ test("public view counts are part of SSR pages and never fetched per card", asyn
   assert.match(homepage, /<CarCard car=\{car\}/);
   assert.match(catalog, /<CarCard car=\{car\}/);
   assert.match(detail, /detail-public-views/);
-  assert.match(detail, /formatPublicViewCount\(car\.views_total\)/);
+  assert.match(detail, /interpolate\(messages\.viewsCount, \{ count: publicViewCount \}\)/);
   assert.match(types, /views_total\?: number/);
   for (const source of [renderer, homepage, catalog]) {
     assert.doesNotMatch(source, /\/cars\/[^"'`]+\/views/);

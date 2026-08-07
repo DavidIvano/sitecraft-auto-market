@@ -128,10 +128,7 @@ test("Release 1 schema is additive and feature flags remain disabled", () => {
   for (const flag of ["I18N_ENABLED", "I18N_API_READ_ENABLED", "I18N_DUAL_WRITE_ENABLED", "I18N_PUBLIC_ROUTES_ENABLED", "I18N_AI_TRANSLATION_ENABLED"]) {
     assert.match(env, new RegExp(`${flag}=false`));
   }
-  for (const locale of ["de", "en", "uk", "zh-Hans"]) {
-    assert.ok(routes.include.includes(`/${locale}`));
-    assert.ok(routes.include.includes(`/${locale}/*`));
-  }
+  assert.deepEqual(routes.include, ["/*"]);
   assert.match(pagesBuild, /localeRoute && \(!enabled\(env\.I18N_ENABLED\)/);
   assert.match(pagesBuild, /status: 404/);
 });

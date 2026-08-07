@@ -2,10 +2,6 @@
 import BaseLayout from "../../../../layouts/BaseLayout.astro";
 import { formatPaidPrice, paidProducts } from "../../../../lib/monetization";
 
-export function getStaticPaths() {
-  return [];
-}
-
 const { id } = Astro.params;
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const promoteProducts = paidProducts.filter((product) =>
@@ -49,7 +45,7 @@ const promoteProducts = paidProducts.filter((product) =>
   </section>
 
   <script>
-    import { getAuthToken } from "../../../../lib/authClient";
+    import { getAuthToken, redirectToLogin } from "../../../../lib/authClient";
     import { API_ROUTES } from "../../../../lib/apiRoutes";
     import { getFriendlyErrorMessage } from "../../../../lib/errorMessages";
 
@@ -77,7 +73,7 @@ const promoteProducts = paidProducts.filter((product) =>
 
     const loadCar = async () => {
       if (!token) {
-        window.location.href = `/login?next=${encodeURIComponent(window.location.pathname)}`;
+        redirectToLogin(window.location.pathname + window.location.search);
         return;
       }
 

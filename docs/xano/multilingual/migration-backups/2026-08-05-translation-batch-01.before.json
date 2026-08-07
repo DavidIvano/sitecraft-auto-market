@@ -1,0 +1,47 @@
+{
+  "captured_at": "2026-08-05T21:34:21Z",
+  "workspace_id": 115940,
+  "data_source": "live",
+  "tables": {
+    "car_listings": 861468,
+    "car_listing_translations": 873240,
+    "translation_jobs": 873241
+  },
+  "jobs_before": 0,
+  "listings": [
+    {
+      "id": 96,
+      "slug": "audi-80-2026-75",
+      "source_locale": "ru",
+      "translation_source_hash": "ab6eba507f2811851af55adef8ed3053db2e6f3d62207a3979471a7ab0ec4c6d",
+      "translation_version": 1,
+      "translations_ready": true
+    },
+    {
+      "id": 95,
+      "slug": "mercedes-benz-vito-2006-74",
+      "source_locale": null,
+      "translation_source_hash": null,
+      "translation_version": null,
+      "translations_ready": null
+    },
+    {
+      "id": 94,
+      "slug": "bmw-520-2004-73",
+      "source_locale": null,
+      "translation_source_hash": null,
+      "translation_version": null,
+      "translations_ready": null
+    }
+  ],
+  "translations": [
+    {
+      "id": 1,
+      "car_listing_id": 96,
+      "locale_code": "de",
+      "source_locale": "ru",
+      "source_hash": "ab6eba507f2811851af55adef8ed3053db2e6f3d62207a3979471a7ab0ec4c6d",
+      "translation_status": "completed"
+    }
+  ]
+}
