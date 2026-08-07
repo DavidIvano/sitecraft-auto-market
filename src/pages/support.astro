@@ -3,6 +3,7 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 ---
 
 <BaseLayout
+  variant="legal"
   title="Поддержка"
   description="Поддержка SiteCraft Auto Market"
   canonicalPath="/support"
@@ -15,20 +16,31 @@ import BaseLayout from "../layouts/BaseLayout.astro";
         Этот раздел помогает с вопросами по объявлениям, входу в кабинет и работе площадки.
       </p>
 
-      <div class="legal-panel">
-        <h2>Доступ к модерации закрыт</h2>
-        <p>
-          Админ-панель доступна только владельцу проекта. Если вы попали сюда после открытия
-          модерации, значит ваш аккаунт не имеет прав администратора.
-        </p>
-        <p>
-          Для вопросов по объявлению, аккаунту или данным напишите на{" "}
-          <a href="mailto:support@sitecraft.agency">support@sitecraft.agency</a>
-          {" "}или вернитесь в каталог авто.
-        </p>
-        <div class="auth-check-actions">
-          <a class="button button-dark" href="/cars">Открыть автомобили</a>
-          <a class="button button-light" href="/dashboard">Вернуться в кабинет</a>
+      <div class="legal-panel support-panel">
+        <div class="support-grid">
+          <section class="support-card">
+            <h2>Публикация объявления</h2>
+            <p>Проверьте обязательные поля, добавьте от 1 до 8 фото и отправьте объявление на ручную модерацию.</p>
+          </section>
+          <section class="support-card">
+            <h2>Вход и аккаунт</h2>
+            <p>Если сессия завершилась, войдите снова тем же способом, которым создавали аккаунт.</p>
+          </section>
+          <section class="support-card">
+            <h2>Мои объявления</h2>
+            <p>Статус модерации, редактирование и продвижение доступны в разделе «Мои объявления».</p>
+          </section>
+          <section class="support-card">
+            <h2>Конфиденциальность</h2>
+            <p>Публично показываются только способы связи, которые продавец включил в настройках контактов.</p>
+          </section>
+        </div>
+        <div class="support-contact">
+          <p>Не нашли ответ? Напишите на <a href="mailto:support@sitecraft.agency">support@sitecraft.agency</a>.</p>
+          <div class="auth-check-actions">
+            <a class="button button-dark" href="/cars">Открыть автомобили</a>
+            <a class="button button-light" href="/dashboard">Перейти в кабинет</a>
+          </div>
         </div>
       </div>
     </div>

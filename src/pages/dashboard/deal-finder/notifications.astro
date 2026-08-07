@@ -2,7 +2,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import DealFinderHeader from "../../../components/deal-finder/DealFinderHeader.astro";
 ---
-<BaseLayout title="Уведомления Deal Finder" noindex>
+<BaseLayout title="Уведомления Deal Finder" variant="workspace" noindex>
   <section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Уведомления" description="Выберите события, каналы, частоту и часы, когда вас не нужно беспокоить." active="notifications" /><div id="deal-finder-notifications" class="deal-finder-stage-view" aria-busy="true">Загрузка настроек…</div></div></section>
   <script>import { mountDealFinderNotifications } from "../../../lib/deal-finder/client"; const root = document.querySelector<HTMLElement>("#deal-finder-notifications"); if (root) mountDealFinderNotifications(root);</script>
 </BaseLayout>

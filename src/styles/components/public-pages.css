@@ -1,0 +1,95 @@
+@layer routes {
+  .section-heading { display: flex; align-items: end; justify-content: space-between; gap: var(--space-5); margin-bottom: var(--space-5); }
+  .section-heading h2 { margin-bottom: var(--space-1); }
+  .section-heading p { margin-bottom: 0; }
+  .public-car-grid, .seller-listings-grid, .ai-recommended-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+
+  .market-hero { position: relative; min-height: min(720px, calc(100vh - 72px)); overflow: hidden; color: #fff; }
+  .market-hero-media { position: absolute; inset: 0; }
+  .market-hero-media::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,11,17,.88), rgba(8,11,17,.48) 58%, rgba(8,11,17,.16)); }
+  .market-hero-media img { width: 100%; height: 100%; object-fit: cover; }
+  .market-hero-inner { position: relative; z-index: 1; display: grid; min-height: inherit; align-content: center; gap: var(--space-8); padding-block: var(--space-12); }
+  .market-hero-copy { max-width: 720px; }
+  .market-hero-copy :where(h1, p) { color: #fff; }
+  .hero-cta-row { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+  .home-search-panel { max-width: 980px; border: 1px solid rgba(255,255,255,.22); border-radius: var(--radius-panel); background: color-mix(in srgb, var(--surface) 94%, transparent); color: var(--text-primary); padding: var(--space-5); box-shadow: var(--shadow-window); backdrop-filter: blur(14px); }
+
+  .brand-chip-card, .category-card, .pricing-card { border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface); box-shadow: var(--shadow-card); }
+  .pricing-grid { gap: var(--space-4); }
+  .pricing-card { padding: var(--space-5); }
+
+  .car-detail-section { padding-top: var(--space-6); }
+  .detail-container { min-width: 0; }
+  .car-detail-grid { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(340px, .75fr); gap: var(--space-5); align-items: start; }
+  .gallery, .detail-panel, .detail-properties-panel, .detail-description-panel, .ai-highlights-panel, .ai-analysis-panel, .seller-summary-card {
+    min-width: 0;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  .gallery { overflow: hidden; }
+  .gallery-stage { position: relative; aspect-ratio: 16 / 10; overflow: hidden; background: var(--surface-inset); }
+  .gallery-main-button { width: 100%; height: 100%; border: 0; background: transparent; padding: 0; }
+  .gallery-main-button img { width: 100%; height: 100%; object-fit: cover; }
+  .gallery-strip { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-3); }
+  .gallery-thumb { width: 96px; height: 64px; flex: 0 0 96px; overflow: hidden; border: 2px solid transparent; border-radius: var(--radius-control); background: var(--surface-muted); padding: 0; }
+  .gallery-thumb.is-active { border-color: var(--accent); }
+  .gallery-thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .gallery-nav { position: absolute; top: 50%; z-index: 2; display: inline-grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: var(--radius-control); background: rgba(12,15,21,.7); color: #fff; transform: translateY(-50%); backdrop-filter: blur(10px); }
+  .gallery-prev { left: var(--space-3); }
+  .gallery-next { right: var(--space-3); }
+  .detail-panel { display: grid; gap: var(--space-4); padding: var(--space-5); }
+  .detail-panel h1 { margin: 0; font-size: clamp(1.8rem, 3vw, 2.7rem); }
+  .detail-price { margin: 0; color: var(--text-primary); font-size: clamp(2rem, 4vw, 3rem); font-weight: 850; }
+  .detail-public-meta { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; font-size: .86rem; }
+  .detail-public-views { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .detail-properties-panel, .detail-description-panel, .ai-highlights-panel, .ai-analysis-panel, .seller-summary-card { padding: var(--space-5); }
+
+  .auth-panel { width: min(100%, 520px); margin-inline: auto; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface); padding: var(--space-6); box-shadow: var(--shadow-card); }
+  .form-panel { display: grid; gap: var(--space-4); }
+  .full-width { width: 100%; }
+  .auth-form-note { margin: 0; color: var(--text-secondary); font-size: .86rem; }
+  .auth-form-note a { color: var(--accent); font-weight: 800; }
+
+  .steps-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); }
+  .sell-window .hero-actions { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+
+  .support-panel { display: grid; gap: var(--space-5); }
+  .support-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-4); }
+  .support-card { display: grid; align-content: start; gap: var(--space-2); border: 1px solid var(--border-subtle); border-radius: var(--radius-card); background: var(--surface-muted); padding: var(--space-4); }
+  .support-card :where(h2, p) { margin: 0; }
+  .support-card h2 { font-size: 1.12rem; }
+  .support-card p { color: var(--text-secondary); }
+  .support-contact { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-3); border-top: 1px solid var(--border-subtle); padding-top: var(--space-4); }
+  .support-contact p { margin: 0; color: var(--text-secondary); }
+
+  @media (max-width: 1120px) {
+    .public-car-grid, .seller-listings-grid, .ai-recommended-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .car-detail-grid { grid-template-columns: minmax(0, 1fr); }
+    .detail-panel { max-width: none; }
+  }
+  @media (max-width: 860px) {
+    .public-car-grid, .seller-listings-grid, .ai-recommended-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .section-heading.row-heading { align-items: end; flex-direction: row; }
+    .steps-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 640px) {
+    .section-heading { align-items: flex-start; flex-direction: column; }
+    .public-car-grid, .seller-listings-grid, .ai-recommended-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+    .steps-grid, .support-grid { grid-template-columns: minmax(0, 1fr); }
+    .market-hero { min-height: 660px; }
+    .market-hero-inner { align-content: end; padding-block: var(--space-8); }
+    .home-search-panel { padding: var(--space-4); }
+    .detail-panel, .detail-properties-panel, .detail-description-panel, .ai-highlights-panel, .ai-analysis-panel, .seller-summary-card { padding: var(--space-4); }
+    .gallery-thumb { width: 76px; height: 52px; flex-basis: 76px; }
+    .auth-panel { padding: var(--space-5); }
+    .support-contact { align-items: stretch; flex-direction: column; }
+    .support-contact .button { width: 100%; }
+  }
+
+  @media (max-width: 480px) {
+    .sell-window .hero-actions { display: grid; grid-template-columns: minmax(0, 1fr); }
+    .sell-window .hero-actions .button { width: 100%; }
+  }
+}

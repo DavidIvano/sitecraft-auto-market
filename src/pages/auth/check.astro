@@ -4,7 +4,7 @@ import BaseLayout from "../../layouts/BaseLayout.astro";
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Проверка входа">
+<BaseLayout title="Проверка входа" variant="auth">
   <section class="section page-hero">
     <div class="container narrow">
       <p class="eyebrow">Диагностика</p>
@@ -18,7 +18,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         <pre class="debug-output" id="auth-check-output"></pre>
         <div class="auth-check-actions">
           <a class="button button-dark" href="/login?next=/auth/check&debug=1">Войти через Google</a>
-          <a class="button button-light" href="/dashboard/new">Добавить объявление</a>
+          <a class="button button-light" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Добавить объявление</span></a>
           <button class="button button-light" type="button" id="clear-auth">Очистить вход</button>
         </div>
       </div>

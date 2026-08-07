@@ -7,6 +7,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const clientDir = join(root, "dist", "client");
 const serverDir = join(root, "dist", "server");
 const workerDir = join(clientDir, "_worker.js");
+const assetsDir = join(clientDir, "_astro");
 const functionsPluginDir = join(workerDir, "pages-functions");
 const wranglerBin = join(root, "node_modules", ".bin", "wrangler");
 const generatedWranglerDeployDir = join(root, ".wrangler", "deploy");
@@ -22,10 +23,20 @@ function removeEnvironmentFiles(directory) {
   }
 }
 
-for (const required of [clientDir, join(serverDir, "entry.mjs"), join(serverDir, "chunks")]) {
+for (const required of [clientDir, assetsDir, join(serverDir, "entry.mjs"), join(serverDir, "chunks")]) {
   if (!existsSync(required)) {
     throw new Error(`Cloudflare build artifact is missing: ${required}`);
   }
+}
+
+const builtAssets = readdirSync(assetsDir, { withFileTypes: true })
+  .filter((entry) => entry.isFile())
+  .map((entry) => entry.name);
+if (!builtAssets.some((name) => /\.js$/i.test(name))) {
+  throw new Error("Cloudflare build artifact is missing JavaScript assets in dist/client/_astro");
+}
+if (!builtAssets.some((name) => /\.css$/i.test(name))) {
+  throw new Error("Cloudflare build artifact is missing CSS assets in dist/client/_astro");
 }
 
 rmSync(workerDir, { recursive: true, force: true });
@@ -53,6 +64,56 @@ const runPagesFunctions = createPagesFunctions({});
 
 export default {
   async fetch(request, env, context) {
+    const url = new URL(request.url);
+    const localeRoute = url.pathname.match(/^\\/(de|en|uk|zh-Hans)(?:\\/|$)/)?.[1];
+    const enabled = (value) => String(value || "").trim().toLowerCase() === "true";
+    const localeFlags = {
+      de: env.I18N_LOCALE_DE_ENABLED,
+      en: env.I18N_LOCALE_EN_ENABLED,
+      uk: env.I18N_LOCALE_UK_ENABLED,
+      "zh-Hans": env.I18N_LOCALE_ZH_HANS_ENABLED,
+    };
+
+    if (localeRoute && (!enabled(env.I18N_ENABLED)
+      || localeRoute !== "de"
+      || !enabled(env.I18N_PUBLIC_ROUTES_ENABLED)
+      || !enabled(localeFlags[localeRoute])
+      || (localeRoute === "de" && !enabled(env.I18N_API_READ_ENABLED))
+      || (localeRoute === "de" && enabled(env.I18N_AI_TRANSLATION_ENABLED)))) {
+      return new Response("Not found", {
+        status: 404,
+        headers: {
+          "cache-control": "no-store",
+          "content-type": "text/plain; charset=utf-8",
+          "x-content-type-options": "nosniff",
+        },
+      });
+    }
+
+    const isApiRoute = url.pathname === "/api" || url.pathname.startsWith("/api/");
+    const isStaticAsset = !isApiRoute && (url.pathname.startsWith("/_astro/")
+      || url.pathname.startsWith("/images/")
+      || /\.(?:js|mjs|css|png|jpe?g|webp|avif|svg|ico|woff2?)$/i.test(url.pathname));
+
+    if (isStaticAsset) {
+      if (!env.ASSETS?.fetch) {
+        return new Response("Static asset binding unavailable", { status: 503 });
+      }
+      const assetResponse = await env.ASSETS.fetch(request);
+      const contentType = assetResponse.headers.get("content-type") || "";
+      if (url.pathname.startsWith("/_astro/") && /text\\/html/i.test(contentType)) {
+        return new Response("Asset not found", {
+          status: 404,
+          headers: {
+            "cache-control": "no-store",
+            "content-type": "text/plain; charset=utf-8",
+            "x-content-type-options": "nosniff",
+          },
+        });
+      }
+      return assetResponse;
+    }
+
     const next = (nextRequest = request) => astroWorker.fetch(nextRequest, env, context);
     return runPagesFunctions({
       request,
@@ -66,6 +127,10 @@ export default {
   },
 };
 `);
+
+if (!existsSync(join(workerDir, "index.js"))) {
+  throw new Error("Cloudflare Pages worker entry is missing: dist/client/_worker.js/index.js");
+}
 
 // Astro's Cloudflare adapter emits a Workers deploy redirect that makes
 // subsequent `wrangler pages` commands use the wrong deployment mode.

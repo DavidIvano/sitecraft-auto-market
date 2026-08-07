@@ -6,7 +6,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const products = Object.values(PROMOTION_PRODUCTS);
 ---
 
-<BaseLayout title="Продвижение объявления" description="Продвижение объявления за внутренние кредиты" noindex>
+<BaseLayout title="Продвижение объявления" description="Продвижение объявления за внутренние кредиты" variant="workspace" noindex>
   <section class="section promotion-page-section">
     <div class="container promotion-page" data-api-url={xanoApiUrl} aria-busy="true">
       <header class="promotion-page-heading">
@@ -48,7 +48,7 @@ const products = Object.values(PROMOTION_PRODUCTS);
 
   <dialog class="promotion-confirm-dialog" id="promotion-confirm-dialog" aria-labelledby="promotion-confirm-title">
     <form method="dialog" class="promotion-confirm-card" id="promotion-confirm-form">
-      <header><div><p class="eyebrow">Подтверждение</p><h2 id="promotion-confirm-title">Активировать продвижение?</h2></div><button class="promotion-dialog-close" value="cancel" aria-label="Закрыть">×</button></header>
+      <header><div><p class="eyebrow">Подтверждение</p><h2 id="promotion-confirm-title">Активировать продвижение?</h2></div><button class="promotion-dialog-close icon-button" value="cancel" aria-label="Закрыть"><i data-lucide="x" aria-hidden="true"></i></button></header>
       <dl class="promotion-confirm-summary">
         <div><dt>Услуга</dt><dd id="confirm-product">—</dd></div>
         <div><dt>Стоимость</dt><dd id="confirm-cost">—</dd></div>

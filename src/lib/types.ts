@@ -59,11 +59,36 @@ export type ModerationQueueGroup =
   | "archived"
   | "sold";
 
+export type TranslationResolution = {
+  requested_locale: string;
+  resolved_locale: string;
+  source_locale: string;
+  is_fallback: boolean;
+  status: "original" | "machine_translated" | "reviewed" | "missing" | "outdated" | "pending" | "failed";
+  translation_status?: "source" | "translated" | "unavailable" | "stale" | "pending" | "failed";
+  translation_version?: number;
+};
+
+export type ListingTranslation = {
+  locale_code: string;
+  title: string;
+  description: string;
+  seo_title?: string;
+  seo_description?: string;
+  translation_status: string;
+  source_hash: string;
+};
+
 export type CarListing = {
   id: number;
   user_id?: number;
   slug: string;
   title: string;
+  locale?: string;
+  source_locale?: string;
+  translation_version?: number;
+  translations_ready?: boolean;
+  translation?: TranslationResolution;
   brand: string;
   model: string;
   vehicle_type?: string;
@@ -126,6 +151,10 @@ export type CarListing = {
   homepage_at?: string | number | null;
   homepage_until?: string | number | null;
   last_promoted_at?: string | number | null;
+  views_total?: number;
+  views_unique?: number;
+  views_7d?: number;
+  last_viewed_at?: string | number | null;
   published_at?: string | number;
   promotion_status?: "pending" | "active" | "expired" | "cancelled" | "refunded" | "failed";
   promotion_type?: "premium" | "featured" | "boost" | string;
@@ -182,11 +211,11 @@ export type CarListing = {
 };
 
 export type PublicSellerSummary = {
-  name?: string;
-  type?: "private" | "dealer" | string;
+  name: string;
+  type: "private" | "dealer";
   city?: string;
-  active_listings_count?: number;
-  contact?: PublicSellerContact | null;
+  active_listings_count: number;
+  contact: PublicSellerContact | null;
 };
 
 export type PublicSellerContact = {
@@ -206,6 +235,15 @@ export type SellerContactProfile = {
   display_name: string | null;
   contact_phone: string | null;
   contact_email: string | null;
+  show_phone: boolean;
+  show_email: boolean;
+  preferred_contact_method: "phone" | "email" | null;
+};
+
+export type SellerContactSubmission = {
+  display_name: string;
+  contact_phone: string;
+  contact_email: string;
   show_phone: boolean;
   show_email: boolean;
   preferred_contact_method: "phone" | "email" | null;

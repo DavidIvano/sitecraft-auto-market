@@ -1,14 +1,15 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import SkeletonCard from "../../components/states/SkeletonCard.astro";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Мои объявления" noindex>
+<BaseLayout title="Мои объявления" variant="workspace" noindex>
   <section class="section dashboard-listings-hero">
     <div class="container dashboard-listings-heading">
       <div><p class="eyebrow">Кабинет</p><h1>Мои объявления</h1><p>Статусы, активные продвижения и действия по каждому автомобилю.</p></div>
-      <a class="button button-dark" href="/dashboard/new">Добавить авто</a>
+      <a class="button button-dark" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>
     </div>
   </section>
 
@@ -20,7 +21,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       </section>
 
       <div class="dashboard-listings-panel" id="dashboard-listings" aria-live="polite">
-        <div class="dashboard-listing-skeleton-list" aria-hidden="true">{[0, 1, 2].map(() => <article class="dashboard-listing-skeleton"><span></span><span></span><span></span></article>)}</div>
+        <div class="dashboard-listing-skeleton-list" aria-hidden="true">{[0, 1, 2].map(() => <SkeletonCard />)}</div>
       </div>
       <p class="form-message" id="dashboard-listings-message" role="status">Загружаю ваши объявления...</p>
     </div>
@@ -29,14 +30,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   <dialog class="dashboard-delete-dialog" id="dashboard-delete-dialog" aria-labelledby="dashboard-delete-title">
     <form method="dialog" class="dashboard-delete-dialog-card">
       <div class="dashboard-delete-preview"><img id="dashboard-delete-image" src="/sitecraft-logo.png" alt="" width="128" height="96" /><div><p class="eyebrow">Удаление</p><h2 id="dashboard-delete-title">Удалить объявление?</h2><p>Оно исчезнет из публичного каталога.</p></div></div>
-      <div class="dashboard-delete-actions"><button class="button button-light" value="cancel">Отмена</button><button class="button button-danger" id="dashboard-delete-confirm" value="confirm">Удалить</button></div>
+      <div class="dashboard-delete-actions"><button class="button button-light" value="cancel">Отмена</button><button class="button button-danger" id="dashboard-delete-confirm" value="confirm"><i data-lucide="trash-2" aria-hidden="true"></i><span>Удалить</span></button></div>
     </form>
   </dialog>
 
   <script>
-    import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+    import { getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+    import { fetchWithRetry } from "../../lib/http/fetchWithRetry";
     import { API_ROUTES } from "../../lib/apiRoutes";
-    import { DASHBOARD_LISTING_PLACEHOLDER, getDashboardListingActions, getDashboardListingImageUrls, getDashboardListingThumbnail, type DashboardListing } from "../../lib/dashboardListings";
+    import { refreshAppIcons } from "../../lib/appIcons";
+    import { DASHBOARD_LISTING_PLACEHOLDER, formatLastViewedAt, formatViewCount, getDashboardListingActions, getDashboardListingImageUrls, getDashboardListingThumbnail, normalizeViewCount, type DashboardListing } from "../../lib/dashboardListings";
     import { LISTING_STATUS_META, normalizeListingStatus } from "../../lib/listingStatus";
     import { getActivePromotionProducts, getPromotionEligibilityMessage, parseApiDate, type DashboardSummary } from "../../lib/promotions/model";
 
@@ -50,6 +53,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     const token = getAuthToken();
     const apiUrl = String(workspace?.dataset.apiUrl || "").replace(/\/+$/, "");
     let pendingDelete: { id: number; card: HTMLElement } | null = null;
+    const cacheKey = `sitecraft-dashboard-listings-v1:${getAuthUser()?.id || "unknown"}`;
 
     const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
     const formatDate = (value: unknown) => { const date = parseApiDate(value); return date ? new Intl.DateTimeFormat("ru-RU", { day: "numeric", month: "long", year: "numeric" }).format(date) : "Дата не указана"; };
@@ -66,9 +70,13 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       const statusMeta = LISTING_STATUS_META[status];
       const eligibilityMessage = getPromotionEligibilityMessage(status);
       const promoted = getActivePromotionProducts(car).length > 0;
-      const promotionAction = actions.promoteHref
-        ? `<a class="button dashboard-promote-button" href="${escapeHtml(actions.promoteHref)}">${promoted ? "Продлить продвижение" : "Продвинуть"}</a>`
-        : `<span class="dashboard-promotion-unavailable">${escapeHtml(eligibilityMessage)}</span>`;
+      const lastViewedAt = formatLastViewedAt(car.last_viewed_at);
+      const menuActions = [
+        actions.viewHref && actions.viewHref !== actions.primaryHref ? `<a href="${escapeHtml(actions.viewHref)}"><i data-lucide="eye" aria-hidden="true"></i><span>Посмотреть</span></a>` : "",
+        actions.editHref && actions.editHref !== actions.primaryHref ? `<a href="${escapeHtml(actions.editHref)}"><i data-lucide="pencil" aria-hidden="true"></i><span>Редактировать</span></a>` : "",
+        actions.promoteHref ? `<a href="${escapeHtml(actions.promoteHref)}"><i data-lucide="arrow-up" aria-hidden="true"></i><span>${promoted ? "Продлить продвижение" : "Продвинуть"}</span></a>` : "",
+        actions.canDelete ? `<button type="button" data-delete-listing-id="${escapeHtml(car.id)}"><i data-lucide="trash-2" aria-hidden="true"></i><span>Удалить</span></button>` : "",
+      ].filter(Boolean).join("");
       return `<article class="dashboard-listing-card" data-listing-id="${escapeHtml(car.id)}">
         <div class="dashboard-listing-media${thumbnail.isPlaceholder ? " is-placeholder" : ""}">
           ${thumbnail.isPlaceholder ? `<img src="${escapeHtml(thumbnail.url)}" alt="" width="176" height="118" data-listing-image>` : `<button class="vehicle-image-trigger dashboard-listing-image-button" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(thumbnail.url)}" data-lightbox-sources="${escapeHtml(JSON.stringify(images))}" data-lightbox-alt="${escapeHtml(title)}" aria-label="Открыть фотографии: ${escapeHtml(title)}"><img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(title)}" width="176" height="118" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-listing-image></button>`}
@@ -78,13 +86,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           <p class="dashboard-listing-price">${escapeHtml(formatPrice(car))}</p>
           <p class="dashboard-listing-facts">${escapeHtml(car.year || "Год не указан")} · ${escapeHtml(Number(car.mileage || 0).toLocaleString("ru-RU"))} км · ${escapeHtml(car.city || "Город не указан")}</p>
           <p class="dashboard-listing-updated">Обновлено: ${escapeHtml(formatDate(car.updated_at || car.created_at))}</p>
+          <div class="dashboard-listing-views" aria-label="Статистика просмотров">
+            <strong><i data-lucide="eye" aria-hidden="true"></i>${escapeHtml(formatViewCount(car.views_total))}</strong>
+            <span>${escapeHtml(normalizeViewCount(car.views_7d).toLocaleString("ru-RU"))} за 7 дней</span>
+            ${lastViewedAt ? `<span class="dashboard-listing-last-viewed">${escapeHtml(lastViewedAt)}</span>` : ""}
+          </div>
           <div class="dashboard-promotion-badges">${promotionBadges(car)}</div>
         </div>
         <div class="dashboard-listing-actions">
-          ${promotionAction}
-          ${actions.viewHref ? `<a class="button button-light" href="${escapeHtml(actions.viewHref)}">Посмотреть</a>` : ""}
-          ${actions.editHref ? `<a class="button button-light" href="${escapeHtml(actions.editHref)}">Редактировать</a>` : ""}
-          ${actions.canDelete ? `<button class="button button-danger" type="button" data-delete-listing-id="${escapeHtml(car.id)}">Удалить</button>` : ""}
+          ${actions.primaryHref ? `<a class="button button-dark dashboard-listing-primary" href="${escapeHtml(actions.primaryHref)}">${escapeHtml(actions.primaryLabel)}</a>` : `<span class="dashboard-promotion-unavailable">${escapeHtml(eligibilityMessage)}</span>`}
+          ${menuActions ? `<details class="dashboard-listing-menu"><summary aria-label="Действия с объявлением" title="Действия с объявлением" aria-expanded="false"><i data-lucide="more-horizontal" aria-hidden="true"></i></summary><div class="dashboard-listing-menu-popover">${menuActions}</div></details>` : ""}
         </div>
       </article>`;
     };
@@ -92,7 +103,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     const renderError = (text: string) => { if (list) list.innerHTML = `<div class="mac-empty-state dashboard-error-state" role="alert"><strong>Не удалось загрузить объявления</strong><p>${escapeHtml(text)}</p><button class="button button-light" type="button" data-retry-listings>Повторить</button></div>`; };
 
     async function authenticatedFetch(url: string, init: RequestInit = {}) {
-      const response = await fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
+      const isGet = String(init.method || "GET").toUpperCase() === "GET";
+      const response = isGet
+        ? await fetchWithRetry(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) } }, { dedupeKey: url })
+        : await fetch(url, { ...init, headers: { Authorization: `Bearer ${token}`, ...(init.headers || {}) } });
       if (response.status === 401 && token && await isSessionConfirmedExpired(apiUrl, token)) {
         redirectToLogin("/dashboard/listings/");
         throw new Error("Сессия завершена");
@@ -100,25 +114,44 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       return response;
     }
 
+    const renderCars = (payload: unknown, stale = false) => {
+      if (!list) return;
+      let cars = (Array.isArray(payload) ? payload as DashboardListing[] : []).filter((car) => normalizeListingStatus(car.status) !== "deleted");
+      if (new URLSearchParams(location.search).get("filter") === "promoted") cars = cars.filter((car) => getActivePromotionProducts(car).length > 0);
+      list.innerHTML = cars.length ? cars.map(renderListing).join("") : `<div class="mac-empty-state"><strong>Объявлений пока нет</strong><p>Создайте первое объявление, когда будете готовы.</p><a class="button button-dark" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a></div>`;
+      refreshAppIcons(list);
+      if (message) message.textContent = stale
+        ? "Не удалось обновить данные. Показываем последнюю сохранённую версию."
+        : `Показано объявлений: ${cars.length}.`;
+    };
+
     async function loadListings() {
       if (!list || !workspace || !token) return;
       workspace.setAttribute("aria-busy", "true");
+      let cached: unknown = null;
       try {
-        const [summaryResponse, listingsResponse] = await Promise.all([
+        const stored = JSON.parse(sessionStorage.getItem(cacheKey) || "null");
+        if (stored?.data && Date.now() - Number(stored.savedAt || 0) < 60_000) { cached = stored.data; renderCars(cached, true); }
+      } catch {}
+      try {
+        const [summaryResult, listingsResult] = await Promise.allSettled([
           authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardSummary}`),
           authenticatedFetch(`${apiUrl}${API_ROUTES.dashboardListings}`),
         ]);
-        if (!summaryResponse.ok || !listingsResponse.ok) throw new Error("Сервис кабинета временно недоступен.");
-        const summary = await summaryResponse.json() as DashboardSummary;
-        if (balance) balance.value = `${summary.credits.balance} кредитов`;
-        const payload = await listingsResponse.json();
-        let cars = (Array.isArray(payload) ? payload as DashboardListing[] : []).filter((car) => normalizeListingStatus(car.status) !== "deleted");
-        if (new URLSearchParams(location.search).get("filter") === "promoted") cars = cars.filter((car) => getActivePromotionProducts(car).length > 0);
-        list.innerHTML = cars.length ? cars.map(renderListing).join("") : `<div class="mac-empty-state"><strong>Объявлений не найдено</strong><p>Создайте объявление или измените выбранный фильтр.</p><a class="button button-dark" href="/dashboard/new">Добавить авто</a></div>`;
-        if (message) message.textContent = `Показано объявлений: ${cars.length}.`;
+        if (summaryResult.status === "fulfilled" && summaryResult.value.ok) {
+          const summary = await summaryResult.value.json() as DashboardSummary;
+          if (balance) balance.value = `${summary.credits.balance} кредитов`;
+        }
+        if (listingsResult.status !== "fulfilled" || !listingsResult.value.ok) throw new Error("Сервис объявлений временно недоступен.");
+        const payload = await listingsResult.value.json();
+        renderCars(payload);
+        sessionStorage.setItem(cacheKey, JSON.stringify({ savedAt: Date.now(), data: payload }));
       } catch (error) {
-        renderError(error instanceof Error ? error.message : "Проверьте соединение и повторите запрос.");
-        if (message) message.textContent = "Загрузка не завершена.";
+        if (cached) renderCars(cached, true);
+        else {
+          renderError(error instanceof Error ? error.message : "Проверьте соединение и повторите запрос.");
+          if (message) message.textContent = "Загрузка не завершена.";
+        }
       } finally {
         workspace.setAttribute("aria-busy", "false");
       }
@@ -138,6 +171,25 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       dialog.showModal();
     });
 
+    list?.addEventListener("toggle", (event) => {
+      const details = event.target;
+      if (!(details instanceof HTMLDetailsElement) || !details.classList.contains("dashboard-listing-menu")) return;
+      const summary = details.querySelector("summary");
+      summary?.setAttribute("aria-expanded", String(details.open));
+      if (details.open) list.querySelectorAll<HTMLDetailsElement>(".dashboard-listing-menu[open]").forEach((other) => { if (other !== details) other.open = false; });
+    }, true);
+    document.addEventListener("keydown", (event) => {
+      if (event.key !== "Escape") return;
+      const openMenu = list?.querySelector<HTMLDetailsElement>(".dashboard-listing-menu[open]");
+      if (!openMenu) return;
+      openMenu.open = false;
+      openMenu.querySelector<HTMLElement>("summary")?.focus();
+    });
+    document.addEventListener("click", (event) => {
+      if (event.target instanceof Element && event.target.closest(".dashboard-listing-menu")) return;
+      list?.querySelectorAll<HTMLDetailsElement>(".dashboard-listing-menu[open]").forEach((menu) => { menu.open = false; });
+    });
+
     dialog?.addEventListener("close", async () => {
       if (dialog.returnValue !== "confirm" || !pendingDelete) { pendingDelete = null; return; }
       const current = pendingDelete;
@@ -152,6 +204,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       }
     });
 
+    window.addEventListener("online", () => { if (list?.querySelector("[data-retry-listings]") || message?.textContent?.includes("последнюю")) void loadListings(); });
     if (!token) redirectToLogin("/dashboard/listings/"); else void loadListings();
   </script>
 </BaseLayout>

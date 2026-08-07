@@ -1,14 +1,20 @@
+---
+import { translate } from "../i18n/translate";
+const { locale = "ru" } = Astro.props;
+const privacyHref = "/privacy";
+const cookieBody = locale === "de"
+  ? translate(locale, "cookie.body")
+  : "Мы используем только необходимые cookie: для входа, сохранения сессии и запоминания уведомления. Рекламных и аналитических cookie нет.";
+---
+
 <div class="cookie-notice" id="cookie-notice" hidden>
   <div>
-    <strong>Cookie и приватность</strong>
-    <p>
-      Мы используем только необходимые cookie: для входа в кабинет, сохранения сессии и запоминания этого уведомления.
-      Рекламных и аналитических cookie нет.
-    </p>
+    <strong>{translate(locale, "cookie.title")}</strong>
+    <p>{cookieBody}</p>
   </div>
   <div class="cookie-actions">
-    <a class="button button-light" href="/privacy">Подробнее</a>
-    <button class="button button-dark" type="button" id="cookie-accept">Понятно</button>
+    <a class="button button-light" href={privacyHref} hreflang="ru">{translate(locale, "cookie.details")}</a>
+    <button class="button button-dark" type="button" id="cookie-accept">{translate(locale, "cookie.accept")}</button>
   </div>
 </div>
 

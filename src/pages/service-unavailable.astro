@@ -1,29 +1,26 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import ErrorState from "../components/states/ErrorState.astro";
 
 export const prerender = false;
 
 Astro.response.status = 503;
 Astro.response.headers.set("Cache-Control", "no-store");
 Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+Astro.response.headers.set("Retry-After", "300");
 ---
 
 <BaseLayout
+  variant="public"
   title="Сервис временно недоступен"
   description="Не удалось загрузить объявление из источника данных."
   noindex
 >
   <section class="section system-state-section">
     <div class="container system-state-container">
-      <div class="system-state-panel" role="alert">
-        <p class="eyebrow">Временная ошибка</p>
-        <h1>Сервис временно недоступен</h1>
-        <p>Объявление не потеряно. Попробуйте открыть страницу ещё раз через несколько минут.</p>
-        <div class="system-state-actions">
-          <button class="button button-primary" type="button" onclick="window.location.reload()">Повторить</button>
-          <a class="button button-secondary" href="/cars">Перейти к автомобилям</a>
-        </div>
-      </div>
+      <ErrorState title="Сервис временно недоступен" text="Объявление не потеряно. Попробуйте открыть страницу ещё раз через несколько минут." href="/cars" action="Перейти к автомобилям">
+        <button class="button button-primary" type="button" onclick="window.location.reload()">Повторить</button>
+      </ErrorState>
     </div>
   </section>
 </BaseLayout>

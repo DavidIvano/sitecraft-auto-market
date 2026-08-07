@@ -1,0 +1,9 @@
+---
+type Props = { title?: string; text?: string };
+const { title = "Загрузка", text = "Получаем актуальные данные…" } = Astro.props;
+---
+<section class="loading-state" aria-busy="true" aria-live="polite">
+  <i data-lucide="refresh-cw" aria-hidden="true"></i>
+  <strong>{title}</strong>
+  <p>{text}</p>
+</section>

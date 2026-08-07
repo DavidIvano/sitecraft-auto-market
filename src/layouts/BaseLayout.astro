@@ -3,9 +3,26 @@ import Header from "../components/Header.astro";
 import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
+import { LEGACY_PUBLIC_LOCALE } from "../i18n/config";
+import { getLocaleDefinition, normalizeLocale } from "../i18n/locale";
+import { translate } from "../i18n/translate";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
 import "../styles/global.css";
+import "../styles/tokens.css";
+import "../styles/base.css";
+import "../styles/layout.css";
+import "../styles/components/buttons.css";
+import "../styles/components/forms.css";
+import "../styles/components/header.css";
+import "../styles/components/car-card.css";
+import "../styles/components/catalog.css";
+import "../styles/components/public-pages.css";
+import "../styles/components/dialogs.css";
+import "../styles/components/states.css";
+import "../styles/components/dashboard.css";
 import "../styles/promotions.css";
+
+type LayoutVariant = "public" | "workspace" | "legal" | "auth";
 
 type Props = {
   title?: string;
@@ -15,6 +32,10 @@ type Props = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   breadcrumbs?: Array<{ href?: string; label: string }>;
   noindex?: boolean;
+  ogType?: "website" | "product";
+  variant?: LayoutVariant;
+  locale?: string;
+  alternateLocales?: Array<{ locale: string; path: string; label?: string }>;
 };
 
 const {
@@ -25,11 +46,22 @@ const {
   jsonLd,
   breadcrumbs,
   noindex = false,
+  ogType = "website",
+  variant: requestedVariant,
+  locale: requestedLocale = LEGACY_PUBLIC_LOCALE,
+  alternateLocales = [],
 } = Astro.props;
+const pageLocale = normalizeLocale(requestedLocale, { activeOnly: true }) || LEGACY_PUBLIC_LOCALE;
+const localeDefinition = getLocaleDefinition(pageLocale);
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalUrl = new URL(canonicalPath ?? Astro.url.pathname, siteUrl).toString();
 const imageUrl = new URL(image, siteUrl).toString();
+const pageAlternates = alternateLocales.flatMap((alternate) => {
+  const locale = normalizeLocale(alternate.locale, { activeOnly: true });
+  if (!locale || !alternate.path.startsWith("/")) return [];
+  return [{ ...alternate, locale, href: new URL(alternate.path, siteUrl).toString() }];
+});
 const buildSha = import.meta.env.PUBLIC_BUILD_SHA || import.meta.env.CF_PAGES_COMMIT_SHA || "local";
 const buildTimestamp = import.meta.env.PUBLIC_BUILD_TIMESTAMP || new Date().toISOString();
 const buildEnvironment =
@@ -59,16 +91,26 @@ const isWorkspacePath = pathname === "/dashboard"
   || pathname.startsWith("/dashboard/")
   || pathname === "/admin"
   || pathname.startsWith("/admin/");
+const layoutVariant: LayoutVariant = requestedVariant
+  ?? (isWorkspacePath
+    ? "workspace"
+    : pathname === "/login" || pathname === "/register" || pathname.startsWith("/auth/")
+      ? "auth"
+      : ["/privacy", "/impressum", "/support"].includes(pathname)
+        ? "legal"
+        : "public");
 const shellNavItems = [
-  { href: "/", label: "Главная", short: "Г" },
-  { href: "/cars", label: "Авто", short: "А" },
-  { href: "/dashboard", label: "Кабинет", short: "К" },
+  { href: "/dashboard", label: "Обзор", short: "О", icon: "layout-dashboard" },
+  { href: "/dashboard/listings", label: "Мои объявления", short: "МО", icon: "car-front" },
+  { href: "/dashboard/new", label: "Добавить объявление", short: "+", icon: "plus" },
+  { href: "/dashboard/favorites", label: "Сохранённые", short: "С", icon: "heart" },
   ...(DEAL_FINDER_ENABLED
-    ? [{ href: "/dashboard/deal-finder", label: "Deal Finder", short: "DF", dealFinderOnly: true }]
+    ? [{ href: "/dashboard/deal-finder", label: "Deal Finder", short: "DF", icon: "radar", dealFinderOnly: true }]
     : []),
-  { href: "/sell", label: "Продать авто", short: "П" },
-  { href: "/pricing", label: "Тарифы", short: "Т" },
-  { href: "/admin/moderation", label: "Модерация", short: "✓", adminOnly: true },
+  { href: "/dashboard/billing", label: "Баланс", short: "Б", icon: "coins" },
+  { href: "/dashboard/dealer", label: "Дилер", short: "Д", icon: "users" },
+  { href: "/admin/moderation", label: "Модерация", short: "М", icon: "shield-check", adminOnly: true },
+  { href: "/dashboard/#contact-profile", label: "Настройки", short: "Н", icon: "settings" },
 ];
 const getShellNavClass = (href: string) => {
   const normalizedHref = href.replace(/\/$/, "") || "/";
@@ -119,7 +161,7 @@ const defaultSchemaItems = [
     url: siteUrl,
     potentialAction: {
       "@type": "SearchAction",
-      target: `${new URL("/cars", siteUrl).toString()}?q={search_term_string}`,
+      target: `${new URL(pageLocale === "de" ? "/de/cars/" : "/cars", siteUrl).toString()}?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   },
@@ -131,7 +173,7 @@ const schemaItems = [
 ---
 
 <!doctype html>
-<html lang="ru">
+<html lang={pageLocale} dir={localeDefinition.direction}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -144,13 +186,18 @@ const schemaItems = [
     <meta name="sitecraft-build-timestamp" content={buildTimestamp} />
     <meta name="sitecraft-build-environment" content={buildEnvironment} />
     <meta name="description" content={description} />
+    <meta http-equiv="Content-Language" content={pageLocale} />
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />
+    {pageAlternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={alternate.href} />)}
+    {pageAlternates.some((alternate) => alternate.locale === "ru") && (
+      <link rel="alternate" hreflang="x-default" href={pageAlternates.find((alternate) => alternate.locale === "ru")?.href} />
+    )}
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:type" content="website" />
+    <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:image" content={imageUrl} />
     <meta name="twitter:card" content="summary_large_image" />
@@ -172,16 +219,16 @@ const schemaItems = [
     </script>
   </head>
   <body>
-    <div class:list={["mac-app-shell", isWorkspacePath ? "is-workspace-shell" : "is-public-shell"]}>
-      <aside class="mac-sidebar" aria-label="Навигация SiteCraft Auto Market">
+    <div class:list={["app-shell", `app-shell-${layoutVariant}`, layoutVariant === "workspace" && "mac-app-shell is-workspace-shell"]}>
+      {layoutVariant === "workspace" && <aside class="mac-sidebar" aria-label="Навигация кабинета SiteCraft Auto Market">
         <div class="mac-sidebar-top">
-          <a class="mac-sidebar-brand" href="/" aria-label="SiteCraft Auto Market">
+          <a class="mac-sidebar-brand" href="/dashboard/" aria-label="SiteCraft Auto Market: кабинет">
             <img src="/sitecraft-logo.png" alt="" width="38" height="38" decoding="async" />
             <strong>Auto Market</strong>
           </a>
-          <button class="mac-sidebar-toggle" type="button" aria-label="Скрыть боковое меню" aria-expanded="true">‹</button>
+          <button class="mac-sidebar-toggle" type="button" aria-label="Скрыть боковое меню" aria-expanded="true"><i data-lucide="panel-left-close" aria-hidden="true"></i></button>
         </div>
-        <nav class="mac-sidebar-nav" aria-label="Разделы сайта">
+        <nav class="mac-sidebar-nav" aria-label="Разделы кабинета">
           {
             shellNavItems.map((item) => (
               <a
@@ -193,23 +240,29 @@ const schemaItems = [
                 data-deal-finder-only={item.dealFinderOnly ? "true" : undefined}
                 hidden={item.adminOnly || item.dealFinderOnly}
               >
-                {item.label}
+                <i data-lucide={item.icon} aria-hidden="true"></i><span>{item.label}</span>
               </a>
             ))
           }
         </nav>
-        <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
-          <span aria-hidden="true">◐</span>
-          <strong>Тема</strong>
-        </button>
-        <a class="mac-sidebar-cta" href="/dashboard/new">Добавить авто</a>
-      </aside>
+        <div class="mac-sidebar-footer">
+          <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label="Переключить тему" aria-pressed="false">
+            <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
+            <strong>Тема</strong>
+          </button>
+          <a class="mac-sidebar-return" href="/"><i data-lucide="arrow-left" aria-hidden="true"></i><span>Вернуться на сайт</span></a>
+        </div>
+      </aside>}
       <div class="mac-workspace">
-        <Header />
+        <Header
+          variant={layoutVariant === "workspace" ? "workspace" : "public"}
+          locale={pageLocale}
+          alternateLocales={pageAlternates.map(({ locale, path, label }) => ({ locale, path, label }))}
+        />
         <main class="mac-main">
           {
             pageBreadcrumbs.length > 0 && (
-              <nav class="breadcrumbs" aria-label="Хлебные крошки">
+              <nav class="breadcrumbs" aria-label={translate(pageLocale, "common.breadcrumbs")}>
                 <div class="container breadcrumbs-inner">
                   {pageBreadcrumbs.map((item, index) => (
                     <>
@@ -223,14 +276,17 @@ const schemaItems = [
           }
           <slot />
         </main>
-        <Footer />
+        {layoutVariant !== "workspace" && <Footer locale={pageLocale} />}
       </div>
     </div>
   <ImageLightbox />
-  <CookieNotice />
+  <CookieNotice locale={pageLocale} />
   <script>
     import { installImageLightbox } from "../lib/media/lightbox";
+    import { installAppIcons } from "../lib/appIcons";
     installImageLightbox();
+    installAppIcons(document);
+    window.dispatchEvent(new CustomEvent("sitecraft-shell-ready", { detail: { stage: 8 } }));
   </script>
     <script is:inline>
       (() => {
@@ -240,7 +296,10 @@ const schemaItems = [
 
         const setCollapsed = (collapsed) => {
           shell.classList.toggle("is-sidebar-collapsed", collapsed);
-          toggle.textContent = collapsed ? "›" : "‹";
+          toggle.innerHTML = collapsed
+            ? '<i data-lucide="panel-left-open" aria-hidden="true"></i>'
+            : '<i data-lucide="panel-left-close" aria-hidden="true"></i>';
+          window.dispatchEvent(new CustomEvent("app-icons-refresh"));
           toggle.setAttribute("aria-label", collapsed ? "Открыть боковое меню" : "Скрыть боковое меню");
           toggle.setAttribute("aria-expanded", String(!collapsed));
           localStorage.setItem("sitecraft-sidebar-collapsed", collapsed ? "true" : "false");

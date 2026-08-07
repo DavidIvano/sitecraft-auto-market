@@ -3,9 +3,12 @@ import test from "node:test";
 
 import {
   DASHBOARD_LISTING_PLACEHOLDER,
+  formatLastViewedAt,
+  formatViewCount,
   getDashboardListingActions,
   getDashboardListingThumbnail,
   getSafeDashboardImageUrl,
+  normalizeViewCount,
 } from "../src/lib/dashboardListings.ts";
 
 const image = (overrides: Record<string, unknown>) => ({
@@ -89,4 +92,32 @@ test("pending listing keeps its owner dashboard thumbnail but has no public link
 test("blocked and deleted listings cannot use owner delete", () => {
   assert.equal(getDashboardListingActions({ id: 1, status: "blocked" }).canDelete, false);
   assert.equal(getDashboardListingActions({ id: 2, status: "deleted" }).canDelete, false);
+});
+
+test("listing status selects one primary action", () => {
+  assert.deepEqual(
+    { label: getDashboardListingActions({ id: 1, status: "draft" }).primaryLabel, href: getDashboardListingActions({ id: 1, status: "draft" }).primaryHref },
+    { label: "Продолжить", href: "/dashboard/listings/edit?id=1" },
+  );
+  assert.equal(getDashboardListingActions({ id: 2, status: "needs_fix" }).primaryLabel, "Исправить");
+  assert.equal(getDashboardListingActions({ id: 3, status: "published", slug: "public-car" }).primaryLabel, "Посмотреть");
+});
+
+test("view counters are safe and use correct Russian plural forms", () => {
+  assert.equal(normalizeViewCount(undefined), 0);
+  assert.equal(normalizeViewCount("invalid"), 0);
+  assert.equal(formatViewCount(0), "0 просмотров");
+  assert.equal(formatViewCount(1), "1 просмотр");
+  assert.equal(formatViewCount(2), "2 просмотра");
+  assert.equal(formatViewCount(5), "5 просмотров");
+  assert.equal(formatViewCount(21), "21 просмотр");
+  assert.doesNotMatch(formatViewCount(undefined), /undefined|NaN|null/);
+});
+
+test("last view date is formatted and invalid values stay empty", () => {
+  const now = new Date(2026, 6, 29, 16, 0, 0);
+  const viewed = new Date(2026, 6, 29, 14, 35, 0);
+  assert.match(formatLastViewedAt(viewed.toISOString(), now), /^Последний просмотр: сегодня, 14:35$/);
+  assert.equal(formatLastViewedAt(undefined, now), "");
+  assert.equal(formatLastViewedAt("invalid", now), "");
 });

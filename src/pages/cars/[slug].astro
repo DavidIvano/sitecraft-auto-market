@@ -5,22 +5,22 @@ import ContactSellerModal from "../../components/ContactSellerModal.astro";
 import VehicleSpecsGrid from "../../components/VehicleSpecsGrid.astro";
 import FavoriteButton from "../../components/cars/FavoriteButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { SITE_URL } from "../../lib/config";
+import { GERMAN_PUBLIC_ROUTES_ENABLED, SITE_URL } from "../../lib/config";
 import { getCarDetailImageUrls } from "../../lib/imageUrls";
 import { isDisplayValue, maskVin, sanitizePublicDescription } from "../../lib/listingFields";
 import { getStoredAiScores, hasStoredAiAnalysis, parseAiPayload } from "../../lib/aiScores";
 import { formatCount, formatFirstRegistration, formatImportantDetail, formatOwnersCount, formatSellerType, formatTuvDetail } from "../../lib/listingDisplay";
-import { getApprovedCars, getCarBySlug, getSellerListingsBySlug, XanoPublicApiError } from "../../lib/xano";
+import { getCarBySlug, getRelatedListingsBySlug, getSellerListingsBySlug } from "../../lib/xano";
 import { API_ROUTES } from "../../lib/apiRoutes";
 import type { CarListing } from "../../lib/types";
 import { isPublicListing } from "../../lib/listingStatus";
 import { isValidPublicCarSlug } from "../../lib/publicCar";
 import { getActiveListingPromotion } from "../../lib/promotions/model";
+import { buildVehicleSeo } from "../../lib/seo/vehicleSeo";
+import { formatPublicViewCount, shouldShowPublicViewCount } from "../../lib/listingViews";
+import { toGermanPublicListing } from "../../i18n/publicListing";
 
 export const prerender = false;
-
-Astro.response.headers.set("Cache-Control", "no-store");
-Astro.response.headers.set("X-Robots-Tag", "index, follow");
 
 const rawSlug = typeof Astro.params.slug === "string" ? Astro.params.slug.trim() : "";
 let slug = rawSlug;
@@ -32,6 +32,8 @@ try {
 
 if (!isValidPublicCarSlug(slug)) {
   Astro.response.status = 404;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return Astro.rewrite("/404");
 }
 
@@ -39,16 +41,30 @@ let car: CarListing | null = null;
 try {
   car = await getCarBySlug(slug);
 } catch (error) {
-  Astro.response.status = error instanceof XanoPublicApiError ? error.status : 503;
+  Astro.response.status = 503;
+  Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  Astro.response.headers.set("Retry-After", "300");
   return Astro.rewrite("/service-unavailable");
 }
 
 if (!car || !isPublicListing(car)) {
   Astro.response.status = 404;
+  Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return Astro.rewrite("/404");
 }
+let germanAlternateAvailable = false;
+if (GERMAN_PUBLIC_ROUTES_ENABLED) {
+  try {
+    const germanListing = await getCarBySlug(slug, "de");
+    germanAlternateAvailable = Boolean(germanListing && toGermanPublicListing(germanListing));
+  } catch {
+    germanAlternateAvailable = false;
+  }
+}
+Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
+Astro.response.headers.set("X-Robots-Tag", "index, follow");
 const activePromotion = getActiveListingPromotion(car);
 
 const getDescriptionFieldFromListing = (listing: CarListing, label: string) => {
@@ -70,7 +86,7 @@ const getRelatedScore = (currentCar: CarListing, candidate: CarListing) => {
 
 const [sellerResult, relatedResult] = await Promise.allSettled([
   getSellerListingsBySlug(slug),
-  getApprovedCars(),
+  getRelatedListingsBySlug(slug),
 ]);
 const sellerCars = (sellerResult.status === "fulfilled"
   ? sellerResult.value
@@ -88,7 +104,6 @@ const relatedCars = (relatedResult.status === "fulfilled" ? relatedResult.value 
 
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const carUrl = new URL(`/cars/${car.slug}`, siteUrl).toString();
 const formatter = new Intl.NumberFormat("ru-RU", {
   style: "currency",
   currency: car.currency || "EUR",
@@ -115,6 +130,10 @@ const createdAtLabel = createdAt
       timeStyle: "short",
     }).format(createdAt)
   : "дата уточняется";
+const publicViewLabel = formatPublicViewCount(car.views_total);
+const publicViewText = shouldShowPublicViewCount(car.views_total)
+  ? publicViewLabel
+  : "Новое объявление";
 
 const listingGalleryImages = getCarDetailImageUrls(car).slice(0, 8);
 const galleryImages = listingGalleryImages.length > 0
@@ -122,6 +141,7 @@ const galleryImages = listingGalleryImages.length > 0
   : ["/deal-finder-placeholder.svg"];
 const galleryImage = galleryImages[0] ?? "";
 const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
+const vehicleSeo = buildVehicleSeo(car, siteUrl);
 const sellerTypeLabel = car.seller_type === "dealer" ? "Дилер" : "Частный продавец";
 const staticSeller = car.seller && typeof car.seller === "object" ? car.seller : null;
 const staticSellerName = String(staticSeller?.name || "").trim() || "Продавец автомобиля";
@@ -129,18 +149,6 @@ const staticSellerType = String(staticSeller?.type || "").trim() === "dealer" ? 
 const staticSellerCity = String(staticSeller?.city || car.city || "").trim();
 const staticSellerCount = Number(staticSeller?.active_listings_count) || 0;
 const staticSellerContact = staticSeller?.contact || null;
-const cleanSeoText = (value: unknown) => String(value ?? "")
-  .split(/\r?\n/)
-  .filter((line) => !/^(телефон|email|e-mail|продавец|vin)\s*:/i.test(line.trim()))
-  .join(" ")
-  .replace(/\s+/g, " ")
-  .trim();
-const safeCarDescription = typeof car.description === "string" ? car.description.trim() : "";
-const seoDescriptionText = cleanSeoText(safeCarDescription);
-const fallbackSeoTitle = `${car.brand} ${car.model} ${car.year} купить в ${car.city}`.replace(/\s+/g, " ").trim();
-const fallbackSeoDescription = `${car.brand} ${car.model}, ${car.year}, ${car.fuel_type}, ${car.transmission}, пробег ${car.mileage.toLocaleString("ru-RU")} км, цена ${formatter.format(car.price)}.${seoDescriptionText ? ` ${seoDescriptionText}` : ""}`.slice(0, 260);
-const pageTitle = String(car.seo_title || "").trim() || fallbackSeoTitle || car.title;
-const description = String(car.seo_description || "").trim() || fallbackSeoDescription;
 
 const parseJsonObject = parseAiPayload;
 
@@ -367,72 +375,25 @@ const similarCars = relatedCars
   .sort((left, right) => right.score - left.score)
   .slice(0, 6);
 
-const carSchema = {
-  "@context": "https://schema.org",
-  "@type": "Vehicle",
-  name: car.title,
-  url: carUrl,
-  ...(listingGalleryImages.length > 0 ? { image: listingGalleryImages } : {}),
-  brand: {
-    "@type": "Brand",
-    name: car.brand,
-  },
-  model: car.model,
-  vehicleModelDate: String(car.year),
-  mileageFromOdometer: {
-    "@type": "QuantitativeValue",
-    value: car.mileage,
-    unitCode: "KMT",
-  },
-  fuelType: car.fuel_type,
-  vehicleTransmission: car.transmission,
-  ...(car.body_type ? { bodyType: car.body_type } : {}),
-  ...(car.color ? { color: car.color } : {}),
-  ...(isDisplayValue(car.seats) ? { seatingCapacity: Number(car.seats) || String(car.seats) } : {}),
-  ...(isDisplayValue(car.doors) ? { numberOfDoors: Number(car.doors) || String(car.doors) } : {}),
-  ...(car.drivetrain ? { driveWheelConfiguration: car.drivetrain } : {}),
-  description,
-  offers: {
-    "@type": "Offer",
-    price: car.price,
-    priceCurrency: car.currency,
-    availability: isSold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
-    url: carUrl,
-  },
-};
-
-const breadcrumbSchema = {
-  "@context": "https://schema.org",
-  "@type": "BreadcrumbList",
-  itemListElement: [
-    {
-      "@type": "ListItem",
-      position: 1,
-      name: "Главная",
-      item: siteUrl,
-    },
-    {
-      "@type": "ListItem",
-      position: 2,
-      name: "Автомобили",
-      item: new URL("/cars", siteUrl).toString(),
-    },
-    {
-      "@type": "ListItem",
-      position: 3,
-      name: car.title,
-      item: carUrl,
-    },
-  ],
-};
 ---
 
 <BaseLayout
-  title={pageTitle}
-  description={description}
+  variant="public"
+  title={vehicleSeo.title}
+  description={vehicleSeo.description}
   canonicalPath={`/cars/${car.slug}`}
-  image={galleryImage || "/sitecraft-logo.png"}
-  jsonLd={[carSchema, breadcrumbSchema]}
+  image={vehicleSeo.imageUrl}
+  jsonLd={[vehicleSeo.vehicle, vehicleSeo.offer, vehicleSeo.breadcrumb]}
+  ogType="product"
+  breadcrumbs={[
+    { href: "/", label: "Главная" },
+    { href: "/cars", label: "Автомобили" },
+    { label: vehicleSeo.heading },
+  ]}
+  alternateLocales={germanAlternateAvailable ? [
+    { locale: "ru", path: `/cars/${car.slug}/`, label: "Русский" },
+    { locale: "de", path: `/de/cars/${car.slug}/`, label: "Deutsch" },
+  ] : []}
 >
   <section class="section car-detail-section">
     <div class="container detail-container">
@@ -441,7 +402,7 @@ const breadcrumbSchema = {
           <div class="gallery-stage">
             {
               galleryImages.length > 1 && (
-                <button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото">‹</button>
+                <button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
               )
             }
             <button
@@ -454,12 +415,19 @@ const breadcrumbSchema = {
               aria-label="Открыть фото на весь экран"
             >
               {
-                <img src={galleryImage} alt={imageAltTexts[0] || car.title} decoding="async" />
+                <img
+                  src={galleryImage}
+                  alt={imageAltTexts[0] || vehicleSeo.imageAlt}
+                  width="1200"
+                  height="800"
+                  fetchpriority="high"
+                  decoding="async"
+                />
               }
             </button>
             {
               galleryImages.length > 1 && (
-                <button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото">›</button>
+                <button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
               )
             }
             <span class="gallery-count">{`1 / ${galleryImages.length}`}</span>
@@ -490,11 +458,17 @@ const breadcrumbSchema = {
           {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>Продвигается</span></div>}
           <StatusBadge status={car.status} />
           {isSold && <span class="sold-detail-badge">Автомобиль продан</span>}
-          <h1>{car.title}</h1>
+          <h1>{vehicleSeo.heading}</h1>
+          <p class="detail-public-meta">
+            <span>{`Опубликовано ${createdAtLabel}`}</span>
+            <span class="detail-public-views" aria-label={publicViewLabel}>
+              <i data-lucide="eye" aria-hidden="true"></i>
+              <span>{publicViewText}</span>
+            </span>
+          </p>
           <p class="detail-price">{formatter.format(car.price)}</p>
           <FavoriteButton listingId={car.id} initialSaved={Boolean(car.is_saved)} source="car_detail" class="detail-favorite-button" />
           <VehicleSpecsGrid items={quickSpecItems} class="detail-spec-grid detail-quick-spec-grid" />
-          <a class="button button-primary full-width detail-contact-jump" href="#seller-information">Связаться с продавцом</a>
         </div>
       </article>
     </div>
@@ -672,10 +646,12 @@ const breadcrumbSchema = {
     id="listing-view-data"
     data-api-url={xanoApiUrl}
     data-analytics-path={API_ROUTES.listingViewAnalytics}
+    data-auth-analytics-path={API_ROUTES.myListingViewAnalytics}
     set:html={JSON.stringify(listingViewPayload)}
   ></script>
   <script>
     import { getOrCreateSessionId } from "../../lib/analytics/session";
+    import { getAuthToken } from "../../lib/authClient";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
 
     installPublicCarCardInteractions();
@@ -689,7 +665,7 @@ const breadcrumbSchema = {
       if (!apiUrl || !detailPath) return;
 
       try {
-        const response = await fetch(`${apiUrl}${detailPath}`);
+        const response = await fetch(`${apiUrl}${detailPath}`, { cache: "no-store" });
         if (!response.ok) return;
         const payload = await response.json();
         const seller = payload && typeof payload === "object" ? payload.seller : null;
@@ -717,23 +693,46 @@ const breadcrumbSchema = {
         }
 
         const legacyHref = typeof seller.contact?.href === "string" ? seller.contact.href.trim() : "";
-        const phoneHref = typeof seller.contact?.phone_href === "string" && /^tel:/i.test(seller.contact.phone_href)
-          ? seller.contact.phone_href
-          : /^tel:/i.test(legacyHref) ? legacyHref : "";
-        const emailHref = typeof seller.contact?.email_href === "string" && /^mailto:/i.test(seller.contact.email_href)
-          ? seller.contact.email_href
-          : /^mailto:/i.test(legacyHref) ? legacyHref : "";
+        const rawPhoneValue = typeof seller.contact?.phone === "string" ? seller.contact.phone.trim() : "";
+        const rawEmailValue = typeof seller.contact?.email === "string" ? seller.contact.email.trim().toLowerCase() : "";
+        const phoneValue = /^\+[1-9]\d{7,14}$/.test(rawPhoneValue) ? rawPhoneValue : "";
+        const emailValue = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmailValue) && !/[\r\n]/.test(rawEmailValue)
+          ? rawEmailValue
+          : "";
+        const phoneHref = phoneValue
+          ? `tel:${phoneValue}`
+          : /^tel:\+[1-9]\d{7,14}$/i.test(legacyHref) ? legacyHref : "";
+        const emailHref = emailValue
+          ? `mailto:${emailValue}`
+          : /^mailto:[^\s?@]+@[^\s?@]+\.[^\s?@]+$/i.test(legacyHref) ? legacyHref : "";
+        const preferredMethod = seller.contact?.preferred_method === "phone" || seller.contact?.preferred_method === "email"
+          ? seller.contact.preferred_method
+          : "";
         const triggers = sellerSummary.querySelectorAll<HTMLElement>("[data-seller-contact-trigger]");
         if (phoneHref || emailHref) {
           triggers.forEach((trigger) => {
             trigger.dataset.phoneHref = phoneHref;
             trigger.dataset.emailHref = emailHref;
+            trigger.dataset.contactPhoneValue = phoneValue;
+            trigger.dataset.contactEmailValue = emailValue;
+            trigger.dataset.preferredMethod = preferredMethod;
             trigger.dataset.sellerName = typeof seller.name === "string" ? seller.name.trim() : "Продавец";
             trigger.hidden = false;
           });
           if (note instanceof HTMLElement) note.hidden = true;
-        } else if (note instanceof HTMLElement) {
-          note.textContent = "Продавец пока не добавил публичный способ связи.";
+        } else {
+          triggers.forEach((trigger) => {
+            trigger.dataset.phoneHref = "";
+            trigger.dataset.emailHref = "";
+            trigger.dataset.contactPhoneValue = "";
+            trigger.dataset.contactEmailValue = "";
+            trigger.dataset.preferredMethod = "";
+            trigger.hidden = true;
+          });
+          if (note instanceof HTMLElement) {
+            note.textContent = "Продавец пока не добавил публичный способ связи.";
+            note.hidden = false;
+          }
         }
         refreshPublicCarCardIcons(sellerSummary);
       } catch {
@@ -785,13 +784,49 @@ const breadcrumbSchema = {
       }
     };
 
+    let listingViewPending = false;
+    let listingViewCompleted = false;
+
+    const sendListingView = async (url: string, authToken: string, payload: Record<string, unknown>, attempt = 0): Promise<void> => {
+      try {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify(payload),
+          keepalive: true,
+        });
+        if (response.ok) {
+          const viewKey = `sitecraft_listing_view_v2:${payload.car_id}:${payload.slug}`;
+          sessionStorage.setItem(viewKey, String(Date.now()));
+          listingViewCompleted = true;
+        } else if (response.status !== 404 && import.meta.env.DEV) {
+          console.debug("Listing view analytics failed", response.status);
+        }
+      } catch (error) {
+        if (attempt === 0) {
+          await sendListingView(url, authToken, payload, 1);
+        } else if (import.meta.env.DEV) {
+          console.debug("Listing view analytics unavailable", error);
+        }
+      } finally {
+        listingViewPending = false;
+        listingViewCompleted = true;
+      }
+    };
+
     const trackListingView = () => {
       if (!listingViewData || !(listingViewDataNode instanceof HTMLElement)) {
         return;
       }
 
       const apiUrl = listingViewDataNode.dataset.apiUrl || "";
-      const analyticsPath = listingViewDataNode.dataset.analyticsPath || "/analytics/listing-view";
+      const authToken = getAuthToken() || "";
+      const analyticsPath = authToken
+        ? listingViewDataNode.dataset.authAnalyticsPath || "/me/analytics/listing-view"
+        : listingViewDataNode.dataset.analyticsPath || "/analytics/listing-view";
 
       if (!apiUrl) {
         return;
@@ -804,34 +839,33 @@ const breadcrumbSchema = {
         return;
       }
 
+      const viewKey = `sitecraft_listing_view_v2:${listingViewData.car_id}:${listingViewData.slug}`;
+      const lastTrackedAt = Number(sessionStorage.getItem(viewKey) || 0);
+      if (listingViewPending || listingViewCompleted || (lastTrackedAt && Date.now() - lastTrackedAt < 86_400_000)) return;
+
       const payload = {
         car_id: listingViewData.car_id,
         slug: listingViewData.slug,
         session_id: getOrCreateSessionId(),
         source: document.referrer,
-        search_params: window.location.search,
         viewed_at: new Date().toISOString(),
       };
 
-      fetch(`${apiUrl}${analyticsPath}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      })
-        .then((response) => {
-          if (!response.ok && response.status !== 404 && import.meta.env.DEV) {
-            console.debug("Listing view analytics failed", response.status);
-          }
-        })
-        .catch((error) => {
-          if (import.meta.env.DEV) {
-            console.debug("Listing view analytics unavailable", error);
-          }
-        });
+      listingViewPending = true;
+      void sendListingView(`${apiUrl}${analyticsPath}`, authToken, payload);
     };
 
     saveRecentListingView();
-    trackListingView();
+    let visibleTimer = 0;
+    const scheduleListingView = () => {
+      window.clearTimeout(visibleTimer);
+      if (document.visibilityState !== "visible") return;
+      visibleTimer = window.setTimeout(() => {
+        if (document.visibilityState === "visible") trackListingView();
+      }, 2_000);
+    };
+    document.addEventListener("visibilitychange", scheduleListingView);
+    scheduleListingView();
 
     const galleryImages = Array.from(document.querySelectorAll(".gallery-thumb"))
       .map((thumb) => thumb instanceof HTMLElement ? thumb.dataset.slideSrc || thumb.querySelector("img")?.currentSrc || "" : "")

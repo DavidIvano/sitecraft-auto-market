@@ -14,7 +14,7 @@ const benefits = [
 ];
 ---
 
-<BaseLayout title="Продать авто">
+<BaseLayout title="Продать авто" variant="public">
   <section class="section page-hero sell-hero">
     <div class="container sell-workspace">
       <aside class="sell-progress" aria-label="Шаги публикации">
@@ -34,7 +34,7 @@ const benefits = [
         <h1>Создайте объявление по фото</h1>
         <p class="lead">Загрузите фотографии автомобиля, проверьте AI-черновик и отправьте объявление на ручную модерацию.</p>
         <div class="sell-dropzone" aria-label="Загрузка фотографий">
-          <span aria-hidden="true">+</span>
+          <span aria-hidden="true"><i data-lucide="plus"></i></span>
           <strong>1–8 фото автомобиля</strong>
           <p>Фото сжимаются в браузерный формат, первое изображение станет главным.</p>
         </div>
@@ -42,7 +42,7 @@ const benefits = [
           {benefits.map((benefit) => <li>{benefit}</li>)}
         </ul>
         <div class="hero-actions">
-          <a class="button button-dark" href="/dashboard/new">Создать объявление по фото</a>
+          <a class="button button-primary" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>
           <a class="button button-light" href="/dashboard">Перейти в кабинет</a>
         </div>
         <p class="form-message">Можно начать через AI или переключиться на ручное заполнение в кабинете.</p>

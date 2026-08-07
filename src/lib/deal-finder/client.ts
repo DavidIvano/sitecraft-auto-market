@@ -22,6 +22,7 @@ import {
   Maximize2,
   RotateCcw,
   Sparkles,
+  X,
   createIcons,
 } from "lucide";
 import { DEAL_FINDER_ENABLED, DEAL_FINDER_PLACEHOLDER, DEAL_FINDER_USE_MOCK_DATA } from "./constants";
@@ -115,6 +116,7 @@ const detailIcons = {
   RotateCcw,
   Info,
   Sparkles,
+  X,
 };
 
 function renderDetailIcons() {
@@ -166,7 +168,7 @@ function card(listing: DealFinderListing) {
   const gallery = [...new Set([listing.source_image_url, ...(listing.source_images || [])].filter(isSafeDealFinderImageUrl))];
   const lightboxImages = gallery.length ? gallery : [DEAL_FINDER_PLACEHOLDER];
   return `<article class="deal-finder-card" data-deal-listing-id="${listing.id}">
-    <button class="deal-finder-image vehicle-image-trigger" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(image)}" data-lightbox-sources="${escapeHtml(JSON.stringify(lightboxImages))}" data-lightbox-alt="${escapeDisplayText(listing.title)}" aria-label="Увеличить фото: ${escapeDisplayText(listing.title)}"><img src="${escapeHtml(image)}" alt="${escapeDisplayText(listing.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder="${DEAL_FINDER_PLACEHOLDER}"><span class="vehicle-image-zoom" aria-hidden="true">＋</span></button>
+    <button class="deal-finder-image vehicle-image-trigger" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(image)}" data-lightbox-sources="${escapeHtml(JSON.stringify(lightboxImages))}" data-lightbox-alt="${escapeDisplayText(listing.title)}" aria-label="Увеличить фото: ${escapeDisplayText(listing.title)}"><img src="${escapeHtml(image)}" alt="${escapeDisplayText(listing.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder="${DEAL_FINDER_PLACEHOLDER}"><span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span></button>
     <div class="deal-finder-card-body">
       <div class="deal-finder-card-top"><span class="deal-status-badge">${escapeHtml(recommendation)}</span><span class="deal-score-badge">${typeof score === "number" ? `Score ${Math.round(score)}` : "AI не запущен"}</span></div>
       <div><p class="deal-finder-kicker">${escapeDisplayText(identity)}</p><h2><a href="${detailUrl(listing.id)}">${escapeDisplayText(listing.title)}</a></h2></div>
@@ -865,7 +867,7 @@ export async function mountDealFinderDetail(root: HTMLElement, id: string) {
 
 function comparisonHeader(listing: DealFinderListing) {
   const image = getDealFinderImageUrl(listing.source_image_url);
-  return `<article class="deal-finder-comparison-car"><img src="${escapeHtml(image)}" alt="${escapeDisplayText(listing.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder="${DEAL_FINDER_PLACEHOLDER}"><div><span>${escapeDisplayText([listing.brand, listing.model].filter(Boolean).join(" · ") || "Марка не определена")}</span><strong>${escapeDisplayText(listing.title)}</strong><a href="${detailUrl(listing.id)}">Открыть досье</a></div><button type="button" aria-label="Убрать ${escapeDisplayText(listing.title)} из сравнения" data-compare-remove="${listing.id}">×</button></article>`;
+  return `<article class="deal-finder-comparison-car"><img src="${escapeHtml(image)}" alt="${escapeDisplayText(listing.title)}" loading="lazy" decoding="async" referrerpolicy="no-referrer" data-deal-finder-image data-placeholder="${DEAL_FINDER_PLACEHOLDER}"><div><span>${escapeDisplayText([listing.brand, listing.model].filter(Boolean).join(" · ") || "Марка не определена")}</span><strong>${escapeDisplayText(listing.title)}</strong><a href="${detailUrl(listing.id)}">Открыть досье</a></div><button type="button" aria-label="Убрать ${escapeDisplayText(listing.title)} из сравнения" data-compare-remove="${listing.id}"><i data-lucide="x" aria-hidden="true"></i></button></article>`;
 }
 
 function comparisonNotes(listings: DealFinderListing[]) {

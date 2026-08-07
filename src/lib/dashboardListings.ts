@@ -5,11 +5,55 @@ export const DASHBOARD_LISTING_PLACEHOLDER = "/sitecraft-logo.png";
 
 export type DashboardListing = Partial<CarListing> & {
   id: number;
+  views_total?: number;
+  views_unique?: number;
+  views_7d?: number;
+  last_viewed_at?: string | number | null;
   thumbnail_url?: string;
   primary_image_url?: string;
   image_url?: string;
   images?: Array<Partial<CarListingImage> & { url?: string }>;
 };
+
+export function normalizeViewCount(value: unknown) {
+  const count = Number(value);
+  return Number.isFinite(count) && count > 0 ? Math.floor(count) : 0;
+}
+
+export function formatViewCount(value: unknown) {
+  const count = normalizeViewCount(value);
+  const mod100 = count % 100;
+  const mod10 = count % 10;
+  const noun = mod100 >= 11 && mod100 <= 14
+    ? "просмотров"
+    : mod10 === 1
+      ? "просмотр"
+      : mod10 >= 2 && mod10 <= 4
+        ? "просмотра"
+        : "просмотров";
+  return `${count.toLocaleString("ru-RU")} ${noun}`;
+}
+
+export function formatLastViewedAt(value: unknown, now = new Date()) {
+  if (value === null || value === undefined || value === "") return "";
+  const date = typeof value === "number" || /^\d+$/.test(String(value))
+    ? new Date(Number(value))
+    : new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "";
+
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  const time = new Intl.DateTimeFormat("ru-RU", { hour: "2-digit", minute: "2-digit" }).format(date);
+  if (sameDay) return `Последний просмотр: сегодня, ${time}`;
+
+  const dateLabel = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "long",
+    ...(date.getFullYear() === now.getFullYear() ? {} : { year: "numeric" as const }),
+  }).format(date);
+  return `Последний просмотр: ${dateLabel}, ${time}`;
+}
 
 const isLocalHostname = (hostname: string) =>
   hostname === "localhost" ||
@@ -101,10 +145,22 @@ export function getDashboardListingActions(listing: DashboardListing) {
   const publicListing = isPublicListing(listing);
   const editable = ["draft", "ai_draft", "rejected", "needs_fix"].includes(status);
 
+  const viewHref = publicListing && listing.slug ? `/cars/${encodeURIComponent(listing.slug)}/` : "";
+  const editHref = editable ? `/dashboard/listings/edit?id=${encodeURIComponent(String(listing.id))}` : "";
+  const primary = status === "draft" || status === "ai_draft"
+    ? { label: "Продолжить", href: editHref }
+    : status === "rejected" || status === "needs_fix"
+      ? { label: "Исправить", href: editHref }
+      : viewHref
+        ? { label: "Посмотреть", href: viewHref }
+        : { label: "", href: "" };
+
   return {
     status,
-    viewHref: publicListing && listing.slug ? `/cars/${encodeURIComponent(listing.slug)}/` : "",
-    editHref: editable ? `/dashboard/listings/edit?id=${encodeURIComponent(String(listing.id))}` : "",
+    primaryLabel: primary.label,
+    primaryHref: primary.href,
+    viewHref,
+    editHref,
     promoteHref: ["approved", "published"].includes(status)
       ? `/dashboard/cars/promote?id=${encodeURIComponent(String(listing.id))}`
       : "",

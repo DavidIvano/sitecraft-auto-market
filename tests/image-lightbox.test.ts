@@ -69,7 +69,7 @@ test("lightbox viewport owns the full stage and navigation overlays it", () => {
   assert.match(viewport, /position:\s*relative/);
   assert.match(viewport, /grid-column:\s*1/);
   assert.match(navigation, /position:\s*absolute/);
-  assert.match(css, /\.image-lightbox-nav\[hidden\]\s*\{\s*display:\s*none !important/);
+  assert.match(css, /\.image-lightbox-nav\[hidden\]\s*\{\s*display:\s*none/);
   assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*object-fit:\s*contain[^}]*object-position:\s*center/s);
   assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*width:\s*100%[^}]*height:\s*100%/s);
   assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0/s);

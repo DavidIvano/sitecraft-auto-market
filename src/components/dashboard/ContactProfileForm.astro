@@ -1,57 +1,298 @@
 ---
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
-<section class="contact-profile-panel" data-contact-profile data-api-url={xanoApiUrl} aria-labelledby="contact-profile-title">
-  <header><p class="eyebrow">Публичные контакты</p><h2 id="contact-profile-title">Как покупатели свяжутся с вами</h2><p>Данные входа не публикуются автоматически. Показываются только включённые здесь контакты.</p></header>
+<section id="contact-profile" class="contact-profile-panel" data-contact-profile data-api-url={xanoApiUrl} aria-labelledby="contact-profile-title">
+  <header><p class="eyebrow">Публичные контакты</p><h2 id="contact-profile-title">Как покупатели свяжутся с вами</h2><p>Ваши данные входа не публикуются автоматически. Покупатели увидят только способы связи, которые вы включили.</p></header>
   <form class="contact-profile-form">
     <label>Имя<input name="first_name" type="text" autocomplete="given-name" maxlength="80" /></label>
     <label>Фамилия<input name="last_name" type="text" autocomplete="family-name" maxlength="80" /></label>
     <label>Публичное имя<input name="display_name" type="text" maxlength="120" /></label>
-    <label>Телефон в формате E.164<input name="contact_phone" type="tel" inputmode="tel" placeholder="+491234567890" /></label>
+    <label data-contact-field="contact_phone">Телефон<input name="contact_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 123 4567890" aria-describedby="contact-phone-error" /><small id="contact-phone-error" class="field-error" data-contact-field-error="contact_phone" hidden></small></label>
     <label>Email для покупателей<input name="contact_email" type="email" autocomplete="email" /></label>
     <label class="contact-profile-check"><input name="show_phone" type="checkbox" />Показывать телефон</label>
     <label class="contact-profile-check"><input name="show_email" type="checkbox" />Показывать email</label>
     <label>Предпочтительный способ<select name="preferred_contact_method"><option value="">Не выбран</option><option value="phone">Телефон</option><option value="email">Email</option></select></label>
-    <button class="button button-primary" type="submit">Сохранить контакты</button>
-    <p class="form-message" data-contact-profile-status role="status" aria-live="polite"></p>
+    <button class="button button-primary" type="submit" disabled>Проверяю вход…</button>
+    <p class="contact-profile-status" data-contact-profile-status role="status" aria-live="polite"></p>
   </form>
 </section>
 <script>
   import { API_ROUTES } from "../../lib/apiRoutes";
-  import { getAuthToken, redirectToLogin } from "../../lib/authClient";
+  import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+  import {
+    ContactProfileApiError,
+    normalizeSellerContactProfile,
+    readContactProfileApiResponse,
+    validateSellerContactProfile,
+  } from "../../lib/contactProfile";
   import { showToast } from "../../lib/toast";
   import type { SellerContactProfile } from "../../lib/types";
+
+  type ContactFormState = "checking" | "ready" | "saving" | "saved" | "retry";
+  type ContactProfilePayload = SellerContactProfile;
+
   const root = document.querySelector<HTMLElement>("[data-contact-profile]");
-  const form = root?.querySelector<HTMLFormElement>("form");
+  const form = root?.querySelector<HTMLFormElement>(".contact-profile-form");
   const status = root?.querySelector<HTMLElement>("[data-contact-profile-status]");
+  const submitButton = form?.querySelector<HTMLButtonElement>('button[type="submit"]');
   const apiUrl = String(root?.dataset.apiUrl || "").replace(/\/+$/, "");
-  const token = getAuthToken();
-  const fill = (profile: Partial<SellerContactProfile>) => {
+  let initialized = false;
+  let initializing = false;
+  let saving = false;
+
+  function setContactFormState(state: ContactFormState, message = "") {
+    const labels: Record<ContactFormState, string> = {
+      checking: "Проверяю вход…",
+      ready: "Сохранить контакты",
+      saving: "Сохраняю…",
+      saved: "Сохранено",
+      retry: "Повторить",
+    };
+    if (submitButton) {
+      submitButton.textContent = labels[state];
+      submitButton.disabled = state === "checking" || state === "saving";
+    }
+    if (status) {
+      status.textContent = message;
+      status.dataset.state = state;
+    }
+  }
+
+  function clearContactFieldError(field = "") {
+    if (!form) return;
+    const controls = field ? [form.elements.namedItem(field)] : Array.from(form.elements);
+    controls.forEach((control) => {
+      if (control instanceof HTMLElement) control.removeAttribute("aria-invalid");
+    });
+    const errors = field
+      ? form.querySelectorAll<HTMLElement>(`[data-contact-field-error="${field}"]`)
+      : form.querySelectorAll<HTMLElement>("[data-contact-field-error]");
+    errors.forEach((error) => {
+      error.textContent = "";
+      error.hidden = true;
+    });
+  }
+
+  function showContactFieldError(field: string, message: string) {
+    if (!form || !field) return;
+    clearContactFieldError(field);
+    const control = form.elements.namedItem(field);
+    if (control instanceof HTMLElement) control.setAttribute("aria-invalid", "true");
+    const error = form.querySelector<HTMLElement>(`[data-contact-field-error="${field}"]`);
+    if (error) {
+      error.textContent = message;
+      error.hidden = false;
+    }
+  }
+
+  function fillContactForm(profile: Partial<SellerContactProfile>) {
     if (!form) return;
     for (const [key, value] of Object.entries(profile)) {
       const field = form.elements.namedItem(key);
-      if (field instanceof HTMLInputElement && field.type === "checkbox") field.checked = value === true;
-      else if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) field.value = String(value ?? "");
+      if (field instanceof HTMLInputElement && field.type === "checkbox") {
+        field.checked = value === true;
+      } else if (field instanceof HTMLInputElement || field instanceof HTMLSelectElement) {
+        field.value = String(value ?? "");
+      }
     }
-  };
-  if (token && form) {
-    fetch(`${apiUrl}${API_ROUTES.contactProfile}`, { headers: { Authorization: `Bearer ${token}` } })
-      .then(async (response) => { if (response.status === 401) return redirectToLogin("/dashboard/"); if (!response.ok) throw new Error(); fill(await response.json()); })
-      .catch(() => { if (status) status.textContent = "Настройки контактов временно недоступны."; });
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const data = new FormData(form);
-      const phone = String(data.get("contact_phone") || "").trim();
-      if (phone && !/^\+[1-9]\d{7,14}$/.test(phone)) { if (status) status.textContent = "Телефон должен быть в формате +491234567890."; return; }
-      const payload = { first_name: String(data.get("first_name") || "").trim(), last_name: String(data.get("last_name") || "").trim(), display_name: String(data.get("display_name") || "").trim(), contact_phone: phone, contact_email: String(data.get("contact_email") || "").trim(), show_phone: data.has("show_phone"), show_email: data.has("show_email"), preferred_contact_method: String(data.get("preferred_contact_method") || "") };
-      try {
-        const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, { method: "PATCH", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(payload) });
-        if (response.status === 401) return redirectToLogin("/dashboard/");
-        if (!response.ok) throw new Error();
-        fill(await response.json());
-        if (status) status.textContent = "Контакты сохранены.";
-        showToast("Контакты сохранены");
-      } catch { if (status) status.textContent = "Не удалось сохранить контакты."; showToast("Не удалось сохранить контакты", "error"); }
+    reconcilePreferredMethod();
+  }
+
+  function readContactForm(): ContactProfilePayload {
+    if (!form) throw new Error("CONTACT_FORM_MISSING");
+    const data = new FormData(form);
+    const raw = {
+      display_name: data.get("display_name"),
+      contact_phone: data.get("contact_phone"),
+      contact_email: data.get("contact_email"),
+      show_phone: data.has("show_phone"),
+      show_email: data.has("show_email"),
+      preferred_contact_method: data.get("preferred_contact_method"),
+    };
+    const normalized = normalizeSellerContactProfile(raw);
+    return {
+      first_name: String(data.get("first_name") || "").trim() || null,
+      last_name: String(data.get("last_name") || "").trim() || null,
+      display_name: normalized.display_name || null,
+      contact_phone: normalized.contact_phone || null,
+      contact_email: normalized.contact_email || null,
+      show_phone: normalized.show_phone,
+      show_email: normalized.show_email,
+      preferred_contact_method: normalized.preferred_contact_method,
+    };
+  }
+
+  function validateContactProfile() {
+    if (!form) return { valid: false, message: "Форма контактов недоступна.", field: "" };
+    const data = new FormData(form);
+    return validateSellerContactProfile({
+      display_name: data.get("display_name"),
+      contact_phone: data.get("contact_phone"),
+      contact_email: data.get("contact_email"),
+      show_phone: data.has("show_phone"),
+      show_email: data.has("show_email"),
+      preferred_contact_method: data.get("preferred_contact_method"),
     });
+  }
+
+  function focusContactField(field: string) {
+    const control = form?.elements.namedItem(field);
+    if (control instanceof HTMLElement) control.focus();
+  }
+
+  function reconcilePreferredMethod() {
+    if (!form) return;
+    const phoneToggle = form.elements.namedItem("show_phone");
+    const emailToggle = form.elements.namedItem("show_email");
+    const preferred = form.elements.namedItem("preferred_contact_method");
+    if (!(phoneToggle instanceof HTMLInputElement)
+      || !(emailToggle instanceof HTMLInputElement)
+      || !(preferred instanceof HTMLSelectElement)) return;
+    if (preferred.value === "phone" && !phoneToggle.checked) {
+      preferred.value = emailToggle.checked ? "email" : "";
+    }
+    if (preferred.value === "email" && !emailToggle.checked) {
+      preferred.value = phoneToggle.checked ? "phone" : "";
+    }
+  }
+
+  async function waitForAuthRestore() {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      const token = String(getAuthToken() || "").trim();
+      if (token) return token;
+      await new Promise((resolve) => window.setTimeout(resolve, 150));
+    }
+    return "";
+  }
+
+  async function loadContactProfile() {
+    const delays = [0, 1000, 3000];
+    let lastError: unknown = null;
+    for (let attempt = 0; attempt < delays.length; attempt += 1) {
+      if (delays[attempt]) await new Promise((resolve) => window.setTimeout(resolve, delays[attempt]));
+      const token = String(getAuthToken() || "").trim();
+      if (!token) throw new Error("AUTH_TOKEN_MISSING");
+      try {
+        const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (response.status === 401) {
+          if (await isSessionConfirmedExpired(apiUrl, token)) {
+            redirectToLogin("/dashboard/");
+            throw new Error("SESSION_EXPIRED");
+          }
+          throw new Error("CONTACT_PROFILE_401");
+        }
+        if (response.ok) return await response.json() as SellerContactProfile;
+        if (![408, 425, 429].includes(response.status) && response.status < 500) {
+          throw new Error(`CONTACT_PROFILE_${response.status}`);
+        }
+        lastError = new Error(`CONTACT_PROFILE_${response.status}`);
+      } catch (error) {
+        lastError = error;
+        if (String(error).includes("SESSION_EXPIRED") || String(error).includes("CONTACT_PROFILE_4")) throw error;
+      }
+    }
+    throw lastError || new Error("CONTACT_PROFILE_UNAVAILABLE");
+  }
+
+  async function saveContactProfile() {
+    if (!form || saving) return;
+    const validation = validateContactProfile();
+    clearContactFieldError();
+    if (!validation.valid) {
+      setContactFormState("ready", validation.message);
+      if (validation.field) {
+        showContactFieldError(validation.field, validation.message);
+        focusContactField(validation.field);
+      }
+      return;
+    }
+
+    const token = String(getAuthToken() || "").trim();
+    if (!token) {
+      initialized = false;
+      await initializeContactProfile();
+      return;
+    }
+
+    saving = true;
+    setContactFormState("saving", "Сохраняю контакты…");
+    try {
+      const payload = readContactForm();
+      const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        cache: "no-store",
+        body: JSON.stringify(payload),
+      });
+      if (response.status === 401 && await isSessionConfirmedExpired(apiUrl, token)) {
+        redirectToLogin("/dashboard/");
+        return;
+      }
+      const profile = await readContactProfileApiResponse(response);
+      fillContactForm(profile);
+      clearContactFieldError();
+      setContactFormState("saved", "Контакты сохранены.");
+      showToast("Контакты сохранены");
+      window.dispatchEvent(new CustomEvent("seller-contact-profile-updated", { detail: profile }));
+      window.setTimeout(() => setContactFormState("ready"), 1800);
+    } catch (error) {
+      const message = error instanceof Error && error.message
+        ? error.message
+        : "Сервис контактов временно недоступен. Повторите попытку.";
+      if (error instanceof ContactProfileApiError && error.field) showContactFieldError(error.field, message);
+      setContactFormState("retry", message);
+      showToast(message, "error");
+    } finally {
+      saving = false;
+    }
+  }
+
+  async function initializeContactProfile() {
+    if (!form || initializing || initialized) return;
+    initializing = true;
+    setContactFormState("checking", "Проверяю вход…");
+    try {
+      const token = await waitForAuthRestore();
+      if (!token) {
+        setContactFormState("retry", "Сессия завершена. Войдите снова.");
+        return;
+      }
+      const profile = await loadContactProfile();
+      fillContactForm(profile);
+      initialized = true;
+      setContactFormState("ready", "Контакты загружены.");
+    } catch (error) {
+      if (!String(error).includes("SESSION_EXPIRED")) {
+        setContactFormState("retry", "Сервис контактов временно недоступен. Повторите попытку.");
+      }
+    } finally {
+      initializing = false;
+    }
+  }
+
+  if (form && form.dataset.contactProfileBound !== "true") {
+    form.dataset.contactProfileBound = "true";
+    form.addEventListener("change", (event) => {
+      if (event.target instanceof HTMLInputElement && ["show_phone", "show_email"].includes(event.target.name)) {
+        reconcilePreferredMethod();
+      }
+    });
+    form.addEventListener("input", (event) => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
+        clearContactFieldError(event.target.name);
+      }
+    });
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      if (initialized) void saveContactProfile();
+      else void initializeContactProfile();
+    });
+    void initializeContactProfile();
   }
 </script>

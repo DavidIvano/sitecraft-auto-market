@@ -3,8 +3,14 @@ import type { PublicSellerContact } from "../lib/types";
 type Props = { sellerName: string; listingTitle: string; contact?: PublicSellerContact | null };
 const { sellerName, listingTitle, contact = null } = Astro.props;
 const legacyHref = /^(tel:|mailto:)/i.test(String(contact?.href || "")) ? String(contact?.href) : "";
-const phoneHref = String(contact?.phone_href || (legacyHref.startsWith("tel:") ? legacyHref : ""));
-const emailHref = String(contact?.email_href || (legacyHref.startsWith("mailto:") ? legacyHref : ""));
+const phone = String(contact?.phone || "").trim();
+const email = String(contact?.email || "").trim().toLowerCase();
+const phoneHref = /^tel:\+[1-9]\d{7,14}$/i.test(String(contact?.phone_href || ""))
+  ? String(contact?.phone_href)
+  : legacyHref.startsWith("tel:") ? legacyHref : phone ? `tel:${phone.replace(/[^\d+]/g, "")}` : "";
+const emailHref = /^mailto:[^\s?@]+@[^\s?@]+\.[^\s?@]+$/i.test(String(contact?.email_href || ""))
+  ? String(contact?.email_href)
+  : legacyHref.startsWith("mailto:") ? legacyHref : email ? `mailto:${email}` : "";
 const hasContact = Boolean(phoneHref || emailHref);
 ---
 <button
@@ -12,8 +18,11 @@ const hasContact = Boolean(phoneHref || emailHref);
   type="button"
   data-seller-contact-trigger
   data-seller-name={sellerName}
+  data-contact-phone-value={phone}
+  data-contact-email-value={email}
   data-phone-href={phoneHref}
   data-email-href={emailHref}
+  data-preferred-method={contact?.preferred_method || ""}
   data-listing-title={listingTitle}
   hidden={!hasContact}
 >Связаться с продавцом</button>
@@ -22,10 +31,25 @@ const hasContact = Boolean(phoneHref || emailHref);
   <form method="dialog" class="contact-seller-modal-panel">
     <header><div><p class="eyebrow">Контакты продавца</p><h2 id="contact-modal-title" data-contact-modal-title>{sellerName}</h2></div><button class="icon-button" value="cancel" aria-label="Закрыть"><i data-lucide="x" aria-hidden="true"></i></button></header>
     <p>Используйте только способы связи, которые продавец сделал публичными.</p>
-    <div class="contact-seller-actions">
-      <a class="button button-primary" data-contact-phone hidden><i data-lucide="phone" aria-hidden="true"></i>Позвонить</a>
-      <a class="button button-light" data-contact-email hidden><i data-lucide="mail" aria-hidden="true"></i>Написать email</a>
+    <div class="contact-seller-methods">
+      <section class="seller-contact-method" data-contact-phone-method hidden>
+        <div class="seller-contact-method-heading"><i data-lucide="phone" aria-hidden="true"></i><span>Телефон</span></div>
+        <strong data-contact-phone-value>{phone}</strong>
+        <div class="contact-seller-actions">
+          <a class="button button-primary" data-contact-phone><i data-lucide="phone" aria-hidden="true"></i>Позвонить</a>
+          <button class="button button-light" type="button" data-copy-contact="phone"><i data-lucide="copy" aria-hidden="true"></i><span>Копировать номер</span></button>
+        </div>
+      </section>
+      <section class="seller-contact-method" data-contact-email-method hidden>
+        <div class="seller-contact-method-heading"><i data-lucide="mail" aria-hidden="true"></i><span>Email</span></div>
+        <strong data-contact-email-value>{email}</strong>
+        <div class="contact-seller-actions">
+          <a class="button button-primary" data-contact-email><i data-lucide="mail" aria-hidden="true"></i>Написать email</a>
+          <button class="button button-light" type="button" data-copy-contact="email"><i data-lucide="copy" aria-hidden="true"></i><span>Копировать email</span></button>
+        </div>
+      </section>
     </div>
+    <p class="form-message" data-contact-copy-status role="status" aria-live="polite"></p>
   </form>
 </dialog>
 <script>
@@ -37,16 +61,55 @@ const hasContact = Boolean(phoneHref || emailHref);
     lastTrigger = trigger;
     const phone = dialog.querySelector<HTMLAnchorElement>("[data-contact-phone]");
     const email = dialog.querySelector<HTMLAnchorElement>("[data-contact-email]");
+    const phoneMethod = dialog.querySelector<HTMLElement>("[data-contact-phone-method]");
+    const emailMethod = dialog.querySelector<HTMLElement>("[data-contact-email-method]");
+    const phoneValue = dialog.querySelector<HTMLElement>("[data-contact-phone-value]");
+    const emailValue = dialog.querySelector<HTMLElement>("[data-contact-email-value]");
+    const copyStatus = dialog.querySelector<HTMLElement>("[data-contact-copy-status]");
     const title = dialog.querySelector<HTMLElement>("[data-contact-modal-title]");
     const phoneHref = trigger.dataset.phoneHref || "";
     const emailHref = trigger.dataset.emailHref || "";
+    const visiblePhone = trigger.dataset.contactPhoneValue || phoneHref.replace(/^tel:/i, "");
+    const visibleEmail = trigger.dataset.contactEmailValue || emailHref.replace(/^mailto:/i, "").split("?")[0];
     if (title) title.textContent = trigger.dataset.sellerName || "Продавец";
-    if (phone) { phone.hidden = !/^tel:/i.test(phoneHref); if (!phone.hidden) phone.href = phoneHref; }
-    if (email) {
-      email.hidden = !/^mailto:/i.test(emailHref);
-      if (!email.hidden) email.href = `${emailHref.split("?")[0]}?subject=${encodeURIComponent(`Вопрос по объявлению ${trigger.dataset.listingTitle || "автомобиля"}`)}`;
+    if (copyStatus) copyStatus.textContent = "";
+    if (phoneMethod) phoneMethod.hidden = !/^tel:\+[1-9]\d{7,14}$/i.test(phoneHref) || !visiblePhone;
+    if (phoneValue) phoneValue.textContent = visiblePhone;
+    if (phone) {
+      phone.hidden = phoneMethod?.hidden !== false;
+      if (!phone.hidden) phone.href = phoneHref;
+      else phone.removeAttribute("href");
     }
+    if (emailMethod) emailMethod.hidden = !/^mailto:[^\s?@]+@[^\s?@]+\.[^\s?@]+/i.test(emailHref) || !visibleEmail;
+    if (emailValue) emailValue.textContent = visibleEmail;
+    if (email) {
+      email.hidden = emailMethod?.hidden !== false;
+      if (!email.hidden) email.href = `${emailHref.split("?")[0]}?subject=${encodeURIComponent(`Вопрос по объявлению ${trigger.dataset.listingTitle || "автомобиля"}`)}`;
+      else email.removeAttribute("href");
+    }
+    if (phoneMethod?.hidden && emailMethod?.hidden) return;
     dialog.showModal();
+  });
+  dialog?.addEventListener("click", async (event) => {
+    const copyButton = (event.target as Element | null)?.closest<HTMLButtonElement>("[data-copy-contact]");
+    if (!copyButton) return;
+    const kind = copyButton.dataset.copyContact;
+    const value = kind === "phone"
+      ? dialog.querySelector<HTMLElement>("[data-contact-phone-value]")?.textContent || ""
+      : dialog.querySelector<HTMLElement>("[data-contact-email-value]")?.textContent || "";
+    const label = copyButton.querySelector("span");
+    try {
+      await navigator.clipboard.writeText(value.trim());
+      if (label) label.textContent = "Скопировано";
+      const copyStatus = dialog.querySelector<HTMLElement>("[data-contact-copy-status]");
+      if (copyStatus) copyStatus.textContent = "Скопировано";
+      window.setTimeout(() => {
+        if (label) label.textContent = kind === "phone" ? "Копировать номер" : "Копировать email";
+      }, 1600);
+    } catch {
+      const copyStatus = dialog.querySelector<HTMLElement>("[data-contact-copy-status]");
+      if (copyStatus) copyStatus.textContent = "Не удалось скопировать. Выделите контакт вручную.";
+    }
   });
   dialog?.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
   dialog?.addEventListener("cancel", (event) => {

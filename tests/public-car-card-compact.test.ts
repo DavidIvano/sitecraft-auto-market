@@ -17,7 +17,10 @@ const car = (overrides: Partial<CarListing> = {}): CarListing => ({
 test("compact public card has no details button or description and keeps required facts", () => {
   const html = renderPublicCarCardMarkup(car());
   assert.doesNotMatch(html, /Подробнее|This must never/);
-  for (const value of ["Volkswagen Golf", "15", "2020", "54", "Diesel", "Automatik", "Berlin"]) assert.match(html, new RegExp(value));
+  for (const value of ["Volkswagen Golf", "15", "2020", "54", "Diesel", "Automatik"]) assert.match(html, new RegExp(value));
+  assert.match(html, /car-card-location[\s\S]*Berlin/);
+  assert.match(html, /listing-status-badge[\s\S]*В продаже/);
+  assert.match(html, /car-card-media-views/);
   assert.match(html, /class="car-card-link" href="\/cars\/vw-golf\/"/);
   assert.doesNotMatch(html, /data-lightbox-trigger|car-card-image-button/);
 });
@@ -39,12 +42,22 @@ test("card client keeps native navigation and Xano-backed favourite targets", ()
   assert.doesNotMatch(client, /localStorage|FAVOURITES_KEY|window\.location\.assign/);
 });
 
-test("compact card CSS clamps titles, fixes media ratio and has responsive columns", () => {
-  const css = readProjectFile("src/styles/global.css");
-  assert.match(css, /\.public-car-card h3[\s\S]*?-webkit-line-clamp:\s*2/);
-  assert.match(css, /\.public-car-card \.car-card-media[\s\S]*?aspect-ratio:\s*16 \/ 10/);
+test("compact card CSS clamps titles and fixes card and media dimensions", () => {
+  const css = readProjectFile("src/styles/components/car-card.css") + readProjectFile("src/styles/components/public-pages.css") + readProjectFile("src/styles/components/catalog.css");
+  assert.match(css, /\.public-car-card \.car-card-title[\s\S]*?-webkit-line-clamp:\s*2/);
+  assert.match(css, /--public-card-height:\s*430px/);
+  assert.match(css, /--public-card-media-height:\s*210px/);
+  assert.match(css, /height:\s*var\(--public-card-height\)/);
+  assert.match(css, /\.public-car-card \.car-image[\s\S]*?object-fit:\s*cover/);
+  assert.match(css, /\.catalog-grid-list \.public-car-card[\s\S]*?--public-card-height:\s*238px/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?--public-card-height:\s*222px/);
+  assert.match(css, /\.public-car-card \.car-card-media-views \{ inset-block-end:\s*var\(--space-3\)/);
+  assert.match(css, /\.public-car-card \.car-card-overlay-badges \{[^}]*inset-block-start:\s*auto;[^}]*inset-block-end:\s*var\(--space-3\)/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-media-views \{ inset-block-end:\s*10px/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-overlay-badges \{ inset-block-end:\s*10px; inset-inline:\s*10px 60px/);
+  assert.doesNotMatch(css, /car-card-overlay-badges \{ inset:\s*auto 10px 46px 10px/);
   assert.match(css, /grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(css, /@media \(max-width: 599px\)[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.match(css, /\.car-card-favourite[\s\S]*?width:\s*44px[\s\S]*?height:\s*44px/);
-  assert.match(css, /\.catalog-view-switch button[\s\S]*?min-height:\s*44px/);
+  assert.match(css, /@media \(max-width: 640px\)[\s\S]*?grid-template-columns:\s*var\(--mobile-media-width\) minmax\(0, 1fr\)/);
+  assert.match(css, /\.public-car-card \.favorite-button[\s\S]*?width:\s*44px[\s\S]*?height:\s*44px/);
+  assert.match(css, /\.catalog-view-switch button[\s\S]*?width:\s*44px[\s\S]*?height:\s*40px/);
 });

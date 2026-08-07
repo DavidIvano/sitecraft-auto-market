@@ -4,7 +4,7 @@ import SearchBar from "../../components/SearchBar.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getApprovedCars } from "../../lib/xano";
 import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
-import { SITE_URL } from "../../lib/config";
+import { GERMAN_PUBLIC_ROUTES_ENABLED, SITE_URL } from "../../lib/config";
 import { API_ROUTES } from "../../lib/apiRoutes";
 import { getCreditActionPolicy } from "../../lib/credits/model";
 import {
@@ -13,21 +13,32 @@ import {
 } from "../../lib/buyer-search/model";
 import type { CarListing } from "../../lib/types";
 import { isPublicListing } from "../../lib/listingStatus";
+import { buildVehicleTaxonomy } from "../../lib/seo/vehicleTaxonomy";
+
+export const prerender = false;
+
+Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=120, stale-while-revalidate=3600");
+Astro.response.headers.set("X-Robots-Tag", "index, follow");
 
 let cars: CarListing[] = [];
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const searchParams = Astro.url.searchParams;
 const initialCriteria = getBuyerSearchCriteriaFromParams(searchParams);
 const aiSearchPolicy = getCreditActionPolicy("ai_search_intent");
 
 try {
-  const xanoCars = await getApprovedCars();
+  const xanoCars = await getApprovedCars({ requireConfigured: true });
   cars = xanoCars.filter(isPublicListing);
 } catch {
-  cars = [];
+  Astro.response.status = 503;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  Astro.response.headers.set("Retry-After", "300");
+  return Astro.rewrite("/service-unavailable");
 }
+
+const vehicleTaxonomy = buildVehicleTaxonomy(cars);
 
 const getFieldFromDescription = (car: CarListing, label: string) => {
   const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
@@ -122,44 +133,58 @@ const collectionSchema = {
 ---
 
 <BaseLayout
+  variant="public"
   title="Автомобили"
   description="Каталог проверенных автомобилей SiteCraft Auto Market"
   canonicalPath="/cars"
   jsonLd={collectionSchema}
+  alternateLocales={GERMAN_PUBLIC_ROUTES_ENABLED ? [
+    { locale: "ru", path: "/cars/", label: "Русский" },
+    { locale: "de", path: "/de/cars/", label: "Deutsch" },
+  ] : []}
 >
   <section class="section page-hero catalog-hero">
     <div class="container catalog-hero-grid">
-      <div>
+      <div class="catalog-hero-copy">
         <p class="eyebrow">Каталог автомобилей</p>
         <h1>Автомобили</h1>
         <p class="lead">Свежие проверенные объявления с фотографиями, ценами и быстрым поиском по главным параметрам.</p>
       </div>
-      <div class="catalog-view-switch" aria-label="Вид каталога">
-        <button class="is-active" type="button" data-catalog-view="grid" aria-pressed="true">Плитка</button>
-        <button type="button" data-catalog-view="list" aria-pressed="false">Список</button>
-      </div>
+      <button class="button button-secondary catalog-mobile-filter-button" type="button" aria-controls="catalog-filter-panel" aria-expanded="false"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>Фильтры</span></button>
+    </div>
+  </section>
+
+  <section class="section catalog-results-section">
+    <button class="catalog-filter-backdrop" type="button" aria-label="Закрыть фильтры" tabindex="-1"></button>
+    <div class="container catalog-layout">
       <aside
         class="catalog-filter-panel"
+        id="catalog-filter-panel"
         aria-label="Фильтры каталога"
         data-api-url={xanoApiUrl}
         data-ai-search-intent-path={API_ROUTES.aiSearchIntent}
         data-saved-searches-path={API_ROUTES.savedSearches}
       >
+        <div class="catalog-filter-heading">
+          <h2>Фильтры</h2>
+          <button class="catalog-filter-close" type="button" aria-label="Закрыть фильтры"><i data-lucide="x" aria-hidden="true"></i></button>
+        </div>
         <section class="ai-buyer-search-panel" aria-labelledby="ai-buyer-search-title">
           <div class="ai-buyer-search-copy">
             <span class="mac-badge mac-badge-blue">Умный подбор</span>
-            <h2 id="ai-buyer-search-title">Найдите автомобиль одним запросом</h2>
-            <p>Опишите задачу своими словами или сразу настройте параметры ниже.</p>
+            <h2 id="ai-buyer-search-title">Опишите нужный автомобиль</h2>
+            <p>Напишите обычными словами. Мы превратим запрос в понятные фильтры.</p>
           </div>
           <form class="ai-buyer-search-form" id="ai-buyer-search-form">
             <label class="ai-search-input">
-              <span>Запрос</span>
-              <textarea id="ai-car-search-query" rows="2" placeholder="Например: семейный дизель до 7000 € рядом с Braunschweig"></textarea>
+              <span>Что вы ищете?</span>
+              <textarea id="ai-car-search-query" rows="3" placeholder="Например: Volkswagen Golf до 10 000 €, дизель, автомат"></textarea>
             </label>
-            <div class="ai-buyer-search-actions">
-              <button class="button button-dark" type="submit">Подобрать с AI · {aiSearchPolicy.cost} кредит</button>
-              <button class="button button-light" type="button" id="ai-car-search-reset">Сбросить всё</button>
-              <button class="button button-light" type="button" id="ai-car-search-save">Сохранить поиск</button>
+            <div class="ai-buyer-search-actions action-grid">
+              <button class="button button-primary" type="submit"><i data-lucide="sparkles" aria-hidden="true"></i><span>Подобрать с AI · {aiSearchPolicy.cost} кредит</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-save"><i data-lucide="heart" aria-hidden="true"></i><span>Сохранить поиск</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-reset"><i data-lucide="refresh-cw" aria-hidden="true"></i><span>Сбросить</span></button>
+              <button class="button button-secondary" type="button" id="ai-car-search-filters"><i data-lucide="sliders-horizontal" aria-hidden="true"></i><span>Настроить вручную</span></button>
             </div>
           </form>
           <p class="ai-search-privacy">Изменение фильтров и просмотр каталога бесплатны. {aiSearchPolicy.cost} AI-кредит списывается только после успешного AI-разбора; при ошибке применяется бесплатный базовый разбор.</p>
@@ -188,62 +213,73 @@ const collectionSchema = {
           <summary>
             <span>Все параметры</span>
             <strong>Настроить подбор вручную</strong>
+            <i data-lucide="chevron-down" aria-hidden="true"></i>
           </summary>
           <SearchBar />
         </details>
       </aside>
+      <div class="catalog-results-main">
+        <div class="catalog-results-toolbar">
+          <div>
+            <span>Результаты</span>
+            <strong id="catalog-results-count">{cars.length} авто</strong>
+          </div>
+          <div class="catalog-toolbar-actions">
+            <label class="catalog-sort-control">
+              <span>Сортировка</span>
+              <select id="catalog-sort" name="sort" aria-label="Сортировка каталога">
+                <option value="newest" selected={selectedSort === "newest"}>Сначала новые</option>
+                <option value="price_asc" selected={selectedSort === "price_asc"}>Дешевле</option>
+                <option value="price_desc" selected={selectedSort === "price_desc"}>Дороже</option>
+                <option value="mileage_asc" selected={selectedSort === "mileage_asc"}>Меньше пробег</option>
+              </select>
+            </label>
+            <div class="catalog-view-switch" aria-label="Вид каталога">
+              <button class="is-active" type="button" data-catalog-view="grid" aria-label="Показать плиткой" aria-pressed="true"><i data-lucide="grid-2-x-2" aria-hidden="true"></i><span>Плитка</span></button>
+              <button type="button" data-catalog-view="list" aria-label="Показать списком" aria-pressed="false"><i data-lucide="list" aria-hidden="true"></i><span>Список</span></button>
+            </div>
+            <a class="button button-secondary compact-button catalog-toolbar-sell" href="/sell"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>
+          </div>
+        </div>
+        <div class="cards-grid catalog-grid" id="live-cars-grid" data-api-url={xanoApiUrl}>
+          {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} />)}
+        </div>
+        <div class="form-message live-cars-message" id="live-cars-message" hidden>
+          <span id="live-cars-message-text">{cars.length > 0 ? "" : "Загружаю каталог автомобилей..."}</span>
+          <button class="button button-secondary compact-button" id="live-cars-retry" type="button" hidden>Обновить каталог</button>
+        </div>
+        <section class="ai-recommended-section" id="ai-recommended-section" hidden aria-labelledby="ai-recommended-title">
+          <div class="section-heading compact-section-heading"><div><h2 id="ai-recommended-title">Похожие на то, что вы смотрели</h2><p class="section-subtitle">На основе просмотров на этом сайте.</p></div></div>
+          <div class="ai-recommended-grid" data-ai-recommended-grid></div>
+        </section>
+      </div>
     </div>
   </section>
 
-  <section class="section catalog-results-section">
-    <div class="container catalog-results-shell">
-      <div class="catalog-results-toolbar">
-        <div>
-          <span>Результаты</span>
-          <strong id="catalog-results-count">{cars.length} авто</strong>
-        </div>
-        <div class="catalog-toolbar-actions">
-          <label class="catalog-sort-control">
-            <span>Сортировка</span>
-            <select id="catalog-sort" name="sort" aria-label="Сортировка каталога">
-              <option value="newest" selected={selectedSort === "newest"}>Сначала новые</option>
-              <option value="price_asc" selected={selectedSort === "price_asc"}>Дешевле</option>
-              <option value="price_desc" selected={selectedSort === "price_desc"}>Дороже</option>
-              <option value="mileage_asc" selected={selectedSort === "mileage_asc"}>Меньше пробег</option>
-            </select>
-          </label>
-          <a class="button button-light compact-button" href="/sell">Продать авто</a>
-        </div>
-      </div>
-      <div
-        class="cards-grid catalog-grid"
-        id="live-cars-grid"
-        data-api-url={xanoApiUrl}
-        data-placeholder-url={placeholderApiUrl}
-      >
-        {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} />)}
-      </div>
-      <div class="form-message live-cars-message" id="live-cars-message" hidden>
-        <span id="live-cars-message-text">{cars.length > 0 ? "" : "Загружаю каталог автомобилей..."}</span>
-        <button class="button button-light compact-button" id="live-cars-retry" type="button" hidden>
-          Обновить каталог
-        </button>
-      </div>
-      <section class="ai-recommended-section" id="ai-recommended-section" hidden aria-labelledby="ai-recommended-title">
+  {vehicleTaxonomy.length > 0 && (
+    <section class="section catalog-taxonomy-section" aria-labelledby="catalog-brands-title">
+      <div class="container">
         <div class="section-heading compact-section-heading">
           <div>
-            <h2 id="ai-recommended-title">Похожие на то, что вы смотрели</h2>
-            <p class="section-subtitle">На основе просмотров на этом сайте.</p>
+            <h2 id="catalog-brands-title">Автомобили по маркам</h2>
+            <p>Перейдите к актуальным объявлениям нужной марки.</p>
           </div>
         </div>
-        <div class="ai-recommended-grid" data-ai-recommended-grid></div>
-      </section>
-    </div>
-  </section>
+        <nav class="taxonomy-link-grid" aria-label="Каталог марок автомобилей">
+          {vehicleTaxonomy.map((brand) => (
+            <a class="taxonomy-link" href={`/cars/brand/${brand.slug}`}>
+              <strong>{brand.name}</strong>
+              <span>{brand.cars.length} объявл. · {brand.models.length} модел.</span>
+            </a>
+          ))}
+        </nav>
+      </div>
+    </section>
+  )}
 
   <script>
     import { createAiIdempotencyKey } from "../../lib/ai/idempotency";
-    import { getAuthToken, redirectToLogin } from "../../lib/authClient";
+    import { getAuthToken } from "../../lib/authClient";
     import { parseCarSearchIntent } from "../../lib/ai/parseCarSearchIntent";
     import { getOrCreateSessionId } from "../../lib/analytics/session";
     import { trackProductEvent } from "../../lib/analytics/events";
@@ -260,6 +296,7 @@ const collectionSchema = {
     import { isPublicListing } from "../../lib/listingStatus";
     import { renderPublicCarCardMarkup } from "../../lib/publicCarCard";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
+    import { fetchWithRetry } from "../../lib/http/fetchWithRetry";
     import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
     import type { CarListing } from "../../lib/types";
 
@@ -272,10 +309,16 @@ const collectionSchema = {
     const resultsCount = document.querySelector("#catalog-results-count");
     const viewButtons = document.querySelectorAll("[data-catalog-view]");
     const filterPanel = document.querySelector(".catalog-filter-panel");
+    const filterOpenButton = document.querySelector<HTMLButtonElement>(".catalog-mobile-filter-button");
+    const filterCloseButton = document.querySelector<HTMLButtonElement>(".catalog-filter-close");
+    const filterBackdrop = document.querySelector<HTMLButtonElement>(".catalog-filter-backdrop");
     const aiSearchForm = document.querySelector("#ai-buyer-search-form");
+    const aiSearchSubmit = aiSearchForm?.querySelector<HTMLButtonElement>('button[type="submit"]');
     const aiSearchQuery = document.querySelector("#ai-car-search-query");
     const aiSearchReset = document.querySelector("#ai-car-search-reset");
     const aiSearchSave = document.querySelector("#ai-car-search-save");
+    const aiSearchFilters = document.querySelector("#ai-car-search-filters");
+    const criteriaEditor = document.querySelector<HTMLDetailsElement>(".buyer-criteria-editor");
     const aiSearchExplanation = document.querySelector("#ai-search-explanation");
     const aiSearchSuggestions = document.querySelector("#ai-search-suggestions");
     const aiLastSearch = document.querySelector("#ai-last-search");
@@ -290,7 +333,26 @@ const collectionSchema = {
     const RECENT_VIEWS_KEY = "sitecraft_recent_listing_views";
     let latestCatalogCars: Array<Record<string, unknown>> = [];
     let pendingAiSearch: { query: string; idempotencyKey: string } | null = null;
+    let aiSearchBusy = false;
     let activeRelaxations = getBuyerSearchRelaxations(getBuyerSearchCriteriaFromParams(new URLSearchParams(window.location.search)));
+
+    const setFilterDrawerOpen = (isOpen: boolean) => {
+      if (!(filterPanel instanceof HTMLElement)) return;
+      filterPanel.classList.toggle("is-open", isOpen);
+      filterBackdrop?.classList.toggle("is-open", isOpen);
+      filterOpenButton?.setAttribute("aria-expanded", String(isOpen));
+      document.body.classList.toggle("is-drawer-open", isOpen);
+      if (!isOpen) filterOpenButton?.focus();
+    };
+
+    filterOpenButton?.addEventListener("click", () => setFilterDrawerOpen(true));
+    filterCloseButton?.addEventListener("click", () => setFilterDrawerOpen(false));
+    filterBackdrop?.addEventListener("click", () => setFilterDrawerOpen(false));
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && filterPanel instanceof HTMLElement && filterPanel.classList.contains("is-open")) {
+        setFilterDrawerOpen(false);
+      }
+    });
 
     const formatPrice = (price: unknown, currency: unknown) =>
       new Intl.NumberFormat("ru-RU", {
@@ -364,6 +426,13 @@ const collectionSchema = {
     });
 
     setCatalogView(localStorage.getItem("sitecraft-catalog-view") || "grid");
+
+    aiSearchFilters?.addEventListener("click", () => {
+      if (!criteriaEditor) return;
+      criteriaEditor.open = true;
+      criteriaEditor.scrollIntoView({ behavior: "smooth", block: "start" });
+      criteriaEditor.querySelector<HTMLElement>("summary")?.focus();
+    });
 
     const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
       const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
@@ -453,9 +522,10 @@ const collectionSchema = {
         <button class="buyer-criteria-chip" type="button" data-remove-criterion="${item.key}" aria-label="Убрать параметр ${escapeHtml(item.label)}: ${escapeHtml(item.value)}">
           <span>${escapeHtml(item.label)}</span>
           <strong>${escapeHtml(item.value)}</strong>
-          <span aria-hidden="true">×</span>
+          <i data-lucide="x" aria-hidden="true"></i>
         </button>
       `).join("");
+      refreshPublicCarCardIcons(appliedCriteriaChips);
     };
 
     const renderClarifications = (query: string, criteria: BuyerSearchCriteria) => {
@@ -693,7 +763,7 @@ const collectionSchema = {
         return;
       }
 
-      if (grid instanceof HTMLElement && grid.dataset.apiUrl && grid.dataset.apiUrl !== grid.dataset.placeholderUrl) {
+      if (grid instanceof HTMLElement && grid.dataset.apiUrl) {
         return;
       }
 
@@ -716,65 +786,66 @@ const collectionSchema = {
       const aiPath = filterPanel instanceof HTMLElement ? filterPanel.dataset.aiSearchIntentPath || "/ai/search/intent" : "/ai/search/intent";
       let result = parseCarSearchIntent(cleanQuery);
       let usedFallback = options.forceFallback === true;
+      let fallbackMessage = options.forceFallback ? "Применён бесплатный быстрый подбор." : "";
 
       if (!options.forceFallback) {
         const token = getAuthToken();
         if (!token) {
-          redirectToLogin(window.location.pathname + window.location.search);
-          return;
-        }
-        if (!apiUrl) {
-          setAiExplanation("AI-поиск временно недоступен: API не настроен.");
-          return;
-        }
-        if (!pendingAiSearch || pendingAiSearch.query !== cleanQuery) {
-          pendingAiSearch = { query: cleanQuery, idempotencyKey: createAiIdempotencyKey("ai-search") };
-        }
-        try {
-          const response = await fetch(`${apiUrl}${aiPath}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
-            },
-            body: JSON.stringify({
-              query: cleanQuery,
-              current_filters: getCurrentFiltersObject(),
-              user_context: getBuyerContext(),
-              idempotency_key: pendingAiSearch.idempotencyKey,
-            }),
-          });
-
-          if (response.ok) {
-            const payload = await response.json();
-            result = {
-              filters: normalizeBuyerSearchCriteria(payload?.filters || result.filters),
-              explanation: payload?.explanation || result.explanation,
-              confidence: payload?.confidence ?? result.confidence,
-              suggestions: Array.isArray(payload?.suggestions) ? payload.suggestions : result.suggestions,
-            };
-            usedFallback = false;
-            pendingAiSearch = null;
-          } else {
-            if (response.status === 401) {
-              redirectToLogin(window.location.pathname + window.location.search);
-              return;
-            }
-            const payload = await response.json().catch(() => ({}));
-            const code = String(payload?.code || payload?.message || "");
-            setAiExplanation(code === "INSUFFICIENT_CREDITS" ? "Недостаточно AI-кредитов для подбора." : "AI-поиск временно недоступен. Повторите запрос.");
-            return;
+          usedFallback = true;
+          fallbackMessage = "Применён бесплатный быстрый подбор. Войдите, чтобы использовать расширенный AI-разбор.";
+        } else if (!apiUrl) {
+          usedFallback = true;
+          fallbackMessage = "Применён бесплатный быстрый подбор: AI-сервис временно недоступен.";
+        } else {
+          if (!pendingAiSearch || pendingAiSearch.query !== cleanQuery) {
+            pendingAiSearch = { query: cleanQuery, idempotencyKey: createAiIdempotencyKey("ai-search") };
           }
-        } catch {
-          setAiExplanation("Не удалось связаться с AI-сервисом. Повторите запрос.");
-          return;
+          try {
+            const response = await fetch(`${apiUrl}${aiPath}`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                query: cleanQuery,
+                current_filters: getCurrentFiltersObject(),
+                user_context: getBuyerContext(),
+                idempotency_key: pendingAiSearch.idempotencyKey,
+              }),
+            });
+
+            if (response.ok) {
+              const payload = await response.json();
+              result = {
+                filters: normalizeBuyerSearchCriteria(payload?.filters || result.filters),
+                explanation: payload?.explanation || result.explanation,
+                confidence: payload?.confidence ?? result.confidence,
+                suggestions: Array.isArray(payload?.suggestions) ? payload.suggestions : result.suggestions,
+              };
+              usedFallback = false;
+              pendingAiSearch = null;
+            } else {
+              const payload = await response.json().catch(() => ({}));
+              const code = String(payload?.code || payload?.message || "").toUpperCase();
+              usedFallback = true;
+              fallbackMessage = code.includes("INSUFFICIENT_CREDITS")
+                ? "AI-кредитов недостаточно, поэтому применён бесплатный быстрый подбор."
+                : response.status === 401
+                  ? "Сессия AI истекла, но бесплатный быстрый подбор уже применён."
+                  : "AI-сервис временно недоступен, поэтому применён бесплатный быстрый подбор.";
+            }
+          } catch {
+            usedFallback = true;
+            fallbackMessage = "Нет связи с AI-сервисом, поэтому применён бесплатный быстрый подбор.";
+          }
         }
       }
 
       applyAiFilters(result.filters || {});
       renderAiSuggestions(result.suggestions || []);
       saveLastAiSearch(cleanQuery, result.filters || {}, result.explanation || "");
-      setAiExplanation(usedFallback ? "Применён локальный разбор запроса." : result.explanation || "Фильтры применены.");
+      setAiExplanation(usedFallback ? fallbackMessage : result.explanation || "Фильтры применены.");
       renderClarifications(cleanQuery, getActiveCriteria());
       trackProductEvent("buyer_search_completed", {
         source: usedFallback ? "local" : "ai",
@@ -782,6 +853,28 @@ const collectionSchema = {
         status: usedFallback ? "fallback" : "success",
       });
       refreshCatalogFromCurrentFilters();
+    };
+
+    const submitAiSearch = async (query: string, options: { forceFallback?: boolean } = {}) => {
+      if (aiSearchBusy) return;
+      aiSearchBusy = true;
+      const originalMarkup = aiSearchSubmit?.innerHTML || "";
+      if (aiSearchSubmit) {
+        aiSearchSubmit.disabled = true;
+        aiSearchSubmit.setAttribute("aria-busy", "true");
+        aiSearchSubmit.innerHTML = '<span class="button-spinner" aria-hidden="true"></span><span>Подбираю…</span>';
+      }
+      try {
+        await runAiSearch(query, options);
+      } finally {
+        aiSearchBusy = false;
+        if (aiSearchSubmit) {
+          aiSearchSubmit.disabled = false;
+          aiSearchSubmit.removeAttribute("aria-busy");
+          aiSearchSubmit.innerHTML = originalMarkup;
+          refreshPublicCarCardIcons(aiSearchSubmit);
+        }
+      }
     };
 
     const getRecommendedScore = (car: Record<string, unknown>, view: Record<string, unknown>) => {
@@ -832,10 +925,8 @@ const collectionSchema = {
     if (grid instanceof HTMLElement && message instanceof HTMLElement) {
       syncSearchFormFromUrl();
       const apiUrl = grid.dataset.apiUrl;
-      const placeholderUrl = grid.dataset.placeholderUrl;
-
-      if (apiUrl && apiUrl !== placeholderUrl) {
-        const loadCars = () => fetch(`${apiUrl}/cars`)
+      if (apiUrl) {
+        const loadCars = () => fetchWithRetry(`${apiUrl}/cars`, {}, { dedupeKey: `catalog-cars:${window.location.search}` })
           .then((response) => {
             if (!response.ok) {
               throw new Error("cars load failed");
@@ -885,6 +976,10 @@ const collectionSchema = {
           .catch(() => {
             handleCatalogLoadError();
           });
+
+        window.addEventListener("online", () => {
+          if (retryButton instanceof HTMLButtonElement && !retryButton.hidden) loadCars().catch(handleCatalogLoadError);
+        });
 
         sortSelect?.addEventListener("change", () => {
           if (sortSelect instanceof HTMLSelectElement) {
@@ -971,7 +1066,7 @@ const collectionSchema = {
     aiSearchForm?.addEventListener("submit", (event) => {
       event.preventDefault();
       if (aiSearchQuery instanceof HTMLTextAreaElement) {
-        void runAiSearch(aiSearchQuery.value);
+        void submitAiSearch(aiSearchQuery.value);
       }
     });
 
@@ -1037,7 +1132,7 @@ const collectionSchema = {
       }
 
       aiSearchQuery.value = button.dataset.aiSuggestion || "";
-      void runAiSearch(aiSearchQuery.value);
+      void submitAiSearch(aiSearchQuery.value);
     });
 
     aiLastSearch?.querySelector("button")?.addEventListener("click", () => {
@@ -1045,7 +1140,7 @@ const collectionSchema = {
         const lastSearch = JSON.parse(localStorage.getItem(LAST_AI_SEARCH_KEY) || "{}");
         if (lastSearch.query && aiSearchQuery instanceof HTMLTextAreaElement) {
           aiSearchQuery.value = lastSearch.query;
-          void runAiSearch(lastSearch.query);
+          void submitAiSearch(lastSearch.query);
         }
       } catch {
         setAiExplanation("Не удалось повторить последний поиск.", true);

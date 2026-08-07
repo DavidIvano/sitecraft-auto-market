@@ -6,7 +6,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Админ-панель авто" noindex>
+<BaseLayout title="Админ-панель авто" variant="workspace" noindex>
   <section class="section page-hero">
     <div class="container">
       <div class="admin-heading">
@@ -20,7 +20,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         </div>
         <div class="admin-heading-actions">
           <a class="button button-light" href="/dashboard/deal-finder/" data-deal-finder-only="true" hidden>Deal Finder</a>
-          <a class="button button-dark" href="/dashboard/new">Добавить объявление</a>
+          <a class="button button-dark" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Добавить объявление</span></a>
         </div>
       </div>
 
@@ -30,6 +30,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         data-api-url={xanoApiUrl}
         data-placeholder-url={placeholderApiUrl}
         data-ai-moderation-path={API_ROUTES.aiModerationCheck}
+        data-listing-translations-path-template={API_ROUTES.adminListingTranslations("__LISTING_ID__")}
         hidden
       >
         <div class="admin-toolbar">
@@ -87,6 +88,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
   <script>
     import { fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isSessionConfirmedExpired, rememberNext } from "../../lib/authClient";
     import { buildModerationReason, runModerationFallback } from "../../lib/ai/moderationFallback";
+    import { refreshAppIcons } from "../../lib/appIcons";
     import {
       canRunModerationAction,
       getEffectiveModerationStatus,
@@ -138,6 +140,34 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       listing_quality_score?: number | string;
     };
 
+    type AdminListingTranslation = {
+      id?: number;
+      locale_code?: string;
+      translation_status?: string;
+      translation_source?: string;
+      source_hash?: string;
+      updated_at?: string;
+    };
+
+    type AdminTranslationJob = {
+      id?: number;
+      target_locale?: string;
+      status?: string;
+      attempt_count?: number;
+      updated_at?: string;
+    };
+
+    type AdminListingTranslationsResponse = {
+      listing?: {
+        source_locale?: string;
+        translation_source_hash?: string;
+        translation_version?: number;
+        translations_ready?: boolean;
+      };
+      translations?: AdminListingTranslation[];
+      jobs?: AdminTranslationJob[];
+    };
+
     const board = document.querySelector("#admin-board");
     const accessMessage = document.querySelector("#admin-access-message");
     const list = document.querySelector("#admin-list");
@@ -159,6 +189,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
     let cars: AdminCar[] = [];
     const aiModerationStates = new Map<string, { loading?: boolean; error?: string; result?: AiModerationCheckResponse; reason?: string }>();
+    const translationStates = new Map<string, { loading?: boolean; error?: string; data?: AdminListingTranslationsResponse }>();
 
     const redirectToLogin = () => {
       rememberNext("/admin/moderation");
@@ -541,6 +572,44 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       `;
     };
 
+    const renderTranslationPanel = (car: AdminCar) => {
+      const carId = String(car.id || "");
+      const state = translationStates.get(carId);
+
+      if (!state) {
+        return `<section class="admin-translation-panel"><button class="button button-light button-small" type="button" data-load-translations="${escapeHtml(carId)}"><i data-lucide="languages" aria-hidden="true"></i><span>Переводы</span></button></section>`;
+      }
+
+      if (state.loading) {
+        return `<section class="admin-translation-panel" aria-live="polite"><strong>Переводы</strong><p>Загружаю состояния переводов...</p></section>`;
+      }
+
+      if (state.error) {
+        return `<section class="admin-translation-panel" aria-live="polite"><strong>Переводы</strong><p class="form-message error">${escapeHtml(state.error)}</p><button class="button button-light button-small" type="button" data-load-translations="${escapeHtml(carId)}">Повторить</button></section>`;
+      }
+
+      const data = state.data || {};
+      const source = data.listing?.source_locale || "не указан";
+      const translations = Array.isArray(data.translations) ? data.translations : [];
+      const jobs = Array.isArray(data.jobs) ? data.jobs : [];
+
+      return `
+        <section class="admin-translation-panel" aria-label="Состояние переводов">
+          <div class="admin-translation-panel-head">
+            <div><strong>Переводы</strong><span>Оригинал: ${escapeHtml(source)} · версия ${escapeHtml(data.listing?.translation_version ?? 0)}</span></div>
+            <span class="status-badge ${data.listing?.translations_ready ? "status-published" : "status-pending_review"}">${data.listing?.translations_ready ? "Готово" : "Подготавливается"}</span>
+          </div>
+          <div class="admin-translation-grid">
+            ${translations.length
+              ? translations.map((item) => `<div><strong>${escapeHtml(item.locale_code || "—")}</strong><span>${escapeHtml(item.translation_status || "pending")}</span><small>${escapeHtml(item.translation_source || "—")}</small></div>`).join("")
+              : `<p>Строки переводов ещё не созданы.</p>`}
+          </div>
+          <p class="admin-translation-jobs">Задания: ${jobs.length} · ожидают: ${jobs.filter((job) => job.status === "pending").length} · устарели: ${jobs.filter((job) => job.status === "outdated").length}</p>
+          <button class="button button-light button-small" type="button" data-load-translations="${escapeHtml(carId)}">Обновить</button>
+        </section>
+      `;
+    };
+
     const renderList = () => {
       if (!(list instanceof HTMLElement)) {
         return;
@@ -568,6 +637,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           const conflict = getStatusConflict(car);
           const displayStatus = getPrimaryDisplayStatus(car);
           const actions = getActions(car);
+          const visibleActionLimit = car.slug ? 2 : 3;
+          const visibleActions = actions.slice(0, visibleActionLimit);
+          const overflowActions = actions.slice(visibleActionLimit);
           const images = getCarImages(car);
 
           return `
@@ -590,7 +662,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                                 <article class="admin-image-card${item.isMain || index === 0 ? " is-main" : ""}" role="listitem">
                                   <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-group="moderation-${escapeHtml(car.id)}" data-lightbox-src="${escapeHtml(item.url)}" data-lightbox-alt="${escapeHtml(title)}, фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
                                     <img src="${escapeHtml(item.url)}" alt="Фото ${index + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
-                                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                                    <span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
                                   </button>
                                   <div class="admin-image-actions">
                                     <span>${item.isMain || index === 0 ? "Главное" : `Фото ${index + 1}`}</span>
@@ -629,37 +701,19 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                 </dl>
                 <p class="admin-description">${escapeHtml(car.description || "Описание не заполнено.")}</p>
                 ${renderSellerContact(car)}
+                ${renderTranslationPanel(car)}
                 ${renderAiModerationCard(car)}
-                <div class="admin-actions">
-                  <div class="admin-safe-actions">
-                    ${actions
-                      .filter((action) => !["delete", "block", "reject"].includes(action))
-                      .map(
-                        (action) =>
-                          `<button class="button button-light" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
-                      )
-                      .join("")}
-                  </div>
-                  <div class="admin-danger-actions">
-                    ${actions
-                      .filter((action) => ["delete", "block", "reject"].includes(action))
-                      .map(
-                        (action) =>
-                          `<button class="button button-danger" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`,
-                      )
-                      .join("")}
-                  </div>
-                  ${
-                    car.slug
-                      ? `<a class="button button-light" href="/cars/${escapeHtml(car.slug)}" target="_blank" rel="noreferrer">Открыть</a>`
-                      : ""
-                  }
+                <div class="admin-actions action-grid">
+                  ${visibleActions.map((action) => `<button class="button ${["delete", "block", "reject"].includes(action) ? "button-danger" : "button-secondary"}" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`).join("")}
+                  ${car.slug ? `<a class="button button-secondary" href="/cars/${escapeHtml(car.slug)}" target="_blank" rel="noreferrer"><i data-lucide="eye" aria-hidden="true"></i><span>Открыть</span></a>` : ""}
+                  ${overflowActions.length ? `<details class="admin-action-menu"><summary class="button button-secondary" aria-label="Другие действия"><i data-lucide="more-horizontal" aria-hidden="true"></i><span>Другие</span></summary><div class="admin-action-menu-popover">${overflowActions.map((action) => `<button class="button ${["delete", "block", "reject"].includes(action) ? "button-danger" : "button-secondary"}" type="button" data-action="${action}" data-id="${escapeHtml(car.id)}">${escapeHtml(actionLabels[action])}</button>`).join("")}</div></details>` : ""}
                 </div>
               </div>
             </article>
           `;
         })
         .join("");
+      refreshAppIcons(list);
     };
 
     const loadCars = async () => {
@@ -753,6 +807,40 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     };
 
     const getCarById = (id: string) => cars.find((car) => String(car.id || "") === id);
+
+    const loadListingTranslations = async (id: string) => {
+      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) return;
+      const apiUrl = board.dataset.apiUrl;
+      const template = board.dataset.listingTranslationsPathTemplate;
+      const token = getAuthToken();
+      if (!apiUrl || !template || !token) return;
+
+      translationStates.set(id, { loading: true });
+      renderList();
+
+      try {
+        const path = template.replace("__LISTING_ID__", encodeURIComponent(id));
+        const response = await fetch(`${apiUrl}${path}`, {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        });
+        if (response.status === 401) {
+          redirectToLogin();
+          return;
+        }
+        if (response.status === 403) {
+          redirectToSupport();
+          return;
+        }
+        if (!response.ok) throw new Error(`translations ${response.status}`);
+        translationStates.set(id, { data: await response.json() as AdminListingTranslationsResponse });
+      } catch (error) {
+        console.error(error);
+        translationStates.set(id, { error: "Не удалось загрузить состояния переводов." });
+      }
+
+      renderList();
+    };
 
     const runAiModerationCheck = async (id: string) => {
       if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) {
@@ -1000,7 +1088,14 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const aiReasonButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-generate]") : null;
       const aiCopyButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-copy]") : null;
       const aiApplyButton = target instanceof HTMLElement ? target.closest("button[data-ai-recommendation-apply]") : null;
+      const translationsButton = target instanceof HTMLElement ? target.closest("button[data-load-translations]") : null;
       const button = target instanceof HTMLElement ? target.closest("button[data-action]") : null;
+
+      if (translationsButton instanceof HTMLButtonElement) {
+        const id = translationsButton.dataset.loadTranslations;
+        if (id) await loadListingTranslations(id);
+        return;
+      }
 
       if (aiCheckButton instanceof HTMLButtonElement) {
         const id = aiCheckButton.dataset.aiModerationCheck;

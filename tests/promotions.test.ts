@@ -64,7 +64,8 @@ test("production frontend uses real credit endpoints and no checkout or test sto
   const listings = readFileSync(new URL("../src/pages/dashboard/listings.astro", import.meta.url), "utf8");
   for (const marker of ["dashboardListingPromote", "idempotency_key", "promotion-confirm-dialog", "INSUFFICIENT_CREDITS", "aria-live", "crypto.randomUUID"]) assert.match(promote, new RegExp(marker));
   assert.doesNotMatch(promote, /purchaseCreate|checkout_url|alert\(|sessionStorage|PUBLIC_PROMOTION_TEST_MODE/);
-  assert.doesNotMatch(listings, /sessionStorage|PUBLIC_PROMOTION_TEST_MODE|PromotionTestStore/);
+  assert.doesNotMatch(listings, /PUBLIC_PROMOTION_TEST_MODE|PromotionTestStore/);
+  assert.match(listings, /sitecraft-dashboard-listings-v1:\$\{getAuthUser\(\)\?\.id/);
 });
 
 test("Xano implementation is transactional, owner scoped, locked and idempotent", () => {

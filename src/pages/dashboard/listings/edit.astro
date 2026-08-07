@@ -11,7 +11,7 @@ import {
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Редактировать объявление" noindex>
+<BaseLayout title="Редактировать объявление" variant="workspace" noindex>
   <section class="section page-hero new-listing-hero">
     <div class="container">
       <p class="eyebrow">Кабинет</p>
@@ -112,19 +112,25 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                   </select>
                 </label>
 
-                <label>
-                  <span>Имя продавца</span>
-                  <input type="text" name="seller_name" />
-                </label>
+                <section class="full-field seller-contact-profile-summary" data-edit-contact-summary>
+                  <h3>Контакты продавца</h3>
+                  <p data-edit-contact-name>Загружаю профиль…</p>
+                  <p data-edit-contact-methods>Проверяю разрешённые способы связи…</p>
+                  <a href="/dashboard/#contact-profile">Изменить контакты для всех объявлений</a>
+                  <p class="form-field-hint">Публичная карточка использует актуальный профиль, поэтому изменения применяются ко всем активным объявлениям.</p>
+                </section>
 
-                <label>
-                  <span>Телефон</span>
-                  <input type="tel" name="seller_phone" />
-                </label>
+                <fieldset class="tuv-choice-field full-field">
+                  <legend>TÜV / HU действует?</legend>
+                  <div class="segmented-choice">
+                    <label><input type="radio" name="has_valid_tuv" value="true" required /> Да</label>
+                    <label><input type="radio" name="has_valid_tuv" value="false" required /> Нет</label>
+                  </div>
+                </fieldset>
 
-                <label class="full-field">
-                  <span>Email</span>
-                  <input type="email" name="seller_email" />
+                <label class="full-field" data-edit-tuv-until-field>
+                  <span>TÜV / HU действует до</span>
+                  <input type="month" name="tuv_valid_until" />
                 </label>
 
                 <label class="full-field">
@@ -210,11 +216,16 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
       <script>
         import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../../lib/authClient";
+        import { getSellerDisplayName, hasPublicSellerContact } from "../../../lib/contactProfile";
         import { getFriendlyErrorMessage } from "../../../lib/errorMessages";
+        import { fetchWithRetry } from "../../../lib/http/fetchWithRetry";
         import { formatBytes } from "../../../lib/imageCompression";
+        import { refreshAppIcons } from "../../../lib/appIcons";
         import { uploadListingImages } from "../../../lib/listingImageUpload";
+        import { API_ROUTES } from "../../../lib/apiRoutes";
+        import type { SellerContactProfile } from "../../../lib/types";
 
-        const token = getAuthToken();
+        const getActiveAuthToken = () => String(getAuthToken() || "").trim();
         const form = document.querySelector("#edit-listing-form");
         const message = document.querySelector("#edit-listing-message");
         const existingPhotoGrid = document.querySelector("#existing-photo-grid");
@@ -228,6 +239,8 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const fuelSelect = document.querySelector("[data-fuel-select]");
         const engineVolumeSelect = document.querySelector("[data-engine-volume-select]");
         const publicCarLink = document.querySelector("#public-car-link");
+        const contactName = document.querySelector("[data-edit-contact-name]");
+        const contactMethods = document.querySelector("[data-edit-contact-methods]");
         const modelDataElement = document.querySelector("#car-model-data");
         const engineVolumeDataElement = document.querySelector("#engine-volume-data");
         const carModelsByBrand = modelDataElement?.textContent
@@ -241,6 +254,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         const photoUrls = new Map<File, string>();
         const deletedImageIds = new Set<number>();
         let currentCar: Record<string, unknown> | null = null;
+        let currentContactProfile: SellerContactProfile | null = null;
 
         const fields = [
           "title",
@@ -253,9 +267,6 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           "country",
           "fuel_type",
           "transmission",
-          "seller_name",
-          "seller_phone",
-          "seller_email",
           "description",
         ];
 
@@ -266,6 +277,49 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         function setMessage(value: string) {
           if (message instanceof HTMLElement) {
             message.textContent = value;
+          }
+        }
+
+        async function waitForAuthToken() {
+          for (let attempt = 0; attempt < 30; attempt += 1) {
+            const token = getActiveAuthToken();
+            if (token) return token;
+            await new Promise((resolve) => window.setTimeout(resolve, 150));
+          }
+          return "";
+        }
+
+        async function loadContactProfile() {
+          if (!(form instanceof HTMLFormElement)) return;
+          const token = await waitForAuthToken();
+          const apiUrl = String(form.dataset.apiUrl || "");
+          if (!token) {
+            requireLogin();
+            return;
+          }
+          const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          if (response.status === 401 && await isSessionConfirmedExpired(apiUrl, token)) {
+            requireLogin();
+            return;
+          }
+          if (!response.ok) {
+            if (contactName instanceof HTMLElement) contactName.textContent = "Профиль контактов временно недоступен.";
+            if (contactMethods instanceof HTMLElement) contactMethods.textContent = "Сохранить черновик можно, но перед модерацией проверьте контакты в кабинете.";
+            return;
+          }
+          currentContactProfile = await response.json() as SellerContactProfile;
+          if (contactName instanceof HTMLElement) {
+            contactName.textContent = getSellerDisplayName(currentContactProfile);
+          }
+          if (contactMethods instanceof HTMLElement) {
+            const methods = [
+              currentContactProfile.show_phone && currentContactProfile.contact_phone ? currentContactProfile.contact_phone : "",
+              currentContactProfile.show_email && currentContactProfile.contact_email ? currentContactProfile.contact_email : "",
+            ].filter(Boolean);
+            contactMethods.textContent = methods.length ? methods.join(" · ") : "Публичные способы связи не включены.";
           }
         }
 
@@ -342,10 +396,34 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           updateModelsForBrand(String(car.model ?? ""));
           updateEngineVolumesForFuel(getEngineVolumeFromDescription(car.description));
+          const tuvValue = car.has_valid_tuv === true ? "true" : car.has_valid_tuv === false ? "false" : "";
+          const tuvControl = form.elements.namedItem("has_valid_tuv");
+          if (tuvControl instanceof RadioNodeList) tuvControl.value = tuvValue;
+          const tuvUntil = form.elements.namedItem("tuv_valid_until");
+          if (tuvUntil instanceof HTMLInputElement) tuvUntil.value = tuvValue === "true" ? String(car.tuv_valid_until || "") : "";
+          syncTuvDateField();
 
           if (publicCarLink instanceof HTMLAnchorElement && car.slug) {
             publicCarLink.href = `/cars/${encodeURIComponent(String(car.slug))}`;
             publicCarLink.hidden = false;
+          }
+        }
+
+        function syncTuvDateField() {
+          if (!(form instanceof HTMLFormElement)) return;
+          const selected = form.querySelector<HTMLInputElement>('input[name="has_valid_tuv"]:checked');
+          const container = form.querySelector<HTMLElement>("[data-edit-tuv-until-field]");
+          const input = container?.querySelector<HTMLInputElement>('input[name="tuv_valid_until"]');
+          const enabled = selected?.value === "true";
+          if (container) container.hidden = !enabled;
+          if (input) {
+            input.disabled = !enabled;
+            input.required = enabled;
+            if (!enabled) {
+              input.value = "";
+              input.setCustomValidity("");
+              input.removeAttribute("aria-invalid");
+            }
           }
         }
 
@@ -367,13 +445,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
               <article class="existing-photo-card">
                 <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-group="edit-existing" data-lightbox-src="${escapeHtml(image.image_url)}" data-lightbox-alt="Фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
                   <img src="${escapeHtml(image.image_url)}" alt="Фото ${index + 1}" loading="lazy" decoding="async" referrerpolicy="no-referrer" />
-                  <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                  <span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
                 </button>
                 <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
                 <button class="button button-light button-small full-width" type="button" data-delete-image-id="${escapeHtml(image.id)}">Удалить</button>
               </article>
             `)
             .join("");
+          refreshAppIcons(existingPhotoGrid);
         }
 
         function syncPhotoInput() {
@@ -419,20 +498,21 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
                 <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
                   <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="edit-new" data-lightbox-src="${url}" data-lightbox-alt="Новое фото ${index + 1}" aria-label="Увеличить новое фото ${index + 1}">
                     <img src="${url}" alt="Новое фото ${index + 1}" />
-                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                    <span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
                   </button>
                   <div class="photo-preview-actions">
                     <span>${index === 0 ? "Новое главное" : `Новое фото ${index + 1}`}</span>
                     <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
                     <div class="photo-preview-buttons">
                       ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
-                      <button type="button" data-remove-photo="${index}">×</button>
+                      <button type="button" data-remove-photo="${index}" aria-label="Удалить фото ${index + 1}"><i data-lucide="x" aria-hidden="true"></i></button>
                     </div>
                   </div>
                 </article>
               `;
             })
             .join("");
+          refreshAppIcons(photoPreviewGrid);
         }
 
         function setPhotoFiles(files: File[]) {
@@ -499,16 +579,17 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
             return;
           }
 
+          const token = await waitForAuthToken();
           if (!token) {
             requireLogin();
             return;
           }
 
-          const response = await fetch(`${apiUrl}/dashboard/listings`, {
+          const response = await fetchWithRetry(`${apiUrl}/dashboard/listings`, {
             headers: {
               Authorization: `Bearer ${token}`,
             },
-          });
+          }, { dedupeKey: `dashboard-listing-edit:${id}` });
 
           if (response.status === 401) {
             if (await isSessionConfirmedExpired(apiUrl, token)) {
@@ -546,6 +627,8 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
 
           const apiUrl = form.dataset.apiUrl;
+          const token = getActiveAuthToken();
+          if (!token) throw new Error("Сессия завершена. Войдите снова.");
           const response = await fetch(`${apiUrl}/dashboard/listings/${id}`, {
             method: "PATCH",
             headers: {
@@ -572,6 +655,8 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
 
           const apiUrl = form.dataset.apiUrl;
+          const token = getActiveAuthToken();
+          if (!token) throw new Error("Сессия завершена. Войдите снова.");
           const response = await fetch(`${apiUrl}/cars/${id}/submit`, {
             method: "PATCH",
             headers: {
@@ -587,6 +672,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
         brandSelect?.addEventListener("change", () => updateModelsForBrand());
         fuelSelect?.addEventListener("change", () => updateEngineVolumesForFuel());
+        form?.addEventListener("change", (event) => {
+          if (event.target instanceof HTMLInputElement && event.target.name === "has_valid_tuv") syncTuvDateField();
+        });
+        syncTuvDateField();
 
         existingPhotoGrid?.addEventListener("click", (event) => {
           const button = event.target instanceof HTMLElement ? event.target.closest("[data-delete-image-id]") : null;
@@ -674,6 +763,11 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           const submitter = (event as SubmitEvent).submitter;
           const shouldSubmit = submitter instanceof HTMLElement && submitter.dataset.action === "submit";
+          if (shouldSubmit && (!currentContactProfile || !hasPublicSellerContact(currentContactProfile))) {
+            setMessage("Добавьте телефон или email в профиле и разрешите его показ покупателям.");
+            document.querySelector("[data-edit-contact-summary]")?.scrollIntoView({ behavior: "smooth", block: "center" });
+            return;
+          }
           const data = new FormData(form);
           const payload = new FormData();
 
@@ -693,6 +787,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
           payload.set("delete_image_ids", JSON.stringify([...deletedImageIds]));
           payload.set("replace_photos", data.get("replace_photos") ? "true" : "false");
+          const hasValidTuv = String(data.get("has_valid_tuv") || "");
+          payload.set("has_valid_tuv", hasValidTuv);
+          payload.set("tuv_valid_until", hasValidTuv === "true" ? String(data.get("tuv_valid_until") || "") : "");
 
           try {
             let uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }> = [];
@@ -731,6 +828,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
           }
         });
 
+        void loadContactProfile();
         loadListing().catch((error) => {
           setMessage(getFriendlyErrorMessage(error, "Не удалось загрузить объявление. Попробуйте обновить страницу."));
         });

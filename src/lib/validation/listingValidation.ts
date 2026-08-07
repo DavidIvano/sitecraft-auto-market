@@ -1,4 +1,5 @@
 import type { CarListing } from "../types";
+import { validateSellerContactProfile } from "../contactProfile";
 import { normalizeListingFields, validateTuvFields } from "../listingFields";
 
 export type ListingValidationSeverity = "critical" | "warning";
@@ -14,6 +15,7 @@ export type ListingValidationOptions = {
   allowExtremePrice?: boolean;
   requirePhotos?: boolean;
   requireDescription?: boolean;
+  requirePublicContact?: boolean;
 };
 
 export type ListingValidationResult = {
@@ -28,8 +30,6 @@ export type ListingValidationResult = {
 
 const CURRENT_YEAR = new Date().getFullYear();
 const VIN_PATTERN = /^[A-HJ-NPR-Z0-9]{17}$/i;
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^\+?[0-9\s().-]{6,22}$/;
 
 function asString(value: unknown) {
   return typeof value === "string" ? value.trim() : value == null ? "" : String(value).trim();
@@ -81,8 +81,16 @@ export function validateListingData(
   const year = asNumber(listing.year);
   const mileage = asNumber(listing.mileage);
   const city = asString(listing.city);
-  const email = asString(listing.seller_email);
-  const phone = asString(listing.seller_phone);
+  const rawContact = listing.seller_contact && typeof listing.seller_contact === "object"
+    ? listing.seller_contact as Record<string, unknown>
+    : {
+        display_name: listing.seller_name,
+        contact_phone: listing.seller_phone,
+        contact_email: listing.seller_email,
+        show_phone: Boolean(asString(listing.seller_phone)),
+        show_email: Boolean(asString(listing.seller_email)),
+        preferred_contact_method: null,
+      };
   const vin = asString(listing.vin);
   const fuelType = asString(listing.fuel_type).toLowerCase();
   const vehicleType = asString(listing.vehicle_type).toLowerCase();
@@ -129,22 +137,27 @@ export function validateListingData(
   if (!asString(canonical.country)) addIssue(issues, "country", "country_required", "Укажите страну.");
 
   const tuvValidation = validateTuvFields(canonical.has_valid_tuv, canonical.tuv_valid_until);
-  tuvValidation.issues.forEach((message) => addIssue(issues, "has_valid_tuv", "tuv_invalid", message));
+  tuvValidation.issues.forEach((message) => addIssue(
+    issues,
+    message.startsWith("Укажите, есть ли") ? "has_valid_tuv" : "tuv_valid_until",
+    "tuv_invalid",
+    message,
+  ));
 
   if ((vehicleType.includes("электро") || fuelType.includes("электро")) && fuelType.includes("диз")) {
     addIssue(issues, "fuel_type", "fuel_conflict", "Нельзя одновременно выбрать электромобиль и дизель.");
   }
 
-  if (email && !EMAIL_PATTERN.test(email)) {
-    addIssue(issues, "seller_email", "email_invalid", "Проверьте email продавца.");
-  }
-
-  if (phone && !PHONE_PATTERN.test(phone)) {
-    addIssue(issues, "seller_phone", "phone_invalid", "Проверьте телефон продавца.");
-  }
-
-  if (!phone && !email) {
-    addIssue(issues, "contact", "contact_required", "Укажите телефон или email для связи.");
+  const contactValidation = validateSellerContactProfile(rawContact, {
+    requirePublicContact: options.requirePublicContact !== false,
+  });
+  if (!contactValidation.valid) {
+    addIssue(
+      issues,
+      contactValidation.field || "seller_contact",
+      contactValidation.field ? "contact_invalid" : "contact_required",
+      contactValidation.message,
+    );
   }
 
   if (vin && !VIN_PATTERN.test(vin)) {

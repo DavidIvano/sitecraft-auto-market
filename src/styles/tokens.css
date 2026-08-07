@@ -1,0 +1,98 @@
+@layer legacy, tokens, base, layout, components, routes, modifiers;
+
+@layer tokens {
+  :root {
+    color-scheme: light;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 20px;
+    --space-6: 24px;
+    --space-8: 32px;
+    --space-10: 40px;
+    --space-12: 48px;
+    --space-16: 64px;
+
+    --radius-control: 10px;
+    --radius-card: 16px;
+    --radius-panel: 20px;
+    --radius-window: 24px;
+    --radius-pill: 999px;
+
+    --control-sm: 40px;
+    --control-md: 44px;
+    --control-lg: 48px;
+
+    --container-max: 1440px;
+    --container-padding-mobile: 12px;
+    --container-padding-tablet: 20px;
+    --container-padding-desktop: 32px;
+
+    --icon-sm: 16px;
+    --icon-md: 18px;
+    --icon-lg: 22px;
+
+    --page-bg: #f4f6fa;
+    --page-bg-secondary: #edf1f7;
+    --surface: #ffffff;
+    --surface-elevated: #ffffff;
+    --surface-muted: #f0f3f8;
+    --surface-inset: #e9edf4;
+    --text-primary: #161a22;
+    --text-secondary: #5e6878;
+    --text-tertiary: #7e8795;
+    --border-subtle: rgba(22, 26, 34, 0.08);
+    --border-default: rgba(22, 26, 34, 0.13);
+    --border-strong: rgba(22, 26, 34, 0.22);
+    --accent: #2484f4;
+    --accent-strong: #126fe0;
+    --accent-soft: rgba(36, 132, 244, 0.12);
+    --accent-contrast: #ffffff;
+    --success: #198f4b;
+    --warning: #b66a08;
+    --danger: #d83b49;
+    --focus-ring: rgba(36, 132, 244, 0.42);
+    --shadow-card: 0 10px 28px rgba(22, 34, 54, 0.08);
+    --shadow-window: 0 24px 64px rgba(13, 24, 42, 0.18);
+    --transition-fast: 160ms ease;
+
+    /* Compatibility aliases used by route-level legacy styles. */
+    --bg: var(--page-bg);
+    --bg-strong: var(--page-bg-secondary);
+    --card: var(--surface);
+    --card-elevated: var(--surface-elevated);
+    --text: var(--text-primary);
+    --muted: var(--text-secondary);
+    --line: var(--border-default);
+    --input-bg: var(--surface-elevated);
+    --shadow: var(--shadow-card);
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page-bg: #0b0d12;
+    --page-bg-secondary: #10131a;
+    --surface: #171a22;
+    --surface-elevated: #1d212b;
+    --surface-muted: #20242e;
+    --surface-inset: #12151c;
+    --text-primary: #f5f7fb;
+    --text-secondary: #a2a9b6;
+    --text-tertiary: #7e8795;
+    --border-subtle: rgba(255, 255, 255, 0.08);
+    --border-default: rgba(255, 255, 255, 0.12);
+    --border-strong: rgba(255, 255, 255, 0.18);
+    --accent: #4e9fff;
+    --accent-strong: #2484f4;
+    --accent-soft: rgba(78, 159, 255, 0.14);
+    --accent-contrast: #ffffff;
+    --success: #2fc76f;
+    --warning: #e8a13a;
+    --danger: #ff5d67;
+    --focus-ring: rgba(78, 159, 255, 0.48);
+    --shadow-card: 0 12px 32px rgba(0, 0, 0, 0.22);
+    --shadow-window: 0 28px 72px rgba(0, 0, 0, 0.42);
+  }
+}

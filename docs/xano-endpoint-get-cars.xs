@@ -11,12 +11,53 @@ query cars verb=GET {
       return = {type: "list"}
     } as $cars
 
+    var $public_car_ids {
+      value = []
+    }
+
+    foreach ($cars) {
+      each as $public_car {
+        array.push $public_car_ids {
+          value = $public_car.id
+        }
+      }
+    }
+
+    var $public_views {
+      value = []
+    }
+
+    conditional {
+      if (($public_car_ids|count) > 0) {
+        try_catch {
+          try {
+            db.query listing_views {
+              where = $db.listing_views.car_id in $public_car_ids
+              return = {type: "list"}
+            } as $all_public_views
+
+            var.update $public_views {
+              value = $all_public_views
+            }
+          }
+
+          catch {
+            var.update $public_views {
+              value = []
+            }
+          }
+        }
+      }
+    }
+
     var $public_cars {
       value = []
     }
 
     foreach ($cars) {
       each as $car {
+        array.filter ($public_views) if ($this.car_id == $car.id) as $car_views
+
         array.push $public_cars {
           value = {
             id                   : $car.id
@@ -68,6 +109,8 @@ query cars verb=GET {
             image_url            : $car.image_url
             cover_image_url      : $car.cover_image_url
             image_urls           : $car.image_urls
+            is_saved             : false
+            views_total          : $car_views|count
             created_at           : $car.created_at
             updated_at           : $car.updated_at
           }
@@ -77,5 +120,6 @@ query cars verb=GET {
   }
 
   response = $public_cars
-  tags = ["sitecraft-auto-market", "cars", "public-only", "privacy-v2", "promotions"]
+  tags = ["sitecraft-auto-market", "cars", "public-only", "privacy-v2", "views-public"]
+  guid = "VfxIFAKb4nlAI3OK54c3ixnHUgk"
 }

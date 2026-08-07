@@ -1,0 +1,30 @@
+@layer components {
+  :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    width: 100%;
+    min-height: var(--control-md);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+    padding: 10px 12px;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), background-color var(--transition-fast);
+  }
+  textarea { min-height: 104px; resize: vertical; }
+  :where(input, select, textarea)::placeholder { color: var(--text-tertiary); opacity: 1; }
+  :where(input, select, textarea):hover { border-color: var(--border-strong); }
+  :where(input, select, textarea):focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--focus-ring); outline: 0; }
+  :where(input, select, textarea):disabled { cursor: not-allowed; background: var(--surface-muted); opacity: .65; }
+  :where(label, .field, .form-field) > :where(span, strong):first-child { color: var(--text-secondary); font-size: .82rem; font-weight: 700; }
+  :where(label, .field, .form-field) { min-width: 0; }
+  .form-grid { gap: var(--space-4); }
+  .form-message, .field-error { color: var(--danger); font-size: .86rem; }
+  .field-help { color: var(--text-tertiary); font-size: .8rem; }
+  input[type="checkbox"], input[type="radio"] { width: 20px; height: 20px; accent-color: var(--accent); }
+  .form-card, .dashboard-form, .auth-card {
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    box-shadow: var(--shadow-card);
+  }
+  input.photo-input { min-height: 0; }
+}

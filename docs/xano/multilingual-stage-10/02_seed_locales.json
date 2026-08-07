@@ -1,0 +1,7 @@
+[
+  {"code":"de","base_language":"de","native_name":"Deutsch","english_name":"German","direction":"ltr","is_active":true,"is_default":true,"is_public":false,"fallback_locale":null,"sort_order":10},
+  {"code":"en","base_language":"en","native_name":"English","english_name":"English","direction":"ltr","is_active":true,"is_default":false,"is_public":false,"fallback_locale":"de","sort_order":20},
+  {"code":"ru","base_language":"ru","native_name":"Русский","english_name":"Russian","direction":"ltr","is_active":true,"is_default":false,"is_public":false,"fallback_locale":"de","sort_order":30},
+  {"code":"uk","base_language":"uk","native_name":"Українська","english_name":"Ukrainian","direction":"ltr","is_active":true,"is_default":false,"is_public":false,"fallback_locale":"de","sort_order":40},
+  {"code":"zh-Hans","base_language":"zh","native_name":"简体中文","english_name":"Simplified Chinese","direction":"ltr","is_active":true,"is_default":false,"is_public":false,"fallback_locale":"en","sort_order":50}
+]

@@ -1,7 +1,8 @@
 import { getStoredAiScores } from "./aiScores.ts";
 import { maskVin, sanitizePublicDescription } from "./listingFields.ts";
 import { isPublicListing } from "./listingStatus.ts";
-import type { CarListing, CarListingImage, PublicSellerSummary } from "./types.ts";
+import { normalizePublicViewCount } from "./listingViews.ts";
+import type { CarListing, CarListingImage, PublicSellerSummary, TranslationResolution } from "./types.ts";
 
 const PUBLIC_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/i;
 
@@ -29,6 +30,28 @@ const toOptionalBoolean = (value: unknown): boolean | null | undefined => {
   if (value === false || value === "false" || value === 0 || value === "0") return false;
   if (value === null) return null;
   return undefined;
+};
+
+const normalizeTranslationResolution = (value: unknown): TranslationResolution | undefined => {
+  const source = toRecord(value);
+  if (!source) return undefined;
+  const requestedLocale = toString(source.requested_locale);
+  const resolvedLocale = toString(source.resolved_locale);
+  const sourceLocale = toString(source.source_locale);
+  const status = toString(source.status) as TranslationResolution["status"];
+  const statuses: TranslationResolution["status"][] = ["original", "machine_translated", "reviewed", "missing", "outdated", "pending", "failed"];
+  if (!requestedLocale || !resolvedLocale || !sourceLocale || !statuses.includes(status)) return undefined;
+  const translationStatus = toString(source.translation_status) as TranslationResolution["translation_status"];
+  const translationVersion = toNumber(source.translation_version);
+  return {
+    requested_locale: requestedLocale,
+    resolved_locale: resolvedLocale,
+    source_locale: sourceLocale,
+    is_fallback: source.is_fallback === true,
+    status,
+    ...(translationStatus ? { translation_status: translationStatus } : {}),
+    ...(translationVersion ? { translation_version: translationVersion } : {}),
+  };
 };
 
 export function isValidPublicCarSlug(value: unknown): value is string {
@@ -118,19 +141,31 @@ const normalizeSeller = (value: unknown): PublicSellerSummary | undefined => {
   const contact = toRecord(source.contact);
   const href = toString(contact?.href);
   const type = contact?.type === "phone" ? "phone" : contact?.type === "email" ? "email" : null;
-  const safeHref = type && /^(tel:|mailto:)/i.test(href) ? href : "";
-  const phoneHref = /^tel:/i.test(toString(contact?.phone_href)) ? toString(contact?.phone_href) : "";
-  const emailHref = /^mailto:/i.test(toString(contact?.email_href)) ? toString(contact?.email_href) : "";
+  const phoneValue = toString(contact?.phone);
+  const emailValue = toString(contact?.email).toLowerCase();
+  const safePhone = /^\+[1-9]\d{7,14}$/.test(phoneValue) ? phoneValue : "";
+  const safeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue) && !/[\r\n]/.test(emailValue)
+    ? emailValue
+    : "";
+  const legacyPhone = type === "phone" && /^tel:\+[1-9]\d{7,14}$/i.test(href) ? href.slice(4) : "";
+  const legacyEmail = type === "email" && /^mailto:[^\s?@]+@[^\s?@]+\.[^\s?@]+$/i.test(href)
+    ? href.slice(7).toLowerCase()
+    : "";
+  const phone = safePhone || legacyPhone;
+  const email = safeEmail || legacyEmail;
+  const phoneHref = phone ? `tel:${phone}` : "";
+  const emailHref = email ? `mailto:${email}` : "";
+  const safeHref = type === "phone" ? phoneHref : type === "email" ? emailHref : "";
 
   return {
     name: toString(source.name) || "Продавец автомобиля",
-    type: toString(source.type),
+    type: toString(source.type) === "dealer" ? "dealer" : "private",
     city: toString(source.city),
     active_listings_count: toNumber(source.active_listings_count),
     contact: phoneHref || emailHref || (safeHref && type) ? {
-      phone: phoneHref ? toString(contact?.phone) : null,
+      phone: phone || null,
       phone_href: phoneHref || null,
-      email: emailHref ? toString(contact?.email) : null,
+      email: email || null,
       email_href: emailHref || null,
       preferred_method: ["phone", "email"].includes(toString(contact?.preferred_method))
         ? toString(contact?.preferred_method) as "phone" | "email"
@@ -191,6 +226,11 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     id: toNumber(source.id),
     slug,
     title,
+    locale: toString(source.locale) || undefined,
+    source_locale: toString(source.source_locale) || undefined,
+    translation_version: toNumber(source.translation_version) || undefined,
+    translations_ready: source.translations_ready === true,
+    translation: normalizeTranslationResolution(source.translation),
     brand,
     model,
     vehicle_type: toString(source.vehicle_type),
@@ -236,6 +276,7 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     homepage_at: toOptionalDate(source.homepage_at),
     homepage_until: toOptionalDate(source.homepage_until),
     last_promoted_at: toOptionalDate(source.last_promoted_at),
+    views_total: normalizePublicViewCount(source.views_total),
     published_at: toOptionalDate(source.published_at),
     promotion_status: (promotionStatus || undefined) as CarListing["promotion_status"],
     promotion_type: toString(source.promotion_type) || undefined,

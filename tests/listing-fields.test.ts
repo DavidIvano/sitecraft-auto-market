@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 import {
@@ -56,8 +57,14 @@ test("accepts no valid TÜV when the month is empty", () => {
   });
 });
 
-test("rejects a TÜV month when the answer is no", () => {
-  assert.match(validateTuvFields(false, "2027-01", july2026).issues.join(" "), /Очистите/);
+test("clears a stale TÜV month when the answer is no", () => {
+  assert.deepEqual(validateTuvFields(false, "2027-01", july2026), {
+    valid: true,
+    issues: [],
+    hasValidTuv: false,
+    validUntil: null,
+  });
+  assert.equal(normalizeListingFields({ has_valid_tuv: "false", tuv_valid_until: "2027-01" } as never).tuv_valid_until, null);
 });
 
 test("requires an explicit TÜV answer at submit time", () => {
@@ -94,4 +101,19 @@ test("hides empty technical values but keeps an explicit no", () => {
   assert.equal(isDisplayValue("NaN"), false);
   assert.equal(isDisplayValue(0), false);
   assert.equal(isDisplayValue("Нет"), true);
+});
+
+test("create, edit, and moderation contracts clear the TÜV date unless confirmed true", async () => {
+  const files = await Promise.all([
+    readFile(new URL("../src/pages/dashboard/new.astro", import.meta.url), "utf8"),
+    readFile(new URL("../src/pages/dashboard/listings/edit.astro", import.meta.url), "utf8"),
+    readFile(new URL("../docs/xano-endpoint-post-listings-create-draft.xs", import.meta.url), "utf8"),
+    readFile(new URL("../docs/xano-endpoint-post-listings-submit-moderation.xs", import.meta.url), "utf8"),
+    readFile(new URL("../docs/xano-endpoint-patch-dashboard-listing.xs", import.meta.url), "utf8"),
+  ]);
+  assert.match(files[0], /input\.disabled = hasValidTuv !== "true"/);
+  assert.match(files[1], /input\.disabled = !enabled/);
+  assert.match(files[2], /var \$tuv_valid_until \{\s*value = null/);
+  assert.match(files[3], /if \(\$has_valid_tuv != true\)[\s\S]*?value = null/);
+  assert.match(files[4], /if \(\$input\.has_valid_tuv == true\)/);
 });

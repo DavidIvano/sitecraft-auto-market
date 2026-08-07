@@ -501,7 +501,7 @@ query "listings/create-draft" verb=POST {
     conditional { if ("/^([0-9]|[1-9][0-9]|100)$/"|regex_matches:$trust_score_raw) { var.update $trust_score_value { value = $trust_score_raw|to_int } } }
   
     var $tuv_valid_until {
-      value = ""
+      value = null
     }
   
     conditional {

@@ -1,0 +1,10 @@
+---
+type Props = { title: string; text: string; href?: string; action?: string; icon?: string };
+const { title, text, href, action, icon = "car-front" } = Astro.props;
+---
+<section class="empty-state" role="status">
+  <i data-lucide={icon} aria-hidden="true"></i>
+  <strong>{title}</strong>
+  <p>{text}</p>
+  {href && action && <a class="button button-primary" href={href}>{action}</a>}
+</section>

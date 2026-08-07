@@ -5,7 +5,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Автомобиль" breadcrumbs={[]}>
+<BaseLayout title="Автомобиль" variant="public" breadcrumbs={[]}>
   <section class="section car-detail-section">
     <div class="container detail-container">
       <div
@@ -244,7 +244,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                   <div class="gallery-stage">
                     ${
                       galleryImages.length > 1
-                        ? `<button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото">‹</button>`
+                        ? `<button class="gallery-nav gallery-prev" type="button" aria-label="Предыдущее фото"><i data-lucide="chevron-left" aria-hidden="true"></i></button>`
                         : ""
                     }
                     <button class="gallery-main-button vehicle-image-trigger" type="button" data-lightbox-trigger data-lightbox-src="${escapeHtml(galleryImage)}" data-lightbox-sources="${escapeHtml(JSON.stringify(galleryImages))}" data-lightbox-alt="${escapeHtml(car.title)}" aria-label="Открыть фото на весь экран">
@@ -256,7 +256,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                     </button>
                     ${
                       galleryImages.length > 1
-                        ? `<button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото">›</button>`
+                        ? `<button class="gallery-nav gallery-next" type="button" aria-label="Следующее фото"><i data-lucide="chevron-right" aria-hidden="true"></i></button>`
                         : ""
                     }
                     <span class="gallery-count">${galleryImages.length > 0 ? `1 / ${galleryImages.length}` : "0 / 0"}</span>

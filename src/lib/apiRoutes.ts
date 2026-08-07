@@ -7,6 +7,9 @@ export const API_ROUTES = {
 
   cars: "/cars",
   carBySlug: (slug: string) => `/cars/${encodeURIComponent(slug)}`,
+  localizedCars: "/public/locale/cars",
+  localizedCarBySlug: (slug: string) => `/public/locale/cars/${encodeURIComponent(slug)}`,
+  carRelatedListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,
   carSellerListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/seller-listings`,
   carSubmit: (id: number | string) => `/cars/${id}/submit`,
   favorites: "/favorites",
@@ -35,6 +38,7 @@ export const API_ROUTES = {
   aiSearchIntent: "/ai/search/intent",
   aiModerationCheck: "/ai/moderation/check-listing",
   listingViewAnalytics: "/analytics/listing-view",
+  myListingViewAnalytics: "/me/analytics/listing-view",
   savedSearches: "/saved-searches",
   listingsCreateDraft: "/listings/create-draft",
   listingsSubmitModeration: "/listings/submit-moderation",
@@ -58,6 +62,7 @@ export const API_ROUTES = {
   dealFinderSyncLogs: "/deal-finder/sync-logs",
 
   adminModeration: "/admin/moderation",
+  adminListingTranslations: (id: number | string) => `/admin/listings/${encodeURIComponent(String(id))}/translations`,
   adminCarApprove: (id: number | string) => `/admin/cars/${id}/approve`,
   adminCarReject: (id: number | string) => `/admin/cars/${id}/reject`,
   adminCarDelete: (id: number | string) => `/admin/cars/${id}/delete`,
@@ -81,6 +86,8 @@ export const LOCAL_ROUTES = {
 } as const;
 
 export const BACKEND_ROUTES_REQUIRING_XANO_WORK = [
+  "GET /public/locale/cars",
+  "GET /public/locale/cars/{slug}",
   "POST /analytics/listing-view",
   "POST /saved-searches",
   "POST /deal-finder/searches",

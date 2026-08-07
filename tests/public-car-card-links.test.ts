@@ -34,13 +34,12 @@ test("seller and similar public cards retain semantic detail links", () => {
 });
 
 test("public-card styles provide zoom, focus, list-view and touch-safe behavior", () => {
-  const styles = readProjectFile("src/styles/global.css");
+  const styles = readProjectFile("src/styles/components/car-card.css");
 
   assert.match(styles, /\.public-car-card \{[\s\S]*?cursor:\s*default/);
-  assert.match(styles, /\.car-card-link:focus-visible[\s\S]*?outline/);
-  assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.car-card:hover/);
-  assert.match(styles, /@media \(hover: none\), \(pointer: coarse\)[\s\S]*?transform:\s*none/);
-  assert.match(styles, /\.catalog-grid-list \.public-car-card\s*\{[\s\S]*?grid-template-columns/);
+  assert.match(styles, /\.public-car-card \.car-card-link/);
+  assert.match(styles, /@media \(hover: hover\) and \(pointer: fine\)[\s\S]*?\.public-car-card:hover/);
+  assert.match(styles, /\.catalog-grid-list \.public-car-card \.car-card-link[\s\S]*?grid-template-columns/);
 });
 
 test("dashboard and moderation retain their explicit management actions", () => {

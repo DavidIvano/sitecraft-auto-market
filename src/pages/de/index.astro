@@ -1,0 +1,62 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { GERMAN_PUBLIC_ROUTES_ENABLED, I18N_PREVIEW_NOINDEX } from "../../lib/config";
+
+export const prerender = false;
+
+if (!GERMAN_PUBLIC_ROUTES_ENABLED) {
+  Astro.response.status = 404;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return Astro.rewrite("/404");
+}
+
+Astro.response.headers.set("Cache-Control", I18N_PREVIEW_NOINDEX ? "no-store" : "public, max-age=0, s-maxage=120, stale-while-revalidate=600");
+Astro.response.headers.set("X-Robots-Tag", I18N_PREVIEW_NOINDEX ? "noindex, nofollow" : "index, follow");
+
+const pageSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: "SiteCraft Auto Market Deutschland",
+  description: "Geprüfte Fahrzeuganzeigen mit vorhandenen deutschen Inhalten.",
+  inLanguage: "de",
+};
+---
+
+<BaseLayout
+  variant="public"
+  locale="de"
+  title="Fahrzeuge sicher finden und verkaufen"
+  description="Geprüfte Fahrzeuganzeigen mit vorhandenen deutschen Inhalten bei SiteCraft Auto Market."
+  canonicalPath="/de/"
+  noindex={I18N_PREVIEW_NOINDEX}
+  jsonLd={pageSchema}
+  alternateLocales={[
+    { locale: "ru", path: "/", label: "Русская версия" },
+    { locale: "de", path: "/de/", label: "Deutsch" },
+  ]}
+>
+  <section class="section page-hero">
+    <div class="container">
+      <p class="eyebrow">SiteCraft Auto Market</p>
+      <h1>Geprüfte Fahrzeuge auf Deutsch</h1>
+      <p class="lead">Hier erscheinen ausschließlich Anzeigen mit einem vorhandenen und aktuellen deutschen Inhalt. Fehlende Übersetzungen werden nicht durch russische Texte ersetzt.</p>
+      <div class="hero-cta-row">
+        <a class="button button-accent" href="/de/cars/"><i data-lucide="search" aria-hidden="true"></i><span>Fahrzeuge ansehen</span></a>
+        <a class="button button-light" href="/dashboard/new" hreflang="ru"><i data-lucide="plus" aria-hidden="true"></i><span>Fahrzeug verkaufen</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Verlässliche Sprachauflösung</p>
+          <h2>Kein stiller Sprachwechsel</h2>
+          <p class="section-subtitle">Eine deutsche Fahrzeugseite ist nur verfügbar, wenn der deutsche Datensatz freigegeben und aktuell ist.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

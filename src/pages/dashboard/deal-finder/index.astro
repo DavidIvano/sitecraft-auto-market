@@ -5,7 +5,7 @@ import DealFinderStats from "../../../components/deal-finder/DealFinderStats.ast
 import DealFinderFilters from "../../../components/deal-finder/DealFinderFilters.astro";
 import DealFinderSkeleton from "../../../components/deal-finder/DealFinderSkeleton.astro";
 ---
-<BaseLayout title="Deal Finder" noindex>
+<BaseLayout title="Deal Finder" variant="workspace" noindex>
   <section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Сегодня" description="Приоритетные предложения, следующие действия и состояние источника." /><div class="deal-finder-refresh-row"><p>Данные загружаются напрямую из закрытого Xano-раздела.</p><button class="button button-dark" type="button" data-deal-finder-refresh>Обновить</button></div><div id="deal-finder-today" class="deal-finder-today" aria-live="polite" aria-busy="true"><span>Собираем рабочий список…</span></div><DealFinderStats /><DealFinderFilters /><div id="deal-finder-feed"><DealFinderSkeleton /></div></div></section>
   <script>
     import { mountDealFinderFeed } from "../../../lib/deal-finder/client";

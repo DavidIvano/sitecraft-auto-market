@@ -1,0 +1,97 @@
+---
+import CarCard from "../../../../components/CarCard.astro";
+import BaseLayout from "../../../../layouts/BaseLayout.astro";
+import { SITE_URL } from "../../../../lib/config";
+import { isPublicListing } from "../../../../lib/listingStatus";
+import type { CarListing } from "../../../../lib/types";
+import { getApprovedCars } from "../../../../lib/xano";
+import {
+  buildVehicleTaxonomy,
+  buildVehicleTaxonomySeo,
+  findVehicleBrandFacet,
+  findVehicleModelFacet,
+  isValidVehicleFacetSlug,
+} from "../../../../lib/seo/vehicleTaxonomy";
+
+export const prerender = false;
+
+const brandSlug = String(Astro.params.brand ?? "").trim();
+const modelSlug = String(Astro.params.model ?? "").trim();
+if (!isValidVehicleFacetSlug(brandSlug) || !isValidVehicleFacetSlug(modelSlug)) {
+  Astro.response.status = 404;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return Astro.rewrite("/404");
+}
+
+let cars: CarListing[] = [];
+try {
+  cars = (await getApprovedCars({ requireConfigured: true })).filter(isPublicListing);
+} catch {
+  Astro.response.status = 503;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  Astro.response.headers.set("Retry-After", "300");
+  return Astro.rewrite("/service-unavailable");
+}
+
+const brand = findVehicleBrandFacet(buildVehicleTaxonomy(cars), brandSlug);
+const model = brand ? findVehicleModelFacet(brand, modelSlug) : null;
+if (!brand || !model) {
+  Astro.response.status = 404;
+  Astro.response.headers.set("Cache-Control", "no-store");
+  Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
+  return Astro.rewrite("/404");
+}
+
+Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=3600");
+Astro.response.headers.set("X-Robots-Tag", "index, follow");
+const seo = buildVehicleTaxonomySeo({ brand, model, siteUrl: SITE_URL });
+---
+
+<BaseLayout
+  variant="public"
+  title={seo.title}
+  description={seo.description}
+  canonicalPath={seo.path}
+  jsonLd={[seo.collection, seo.breadcrumb]}
+  breadcrumbs={[
+    { href: "/", label: "Главная" },
+    { href: "/cars", label: "Автомобили" },
+    { href: `/cars/brand/${brand.slug}`, label: brand.name },
+    { label: model.name },
+  ]}
+>
+  <section class="section page-hero taxonomy-hero">
+    <div class="container taxonomy-hero-inner">
+      <div>
+        <p class="eyebrow">Модель автомобиля</p>
+        <h1>{seo.heading}</h1>
+        <p class="lead">{seo.description}</p>
+      </div>
+      <dl class="taxonomy-summary" aria-label={`Сводка по ${brand.name} ${model.name}`}>
+        <div><dt>Объявления</dt><dd>{model.cars.length}</dd></div>
+        <div><dt>Годы</dt><dd>{seo.summary.minYear && seo.summary.maxYear ? `${seo.summary.minYear}–${seo.summary.maxYear}` : "Уточняются"}</dd></div>
+        <div><dt>Цена от</dt><dd>{seo.summary.minPrice ? `${seo.summary.minPrice.toLocaleString("ru-RU")} €` : "Уточняется"}</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="section catalog-results-section" aria-labelledby="model-listings-title">
+    <div class="container catalog-results-shell">
+      <div class="catalog-results-toolbar">
+        <div>
+          <span>В продаже</span>
+          <strong id="model-listings-title">{model.cars.length} авто {brand.name} {model.name}</strong>
+        </div>
+        <div class="catalog-toolbar-actions">
+          <a class="button button-light compact-button" href={`/cars/brand/${brand.slug}`}>Все {brand.name}</a>
+          <a class="button button-light compact-button" href="/cars">Весь каталог</a>
+        </div>
+      </div>
+      <div class="cards-grid catalog-grid taxonomy-cars-grid">
+        {model.cars.map((car, index) => <CarCard car={car} priority={index < 4} source="model_page" />)}
+      </div>
+    </div>
+  </section>
+</BaseLayout>

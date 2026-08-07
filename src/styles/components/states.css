@@ -1,0 +1,18 @@
+@layer components {
+  :where(.empty-state, .error-state, .loading-state, .catalog-empty-state) { min-width: 0; }
+  .empty-state, .error-state, .loading-state {
+    display: grid;
+    justify-items: center;
+    gap: var(--space-3);
+    border: 1px dashed var(--border-strong);
+    border-radius: var(--radius-panel);
+    background: var(--surface);
+    padding: var(--space-8);
+    text-align: center;
+  }
+  :where(.empty-state, .error-state, .loading-state) svg { width: 28px; height: 28px; color: var(--accent); }
+  :where(.empty-state, .error-state, .loading-state) p { max-width: 48ch; margin: 0; }
+  .skeleton, [data-skeleton] { border-radius: var(--radius-control); background: linear-gradient(90deg, var(--surface-muted), var(--surface-inset), var(--surface-muted)); background-size: 200% 100%; animation: skeleton-shift 1.6s ease-in-out infinite; }
+  @keyframes skeleton-shift { to { background-position-x: -200%; } }
+  @media (prefers-reduced-motion: reduce) { .skeleton, [data-skeleton] { animation: none; } }
+}

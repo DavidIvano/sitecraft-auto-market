@@ -1,13 +1,31 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
+import CarCard from "../components/CarCard.astro";
+import LoadingState from "../components/states/LoadingState.astro";
 import { carBrands, fuelTypes, popularCarBrands, transmissions } from "../data/carOptions";
 import { getBrandLogoSvg } from "../lib/brandLogos";
+import { getApprovedCars } from "../lib/xano";
+import { isPublicListing } from "../lib/listingStatus";
+import type { CarListing } from "../lib/types";
+import { GERMAN_PUBLIC_ROUTES_ENABLED } from "../lib/config";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
+let latestCars: CarListing[] = [];
+try {
+  latestCars = (await getApprovedCars()).filter(isPublicListing).slice(0, 8);
+} catch {
+  latestCars = [];
+}
 ---
 
-<BaseLayout title="Премиальная доска объявлений авто">
+<BaseLayout
+  title="Премиальная доска объявлений авто"
+  variant="public"
+  alternateLocales={GERMAN_PUBLIC_ROUTES_ENABLED ? [
+    { locale: "ru", path: "/", label: "Русский" },
+    { locale: "de", path: "/de/", label: "Deutsch" },
+  ] : []}
+>
   <section class="market-hero">
     <div class="market-hero-media" aria-hidden="true">
       <img id="home-hero-image" alt="" hidden />
@@ -18,8 +36,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         <h1>Купите или продайте авто быстрее с AI-помощником</h1>
         <p class="lead">Загрузите фото автомобиля — AI заполнит черновик, подскажет, что улучшить, проверит качество объявления и поможет покупателю найти подходящую машину.</p>
         <div class="hero-cta-row">
-          <a class="button button-accent" href="/dashboard/new">Создать объявление по фото</a>
-          <a class="button button-light" href="/cars#ai-buyer-search-title">Подобрать авто с AI</a>
+          <a class="button button-accent" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>
+          <a class="button button-light" href="/cars#ai-buyer-search-title"><i data-lucide="search" aria-hidden="true"></i><span>Найти автомобиль</span></a>
         </div>
         <p class="ai-microcopy">AI помогает с данными объявления, но финальную информацию подтверждает продавец.</p>
       </div>
@@ -28,7 +46,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         class="home-search-panel"
         id="home-search-panel"
         data-api-url={xanoApiUrl}
-        data-placeholder-url={placeholderApiUrl}
       >
         <div class="search-tabs" aria-label="Категория транспорта">
           <button class="search-tab is-active" type="button">Авто</button>
@@ -47,10 +64,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             Модель
             <input name="model" type="search" placeholder="Например, A4" />
           </label>
-          <label class="search-field search-field-price-min">
-            Цена от
-            <input name="price_min" type="number" min="0" step="100" placeholder="5000" />
-          </label>
           <label class="search-field search-field-price-max">
             Цена до
             <input name="price_max" type="number" min="0" step="100" placeholder="40000" />
@@ -59,31 +72,19 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             Год от
             <input name="year" type="number" min="1950" max="2030" placeholder="2018" />
           </label>
-          <label class="search-field search-field-mileage">
-            Пробег до
-            <input name="mileage" type="number" min="0" step="1000" placeholder="150000" />
-          </label>
-          <label class="search-field search-field-fuel">
-            Топливо
-            <select name="fuel">
-              <option value="">Неважно</option>
-              {fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}
-            </select>
-          </label>
-          <label class="search-field search-field-transmission">
-            Трансмиссия
-            <select name="transmission">
-              <option value="">Неважно</option>
-              {transmissions.map((transmission) => <option value={transmission}>{transmission}</option>)}
-            </select>
-          </label>
-          <label class="search-field search-field-city">
-            Город
-            <input name="city" type="search" placeholder="Берлин" />
-          </label>
+          <details class="home-extra-filters">
+            <summary><span>Больше фильтров</span><i data-lucide="chevron-down" aria-hidden="true"></i></summary>
+            <div class="home-extra-filters-grid">
+              <label class="search-field search-field-price-min">Цена от<input name="price_min" type="number" min="0" step="100" placeholder="5000" /></label>
+              <label class="search-field search-field-mileage">Пробег до<input name="mileage" type="number" min="0" step="1000" placeholder="150000" /></label>
+              <label class="search-field search-field-fuel">Топливо<select name="fuel"><option value="">Неважно</option>{fuelTypes.map((fuel) => <option value={fuel}>{fuel}</option>)}</select></label>
+              <label class="search-field search-field-transmission">Трансмиссия<select name="transmission"><option value="">Неважно</option>{transmissions.map((transmission) => <option value={transmission}>{transmission}</option>)}</select></label>
+              <label class="search-field search-field-city">Город<input name="city" type="search" placeholder="Берлин" /></label>
+            </div>
+          </details>
           <div class="search-actions">
             <button class="button button-accent" id="home-search-button" type="submit">
-              Смотреть объявления
+              Найти автомобили
             </button>
             <button class="button button-ghost" id="home-reset-button" type="button">Сбросить</button>
           </div>
@@ -132,8 +133,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           <h2>Категории авто</h2>
         </div>
         <div class="slider-controls" aria-label="Управление слайдером категорий">
-          <button class="slider-button" id="category-prev" type="button" aria-label="Предыдущие категории">‹</button>
-          <button class="slider-button" id="category-next" type="button" aria-label="Следующие категории">›</button>
+          <button class="slider-button" id="category-prev" type="button" aria-label="Предыдущие категории"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+          <button class="slider-button" id="category-next" type="button" aria-label="Следующие категории"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
         </div>
       </div>
       <div class="category-carousel" aria-label="Категории автомобилей">
@@ -151,8 +152,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           <h2>Быстрый выбор бренда</h2>
         </div>
         <div class="slider-controls" aria-label="Управление слайдером марок">
-          <button class="slider-button" id="brand-prev" type="button" aria-label="Предыдущие марки">‹</button>
-          <button class="slider-button" id="brand-next" type="button" aria-label="Следующие марки">›</button>
+          <button class="slider-button" id="brand-prev" type="button" aria-label="Предыдущие марки"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
+          <button class="slider-button" id="brand-next" type="button" aria-label="Следующие марки"><i data-lucide="chevron-right" aria-hidden="true"></i></button>
         </div>
       </div>
       <div class="brand-carousel" aria-label="Популярные марки автомобилей">
@@ -179,15 +180,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         </div>
       </div>
       <div
-        class="cards-grid"
+        class="cards-grid public-car-grid"
         id="home-live-cars-grid"
-        hidden
+        hidden={latestCars.length === 0}
       >
+        {latestCars.map((car, index) => <CarCard car={car} priority={index < 4} source="homepage_latest" />)}
       </div>
-      <div class="empty-state" id="home-loading-state">
-        <h3>Загружаю свежие автомобили</h3>
-        <p>Подбираю последние опубликованные объявления.</p>
-      </div>
+      <div id="home-loading-state" hidden={latestCars.length > 0}><LoadingState title="Загружаю свежие автомобили" text="Подбираю последние опубликованные объявления." /></div>
       <p class="form-message" id="home-live-cars-message"></p>
       <div class="center-action">
         <a class="button button-light" href="/cars">Все авто</a>
@@ -214,6 +213,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     import { isPublicListing } from "../lib/listingStatus";
     import { renderPublicCarCardMarkup } from "../lib/publicCarCard";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../lib/publicCarCardsClient";
+    import { fetchWithRetry } from "../lib/http/fetchWithRetry";
     import { getHomepagePromotedCars, sortCarsByActivePromotion } from "../lib/promotions/model";
     import type { CarListing } from "../lib/types";
 
@@ -555,10 +555,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
     if (searchPanel instanceof HTMLElement && message instanceof HTMLElement) {
       const apiUrl = searchPanel.dataset.apiUrl;
-      const placeholderUrl = searchPanel.dataset.placeholderUrl;
-
-      if (apiUrl && apiUrl !== placeholderUrl) {
-        fetch(`${apiUrl}/cars`)
+      if (apiUrl) {
+        const loadFreshCars = () => fetchWithRetry(`${apiUrl}/cars`, {}, { dedupeKey: "home-fresh-cars" })
           .then((response) => {
             if (!response.ok) {
               throw new Error("latest cars load failed");
@@ -585,8 +583,14 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             if (loadingState instanceof HTMLElement) {
               loadingState.hidden = true;
             }
-            message.textContent = "Не удалось загрузить объявления. Попробуйте обновить страницу.";
+            message.textContent = liveGrid instanceof HTMLElement && liveGrid.children.length > 0
+              ? "Не удалось обновить данные. Показываем последнюю сохранённую версию."
+              : "Не удалось загрузить объявления. Повторим запрос после восстановления сети.";
           });
+        void loadFreshCars();
+        window.addEventListener("online", () => {
+          if (message.textContent.includes("Не удалось")) void loadFreshCars();
+        });
       } else {
         if (loadingState instanceof HTMLElement) {
           loadingState.hidden = true;

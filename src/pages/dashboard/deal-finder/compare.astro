@@ -2,7 +2,7 @@
 import BaseLayout from "../../../layouts/BaseLayout.astro";
 import DealFinderHeader from "../../../components/deal-finder/DealFinderHeader.astro";
 ---
-<BaseLayout title="Сравнение Deal Finder" noindex>
+<BaseLayout title="Сравнение Deal Finder" variant="workspace" noindex>
   <section class="section deal-finder-section"><div class="container"><DealFinderHeader title="Сравнение" description="Сопоставьте от двух до четырёх предложений по фактам, AI-оценке и рабочим заметкам." active="compare" /><div id="deal-finder-comparison" class="deal-finder-stage-view" aria-busy="true">Загрузка сравнения…</div></div></section>
   <script>import { mountDealFinderComparison } from "../../../lib/deal-finder/client"; const root = document.querySelector<HTMLElement>("#deal-finder-comparison"); if (root) mountDealFinderComparison(root);</script>
 </BaseLayout>

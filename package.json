@@ -8,13 +8,18 @@
   "scripts": {
     "test": "node --experimental-strip-types --test tests/*.test.ts",
     "dev": "astro dev",
-    "build": "astro build && node scripts/prepare-cloudflare-pages.mjs",
+    "build": "astro build && node scripts/prepare-cloudflare-pages.mjs && node scripts/verify-built-assets.mjs",
     "build:astro": "astro build",
     "preview": "astro preview",
     "check": "astro check",
     "test:upload": "node --experimental-strip-types --test tests/upload-listing-images.test.ts",
     "test:status": "node --experimental-strip-types --test tests/listing-status.test.ts",
     "test:dashboard": "node --experimental-strip-types --test tests/dashboard-listings.test.ts",
+    "test:multilingual:r3": "node --experimental-strip-types --test tests/multilingual-release-3-preparation.test.ts tests/multilingual-foundation-stage-10.test.ts tests/multilingual-source-hash-stage-10.test.ts tests/multilingual-backfill-stage-10.test.ts tests/multilingual-dual-write-stage-10.test.ts",
+    "test:http:local": "node scripts/run-cloudflare-http-integration.mjs",
+    "test:http:production": "node scripts/http-public-seo-integration.mjs --base-url https://automarket.sitecraft.agency",
+    "test:module-assets": "node scripts/test-module-assets.mjs",
+    "verify:assets": "node scripts/verify-built-assets.mjs",
     "deal-finder:analyze": "node scripts/deal-finder-analyze-listings.mjs"
   },
   "dependencies": {

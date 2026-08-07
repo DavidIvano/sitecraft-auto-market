@@ -4,6 +4,7 @@ Workspace `sitecraft.agency` (`115940`), live branch `v1`, API group `sitecraft-
 
 | ID | Method | Route |
 | ---: | --- | --- |
+| 3999920 | GET | `/cars/{slug}/related` |
 | 3997833 | DELETE | `/favorites/{listing_id}` |
 | 3997834 | POST | `/favorites/{listing_id}` |
 | 3997835 | POST | `/favorites/status` |

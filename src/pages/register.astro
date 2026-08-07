@@ -6,7 +6,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 ---
 
-<BaseLayout title="Регистрация" noindex>
+<BaseLayout title="Регистрация" variant="auth" noindex>
   <AuthShell
     infoEyebrow="Старт продавца"
     infoTitle="Создайте кабинет для публикации авто"
@@ -16,7 +16,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     formTitle="Создать аккаунт"
   >
       <div class="auth-panel" data-api-url={xanoApiUrl} data-placeholder-url={placeholderApiUrl}>
-        <a class="button button-light full-width" href="/login">Продолжить с Google</a>
+        <a class="button button-light full-width" href="/login"><img class="google-auth-icon" src="/google-g.svg" alt="" width="18" height="18" /><span>Продолжить с Google</span></a>
         <div class="auth-divider"><span>или email</span></div>
         <form class="form-panel" id="register-form">
           <div class="full-field">
@@ -33,7 +33,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             <label for="register-password">Пароль</label>
             <span class="password-field">
               <input id="register-password" type="password" name="password" autocomplete="new-password" minlength="8" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle><i data-lucide="eye" aria-hidden="true"></i></button>
             </span>
           </div>
 
@@ -41,17 +41,15 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             <label for="register-password-confirm">Повторите пароль</label>
             <span class="password-field">
               <input id="register-password-confirm" type="password" name="passwordConfirm" autocomplete="new-password" minlength="8" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle><i data-lucide="eye" aria-hidden="true"></i></button>
             </span>
           </div>
 
-          <button class="button button-dark full-width" id="register-submit" type="submit">Создать аккаунт</button>
-          <p class="form-message">
+          <button class="button button-primary full-width" id="register-submit" type="submit">Создать аккаунт</button>
+          <p class="auth-form-note">
             Уже есть аккаунт? <a href="/login">Войти</a>
           </p>
-          <p class="form-message" id="register-message">
-            Пароль должен быть не короче 8 символов, с буквами и цифрами.
-          </p>
+          <p class="form-message" id="register-message" role="status" aria-live="polite" hidden></p>
           <a class="button button-light full-width" id="register-google-link" href="/login?next=/dashboard" hidden>
             Войти через Google
           </a>
@@ -112,6 +110,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) {
         return;
       }
+      message.hidden = false;
 
       const panel = form.closest(".auth-panel");
       const apiUrl = panel instanceof HTMLElement ? panel.dataset.apiUrl : "";

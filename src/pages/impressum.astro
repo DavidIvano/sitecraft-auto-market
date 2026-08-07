@@ -5,7 +5,7 @@ const title = "Impressum";
 const description = "Юридическая информация и контакты SiteCraft Auto Market.";
 ---
 
-<BaseLayout title={title} description={description} canonicalPath="/impressum">
+<BaseLayout title={title} description={description} canonicalPath="/impressum" variant="legal">
   <section class="section page-hero">
     <div class="container prose-page">
       <p class="eyebrow">Юридическая информация</p>
@@ -18,10 +18,12 @@ const description = "Юридическая информация и контак
         <h2>Контакты</h2>
         <p>
           Вопросы по поддержке, данным, объявлениям и модерации:
+          {" "}
           <a href="mailto:support@sitecraft.agency">support@sitecraft.agency</a>
         </p>
         <p>
           Сайт компании:
+          {" "}
           <a href="https://sitecraft.agency" target="_blank" rel="noopener noreferrer">sitecraft.agency</a>
         </p>
       </div>

@@ -8,7 +8,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/oauth/google/init";
 ---
 
-<BaseLayout title="Вход" noindex>
+<BaseLayout title="Вход" variant="auth" noindex>
   <AuthShell
     infoEyebrow="Кабинет продавца"
     infoTitle="Управляйте объявлениями в одном месте"
@@ -27,7 +27,8 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
           data-placeholder-url={placeholderApiUrl}
           data-start-path={googleStartPath}
         >
-          Продолжить с Google
+          <img class="google-auth-icon" src="/google-g.svg" alt="" width="18" height="18" />
+          <span>Продолжить с Google</span>
         </button>
         <p class="form-message" id="login-message" hidden></p>
 
@@ -43,15 +44,15 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
             <label for="login-password">Пароль</label>
             <span class="password-field">
               <input id="login-password" type="password" name="password" autocomplete="current-password" required />
-              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle>Показать</button>
+              <button class="password-toggle" type="button" aria-label="Показать пароль" aria-pressed="false" data-password-toggle><i data-lucide="eye" aria-hidden="true"></i></button>
             </span>
           </div>
 
-          <button class="button button-dark full-width" id="password-login-submit" type="submit">Войти по email</button>
-          <p class="form-message">
+          <button class="button button-primary full-width" id="password-login-submit" type="submit">Войти по email</button>
+          <p class="auth-form-note">
             Нет аккаунта? <a href="/register">Зарегистрироваться</a>
           </p>
-          <p class="form-message" id="password-login-message">Введите email и пароль.</p>
+          <p class="form-message" id="password-login-message" role="status" aria-live="polite" hidden></p>
         </form>
       </div>
   </AuthShell>
@@ -181,6 +182,7 @@ const googleStartPath = import.meta.env.PUBLIC_XANO_GOOGLE_AUTH_START_PATH ?? "/
       if (!(passwordForm instanceof HTMLFormElement) || !(passwordMessage instanceof HTMLElement)) {
         return;
       }
+      passwordMessage.hidden = false;
 
       const panel = passwordForm.closest(".auth-panel");
       const apiUrl = panel instanceof HTMLElement ? panel.dataset.apiUrl : "";

@@ -32,6 +32,22 @@
       return = {type: "list"}
     } as $listings
 
+    var $public_views { value = [] }
+    conditional {
+      if (($listing_ids|count) > 0) {
+        try_catch {
+          try {
+            db.query listing_views {
+              where = $db.listing_views.car_id in $listing_ids
+              return = {type: "list"}
+            } as $all_public_views
+            var.update $public_views { value = $all_public_views }
+          }
+          catch { var.update $public_views { value = [] } }
+        }
+      }
+    }
+
     var $items { value = [] }
     foreach ($favorites.items) {
       each as $favorite {
@@ -39,6 +55,7 @@
           each as $listing {
             conditional {
               if ($listing.id == $favorite.car_listing_id) {
+                array.filter ($public_views) if ($this.car_id == $listing.id) as $listing_public_views
                 array.push $items {
                   value = {
                     id: $listing.id, slug: $listing.slug, title: $listing.title,
@@ -51,7 +68,8 @@
                     image_urls: $listing.image_urls, images: $listing.images,
                     status: $listing.status, moderation_status: $listing.moderation_status,
                     published_at: $listing.published_at, created_at: $listing.created_at,
-                    is_saved: true, saved_at: $favorite.created_at
+                    is_saved: true, saved_at: $favorite.created_at,
+                    views_total: $listing_public_views|count
                   }
                 }
               }
@@ -310,6 +328,14 @@
     precondition (($next_show_email != true) || ($next_email != null)) {
       error_type = "inputerror"
       error = "EMAIL_REQUIRED"
+    }
+    precondition (($next_method != "phone") || (($next_show_phone == true) && ($next_phone != null))) {
+      error_type = "inputerror"
+      error = "PREFERRED_PHONE_NOT_PUBLIC"
+    }
+    precondition (($next_method != "email") || (($next_show_email == true) && ($next_email != null))) {
+      error_type = "inputerror"
+      error = "PREFERRED_EMAIL_NOT_PUBLIC"
     }
 
     db.edit automarket_users {

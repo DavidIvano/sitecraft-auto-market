@@ -43,7 +43,8 @@ test("contact UI exposes only explicit public profile fields", () => {
   const detail = read("src/pages/cars/[slug].astro");
   const form = read("src/components/dashboard/ContactProfileForm.astro");
   const modal = read("src/components/ContactSellerModal.astro");
-  assert.match(detail, /phone_href/);
+  assert.match(detail, /rawPhoneValue/);
+  assert.match(detail, /`tel:\$\{phoneValue\}`/);
   assert.match(form, /show_phone/);
   assert.match(form, /show_email/);
   assert.match(form, /preferred_contact_method/);

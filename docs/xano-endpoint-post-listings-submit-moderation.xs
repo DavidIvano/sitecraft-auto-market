@@ -1110,12 +1110,9 @@ query "listings/submit-moderation" verb=POST {
     }
   
     conditional {
-      if (($has_valid_tuv == false) && ($tuv_valid_until != "")) {
-        array.push $errors {
-          value = {
-            field  : "tuv_valid_until"
-            message: "Очистите срок TÜV / HU, если действующего осмотра нет."
-          }
+      if ($has_valid_tuv != true) {
+        var.update $tuv_valid_until {
+          value = null
         }
       }
     }

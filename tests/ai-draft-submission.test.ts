@@ -5,7 +5,9 @@ import {
   BACKEND_FIELD_TO_CONTROL,
   extractAiDraftIdentity,
   extractListingFieldIssues,
+  ListingSubmissionApiError,
   normalizeTuvSubmissionValue,
+  readListingSubmissionApiResponse,
   validateAiDraftSubmission,
 } from "../src/lib/aiDraftSubmission.ts";
 
@@ -103,15 +105,15 @@ test("rejects future first registration and more than eight images", () => {
   );
 });
 
-test("rejects a TUV date when the seller explicitly selects no", () => {
+test("accepts false TUV and ignores a stale AI date", () => {
   const result = validateAiDraftSubmission({
     ...completeDraft,
     has_valid_tuv: "false",
     tuv_valid_until: "2027-12",
   }, { imageCount: 1, now: new Date(2026, 6, 15) });
 
-  assert.equal(result.ok, false);
-  assert.equal(result.issues.some((issue) => issue.field === "tuv_valid_until"), true);
+  assert.equal(result.ok, true);
+  assert.equal(result.issues.some((issue) => issue.field === "tuv_valid_until"), false);
 });
 
 test("reads structured errors from the final response contract", () => {
@@ -120,4 +122,27 @@ test("reads structured errors from the final response contract", () => {
     code: "LISTING_NOT_READY",
     errors: [{ field: "seller_contact", message: "Укажите телефон или email продавца." }],
   }), [{ field: "seller_contact", message: "Укажите телефон или email продавца." }]);
+});
+
+test("preserves moderation field errors from an HTTP response", async () => {
+  const response = new Response(JSON.stringify({
+    success: false,
+    code: "LISTING_NOT_READY",
+    message: "Listing is not ready for moderation",
+    errors: [
+      { field: "price", message: "Укажите корректную цену." },
+      { field: "images", message: "Добавьте минимум одну фотографию." },
+    ],
+  }), {
+    status: 400,
+    headers: { "content-type": "application/json" },
+  });
+
+  await assert.rejects(() => readListingSubmissionApiResponse(response), (error: unknown) => {
+    assert.ok(error instanceof ListingSubmissionApiError);
+    assert.equal(error.status, 400);
+    assert.equal(error.code, "LISTING_NOT_READY");
+    assert.deepEqual(error.issues.map((issue) => issue.field), ["price", "images"]);
+    return true;
+  });
 });

@@ -1,0 +1,11 @@
+---
+type Props = { title: string; text: string; href?: string; action?: string };
+const { title, text, href, action } = Astro.props;
+---
+<section class="error-state" role="alert">
+  <i data-lucide="circle-alert" aria-hidden="true"></i>
+  <strong>{title}</strong>
+  <p>{text}</p>
+  {href && action && <a class="button button-secondary" href={href}>{action}</a>}
+  <slot />
+</section>

@@ -5,7 +5,7 @@ import test from "node:test";
 const root = new URL("..", import.meta.url);
 const readProjectFile = (path: string) => readFileSync(new URL(path, root), "utf8");
 
-test("login and register share one equal-column auth shell", () => {
+test("login and register share one content-sized auth shell", () => {
   const shell = readProjectFile("src/components/auth/AuthShell.astro");
   const login = readProjectFile("src/pages/login.astro");
   const register = readProjectFile("src/pages/register.astro");
@@ -14,8 +14,10 @@ test("login and register share one equal-column auth shell", () => {
   assert.match(login, /<AuthShell/);
   assert.match(register, /<AuthShell/);
   assert.match(shell, /grid-template-columns: repeat\(2, minmax\(0, 1fr\)\)/);
-  assert.match(shell, /align-items: stretch/);
-  assert.match(shell, /height: 100%/);
+  assert.match(shell, /align-items: start/);
+  assert.match(shell, /height: auto/);
+  assert.match(shell, /min-height: 0/);
+  assert.doesNotMatch(shell, /min-height: 560px/);
   assert.match(shell, /@media \(max-width: 820px\)[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.doesNotMatch(login + register, /auth-avatar|>SC</);
 });

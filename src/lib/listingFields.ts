@@ -62,6 +62,7 @@ function firstDefined(...values: unknown[]) {
 export function normalizeListingFields(
   input: Partial<CarListing> & Record<string, unknown>,
 ): CanonicalListingFields {
+  const hasValidTuv = parseNullableBoolean(input.has_valid_tuv);
   const fields: CanonicalListingFields = {
     vehicle_type: String(input.vehicle_type ?? "").trim(),
     brand: String(input.brand ?? "").trim(),
@@ -92,8 +93,8 @@ export function normalizeListingFields(
     seller_email: String(input.seller_email ?? "").trim(),
     title: String(input.title ?? "").trim(),
     description: String(input.description ?? "").trim(),
-    has_valid_tuv: parseNullableBoolean(input.has_valid_tuv),
-    tuv_valid_until: String(input.tuv_valid_until ?? "").trim() || null,
+    has_valid_tuv: hasValidTuv,
+    tuv_valid_until: hasValidTuv === true ? String(input.tuv_valid_until ?? "").trim() || null : null,
   };
 
   return Object.fromEntries(
@@ -122,8 +123,6 @@ export function validateTuvFields(
         issues.push("Срок действия TÜV / HU должен быть в будущем.");
       }
     }
-  } else if (month) {
-    issues.push("Очистите дату TÜV / HU, если действующего осмотра нет.");
   }
 
   return { valid: issues.length === 0, issues, hasValidTuv: confirmed, validUntil: confirmed ? month || null : null };

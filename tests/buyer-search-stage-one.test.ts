@@ -96,14 +96,33 @@ test("catalog exposes one workflow, editable criteria, cost, reasons and recover
   const catalog = readProjectFile("src/pages/cars/index.astro");
   const searchBar = readProjectFile("src/components/SearchBar.astro");
 
-  assert.match(catalog, /Найдите автомобиль одним запросом/);
+  assert.match(catalog, /Опишите нужный автомобиль/);
   assert.match(catalog, /Подобрать с AI · \{aiSearchPolicy\.cost\} кредит/);
   assert.match(catalog, /id="buyer-applied-criteria"/);
   assert.match(catalog, /id="buyer-search-clarifications"/);
   assert.match(catalog, /getBuyerSearchMatchReasons/);
   assert.match(catalog, /data-relaxation-id/);
-  assert.match(searchBar, /Применить бесплатно/);
+  assert.match(searchBar, /Показать автомобили/);
   assert.match(searchBar, /name="fuel_type"/);
   assert.match(searchBar, /name="transmission"/);
   assert.match(searchBar, /name="mileage_max"/);
+});
+
+test("smart selection falls back locally without redirecting or losing parsed filters", () => {
+  const catalog = readProjectFile("src/pages/cars/index.astro");
+
+  assert.match(catalog, /Применён бесплатный быстрый подбор/);
+  assert.match(catalog, /AI-кредитов недостаточно, поэтому применён бесплатный быстрый подбор/);
+  assert.match(catalog, /applyAiFilters\(result\.filters \|\| \{\}\)/);
+  assert.match(catalog, /let aiSearchBusy = false/);
+  assert.doesNotMatch(catalog, /redirectToLogin\(window\.location\.pathname \+ window\.location\.search\)/);
+});
+
+test("manual filters are grouped but preserve the public URL contract", () => {
+  const searchBar = readProjectFile("src/components/SearchBar.astro");
+
+  for (const group of ["Автомобиль", "Бюджет и год", "Характеристики"]) assert.match(searchBar, new RegExp(group));
+  for (const field of ["brand", "model", "city", "price_min", "price_max", "year_min", "year_max", "vehicle_type", "body_type", "fuel_type", "transmission", "mileage_max"]) {
+    assert.match(searchBar, new RegExp(`name="${field}"`));
+  }
 });

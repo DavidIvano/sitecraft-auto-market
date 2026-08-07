@@ -10,31 +10,54 @@ query "cars/{slug}" verb=GET {
       field_name = "slug"
       field_value = $input.slug
     } as $car
-  
+
     precondition ($car != null) {
       error_type = "notfound"
       error = "Listing not found"
     }
-  
+
     var $is_public {
       value = ((($car.status == "approved") || ($car.status == "published") || ($car.status == "sold") || ($car.moderation_status == "approved") || ($car.moderation_status == "published") || ($car.moderation_status == "sold")) && (($car.status == null) || (($car.status != "draft") && ($car.status != "ai_draft") && ($car.status != "pending_review") && ($car.status != "needs_fix") && ($car.status != "rejected") && ($car.status != "blocked") && ($car.status != "deleted") && ($car.status != "archived"))) && (($car.moderation_status == null) || (($car.moderation_status != "draft") && ($car.moderation_status != "ai_draft") && ($car.moderation_status != "pending_review") && ($car.moderation_status != "needs_fix") && ($car.moderation_status != "rejected") && ($car.moderation_status != "blocked") && ($car.moderation_status != "deleted") && ($car.moderation_status != "archived"))))
     }
-  
+
     precondition ($is_public) {
       error_type = "notfound"
       error = "Listing not found"
     }
-  
+
+    var $views_total {
+      value = 0
+    }
+
+    try_catch {
+      try {
+        db.query listing_views {
+          where = $db.listing_views.car_id == $car.id
+          return = {type: "count"}
+        } as $public_view_count
+
+        var.update $views_total {
+          value = $public_view_count
+        }
+      }
+
+      catch {
+        var.update $views_total {
+          value = 0
+        }
+      }
+    }
+
     db.query car_listing_images {
       where = (($db.car_listing_images.car_listing_id == $car.id) && ($db.car_listing_images.is_deleted != true))
       sort = {car_listing_images.sort_order: "asc"}
       return = {type: "list"}
     } as $images
-  
+
     var $public_images {
       value = []
     }
-  
+
     foreach ($images) {
       each as $image {
         array.push $public_images {
@@ -50,11 +73,11 @@ query "cars/{slug}" verb=GET {
         }
       }
     }
-  
+
     var $vin_masked {
       value = ""
     }
-  
+
     conditional {
       if (($car.vin != null) && (($car.vin|to_text|trim|strlen) == 17)) {
         var.update $vin_masked {
@@ -62,31 +85,90 @@ query "cars/{slug}" verb=GET {
         }
       }
     }
-  
+
+    db.get automarket_users {
+      field_name = "id"
+      field_value = $car.user_id
+    } as $seller_profile
+
+    var $seller_public_name {
+      value = $car.seller_name|first_notnull:"Продавец"
+    }
+
+    conditional {
+      if (($seller_profile != null) && (($seller_profile.display_name|first_notnull:""|trim) != "")) {
+        var.update $seller_public_name {
+          value = $seller_profile.display_name|trim
+        }
+      }
+    }
+
+    var $public_phone {
+      value = null
+    }
+
+    var $public_email {
+      value = null
+    }
+
+    conditional {
+      if (($seller_profile != null) && ($seller_profile.show_phone) && (($seller_profile.contact_phone|first_notnull:""|trim) != "")) {
+        var.update $public_phone {
+          value = $seller_profile.contact_phone|trim
+        }
+      }
+    }
+
+    conditional {
+      if (($seller_profile != null) && ($seller_profile.show_email) && (($seller_profile.contact_email|first_notnull:""|trim) != "")) {
+        var.update $public_email {
+          value = $seller_profile.contact_email|trim|to_lower
+        }
+      }
+    }
+
     var $contact {
       value = null
     }
-  
+
+    var $phone_href {
+      value = null
+    }
+
+    var $email_href {
+      value = null
+    }
+
     conditional {
-      if (($car.seller_phone != null) && (($car.seller_phone|to_text|trim) != "")) {
-        var.update $contact {
-          value = {
-            type: "phone"
-            href: "tel:"|concat:($car.seller_phone|to_text|trim)
-          }
+      if ($public_phone != null) {
+        var.update $phone_href {
+          value = "tel:"|concat:$public_phone
         }
       }
-    
-      elseif (($car.seller_email != null) && (($car.seller_email|to_text|trim) != "")) {
+    }
+
+    conditional {
+      if ($public_email != null) {
+        var.update $email_href {
+          value = "mailto:"|concat:$public_email
+        }
+      }
+    }
+
+    conditional {
+      if (($public_phone != null) || ($public_email != null)) {
         var.update $contact {
           value = {
-            type: "email"
-            href: "mailto:"|concat:($car.seller_email|to_text|trim|to_lower)
+            phone           : $public_phone
+            phone_href      : $phone_href
+            email           : $public_email
+            email_href      : $email_href
+            preferred_method: $seller_profile.preferred_contact_method
           }
         }
       }
     }
-  
+
     db.query car_listings {
       where = (($db.car_listings.user_id == $car.user_id) && ($db.car_listings.id != $car.id) && (($db.car_listings.status == "approved") || ($db.car_listings.status == "published") || ($db.car_listings.status == "sold") || ($db.car_listings.moderation_status == "approved") || ($db.car_listings.moderation_status == "published") || ($db.car_listings.moderation_status == "sold")))
       return = {type: "count"}
@@ -138,85 +220,86 @@ query "cars/{slug}" verb=GET {
                 primary_image_url    : $seller_car.primary_image_url
                 image_url            : $seller_car.image_url
                 cover_image_url      : $seller_car.cover_image_url
+                is_saved             : false
               }
             }
           }
         }
       }
     }
-  
+
     var $model {
-      value = ```
-        {
-          id                   : $car.id
-          slug                 : $car.slug
-          title                : $car.title
-          brand                : $car.brand
-          model                : $car.model
-          vehicle_type         : $car.vehicle_type
-          body_type            : $car.body_type
-          color                : $car.color
-          vehicle_condition    : $car.vehicle_condition|first_notnull:$car.condition
-          year                 : $car.year
-          mileage              : $car.mileage
-          fuel_type            : $car.fuel_type
-          engine_volume        : $car.engine_volume
-          transmission         : $car.transmission
-          drivetrain           : $car.drivetrain
-          doors                : $car.doors
-          seats                : $car.seats
-          owners_count         : $car.owners_count|first_notnull:$car.owner_count
-          first_registration   : $car.first_registration|first_notnull:$car.first_registration_date
-          has_valid_tuv        : $car.has_valid_tuv
-          tuv_valid_until      : $car.tuv_valid_until
-          vin_masked           : $vin_masked
-          price                : $car.price
-          currency             : $car.currency
+      value = {
+        id                   : $car.id
+        slug                 : $car.slug
+        title                : $car.title
+        brand                : $car.brand
+        model                : $car.model
+        vehicle_type         : $car.vehicle_type
+        body_type            : $car.body_type
+        color                : $car.color
+        vehicle_condition    : $car.vehicle_condition|first_notnull:$car.condition
+        year                 : $car.year
+        mileage              : $car.mileage
+        fuel_type            : $car.fuel_type
+        engine_volume        : $car.engine_volume
+        transmission         : $car.transmission
+        drivetrain           : $car.drivetrain
+        doors                : $car.doors
+        seats                : $car.seats
+        owners_count         : $car.owners_count|first_notnull:$car.owner_count
+        first_registration   : $car.first_registration|first_notnull:$car.first_registration_date
+        has_valid_tuv        : $car.has_valid_tuv
+        tuv_valid_until      : $car.tuv_valid_until
+        vin_masked           : $vin_masked
+        price                : $car.price
+        currency             : $car.currency
+        city                 : $car.city
+        country              : $car.country
+        description          : $car.description
+        status               : $car.status
+        moderation_status    : $car.moderation_status
+        sold_at              : $car.sold_at
+        moderator_approved   : $car.moderator_approved
+        seller_type          : $car.seller_type
+        dealer_verified      : $car.dealer_verified
+        is_ai_generated      : $car.is_ai_generated
+        ai_highlights        : $car.ai_highlights
+        ai_listing_score     : $car.ai_listing_score
+        listing_quality_score: $car.listing_quality_score
+        photo_quality_score  : $car.photo_quality_score
+        trust_score          : $car.trust_score
+        boosted_at           : $car.boosted_at
+        boosted_until        : $car.boosted_until
+        featured_at          : $car.featured_at
+        featured_until       : $car.featured_until
+        homepage_at          : $car.homepage_at
+        homepage_until       : $car.homepage_until
+        last_promoted_at     : $car.last_promoted_at
+        ai_analysis          : $car.ai_analysis
+        ai_recommendations   : $car.ai_recommendations
+        ai_warnings          : $car.ai_warnings
+        ai_missing_fields    : $car.ai_missing_fields
+        seo_title            : $car.seo_title
+        seo_description      : $car.seo_description
+        image_alt_texts      : $car.image_alt_texts
+        main_image_url       : $car.main_image_url
+        cover_image_url      : $car.cover_image_url
+        image_urls           : $car.image_urls
+        images               : $public_images
+        is_saved             : false
+        views_total          : $views_total
+        seller_listings      : $public_seller_cars
+        seller               : {
+          name                 : $seller_public_name
+          type                 : $car.seller_type
           city                 : $car.city
-          country              : $car.country
-          description          : $car.description
-          status               : $car.status
-          moderation_status    : $car.moderation_status
-          sold_at              : $car.sold_at
-          moderator_approved   : $car.moderator_approved
-          seller_type          : $car.seller_type
-          dealer_verified      : $car.dealer_verified
-          is_ai_generated      : $car.is_ai_generated
-          ai_highlights        : $car.ai_highlights
-          ai_listing_score     : $car.ai_listing_score
-          listing_quality_score: $car.listing_quality_score
-          photo_quality_score  : $car.photo_quality_score
-          trust_score          : $car.trust_score
-          boosted_at           : $car.boosted_at
-          boosted_until        : $car.boosted_until
-          featured_at          : $car.featured_at
-          featured_until       : $car.featured_until
-          homepage_at          : $car.homepage_at
-          homepage_until       : $car.homepage_until
-          last_promoted_at     : $car.last_promoted_at
-          ai_analysis          : $car.ai_analysis
-          ai_recommendations   : $car.ai_recommendations
-          ai_warnings          : $car.ai_warnings
-          ai_missing_fields    : $car.ai_missing_fields
-          seo_title            : $car.seo_title
-          seo_description      : $car.seo_description
-          image_alt_texts      : $car.image_alt_texts
-          main_image_url       : $car.main_image_url
-          cover_image_url      : $car.cover_image_url
-          image_urls           : $car.image_urls
-          images               : $public_images
-          seller_listings      : $public_seller_cars
-          seller               : {
-            name                 : $car.seller_name|first_notnull:"Продавец"
-            type                 : $car.seller_type
-            city                 : $car.city
-            active_listings_count: $other_public_count + 1
-            contact              : $contact
-          }
-          created_at           : $car.created_at
-          updated_at           : $car.updated_at
+          active_listings_count: $other_public_count + 1
+          contact              : $contact
         }
-        ```
+        created_at           : $car.created_at
+        updated_at           : $car.updated_at
+      }
     }
   }
 
@@ -227,5 +310,8 @@ query "cars/{slug}" verb=GET {
     "images"
     "public-only"
     "privacy-v3"
+    "views-public"
   ]
+
+  guid = "vv6Jl_Eg7ORr78L8DTz5H-0zVjE"
 }

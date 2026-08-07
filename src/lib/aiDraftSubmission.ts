@@ -1,4 +1,5 @@
 import { validateTuvFields } from "./listingFields.ts";
+import { validateSellerContactProfile } from "./contactProfile.ts";
 
 export type AiDraftIdentity = {
   draftId: string | number | null;
@@ -9,6 +10,27 @@ export type ListingFieldIssue = {
   field: string;
   message: string;
 };
+
+export class ListingSubmissionApiError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly issues: ListingFieldIssue[];
+  readonly payload: unknown;
+
+  constructor(status: number, payload: unknown) {
+    const source = payload && typeof payload === "object" && !Array.isArray(payload)
+      ? payload as Record<string, any>
+      : {};
+    const issues = extractListingFieldIssues(payload);
+    const rawMessage = String(source.message || source.payload?.message || (typeof payload === "string" ? payload : "")).trim();
+    super(rawMessage || issues[0]?.message || "Не удалось отправить объявление на модерацию.");
+    this.name = "ListingSubmissionApiError";
+    this.status = status;
+    this.code = String(source.code || source.payload?.code || "LISTING_SUBMISSION_FAILED").trim();
+    this.issues = issues;
+    this.payload = payload;
+  }
+}
 
 export const BACKEND_FIELD_TO_CONTROL: Record<string, string> = {
   title: "title",
@@ -40,8 +62,7 @@ export const BACKEND_FIELD_TO_CONTROL: Record<string, string> = {
   seller_name: "seller_name",
   seller_phone: "seller_phone",
   seller_email: "seller_email",
-  seller_contact: "seller_phone",
-  contact: "seller_phone",
+  seller_contact: "seller_contact",
   has_valid_tuv: "has_valid_tuv",
   tuv_valid_until: "tuv_valid_until",
   vin: "vin",
@@ -103,6 +124,24 @@ export function extractListingFieldIssues(payload: unknown): ListingFieldIssue[]
     .filter((value: ListingFieldIssue | null): value is ListingFieldIssue => Boolean(value));
 }
 
+export async function readListingSubmissionApiResponse(response: Response) {
+  const contentType = response.headers.get("content-type") || "";
+  let payload: unknown;
+
+  if (contentType.includes("application/json")) {
+    try {
+      payload = await response.json();
+    } catch {
+      payload = null;
+    }
+  } else {
+    payload = await response.text();
+  }
+
+  if (!response.ok) throw new ListingSubmissionApiError(response.status, payload);
+  return payload;
+}
+
 export function normalizeTuvSubmissionValue(value: unknown) {
   if (value === true || value === "true") return "true";
   if (value === false || value === "false") return "false";
@@ -111,7 +150,7 @@ export function normalizeTuvSubmissionValue(value: unknown) {
 
 export function validateAiDraftSubmission(
   data: Record<string, string>,
-  options: { allowExtremePrice?: boolean; imageCount?: number; now?: Date } = {},
+  options: { allowExtremePrice?: boolean; imageCount?: number; now?: Date; requirePublicContact?: boolean } = {},
 ) {
   const issues: ListingFieldIssue[] = [];
   const add = (field: string, message: string) => issues.push({ field, message });
@@ -124,6 +163,12 @@ export function validateAiDraftSubmission(
   const vehicleType = String(data.vehicle_type || data.vehicleType || "").toLowerCase();
   const phone = String(data.seller_phone || data.sellerPhone || "").trim();
   const email = String(data.seller_email || data.sellerEmail || "").trim();
+  const showPhone = data.show_phone == null || data.show_phone === ""
+    ? Boolean(phone)
+    : data.show_phone === "true" || data.show_phone === "on";
+  const showEmail = data.show_email == null || data.show_email === ""
+    ? Boolean(email)
+    : data.show_email === "true" || data.show_email === "on";
   const vin = String(data.vin || "").trim();
   const firstRegistration = String(data.first_registration || data.first_registration_date || "").trim();
   const required: Array<[string, string, string]> = [
@@ -151,7 +196,15 @@ export function validateAiDraftSubmission(
     if (!String(value || "").trim()) add(field, message);
   });
 
-  if (!phone && !email) add("seller_contact", "Укажите телефон или email продавца.");
+  const contactValidation = validateSellerContactProfile({
+    display_name: data.seller_name,
+    contact_phone: phone,
+    contact_email: email,
+    show_phone: showPhone,
+    show_email: showEmail,
+    preferred_contact_method: data.preferred_contact_method,
+  }, { requirePublicContact: options.requirePublicContact !== false });
+  if (!contactValidation.valid) add(contactValidation.field || "seller_contact", contactValidation.message);
   if (!options.allowExtremePrice && (price < 100 || price > 500000)) add("price", "Цена должна быть от 100 € до 500 000 €.");
   if (year < 1950 || year > currentYear) add("year", `Год выпуска должен быть от 1950 до ${currentYear}.`);
   if (mileage < 0) add("mileage", "Пробег не может быть отрицательным.");
@@ -159,8 +212,6 @@ export function validateAiDraftSubmission(
     add("fuel_type", "Нельзя одновременно выбрать электромобиль и дизель.");
   }
   if (!city || /^\d+$/.test(city)) add("city", "Город должен содержать название, а не только цифры.");
-  if (phone && !/^[+()\d\s-]{7,24}$/.test(phone)) add("seller_phone", "Телефон указан в неверном формате.");
-  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) add("seller_email", "Email указан в неверном формате.");
   if (vin && !/^[A-HJ-NPR-Z0-9]{17}$/i.test(vin)) add("vin", "VIN должен состоять из 17 латинских букв и цифр без I, O и Q.");
 
   if (firstRegistration) {

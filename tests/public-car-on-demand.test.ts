@@ -41,6 +41,46 @@ test("approved Xano payload is normalized without optional values leaking", () =
   assert.equal("rejection_internal_notes" in car, false);
 });
 
+test("public seller contact derives safe hrefs when Xano returns visible values without hrefs", () => {
+  const car = normalizePublicCarListing(approvedListing({
+    seller: {
+      name: "Davyd",
+      type: "private",
+      active_listings_count: 9,
+      contact: {
+        phone: "+4916096556543",
+        phone_href: null,
+        email: "Seller@Example.com",
+        email_href: null,
+        preferred_method: "phone",
+      },
+    },
+  }));
+
+  assert.ok(car?.seller?.contact);
+  assert.equal(car.seller.contact.phone, "+4916096556543");
+  assert.equal(car.seller.contact.phone_href, "tel:+4916096556543");
+  assert.equal(car.seller.contact.email, "seller@example.com");
+  assert.equal(car.seller.contact.email_href, "mailto:seller@example.com");
+});
+
+test("public seller contact rejects unsafe values instead of creating links", () => {
+  const car = normalizePublicCarListing(approvedListing({
+    seller: {
+      name: "Seller",
+      contact: {
+        phone: "javascript:alert(1)",
+        email: "seller@example.com\r\nBcc:attacker@example.com",
+        phone_href: null,
+        email_href: null,
+      },
+    },
+  }));
+
+  assert.ok(car);
+  assert.equal(car.seller?.contact, null);
+});
+
 test("all private or conflicting listing states fail closed", () => {
   for (const status of ["draft", "ai_draft", "pending_review", "needs_fix", "rejected", "blocked", "deleted", "archived"]) {
     assert.equal(normalizePublicCarListing(approvedListing({ status, moderation_status: status })), null, status);
@@ -85,12 +125,23 @@ test("car detail is on-demand and uses direct slug lookup with safe state routes
   assert.match(page, /export const prerender = false/);
   assert.doesNotMatch(page, /getStaticPaths/);
   assert.match(page, /await getCarBySlug\(slug\)/);
+  assert.match(page, /getRelatedListingsBySlug\(slug\)/);
+  assert.doesNotMatch(page, /getApprovedCars\(\)/);
+  assert.match(page, /Promise\.allSettled/);
   assert.match(page, /Astro\.response\.status = 404/);
-  assert.match(page, /Astro\.response\.headers\.set\("Cache-Control", "no-store"\)/);
-  assert.match(page, /safeCarDescription[\s\S]*Продавец пока не добавил описание автомобиля/);
+  assert.match(page, /public, max-age=0, s-maxage=300, stale-while-revalidate=86400/);
+  assert.match(page, /Astro\.response\.headers\.set\("Retry-After", "300"\)/);
+  assert.match(page, /buildVehicleSeo\(car, siteUrl\)/);
+  assert.match(page, /jsonLd=\{\[vehicleSeo\.vehicle, vehicleSeo\.offer, vehicleSeo\.breadcrumb\]\}/);
+  assert.match(page, /<h1>\{vehicleSeo\.heading\}<\/h1>/);
+  assert.match(page, /detailDescription[\s\S]*Продавец пока не добавил описание автомобиля/);
   assert.match(page, /\/deal-finder-placeholder\.svg/);
   assert.match(xano, /API_ROUTES\.carBySlug\(slug\)/);
-  assert.match(xano, /AbortSignal\.timeout/);
+  assert.match(xano, /API_ROUTES\.carRelatedListings\(slug\)/);
+  assert.match(xano, /fetchWithRetry/);
+  assert.match(xano, /attempts: 3/);
+  assert.match(xano, /timeoutMs: PUBLIC_API_TIMEOUT_MS/);
+  assert.match(xano, /dedupeKey: `xano-public:\$\{path\}`/);
   assert.match(notFound, /export const prerender = false/);
   assert.match(notFound, /Astro\.response\.status = 404/);
   assert.match(notFound, /Объявление не найдено/);
@@ -98,13 +149,34 @@ test("car detail is on-demand and uses direct slug lookup with safe state routes
   assert.match(unavailable, /Astro\.response\.status = 503/);
 });
 
-test("sitemap is dynamic, no-store and uses the canonical production domain", () => {
+test("catalog is on-demand SSR with crawlable server-rendered cards", () => {
+  const catalog = readProjectFile("src/pages/cars/index.astro");
+  const routes = readProjectFile("public/_routes.json");
+  assert.match(catalog, /export const prerender = false/);
+  assert.match(catalog, /getApprovedCars\(\{ requireConfigured: true \}\)/);
+  assert.match(catalog, /cars\.map\(\(car, index\) => <CarCard/);
+  assert.match(catalog, /public, max-age=0, s-maxage=120, stale-while-revalidate=3600/);
+  assert.match(catalog, /Astro\.response\.status = 503/);
+  assert.match(routes, /"\/cars"/);
+});
+
+test("homepage renders crawlable latest-car links before client enhancement", () => {
+  const homepage = readProjectFile("src/pages/index.astro");
+  assert.match(homepage, /await getApprovedCars\(\)/);
+  assert.match(homepage, /latestCars\.map\(\(car, index\) => <CarCard/);
+  assert.doesNotMatch(homepage, /your-xano-api-url\.com/);
+});
+
+test("sitemap is dynamic, edge cached and fails closed", () => {
   const sitemap = readProjectFile("src/pages/sitemap.xml.ts");
   const config = readProjectFile("src/lib/config.ts");
   assert.match(sitemap, /export const prerender = false/);
-  assert.match(sitemap, /getApprovedCars\(\)/);
+  assert.match(sitemap, /getApprovedCars\(\{ requireConfigured: true \}\)/);
   assert.match(sitemap, /isPublicListing/);
-  assert.match(sitemap, /"Cache-Control": "no-store"/);
+  assert.match(sitemap, /status: 503/);
+  assert.match(sitemap, /"Retry-After": "300"/);
+  assert.match(sitemap, /public, max-age=0, s-maxage=300, stale-while-revalidate=3600/);
+  assert.doesNotMatch(sitemap, /lastmod: new Date\(\)\.toISOString\(\)/);
   assert.match(sitemap, /https:\/\/automarket\.sitecraft\.agency/);
   assert.match(config, /https:\/\/automarket\.sitecraft\.agency/);
 });

@@ -25,23 +25,23 @@ const useAiListingEndpoints = import.meta.env.PUBLIC_USE_AI_LISTING_ENDPOINTS !=
 const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE === "true";
 ---
 
-<BaseLayout title="Добавить объявление" noindex>
+<BaseLayout title="Продать авто" variant="workspace" noindex>
   <section class="section page-hero new-listing-hero">
     <div class="container">
       <p class="eyebrow">Новое объявление</p>
-      <h1>Новое объявление</h1>
+      <h1>Продать авто</h1>
       <p class="lead">
-        Создайте объявление по фото через AI или заполните данные вручную. Можно загрузить 1–8 фото и расставить их в нужном порядке.
-        Первое фото станет главным в карточке и на странице автомобиля.
+        Три шага: добавьте фото, заполните данные и проверьте объявление перед модерацией.
       </p>
 
-      <div class="listing-mode-switch" aria-label="Выберите способ создания объявления">
+      <div class="listing-mode-switch" aria-label="Выберите способ создания объявления" hidden>
         <button class="is-active" type="button" data-listing-mode="ai">Создать через AI</button>
         <button type="button" data-listing-mode="manual">Заполнить вручную</button>
       </div>
 
-      <section class="ai-draft-panel" aria-labelledby="ai-draft-title" data-mode-panel="ai">
+      <section class="ai-draft-panel" aria-labelledby="ai-draft-title" data-mode-panel="ai" hidden>
         <div>
+          <button class="button button-light button-small" type="button" data-close-ai-helper>Вернуться к форме</button>
           <p class="eyebrow">AI-помощник</p>
           <h2 id="ai-draft-title">Создать умный черновик по фото</h2>
           <p>
@@ -76,14 +76,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             name="photos"
             accept="image/avif,image/webp,image/jpeg,image/png"
             multiple
+            required
             data-max-files="8"
             data-max-size="8388608"
           />
-          <label class="ai-draft-dropzone" for="ai-photo-input" data-ai-dropzone>
-            <span class="photo-dropzone-icon">+</span>
+          <button class="ai-draft-dropzone" type="button" data-ai-dropzone data-ai-photo-select aria-controls="ai-photo-input">
+            <span class="photo-dropzone-icon"><i data-lucide="plus" aria-hidden="true"></i></span>
             <strong>Выберите фотографии автомобиля</strong>
             <small>1–8 изображений, до 8 МБ каждое. После анализа проверьте предложенные данные.</small>
-          </label>
+          </button>
           <div class="photo-preview-toolbar">
             <span id="ai-photo-count">0 / 8 фото</span>
             <button class="button button-light button-small" type="button" id="ai-photo-clear" hidden>Очистить</button>
@@ -315,7 +316,13 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <span>Email продавца</span>
               <input type="email" name="seller_email" placeholder="name@example.com" />
             </label>
-            <p class="form-field-hint full-field">Укажите хотя бы один способ связи: телефон или email.</p>
+            <label class="contact-profile-check"><input name="show_phone" type="checkbox" />Показывать телефон покупателям</label>
+            <label class="contact-profile-check"><input name="show_email" type="checkbox" />Показывать email покупателям</label>
+            <label>
+              <span>Предпочтительный способ связи</span>
+              <select name="preferred_contact_method"><option value="">Не выбран</option><option value="phone">Телефон</option><option value="email">Email</option></select>
+            </label>
+            <p class="form-field-hint full-field" data-ai-contact-status>Контакты заполняются из профиля. AI не определяет и не изменяет их автоматически.</p>
             <label>
               <span>VIN, если есть</span>
               <input type="text" name="vin" placeholder="Необязательно" />
@@ -352,11 +359,17 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             <p id="ai-description-preview-text"></p>
           </div>
           <div class="ai-description-preview-actions">
-            <button class="button button-dark button-small" type="button" id="ai-description-insert">Вставить в описание</button>
-            <button class="button button-light button-small" type="button" id="ai-description-replace">Заменить текущее</button>
-            <button class="button button-light button-small" type="button" id="ai-description-copy">Скопировать</button>
-            <button class="button button-light button-small" type="button" id="ai-description-shorten">Сделать короче</button>
-            <button class="button button-light button-small" type="button" id="ai-description-translate">Перевести на немецкий</button>
+            <button class="button button-dark button-small" type="button" id="ai-description-insert">Применить</button>
+            <button class="button button-light button-small" type="button" data-ai-description-cancel>Отмена</button>
+            <details class="ai-secondary-actions">
+              <summary>Другие AI-действия</summary>
+              <div>
+                <button class="button button-light button-small" type="button" id="ai-description-replace">Заменить текущее</button>
+                <button class="button button-light button-small" type="button" id="ai-description-copy">Скопировать</button>
+                <button class="button button-light button-small" type="button" id="ai-description-shorten">Сделать короче</button>
+                <button class="button button-light button-small" type="button" id="ai-description-translate">Перевести на немецкий</button>
+              </div>
+            </details>
           </div>
           <span class="ai-description-preview-status" id="ai-description-preview-status" aria-live="polite"></span>
         </section>
@@ -384,28 +397,24 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         </section>
       </section>
 
-      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} novalidate data-mode-panel="manual" hidden>
+      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} novalidate data-mode-panel="manual">
         <div class="listing-quiz-progress" aria-label="Шаги добавления объявления">
           <button class="quiz-progress-step is-active" type="button" data-quiz-jump="0">
             <span>1</span>
-            Автомобиль
+            Фото
           </button>
           <button class="quiz-progress-step" type="button" data-quiz-jump="1">
             <span>2</span>
-            Характеристики
+            Данные автомобиля
           </button>
           <button class="quiz-progress-step" type="button" data-quiz-jump="2">
             <span>3</span>
-            Продавец
-          </button>
-          <button class="quiz-progress-step" type="button" data-quiz-jump="3">
-            <span>4</span>
-            Фото
+            Проверка и отправка
           </button>
         </div>
         <div class="listing-workspace">
           <div class="listing-main-column">
-        <fieldset class="form-section form-section-highlight" data-quiz-step="0">
+        <fieldset class="form-section form-section-highlight" data-quiz-step="1">
           <div class="section-heading">
             <span class="section-step">1</span>
             <div>
@@ -447,7 +456,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
             <label>
               <span>Цена</span>
-              <input type="number" name="price" min="0" step="1" placeholder="25000" required />
+              <input type="number" name="price" min="100" max="500000" step="1" placeholder="25000" required />
             </label>
 
             <label>
@@ -597,7 +606,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           </div>
         </fieldset>
 
-        <fieldset class="form-section" data-quiz-step="2">
+        <fieldset class="form-section" data-quiz-step="1">
           <div class="section-heading">
             <span class="section-step">3</span>
             <div>
@@ -608,24 +617,35 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <div class="form-grid">
             <label>
               <span>Имя продавца</span>
-              <input type="text" name="sellerName" placeholder="Ваше имя" required />
+              <input type="text" name="sellerName" placeholder="Ваше имя" required aria-describedby="manual-contact-error-display_name" />
+              <small id="manual-contact-error-display_name" class="form-field-error" data-manual-contact-error="display_name" hidden></small>
             </label>
 
             <label>
               <span>Телефон продавца</span>
-              <input type="tel" name="sellerPhone" placeholder="+49 ..." />
+              <input type="tel" name="sellerPhone" placeholder="+49 ..." aria-describedby="manual-contact-error-contact_phone" />
+              <small id="manual-contact-error-contact_phone" class="form-field-error" data-manual-contact-error="contact_phone" hidden></small>
             </label>
 
             <label>
               <span>Email продавца</span>
-              <input type="email" name="sellerEmail" placeholder="name@example.com" />
+              <input type="email" name="sellerEmail" placeholder="name@example.com" aria-describedby="manual-contact-error-contact_email" />
+              <small id="manual-contact-error-contact_email" class="form-field-error" data-manual-contact-error="contact_email" hidden></small>
             </label>
+            <label class="contact-profile-check"><input name="showPhone" type="checkbox" />Показывать телефон покупателям</label>
+            <label class="contact-profile-check"><input name="showEmail" type="checkbox" />Показывать email покупателям</label>
+            <label>
+              <span>Предпочтительный способ связи</span>
+              <select name="preferredContactMethod" aria-describedby="manual-contact-error-preferred_contact_method"><option value="">Не выбран</option><option value="phone">Телефон</option><option value="email">Email</option></select>
+              <small id="manual-contact-error-preferred_contact_method" class="form-field-error" data-manual-contact-error="preferred_contact_method" hidden></small>
+            </label>
+            <p class="form-field-hint full-field" data-manual-contact-status>Контакты заполняются из профиля. Вы можете изменить их.</p>
           </div>
         </fieldset>
 
-        <fieldset class="form-section photo-form-section" data-quiz-step="3">
+        <fieldset class="form-section photo-form-section" data-quiz-step="0">
           <div class="section-heading">
-            <span class="section-step">4</span>
+            <span class="section-step">1</span>
             <div>
               <h2>Фото и описание</h2>
               <p>До 8 изображений. Перетащите карточки, чтобы выбрать главное фото первым.</p>
@@ -640,13 +660,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 name="photos"
                 accept="image/avif,image/webp,image/jpeg,image/png"
                 multiple
+                required
                 data-max-files="8"
+                data-max-size="8388608"
               />
-              <label class="photo-dropzone" for="photo-input" data-photo-dropzone>
-                <span class="photo-dropzone-icon">+</span>
+              <button class="photo-dropzone" type="button" data-photo-dropzone data-photo-select aria-controls="photo-input">
+                <span class="photo-dropzone-icon"><i data-lucide="plus" aria-hidden="true"></i></span>
                 <strong>Перетащите фото сюда или выберите файлы</strong>
                 <small>AVIF, PNG, JPG или WEBP. Первое изображение будет главным.</small>
-              </label>
+              </button>
               <div class="photo-preview-toolbar">
                 <span id="photo-count">0 / 8 фото</span>
                 <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить фото</button>
@@ -656,16 +678,28 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               </div>
             </div>
 
+            <div class="full-field ai-helper-callout">
+              <div><strong>Хотите заполнить характеристики быстрее?</strong><p>AI предложит данные по фотографиям, а вы подтвердите результат.</p></div>
+              <button class="button button-light" type="button" data-open-ai-helper>Заполнить данные с AI</button>
+            </div>
+
             <label class="full-field">
               <span>Краткое описание</span>
               <textarea name="description" rows="6" placeholder="Опишите состояние, историю обслуживания и важные детали"></textarea>
             </label>
           </div>
         </fieldset>
+        <fieldset class="form-section" data-quiz-step="2">
+          <div class="section-heading">
+            <span class="section-step">3</span>
+            <div><h2>Проверка и отправка</h2><p>Проверьте основные данные. После отправки объявление попадёт на модерацию.</p></div>
+          </div>
+          <div class="listing-review-summary" data-listing-review-summary></div>
+        </fieldset>
         <div class="quiz-navigation" aria-label="Навигация по шагам">
           <button class="button button-light" type="button" data-quiz-prev>Назад</button>
-          <button class="button button-dark" type="button" data-quiz-next>Дальше</button>
-          <button class="button button-dark" type="submit" data-quiz-submit hidden>Добавить объявление</button>
+          <button class="button button-dark" type="button" data-quiz-next>Продолжить</button>
+          <button class="button button-dark" type="submit" data-quiz-submit hidden>Отправить на модерацию</button>
         </div>
           </div>
 
@@ -679,10 +713,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 <li>Телефон или email заполнен.</li>
                 <li>Описание без лишних личных данных.</li>
               </ul>
-              <button class="button button-dark full-width" type="submit" data-side-submit hidden>Добавить объявление</button>
               <p class="form-message" id="form-message">
                 После отправки объявление будет подготовлено к модерации.
               </p>
+              <button class="button button-light button-small" type="button" data-return-contact hidden>Вернуться к контактам</button>
             </div>
           </aside>
         </div>
@@ -693,7 +727,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
       <script is:inline type="application/json" id="api-route-data" set:html={JSON.stringify(API_ROUTES)} />
 
       <script>
-        import { fetchCurrentUser, getAuthToken, getAuthUser, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+        import { fetchCurrentUser, getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+        import {
+          ContactProfileApiError,
+          isSameContactProfile,
+          normalizeContactProfile,
+          normalizeSellerContactProfile,
+          readContactProfileApiResponse,
+          validateSellerContactProfile,
+        } from "../../lib/contactProfile";
         import { getFriendlyErrorMessage } from "../../lib/errorMessages";
         import { createAiIdempotencyKey } from "../../lib/ai/idempotency";
         import { normalizeAiDraftFields } from "../../lib/ai/normalizeAiDraftFields";
@@ -701,17 +743,28 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           BACKEND_FIELD_TO_CONTROL,
           extractAiDraftIdentity,
           extractListingFieldIssues,
+          ListingSubmissionApiError,
           normalizeTuvSubmissionValue,
+          readListingSubmissionApiResponse,
           validateAiDraftSubmission,
           type ListingFieldIssue,
         } from "../../lib/aiDraftSubmission";
+        import { API_ROUTES } from "../../lib/apiRoutes";
+        import { LEGACY_PUBLIC_LOCALE } from "../../i18n/config";
         import { formatBytes } from "../../lib/imageCompression";
+        import { refreshAppIcons } from "../../lib/appIcons";
         import { uploadListingImages } from "../../lib/listingImageUpload";
+        import {
+          createListingSubmitIdempotencyKey,
+          getListingFilesFingerprint,
+          runListingSubmissionWorkflow,
+          type ListingSubmissionPhase,
+        } from "../../lib/listingSubmissionWorkflow";
+        import type { SellerContactProfile, SellerContactSubmission } from "../../lib/types";
 
         const isDevelopment = import.meta.env.DEV;
         const aiCurrentYear = new Date().getFullYear();
         const getActiveAuthToken = () => String(getAuthToken() || "").trim();
-        const authUser = getAuthUser();
         const form = document.querySelector("#new-listing-form");
         const message = document.querySelector("#form-message");
         const photoInput = document.querySelector("#photo-input");
@@ -756,6 +809,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const aiDescriptionCopy = document.querySelector("#ai-description-copy");
         const aiDescriptionShorten = document.querySelector("#ai-description-shorten");
         const aiDescriptionTranslate = document.querySelector("#ai-description-translate");
+        const aiDescriptionCancel = document.querySelector("[data-ai-description-cancel]");
         const aiNextBestActions = document.querySelector("#ai-next-best-actions");
         const aiNextActionsGrid = document.querySelector("[data-ai-next-actions]");
         const photoDropzone = document.querySelector("[data-photo-dropzone]");
@@ -769,12 +823,172 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const modelDataElement = document.querySelector("#car-model-data");
         const engineVolumeDataElement = document.querySelector("#engine-volume-data");
         const apiRouteDataElement = document.querySelector("#api-route-data");
-        const quizSteps = Array.from(document.querySelectorAll("[data-quiz-step]"));
+        const aiContactStatus = document.querySelector("[data-ai-contact-status]");
+        const manualContactStatus = document.querySelector("[data-manual-contact-status]");
+        const manualContactReturnButton = document.querySelector("[data-return-contact]");
+        let currentSellerContactProfile: SellerContactProfile | null = null;
+        let lastSavedContactSignature = "";
+        let manualUserId: string | number = "anonymous";
+        let manualContactRestoredFromDraft = false;
+
+        function readSellerContact(target: HTMLFormElement, mode: "ai" | "manual"): SellerContactSubmission {
+          const data = new FormData(target);
+          return normalizeSellerContactProfile({
+            display_name: data.get(mode === "ai" ? "seller_name" : "sellerName"),
+            contact_phone: data.get(mode === "ai" ? "seller_phone" : "sellerPhone"),
+            contact_email: data.get(mode === "ai" ? "seller_email" : "sellerEmail"),
+            show_phone: data.has(mode === "ai" ? "show_phone" : "showPhone"),
+            show_email: data.has(mode === "ai" ? "show_email" : "showEmail"),
+            preferred_contact_method: data.get(mode === "ai" ? "preferred_contact_method" : "preferredContactMethod"),
+          });
+        }
+
+        function setFormControl(target: HTMLFormElement, name: string, value: string | boolean | null) {
+          const control = target.elements.namedItem(name);
+          if (control instanceof HTMLInputElement && control.type === "checkbox") control.checked = value === true;
+          else if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement) control.value = String(value ?? "");
+        }
+
+        function reconcileContactPreference(target: HTMLFormElement, mode: "ai" | "manual") {
+          const phone = target.elements.namedItem(mode === "ai" ? "show_phone" : "showPhone");
+          const email = target.elements.namedItem(mode === "ai" ? "show_email" : "showEmail");
+          const preferred = target.elements.namedItem(mode === "ai" ? "preferred_contact_method" : "preferredContactMethod");
+          if (!(phone instanceof HTMLInputElement)
+            || !(email instanceof HTMLInputElement)
+            || !(preferred instanceof HTMLSelectElement)) return;
+          if (preferred.value === "phone" && !phone.checked) preferred.value = email.checked ? "email" : "";
+          if (preferred.value === "email" && !email.checked) preferred.value = phone.checked ? "phone" : "";
+        }
+
+        function fillSellerContactForms(profile: SellerContactProfile) {
+          currentSellerContactProfile = profile;
+          if (aiReviewForm instanceof HTMLFormElement) {
+            setFormControl(aiReviewForm, "seller_name", profile.display_name || [profile.first_name, profile.last_name].filter(Boolean).join(" "));
+            setFormControl(aiReviewForm, "seller_phone", profile.contact_phone);
+            setFormControl(aiReviewForm, "seller_email", profile.contact_email);
+            setFormControl(aiReviewForm, "show_phone", profile.show_phone);
+            setFormControl(aiReviewForm, "show_email", profile.show_email);
+            setFormControl(aiReviewForm, "preferred_contact_method", profile.preferred_contact_method);
+          }
+          if (form instanceof HTMLFormElement && !manualContactRestoredFromDraft) {
+            setFormControl(form, "sellerName", profile.display_name || [profile.first_name, profile.last_name].filter(Boolean).join(" "));
+            setFormControl(form, "sellerPhone", profile.contact_phone);
+            setFormControl(form, "sellerEmail", profile.contact_email);
+            setFormControl(form, "showPhone", profile.show_phone);
+            setFormControl(form, "showEmail", profile.show_email);
+            setFormControl(form, "preferredContactMethod", profile.preferred_contact_method);
+          }
+          const normalized = normalizeContactProfile(profile).value;
+          lastSavedContactSignature = JSON.stringify(normalized || profile);
+          if (aiContactStatus instanceof HTMLElement) aiContactStatus.textContent = "Контакты заполнены из вашего профиля. Вы можете изменить их.";
+          if (manualContactStatus instanceof HTMLElement) manualContactStatus.textContent = "Контакты заполнены из вашего профиля. Вы можете изменить их.";
+          updateRequiredFieldState(form);
+          updateRequiredFieldState(aiReviewForm);
+        }
+
+        async function waitForListingAuth() {
+          for (let attempt = 0; attempt < 30; attempt += 1) {
+            const token = getActiveAuthToken();
+            if (token) return token;
+            await new Promise((resolve) => window.setTimeout(resolve, 150));
+          }
+          return "";
+        }
+
+        async function loadSellerContactProfile() {
+          const token = await waitForListingAuth();
+          const apiUrl = form instanceof HTMLFormElement ? String(form.dataset.apiUrl || "") : "";
+          if (!token || !apiUrl) {
+            redirectToLogin("/dashboard/new/");
+            return;
+          }
+          const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, {
+            headers: { Authorization: `Bearer ${token}` },
+            cache: "no-store",
+          });
+          if (response.status === 401 && await isSessionConfirmedExpired(apiUrl, token)) {
+            redirectToLogin("/dashboard/new/");
+            return;
+          }
+          if (!response.ok) {
+            if (aiContactStatus instanceof HTMLElement) aiContactStatus.textContent = "Не удалось загрузить контакты профиля. Введите их вручную.";
+            if (manualContactStatus instanceof HTMLElement) manualContactStatus.textContent = "Не удалось загрузить контакты профиля. Введите их вручную.";
+            return;
+          }
+          fillSellerContactForms(await readContactProfileApiResponse(response));
+          const user = await fetchCurrentUser(apiUrl).catch(() => null);
+          if (user?.id) manualUserId = user.id;
+        }
+
+        async function saveSellerContactProfile(target: HTMLFormElement, mode: "ai" | "manual", requirePublicContact: boolean) {
+          const data = new FormData(target);
+          const raw = {
+            display_name: data.get(mode === "ai" ? "seller_name" : "sellerName"),
+            contact_phone: data.get(mode === "ai" ? "seller_phone" : "sellerPhone"),
+            contact_email: data.get(mode === "ai" ? "seller_email" : "sellerEmail"),
+            show_phone: data.has(mode === "ai" ? "show_phone" : "showPhone"),
+            show_email: data.has(mode === "ai" ? "show_email" : "showEmail"),
+            preferred_contact_method: data.get(mode === "ai" ? "preferred_contact_method" : "preferredContactMethod"),
+          };
+          const validation = normalizeContactProfile({
+            first_name: currentSellerContactProfile?.first_name,
+            last_name: currentSellerContactProfile?.last_name,
+            ...raw,
+          }, { requirePublicContact });
+          const issue = validation.issues[0];
+          if (!validation.ok || !validation.value) {
+            throw new ContactProfileApiError({
+              status: 422,
+              payload: {
+                code: issue?.code || "VALIDATION_ERROR",
+                field: issue?.field || "",
+                message: issue?.message || "Проверьте контактные данные.",
+              },
+            });
+          }
+          if (currentSellerContactProfile && isSameContactProfile(currentSellerContactProfile, validation.value)) {
+            return validation.value;
+          }
+          const payload = {
+            display_name: validation.value.display_name || null,
+            contact_phone: validation.value.contact_phone,
+            contact_email: validation.value.contact_email,
+            show_phone: validation.value.show_phone,
+            show_email: validation.value.show_email,
+            preferred_contact_method: validation.value.preferred_contact_method,
+          };
+          const signature = JSON.stringify(validation.value);
+          if (signature === lastSavedContactSignature) return validation.value;
+
+          const token = getActiveAuthToken();
+          const apiUrl = String(target.dataset.apiUrl || form instanceof HTMLFormElement && form.dataset.apiUrl || "");
+          if (!token || !apiUrl) throw new Error("Сессия завершена. Войдите снова.");
+          const response = await fetch(`${apiUrl}${API_ROUTES.contactProfile}`, {
+            method: "PATCH",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+            cache: "no-store",
+            body: JSON.stringify(payload),
+          });
+          if (response.status === 401 && await isSessionConfirmedExpired(apiUrl, token)) {
+            redirectToLogin("/dashboard/new/");
+            throw new Error("Сессия завершена. Войдите снова.");
+          }
+          const profile = await readContactProfileApiResponse(response);
+          fillSellerContactForms(profile);
+          return normalizeContactProfile(profile).value || validation.value;
+        }
+        const quizStepNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-quiz-step]"));
+        const quizSteps = [0, 1, 2].map((step) => quizStepNodes.filter((node) => Number(node.dataset.quizStep) === step));
         const quizProgressSteps = Array.from(document.querySelectorAll("[data-quiz-jump]"));
         const quizPrevButton = document.querySelector("[data-quiz-prev]");
         const quizNextButton = document.querySelector("[data-quiz-next]");
         const quizSubmitButton = document.querySelector("[data-quiz-submit]");
-        const sideSubmitButton = document.querySelector("[data-side-submit]");
+        const openAiHelperButton = document.querySelector("[data-open-ai-helper]");
+        const closeAiHelperButton = document.querySelector("[data-close-ai-helper]");
+        const reviewSummary = document.querySelector("[data-listing-review-summary]");
         const carModelsByBrand = modelDataElement?.textContent
           ? JSON.parse(modelDataElement.textContent) as Record<string, string[]>
           : {};
@@ -799,6 +1013,103 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         let currentAiScores: Record<string, unknown> = {};
         let isAiDraftDirty = true;
         let isAiSubmitRunning = false;
+        let isManualSubmitRunning = false;
+        let currentManualDraftId: string | number | null = null;
+        let currentManualIdentity: { draftId: string | number; listingId: string | number | null } | null = null;
+        let manualModerationRetryOnly = false;
+        let manualSubmissionId = "";
+        let manualUploadState: {
+          fingerprint: string;
+          uploadsByFile: Map<string, { url: string; key: string; contentType: string; size: number }>;
+        } | null = null;
+        const LOCAL_DRAFT_KEY = "sitecraft-new-listing-safe-draft-v1";
+        const LOCAL_DRAFT_FIELDS = [
+          "vehicleType", "brand", "model", "year", "price", "mileage", "location", "country", "currency",
+          "bodyType", "fuelType", "engineVolume", "transmission", "drivetrain", "doors", "seats", "color",
+          "ownerCount", "firstRegistrationDate", "condition", "hasValidTuv", "tuvValidUntil", "sellerType", "description",
+          "sellerName", "sellerPhone", "sellerEmail", "preferredContactMethod",
+        ];
+
+        function ensureManualSubmissionId() {
+          if (!manualSubmissionId) manualSubmissionId = crypto.randomUUID();
+          return manualSubmissionId;
+        }
+
+        function saveLocalDraft() {
+          if (!(form instanceof HTMLFormElement)) return;
+          const data = new FormData(form);
+          const fields = Object.fromEntries(LOCAL_DRAFT_FIELDS.map((name) => [name, String(data.get(name) || "")]));
+          fields.showPhone = String(data.has("showPhone"));
+          fields.showEmail = String(data.has("showEmail"));
+          localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify({
+            savedAt: Date.now(),
+            step: activeQuizStep,
+            fields,
+            submissionId: ensureManualSubmissionId(),
+            draftId: currentManualDraftId,
+          }));
+        }
+
+        function restoreLocalDraft() {
+          if (!(form instanceof HTMLFormElement)) return;
+          try {
+            const draft = JSON.parse(localStorage.getItem(LOCAL_DRAFT_KEY) || "null");
+            if (!draft?.fields || Date.now() - Number(draft.savedAt || 0) > 7 * 86_400_000) return;
+            const fields = draft.fields as Record<string, string>;
+            manualSubmissionId = String(draft.submissionId || "") || crypto.randomUUID();
+            currentManualDraftId = draft.draftId || null;
+            currentManualIdentity = currentManualDraftId ? { draftId: currentManualDraftId, listingId: null } : null;
+            manualContactRestoredFromDraft = Boolean(fields.sellerName || fields.sellerPhone || fields.sellerEmail || fields.showPhone === "true" || fields.showEmail === "true");
+            const brandControl = form.elements.namedItem("brand");
+            if (brandControl instanceof HTMLSelectElement) brandControl.value = fields.brand || "";
+            updateModelsForBrand();
+            for (const [name, value] of Object.entries(fields)) {
+              if (name === "tuvValidUntil" && fields.hasValidTuv !== "true") continue;
+              const control = form.elements.namedItem(name);
+              if (control instanceof HTMLInputElement && control.type === "checkbox") {
+                control.checked = value === "true";
+              } else if (control instanceof RadioNodeList) {
+                control.value = value;
+              } else if (control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) {
+                control.value = value;
+              }
+            }
+            updateEngineVolumesForFuel();
+            const engineVolumeControl = form.elements.namedItem("engineVolume");
+            if (engineVolumeControl instanceof HTMLSelectElement) engineVolumeControl.value = fields.engineVolume || "";
+            activeQuizStep = Math.min(2, Math.max(0, Number(draft.step || 0)));
+            setMessage("Восстановлен локальный черновик. Фотографии нужно выбрать заново.");
+          } catch {
+            localStorage.removeItem(LOCAL_DRAFT_KEY);
+          }
+        }
+
+        function updateReviewSummary() {
+          if (!(form instanceof HTMLFormElement) || !(reviewSummary instanceof HTMLElement)) return;
+          const data = new FormData(form);
+          const hasTuv = String(data.get("hasValidTuv") || "");
+          const phone = String(data.get("sellerPhone") || "").trim();
+          const email = String(data.get("sellerEmail") || "").trim();
+          const maskedPhone = phone ? `${phone.slice(0, Math.min(3, phone.length))} ••• ••• ${phone.slice(-4)}` : "—";
+          const contact = data.has("showPhone") && phone
+            ? maskedPhone
+            : data.has("showEmail") && email
+              ? email
+              : "Не указан";
+          const rows = [
+            ["Автомобиль", `${data.get("brand") || "—"} ${data.get("model") || ""} ${data.get("year") || ""}`.trim()],
+            ["Цена", data.get("price") ? `${Number(data.get("price")).toLocaleString("ru-RU")} €` : "—"],
+            ["Пробег", data.get("mileage") ? `${Number(data.get("mileage")).toLocaleString("ru-RU")} км` : "—"],
+            ["Город", String(data.get("location") || "—")],
+            ["Контакт", contact],
+            ["Показывать телефон", data.has("showPhone") ? "Да" : "Нет"],
+            ["Email", data.has("showEmail") ? email || "—" : "Скрыт"],
+            ["Предпочтительный способ", data.get("preferredContactMethod") === "email" ? "Email" : data.get("preferredContactMethod") === "phone" ? "Телефон" : "Не выбран"],
+            ["TÜV / HU", hasTuv === "true" ? `Да, до ${data.get("tuvValidUntil") || "—"}` : hasTuv === "false" ? "Нет" : "Не указан"],
+            ["Фото", `${selectedPhotos.length} шт.`],
+          ];
+          reviewSummary.innerHTML = `${rows.map(([label, value]) => `<div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join("")}<button class="button button-light button-small" type="button" data-edit-manual-contact>Изменить контакты</button>`;
+        }
 
         function markAiDraftDirty() {
           isAiDraftDirty = true;
@@ -851,6 +1162,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         function getXanoListingError(value: string) {
+          if (value.includes("UNSUPPORTED_SOURCE_LOCALE")) {
+            return "Язык объявления не распознан. Обновите страницу и повторите отправку.";
+          }
+
           if (value.includes("car.user_id") || value.includes("Unable to locate var")) {
             return "Объявление сохранено, но не отправилось на модерацию. Попробуйте позже.";
           }
@@ -1211,6 +1526,13 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const data = Object.fromEntries(
             Array.from(new FormData(aiReviewForm).entries()).map(([key, value]) => [key, String(value).trim()]),
           ) as Record<string, string>;
+          const contact = readSellerContact(aiReviewForm, "ai");
+          data.seller_name = contact.display_name;
+          data.seller_phone = contact.contact_phone;
+          data.seller_email = contact.contact_email;
+          data.show_phone = String(contact.show_phone);
+          data.show_email = String(contact.show_email);
+          data.preferred_contact_method = contact.preferred_contact_method || "";
 
           return data;
         }
@@ -1290,9 +1612,6 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             first_registration: firstValue(source.first_registration, source.first_registration_date, source.registration_date),
             vehicle_condition: firstValue(source.vehicle_condition, source.condition),
             seller_type: firstValue(source.seller_type),
-            seller_name: firstValue(source.seller_name),
-            seller_phone: firstValue(source.seller_phone),
-            seller_email: firstValue(source.seller_email),
             has_valid_tuv: source.has_valid_tuv,
             tuv_valid_until: firstValue(source.tuv_valid_until),
             mileage: firstValue(source.mileage),
@@ -1387,13 +1706,16 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const identity = extractAiDraftIdentity(raw);
           const detectedVin = firstValue(incomingFields.vin);
           const warnings = Array.isArray(raw.warnings) ? [...raw.warnings] : [];
+          const currentContact = aiReviewForm instanceof HTMLFormElement
+            ? readSellerContact(aiReviewForm, "ai")
+            : normalizeSellerContactProfile({});
           const fields = {
             ...normalized.fields,
             country: firstValue(incomingFields.country) || "Германия",
             currency: firstValue(incomingFields.currency) || "EUR",
-            seller_name: firstValue(incomingFields.seller_name, authUser?.name),
-            seller_email: firstValue(incomingFields.seller_email, authUser?.email),
-            seller_phone: firstValue(incomingFields.seller_phone),
+            seller_name: currentContact.display_name,
+            seller_email: currentContact.contact_email,
+            seller_phone: currentContact.contact_phone,
             vin: normalizeOptionalVin(detectedVin),
           };
 
@@ -1652,6 +1974,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           ].filter(Boolean);
           markAiDraftDirty();
           syncAiReviewVisibility(analysis);
+          updateRequiredFieldState(aiReviewForm);
           setAiActionStep("review");
           renderAiFillOverview(analysis);
           renderAiSuggestions(analysis);
@@ -1856,24 +2179,68 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
         }
 
-        function validateListingData(data: Record<string, string>, options: { allowExtremePrice?: boolean } = {}) {
+        function validateListingData(
+          data: Record<string, string>,
+          options: { allowExtremePrice?: boolean; requirePublicContact?: boolean } = {},
+        ) {
           const imageCount = currentAiUploadedImages.length || selectedAiPhotos.length || selectedPhotos.length;
           return validateAiDraftSubmission(data, { ...options, imageCount });
         }
 
         function getStepTitle(index: number) {
-          return ["Автомобиль", "Характеристики", "Продавец", "Фото и описание"][index] || "Шаг";
+          return ["Фото", "Данные автомобиля", "Проверка и отправка"][index] || "Шаг";
+        }
+
+        type RequiredListingControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+        function isRequiredControlComplete(control: RequiredListingControl) {
+          if (control.disabled || !control.required) return true;
+          if (control instanceof HTMLInputElement && control.type === "radio") {
+            const owner = control.form;
+            return owner
+              ? Array.from(owner.querySelectorAll<HTMLInputElement>('input[type="radio"]'))
+                .some((candidate) => candidate.name === control.name && candidate.checked)
+              : control.checked;
+          }
+          if (control instanceof HTMLInputElement && control.type === "checkbox") return control.checked;
+          if (control instanceof HTMLInputElement && control.type === "file") return Boolean(control.files?.length);
+          return String(control.value || "").trim().length > 0 && control.validity.valid;
+        }
+
+        function getRequiredFieldContainer(control: RequiredListingControl) {
+          if (control instanceof HTMLInputElement && control.type === "radio") return control.closest("fieldset");
+          if (control instanceof HTMLInputElement && control.type === "file") return control.closest(".photo-uploader, form");
+          return control.closest("label, fieldset");
+        }
+
+        function updateRequiredFieldState(target: ParentNode | null) {
+          if (!target) return;
+          const controls = Array.from(target.querySelectorAll<RequiredListingControl>("input[required], select[required], textarea[required]"));
+          const containers = new Set<HTMLElement>();
+
+          controls.forEach((control) => {
+            const container = getRequiredFieldContainer(control);
+            if (container instanceof HTMLElement) containers.add(container);
+            const pending = !isRequiredControlComplete(control);
+            control.classList.toggle("is-required-pending", pending);
+          });
+
+          containers.forEach((container) => {
+            const requiredControls = Array.from(container.querySelectorAll<RequiredListingControl>("input[required], select[required], textarea[required]"));
+            const pending = requiredControls.some((control) => !isRequiredControlComplete(control));
+            container.classList.toggle("is-required-pending", pending);
+          });
         }
 
         function updateQuizStep(nextStep: number) {
           const maxStep = Math.max(quizSteps.length - 1, 0);
           activeQuizStep = Math.min(Math.max(nextStep, 0), maxStep);
 
-          quizSteps.forEach((step, index) => {
-            if (step instanceof HTMLElement) {
+          quizSteps.forEach((steps, index) => {
+            steps.forEach((step) => {
               step.hidden = index !== activeQuizStep;
               step.classList.toggle("is-current", index === activeQuizStep);
-            }
+            });
           });
 
           quizProgressSteps.forEach((step, index) => {
@@ -1896,21 +2263,22 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             quizSubmitButton.hidden = activeQuizStep !== maxStep;
           }
 
-          if (sideSubmitButton instanceof HTMLButtonElement) {
-            sideSubmitButton.hidden = activeQuizStep !== maxStep;
-          }
+          if (activeQuizStep === 2) updateReviewSummary();
+          saveLocalDraft();
 
           setMessage(`Шаг ${activeQuizStep + 1} из ${quizSteps.length}: ${getStepTitle(activeQuizStep)}.`);
         }
 
         function validateQuizStep(index: number) {
-          const step = quizSteps[index];
+          const steps = quizSteps[index];
 
-          if (!(step instanceof HTMLElement)) {
+          if (!steps?.length) {
             return true;
           }
 
-          const controls = Array.from(step.querySelectorAll("input, select, textarea"));
+          clearManualFieldErrors();
+
+          const controls = steps.flatMap((step) => Array.from(step.querySelectorAll("input, select, textarea")));
           const invalidControl = controls.find((control) => {
             if (
               !(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) ||
@@ -1920,7 +2288,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               return false;
             }
 
-            return !String(control.value || "").trim();
+            return !isRequiredControlComplete(control);
           });
 
           controls.forEach((control) => {
@@ -1930,9 +2298,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           });
 
           if (invalidControl instanceof HTMLElement) {
-            invalidControl.classList.add("is-invalid");
-            invalidControl.focus();
-            setMessage("Заполните обязательные поля этого шага, чтобы продолжить.");
+            const control = invalidControl as RequiredListingControl;
+            showManualFieldErrors([{
+              field: manualFieldForControl(control),
+              message: `Заполните поле «${manualControlLabel(control)}».`,
+            }]);
             return false;
           }
 
@@ -1971,6 +2341,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           photoInput.files = transfer.files;
         }
 
+        function listingFileKey(file: Pick<File, "name" | "size" | "lastModified">) {
+          return `${file.name}:${file.size}:${file.lastModified}`;
+        }
+
+        function invalidateManualUploadsIfFilesChanged() {
+          const fingerprint = getListingFilesFingerprint(selectedPhotos);
+          if (manualUploadState && manualUploadState.fingerprint !== fingerprint) manualUploadState = null;
+        }
+
         function renderPhotoPreview() {
           if (!(photoPreviewGrid instanceof HTMLElement)) {
             return;
@@ -2004,20 +2383,21 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 <article class="photo-preview-card${index === 0 ? " is-main" : ""}" draggable="true" data-photo-index="${index}">
                   <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="new-listing" data-lightbox-src="${url}" data-lightbox-alt="Фото ${index + 1}" aria-label="Увеличить фото ${index + 1}">
                     <img src="${url}" alt="Фото ${index + 1}" />
-                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                    <span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
                   </button>
                   <div class="photo-preview-actions">
                     <span>${index === 0 ? "Главное фото" : `Фото ${index + 1}`}</span>
                     <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
                     <div class="photo-preview-buttons">
                       ${index === 0 ? "" : `<button type="button" data-make-main-photo="${index}">Главным</button>`}
-                      <button type="button" aria-label="Удалить фото ${index + 1}" data-remove-photo="${index}">×</button>
+                      <button type="button" aria-label="Удалить фото ${index + 1}" data-remove-photo="${index}"><i data-lucide="x" aria-hidden="true"></i></button>
                     </div>
                   </div>
                 </article>
               `;
             })
             .join("");
+          refreshAppIcons(photoPreviewGrid);
         }
 
         function setPhotoFiles(files: File[]) {
@@ -2026,18 +2406,37 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
 
           const maxFiles = Number(photoInput.dataset.maxFiles || 5);
-          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
+          const maxSize = Number(photoInput.dataset.maxSize || 8 * 1024 * 1024);
+          const allowedTypes = new Set(["image/avif", "image/webp", "image/jpeg", "image/png"]);
+          const existing = new Set(selectedPhotos.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+          const imageFiles = files.filter((file) => allowedTypes.has(file.type) && file.size > 0 && file.size <= maxSize);
+          const uniqueFiles = imageFiles.filter((file) => {
+            const key = `${file.name}:${file.size}:${file.lastModified}`;
+            if (existing.has(key)) return false;
+            existing.add(key);
+            return true;
+          });
           const remainingSlots = Math.max(maxFiles - selectedPhotos.length, 0);
-          const nextFiles = imageFiles.slice(0, remainingSlots);
+          const nextFiles = uniqueFiles.slice(0, remainingSlots);
 
           selectedPhotos.push(...nextFiles);
+          invalidateManualUploadsIfFilesChanged();
 
-          if (imageFiles.length > remainingSlots) {
+          if (files.some((file) => file.size === 0)) {
+            setMessage("Пустые файлы не добавлены.");
+          } else if (files.some((file) => file.size > maxSize)) {
+            setMessage("Некоторые фото больше 8 МБ и не добавлены.");
+          } else if (files.some((file) => !allowedTypes.has(file.type))) {
+            setMessage("Поддерживаются только AVIF, PNG, JPG и WEBP.");
+          } else if (uniqueFiles.length < imageFiles.length) {
+            setMessage("Повторяющиеся фотографии не добавлены.");
+          } else if (uniqueFiles.length > remainingSlots) {
             setMessage(`Можно загрузить максимум ${maxFiles} фото. Лишние изображения не добавлены.`);
           }
 
           syncPhotoInput();
           renderPhotoPreview();
+          updateRequiredFieldState(form);
         }
 
         function movePhoto(fromIndex: number, toIndex: number) {
@@ -2047,8 +2446,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           const [file] = selectedPhotos.splice(fromIndex, 1);
           selectedPhotos.splice(toIndex, 0, file);
+          invalidateManualUploadsIfFilesChanged();
           syncPhotoInput();
           renderPhotoPreview();
+          updateRequiredFieldState(form);
         }
 
         function removePhoto(index: number) {
@@ -2062,16 +2463,20 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             photoUrls.delete(file);
           }
 
+          invalidateManualUploadsIfFilesChanged();
           syncPhotoInput();
           renderPhotoPreview();
+          updateRequiredFieldState(form);
         }
 
         function clearPhotos() {
           selectedPhotos.splice(0, selectedPhotos.length);
+          manualUploadState = null;
           photoUrls.forEach((url) => URL.revokeObjectURL(url));
           photoUrls.clear();
           syncPhotoInput();
           renderPhotoPreview();
+          updateRequiredFieldState(form);
         }
 
         function syncAiPhotoInput() {
@@ -2117,17 +2522,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 <article class="photo-preview-card ai-photo-card" data-ai-photo-index="${index}">
                   <button class="vehicle-image-trigger photo-lightbox-trigger" type="button" data-lightbox-trigger data-lightbox-local="true" data-lightbox-group="new-ai-listing" data-lightbox-src="${url}" data-lightbox-alt="AI фото ${index + 1}" aria-label="Увеличить AI фото ${index + 1}">
                     <img src="${url}" alt="AI фото ${index + 1}" />
-                    <span class="vehicle-image-zoom" aria-hidden="true">＋</span>
+                    <span class="vehicle-image-zoom" aria-hidden="true"><i data-lucide="maximize-2"></i></span>
                   </button>
                   <div class="photo-preview-actions">
                     <span>Фото ${index + 1}</span>
                     <span class="photo-preview-meta">${formatBytes(file.size)} -> WebP до 1 МБ</span>
-                    <button type="button" aria-label="Удалить AI фото ${index + 1}" data-remove-ai-photo="${index}">×</button>
+                    <button type="button" aria-label="Удалить AI фото ${index + 1}" data-remove-ai-photo="${index}"><i data-lucide="x" aria-hidden="true"></i></button>
                   </div>
                 </article>
               `;
             })
             .join("");
+          refreshAppIcons(aiPhotoPreviewGrid);
         }
 
         function setAiPhotoFiles(files: File[]) {
@@ -2137,16 +2543,30 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           const maxFiles = Number(aiPhotoInput.dataset.maxFiles || 8);
           const maxSize = Number(aiPhotoInput.dataset.maxSize || 8 * 1024 * 1024);
-          const imageFiles = files.filter((file) => file.type.startsWith("image/"));
-          const validFiles = imageFiles.filter((file) => file.size <= maxSize);
+          const allowedTypes = new Set(["image/avif", "image/webp", "image/jpeg", "image/png"]);
+          const existing = new Set(selectedAiPhotos.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+          const imageFiles = files.filter((file) => allowedTypes.has(file.type));
+          const validFiles = imageFiles.filter((file) => file.size > 0 && file.size <= maxSize)
+            .filter((file) => {
+              const key = `${file.name}:${file.size}:${file.lastModified}`;
+              if (existing.has(key)) return false;
+              existing.add(key);
+              return true;
+            });
           const remainingSlots = Math.max(maxFiles - selectedAiPhotos.length, 0);
 
           selectedAiPhotos.push(...validFiles.slice(0, remainingSlots));
           aiPhotoRequestIdempotencyKey = "";
           if (validFiles.length > 0) markAiDraftDirty();
 
-          if (imageFiles.length !== validFiles.length) {
+          if (files.some((file) => file.size === 0)) {
+            setAiMessage("Пустые файлы не добавлены.");
+          } else if (files.some((file) => !allowedTypes.has(file.type))) {
+            setAiMessage("Поддерживаются только AVIF, PNG, JPG и WEBP.");
+          } else if (files.some((file) => file.size > maxSize)) {
             setAiMessage("Некоторые фото больше 8 МБ и не добавлены.");
+          } else if (validFiles.length < imageFiles.length) {
+            setAiMessage("Повторяющиеся фотографии не добавлены.");
           } else if (validFiles.length > remainingSlots) {
             setAiMessage(`Можно загрузить максимум ${maxFiles} фото для AI-черновика.`);
           } else {
@@ -2155,6 +2575,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           syncAiPhotoInput();
           renderAiPhotoPreview();
+          updateRequiredFieldState(aiDraftForm);
           markAiDraftDirty();
         }
 
@@ -2172,6 +2593,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           syncAiPhotoInput();
           aiPhotoRequestIdempotencyKey = "";
           renderAiPhotoPreview();
+          updateRequiredFieldState(aiDraftForm);
           markAiDraftDirty();
         }
 
@@ -2182,6 +2604,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           aiPhotoRequestIdempotencyKey = "";
           syncAiPhotoInput();
           renderAiPhotoPreview();
+          updateRequiredFieldState(aiDraftForm);
           markAiDraftDirty();
         }
 
@@ -2242,13 +2665,33 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           input.click();
         }
 
-        if (!getActiveAuthToken()) {
-          window.location.href = `/login?next=${encodeURIComponent("/dashboard/new/")}`;
-        }
-
         enableFastFieldActivation();
-        setListingMode("ai");
-        updateQuizStep(0);
+        restoreLocalDraft();
+        setListingMode("manual");
+        updateQuizStep(activeQuizStep);
+        updateRequiredFieldState(form);
+        updateRequiredFieldState(aiDraftForm);
+        updateRequiredFieldState(aiReviewForm);
+        void loadSellerContactProfile();
+
+        openAiHelperButton?.addEventListener("click", () => setListingMode("ai"));
+        closeAiHelperButton?.addEventListener("click", () => setListingMode("manual"));
+        let localDraftTimer = 0;
+        const queueLocalDraft = () => {
+          manualModerationRetryOnly = false;
+          window.clearTimeout(localDraftTimer);
+          localDraftTimer = window.setTimeout(saveLocalDraft, 250);
+        };
+        form?.addEventListener("input", () => {
+          queueLocalDraft();
+          updateRequiredFieldState(form);
+        });
+        form?.addEventListener("change", () => {
+          queueLocalDraft();
+          updateRequiredFieldState(form);
+        });
+        aiDraftForm?.addEventListener("input", () => updateRequiredFieldState(aiDraftForm));
+        aiDraftForm?.addEventListener("change", () => updateRequiredFieldState(aiDraftForm));
 
         listingModeButtons.forEach((button) => {
           button.addEventListener("click", () => {
@@ -2274,6 +2717,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               goToQuizStep(Number(step.dataset.quizJump || 0));
             }
           });
+        });
+
+        const returnToManualContacts = () => {
+          updateQuizStep(1);
+          const control = form instanceof HTMLFormElement ? form.elements.namedItem("sellerName") : null;
+          if (control instanceof HTMLElement) control.focus();
+        };
+        manualContactReturnButton?.addEventListener("click", returnToManualContacts);
+        reviewSummary?.addEventListener("click", (event) => {
+          if (event.target instanceof HTMLElement && event.target.closest("[data-edit-manual-contact]")) {
+            returnToManualContacts();
+          }
         });
 
         async function validateAuthToken() {
@@ -2394,14 +2849,27 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (container instanceof HTMLElement) container.hidden = hasValidTuv !== "true";
           if (input instanceof HTMLInputElement) {
             input.required = hasValidTuv === "true";
-            input.disabled = hasValidTuv === "false";
-            if (hasValidTuv === "false") input.value = "";
+            input.disabled = hasValidTuv !== "true";
+            if (hasValidTuv !== "true") {
+              input.value = "";
+              input.setCustomValidity("");
+              input.classList.remove("is-invalid");
+              input.removeAttribute("aria-invalid");
+              input.removeAttribute("aria-describedby");
+              container?.querySelectorAll("[data-field-error]").forEach((node) => node.remove());
+            }
           }
+          updateRequiredFieldState(scope);
         }
 
         form?.addEventListener("change", (event) => {
           if (event.target instanceof HTMLInputElement && event.target.name === "hasValidTuv") {
             syncTuvDateField(form, "hasValidTuv", "[data-manual-tuv-until-field]");
+          }
+          if (form instanceof HTMLFormElement
+            && event.target instanceof HTMLInputElement
+            && ["showPhone", "showEmail"].includes(event.target.name)) {
+            reconcileContactPreference(form, "manual");
           }
         });
         aiReviewForm?.addEventListener("change", (event) => {
@@ -2410,10 +2878,17 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (event.target instanceof HTMLInputElement && event.target.name === "has_valid_tuv") {
             syncTuvDateField(aiReviewForm, "has_valid_tuv", "[data-tuv-until-field]");
           }
+          if (aiReviewForm instanceof HTMLFormElement
+            && event.target instanceof HTMLInputElement
+            && ["show_phone", "show_email"].includes(event.target.name)) {
+            reconcileContactPreference(aiReviewForm, "ai");
+          }
+          updateRequiredFieldState(aiReviewForm);
         });
         aiReviewForm?.addEventListener("input", () => {
           markAiDraftDirty();
           clearAiFieldErrors();
+          updateRequiredFieldState(aiReviewForm);
         });
         syncTuvDateField(form, "hasValidTuv", "[data-manual-tuv-until-field]");
         syncTuvDateField(aiReviewForm, "has_valid_tuv", "[data-tuv-until-field]");
@@ -2684,6 +3159,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const title = data.title || [data.brand, data.model, data.year].filter(Boolean).join(" ");
 
           payload.set("title", title);
+          payload.set("source_locale", LEGACY_PUBLIC_LOCALE);
           payload.set("brand", data.brand || "");
           payload.set("make", data.brand || "");
           payload.set("model", data.model || "");
@@ -2760,8 +3236,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             recoverAuthOrRelogin();
             throw new Error("Сессия истекла. Войдите снова.");
           }
+          if (aiReviewForm instanceof HTMLFormElement) {
+            await saveSellerContactProfile(aiReviewForm, "ai", false);
+            data = getAiReviewData();
+          }
 
-          const validation = validateListingData(data);
+          const validation = validateListingData(data, { requirePublicContact: false });
 
           if (!validation.ok) {
             showAiFieldErrors(validation.issues);
@@ -2981,6 +3461,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         });
 
         aiDescriptionInsert?.addEventListener("click", () => applyDescriptionPreview("insert"));
+        aiDescriptionCancel?.addEventListener("click", () => {
+          if (aiDescriptionPreview instanceof HTMLElement) aiDescriptionPreview.hidden = true;
+          currentAiDescriptionPreview = "";
+        });
         aiDescriptionReplace?.addEventListener("click", () => applyDescriptionPreview("replace"));
         aiDescriptionCopy?.addEventListener("click", async () => {
           if (!currentAiDescriptionPreview) return;
@@ -3239,7 +3723,218 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
         });
 
-        async function submitListing(payload: FormData) {
+        const manualPhaseLabels: Record<ListingSubmissionPhase, string> = {
+          idle: "Отправить на модерацию",
+          validating: "Проверяю данные…",
+          saving_contacts: "Сохраняю контакты…",
+          uploading_images: "Загружаю фотографии…",
+          creating_listing: "Создаю объявление…",
+          submitting_moderation: "Отправляю на модерацию…",
+          success: "Объявление отправлено",
+          error: "Повторить отправку",
+        };
+
+        const MANUAL_FIELD_TO_CONTROL: Record<string, string> = {
+          title: "brand",
+          vehicle_type: "vehicleType",
+          brand: "brand",
+          make: "brand",
+          model: "model",
+          year: "year",
+          price: "price",
+          mileage: "mileage",
+          city: "location",
+          country: "country",
+          currency: "currency",
+          body_type: "bodyType",
+          fuel_type: "fuelType",
+          engine_volume: "engineVolume",
+          transmission: "transmission",
+          drivetrain: "drivetrain",
+          doors: "doors",
+          seats: "seats",
+          color: "color",
+          owners_count: "ownerCount",
+          owner_count: "ownerCount",
+          first_registration: "firstRegistrationDate",
+          first_registration_date: "firstRegistrationDate",
+          vehicle_condition: "condition",
+          condition: "condition",
+          seller_type: "sellerType",
+          seller_name: "sellerName",
+          seller_phone: "sellerPhone",
+          seller_email: "sellerEmail",
+          seller_contact: "showPhone",
+          has_valid_tuv: "hasValidTuv",
+          tuv_valid_until: "tuvValidUntil",
+          vin: "vin",
+          description: "description",
+          images: "photos",
+          photos: "photos",
+        };
+
+        function manualIssueTarget(issue: ListingFieldIssue) {
+          if (!(form instanceof HTMLFormElement)) return null;
+          const controlName = MANUAL_FIELD_TO_CONTROL[issue.field] || issue.field;
+          if (controlName === "photos") return photoDropzone instanceof HTMLElement ? photoDropzone : null;
+          if (controlName === "hasValidTuv") {
+            return form.querySelector<HTMLElement>('input[name="hasValidTuv"]');
+          }
+          const control = form.elements.namedItem(controlName);
+          return control instanceof HTMLElement ? control : null;
+        }
+
+        function manualFieldForControl(control: RequiredListingControl) {
+          const aliases: Record<string, string> = {
+            vehicleType: "vehicle_type",
+            bodyType: "body_type",
+            fuelType: "fuel_type",
+            engineVolume: "engine_volume",
+            ownerCount: "owners_count",
+            firstRegistrationDate: "first_registration",
+            condition: "vehicle_condition",
+            sellerType: "seller_type",
+            sellerName: "seller_name",
+            sellerPhone: "seller_phone",
+            sellerEmail: "seller_email",
+            hasValidTuv: "has_valid_tuv",
+            tuvValidUntil: "tuv_valid_until",
+            location: "city",
+            photos: "images",
+          };
+          return aliases[control.name] || control.name || "unknown";
+        }
+
+        function manualControlLabel(control: RequiredListingControl) {
+          if (control instanceof HTMLInputElement && control.type === "file") return "Фотографии";
+          const container = getRequiredFieldContainer(control);
+          const label = container?.querySelector("legend, span")?.textContent?.trim();
+          return label || control.name || "обязательное поле";
+        }
+
+        function clearManualFieldErrors() {
+          if (!(form instanceof HTMLFormElement)) return;
+          form.querySelectorAll<HTMLElement>("[data-manual-field-error]").forEach((node) => node.remove());
+          form.querySelectorAll<HTMLElement>(".is-invalid").forEach((control) => {
+            control.classList.remove("is-invalid");
+            control.removeAttribute("aria-invalid");
+            const describedBy = String(control.getAttribute("aria-describedby") || "")
+              .split(/\s+/)
+              .filter((id) => id && !id.startsWith("manual-listing-error-"));
+            if (describedBy.length) control.setAttribute("aria-describedby", describedBy.join(" "));
+            else control.removeAttribute("aria-describedby");
+          });
+        }
+
+        function showManualFieldErrors(issues: ListingFieldIssue[]) {
+          clearManualFieldErrors();
+          if (!(form instanceof HTMLFormElement) || issues.length === 0) return;
+
+          const targetStep = issues.some((issue) => ["images", "photos"].includes(issue.field)) ? 0 : 1;
+          updateQuizStep(targetStep);
+          const targetControls: HTMLElement[] = [];
+
+          issues.forEach((issue, index) => {
+            const control = manualIssueTarget(issue);
+            if (!control) return;
+            control.classList.add("is-invalid");
+            control.setAttribute("aria-invalid", "true");
+            const container = issue.field === "images" || issue.field === "photos"
+              ? control.closest(".photo-uploader")
+              : control.closest("label, fieldset");
+            if (!(container instanceof HTMLElement)) return;
+
+            const errorId = `manual-listing-error-${index}`;
+            const errorNode = document.createElement("small");
+            errorNode.id = errorId;
+            errorNode.className = "field-error";
+            errorNode.dataset.manualFieldError = issue.field || "unknown";
+            errorNode.textContent = issue.message;
+            container.append(errorNode);
+            const describedBy = new Set(String(control.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
+            describedBy.add(errorId);
+            control.setAttribute("aria-describedby", Array.from(describedBy).join(" "));
+            const issueStep = ["images", "photos"].includes(issue.field) ? 0 : 1;
+            if (issueStep === targetStep) targetControls.push(control);
+          });
+
+          const summary = Array.from(new Set(issues.map((issue) => issue.message))).slice(0, 4).join(" ");
+          setMessage(`Исправьте отмеченные поля. ${summary}`.trim());
+          const firstControl = targetControls[0];
+          if (firstControl) {
+            firstControl.scrollIntoView({ behavior: "smooth", block: "center" });
+            firstControl.focus();
+          }
+        }
+
+        function setManualSubmitPhase(phase: ListingSubmissionPhase) {
+          if (quizSubmitButton instanceof HTMLButtonElement) {
+            quizSubmitButton.textContent = manualPhaseLabels[phase];
+            quizSubmitButton.disabled = !["idle", "error"].includes(phase);
+            quizSubmitButton.setAttribute("aria-busy", String(!["idle", "error", "success"].includes(phase)));
+          }
+          if (phase !== "idle" && phase !== "error") setMessage(manualPhaseLabels[phase]);
+        }
+
+        function clearManualContactErrors() {
+          form?.querySelectorAll<HTMLElement>("[data-manual-contact-error]").forEach((node) => {
+            node.textContent = "";
+            node.hidden = true;
+          });
+          ["sellerName", "sellerPhone", "sellerEmail", "preferredContactMethod"].forEach((name) => {
+            const control = form instanceof HTMLFormElement ? form.elements.namedItem(name) : null;
+            if (control instanceof HTMLElement) {
+              control.classList.remove("is-invalid");
+              control.removeAttribute("aria-invalid");
+            }
+          });
+          if (manualContactReturnButton instanceof HTMLButtonElement) manualContactReturnButton.hidden = true;
+        }
+
+        function showManualContactError(field: string, errorMessage: string) {
+          const controlNames: Record<string, string> = {
+            display_name: "sellerName",
+            contact_phone: "sellerPhone",
+            contact_email: "sellerEmail",
+            preferred_contact_method: "preferredContactMethod",
+          };
+          const controlName = controlNames[field] || "sellerName";
+          const control = form instanceof HTMLFormElement ? form.elements.namedItem(controlName) : null;
+          const errorNode = form?.querySelector<HTMLElement>(`[data-manual-contact-error="${field}"]`);
+          updateQuizStep(1);
+          if (control instanceof HTMLElement) {
+            control.classList.add("is-invalid");
+            control.setAttribute("aria-invalid", "true");
+            control.focus();
+          }
+          if (errorNode) {
+            errorNode.textContent = errorMessage;
+            errorNode.hidden = false;
+          }
+          if (manualContactReturnButton instanceof HTMLButtonElement) manualContactReturnButton.hidden = false;
+          setMessage(`Не удалось сохранить контакты. ${errorMessage}`);
+        }
+
+        async function ensureManualListingImages(photoFiles: File[]) {
+          if (photoFiles.length === 0) return [];
+          const fingerprint = getListingFilesFingerprint(photoFiles);
+          if (manualUploadState?.fingerprint === fingerprint) {
+            const reused = photoFiles.map((file) => manualUploadState?.uploadsByFile.get(listingFileKey(file))).filter(Boolean);
+            if (reused.length === photoFiles.length) return reused as Array<{ url: string; key: string; contentType: string; size: number }>;
+          }
+
+          const uploads = await uploadListingImages(photoFiles, {
+            onProgress: (progressMessage) => setMessage(progressMessage),
+          });
+          manualUploadState = {
+            fingerprint,
+            uploadsByFile: new Map(photoFiles.map((file, index) => [listingFileKey(file), uploads[index]])),
+          };
+          return uploads;
+        }
+
+        async function ensureManualDraft(payload: FormData, uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }>) {
+          if (manualModerationRetryOnly && currentManualIdentity) return currentManualIdentity;
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
           const authToken = getActiveAuthToken();
 
@@ -3251,7 +3946,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             throw new Error("api url missing");
           }
 
-          const createResponse = await fetch(`${apiUrl}${apiRoute("cars", "/cars")}`, {
+          const imageUrls = uploadedImages.map((image) => image.url);
+          const imageKeys = uploadedImages.map((image) => image.key);
+          payload.set("main_image_url", imageUrls[0] || "");
+          payload.set("cover_image_url", imageUrls[0] || "");
+          payload.set("image_urls", JSON.stringify(imageUrls));
+          payload.set("image_keys", JSON.stringify(imageKeys));
+          payload.set("r2_images", JSON.stringify(uploadedImages));
+          payload.set("is_ai_generated", "false");
+          payload.set("idempotency_key", createListingSubmitIdempotencyKey(manualUserId, ensureManualSubmissionId()));
+          if (currentManualDraftId) payload.set("draft_id", String(currentManualDraftId));
+
+          const createResponse = await fetch(`${apiUrl}${apiRoute("listingsCreateDraft", "/listings/create-draft")}`, {
             method: "POST",
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -3264,57 +3970,72 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (isWrongTokenError(errorText)) {
               throw new Error(getAuthObjectError());
             }
-            throw new Error(errorText || "listing create failed");
+            throw new Error(getXanoListingError(errorText) || errorText || "Не удалось создать черновик объявления.");
           }
 
-          const createdCar = await createResponse.json();
-          const id = createdCar?.id;
+          const createdDraft = await createResponse.json();
+          const draftId = createdDraft?.draft_id || createdDraft?.draft?.id;
 
-          if (!id) {
-            throw new Error("Объявление сохранено, но сервер не вернул номер объявления.");
+          if (!draftId) {
+            throw new Error("Черновик сохранён, но сервер не вернул его номер.");
           }
+          currentManualDraftId = draftId;
+          saveLocalDraft();
+          currentManualIdentity = { draftId, listingId: createdDraft?.listing_id || null };
+          return currentManualIdentity;
+        }
 
-          const submitResponse = await fetch(`${apiUrl}${carSubmitRoute(id)}`, {
-            method: "PATCH",
+        async function submitManualDraftToModeration(identity: { draftId: string | number; listingId: string | number | null }) {
+          const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
+          const authToken = getActiveAuthToken();
+          if (!authToken || !apiUrl) throw new Error("Сессия завершена. Войдите снова.");
+
+          const submitResponse = await fetch(`${apiUrl}${apiRoute("listingsSubmitModeration", "/listings/submit-moderation")}`, {
+            method: "POST",
             headers: {
               Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
             },
+            body: JSON.stringify({ draft_id: identity.draftId, listing_id: identity.listingId }),
           });
 
-          if (!submitResponse.ok) {
-            const errorText = await submitResponse.text();
-            if (isWrongTokenError(errorText)) {
-              throw new Error(getAuthObjectError());
-            }
-            throw new Error(getXanoListingError(errorText) || "Объявление сохранено, но не отправлено на модерацию.");
-          }
-
-          return submitResponse.json();
+          return await readListingSubmissionApiResponse(submitResponse) as Record<string, any>;
         }
 
         form?.addEventListener("submit", async (event) => {
           event.preventDefault();
 
-          if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement)) {
+          if (!(form instanceof HTMLFormElement) || !(message instanceof HTMLElement) || isManualSubmitRunning) {
             return;
           }
+          clearManualContactErrors();
+          clearManualFieldErrors();
+          setManualSubmitPhase("validating");
 
           for (let index = 0; index < quizSteps.length; index += 1) {
             if (!validateQuizStep(index)) {
               updateQuizStep(index);
+              setManualSubmitPhase("error");
               return;
             }
           }
 
           syncPhotoInput();
           const formData = new FormData(form);
-          const sellerPhone = String(formData.get("sellerPhone") || "").trim();
-          const sellerEmail = String(formData.get("sellerEmail") || "").trim();
-
-          if (!sellerPhone && !sellerEmail) {
-            setMessage("Укажите телефон или email продавца.");
+          const contactValidation = validateSellerContactProfile({
+            display_name: formData.get("sellerName"),
+            contact_phone: formData.get("sellerPhone"),
+            contact_email: formData.get("sellerEmail"),
+            show_phone: formData.has("showPhone"),
+            show_email: formData.has("showEmail"),
+            preferred_contact_method: formData.get("preferredContactMethod"),
+          }, { requirePublicContact: true });
+          if (!contactValidation.valid) {
+            showManualContactError(contactValidation.field, contactValidation.message);
+            setManualSubmitPhase("error");
             return;
           }
+          const sellerContact = contactValidation.value;
 
           const listingValidation = validateListingData({
             title: `${String(formData.get("brand") || "")} ${String(formData.get("model") || "")} ${String(formData.get("year") || "")}`.trim(),
@@ -3338,16 +4059,20 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             first_registration: String(formData.get("firstRegistrationDate") || ""),
             vehicle_condition: String(formData.get("condition") || ""),
             seller_type: String(formData.get("sellerType") || ""),
-            seller_name: String(formData.get("sellerName") || ""),
-            seller_phone: sellerPhone,
-            seller_email: sellerEmail,
+            seller_name: sellerContact.display_name,
+            seller_phone: sellerContact.contact_phone,
+            seller_email: sellerContact.contact_email,
+            show_phone: String(sellerContact.show_phone),
+            show_email: String(sellerContact.show_email),
+            preferred_contact_method: sellerContact.preferred_contact_method || "",
             vin: String(formData.get("vin") || ""),
             has_valid_tuv: String(formData.get("hasValidTuv") || ""),
             tuv_valid_until: String(formData.get("tuvValidUntil") || ""),
           });
 
           if (!listingValidation.ok) {
-            setMessage(listingValidation.errors.join(" "));
+            showManualFieldErrors(listingValidation.issues);
+            setManualSubmitPhase("error");
             return;
           }
 
@@ -3358,6 +4083,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           const payload = new FormData();
           payload.set("title", `${brand} ${model} ${year}`.trim());
+          payload.set("source_locale", LEGACY_PUBLIC_LOCALE);
           payload.set("vehicle_type", String(formData.get("vehicleType") || ""));
           payload.set("brand", brand);
           payload.set("model", model);
@@ -3376,9 +4102,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           payload.set("city", city);
           payload.set("country", String(formData.get("country") || "Германия"));
           payload.set("seller_type", String(formData.get("sellerType") || ""));
-          payload.set("seller_name", String(formData.get("sellerName") || "").trim());
-          payload.set("seller_phone", sellerPhone);
-          payload.set("seller_email", sellerEmail);
+          payload.set("seller_name", sellerContact.display_name);
+          payload.set("seller_phone", sellerContact.contact_phone);
+          payload.set("seller_email", sellerContact.contact_email);
           payload.set("owners_count", String(formData.get("ownerCount") || ""));
           payload.set("owner_count", String(formData.get("ownerCount") || ""));
           payload.set("first_registration", String(formData.get("firstRegistrationDate") || ""));
@@ -3397,38 +4123,53 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           if (photoFiles.length > 8) {
             setMessage("Можно загрузить максимум 8 фото.");
+            setManualSubmitPhase("error");
             return;
           }
 
+          isManualSubmitRunning = true;
+          const submissionState: { failedPhase: ListingSubmissionPhase } = { failedPhase: "validating" };
           try {
-            let uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }> = [];
+            const result = await runListingSubmissionWorkflow({
+              validate: () => undefined,
+              ensureContacts: () => saveSellerContactProfile(form, "manual", true),
+              ensureImages: () => ensureManualListingImages(photoFiles),
+              ensureListing: (_contacts, uploadedImages) => ensureManualDraft(payload, uploadedImages),
+              submitModeration: (identity) => submitManualDraftToModeration(identity),
+              onPhase: (phase) => {
+                if (phase !== "error") submissionState.failedPhase = phase;
+                setManualSubmitPhase(phase);
+              },
+            });
 
-            if (photoFiles.length > 0) {
-              setMessage("Сжимаю и загружаю фото в хранилище...");
-              uploadedImages = await uploadListingImages(photoFiles, {
-                onProgress: (progressMessage) => setMessage(progressMessage),
-              });
-
-              const imageUrls = uploadedImages.map((image) => image.url);
-              const imageKeys = uploadedImages.map((image) => image.key);
-              payload.set("main_image_url", imageUrls[0] || "");
-              payload.set("cover_image_url", imageUrls[0] || "");
-              payload.set("image_urls", JSON.stringify(imageUrls));
-              payload.set("image_keys", JSON.stringify(imageKeys));
-              payload.set("r2_images", JSON.stringify(uploadedImages));
-            }
-
-            setMessage("Сохраняю объявление и отправляю на модерацию...");
-            await submitListing(payload);
-
-            setMessage("Объявление отправлено на модерацию. Оно появится в админ-панели.");
-            form.reset();
-            clearPhotos();
-            updateModelsForBrand();
-            updateEngineVolumesForFuel();
+            const listingId = result?.listing_id || result?.listing?.id || result?.id || null;
+            manualModerationRetryOnly = false;
+            setMessage(`Объявление отправлено на модерацию${listingId ? ` №${listingId}` : ""}.`);
+            localStorage.removeItem(LOCAL_DRAFT_KEY);
+            window.location.href = "/dashboard/listings?submitted=1";
           } catch (error) {
             console.error(error);
-            setMessage(getFriendlyErrorMessage(error, "Не удалось сохранить объявление. Проверьте данные и попробуйте ещё раз."));
+            if (error instanceof ContactProfileApiError) {
+              showManualContactError(error.field, error.message);
+            } else if (error instanceof ListingSubmissionApiError && error.issues.length) {
+              showManualFieldErrors(error.issues);
+              manualModerationRetryOnly = false;
+            } else {
+              const fallback = submissionState.failedPhase === "creating_listing"
+                ? "Контакты сохранены, но объявление не создано. Повторите отправку."
+                : submissionState.failedPhase === "submitting_moderation"
+                  ? "Объявление сохранено, но не отправлено на модерацию. Повторите отправку."
+                  : "Не удалось сохранить объявление. Проверьте данные и попробуйте ещё раз.";
+              setMessage(getFriendlyErrorMessage(error, fallback));
+            }
+            if (
+              submissionState.failedPhase === "submitting_moderation"
+              && currentManualIdentity
+              && !(error instanceof ListingSubmissionApiError && error.issues.length)
+            ) manualModerationRetryOnly = true;
+            setManualSubmitPhase("error");
+          } finally {
+            isManualSubmitRunning = false;
           }
         });
       </script>

@@ -1,7 +1,3 @@
-// Endpoint: GET /dashboard/listings
-// Owner-only dashboard projection with one active thumbnail per listing.
-// Pending/private listings are intentionally visible only to their owner here.
-
 query "dashboard/listings" verb=GET {
   api_group = "sitecraft-auto-market"
   auth = "automarket_users"
@@ -31,12 +27,80 @@ query "dashboard/listings" verb=GET {
       return = {type: "list"}
     } as $cars
 
+    var $owned_car_ids {
+      value = []
+    }
+
+    foreach ($cars) {
+      each as $owned_car {
+        array.push $owned_car_ids {
+          value = $owned_car.id
+        }
+      }
+    }
+
+    var $owner_views {
+      value = []
+    }
+
+    conditional {
+      if (($owned_car_ids|count) > 0) {
+        db.query listing_views {
+          where = $db.listing_views.car_id in $owned_car_ids
+          sort = {listing_views.created_at: "desc"}
+          return = {type: "list"}
+        } as $all_owner_views
+
+        var.update $owner_views {
+          value = $all_owner_views
+        }
+      }
+    }
+
+    var $views_7d_after {
+      value = now|add_secs_to_timestamp:-604800
+    }
+
     var $owned_listings {
       value = []
     }
 
     foreach ($cars) {
       each as $car {
+        array.filter ($owner_views) if ($this.car_id == $car.id) as $car_views
+        array.filter ($car_views) if ($this.created_at >= $views_7d_after) as $car_views_7d
+        array.find ($car_views) if ($this.car_id == $car.id) as $last_view
+
+        var $unique_sessions {
+          value = []
+        }
+
+        foreach ($car_views) {
+          each as $car_view {
+            array.find ($unique_sessions) if ($this == $car_view.session_id) as $known_session
+
+            conditional {
+              if ($known_session == null) {
+                array.push $unique_sessions {
+                  value = $car_view.session_id
+                }
+              }
+            }
+          }
+        }
+
+        var $last_viewed_at {
+          value = null
+        }
+
+        conditional {
+          if ($last_view != null) {
+            var.update $last_viewed_at {
+              value = $last_view.created_at
+            }
+          }
+        }
+
         db.query car_listing_images {
           where = (($db.car_listing_images.car_listing_id == $car.id) && ($db.car_listing_images.is_deleted != true))
           sort = {car_listing_images.sort_order: "asc", car_listing_images.id: "asc"}
@@ -120,6 +184,8 @@ query "dashboard/listings" verb=GET {
             price            : $car.price
             currency         : $car.currency
             city             : $car.city
+            has_valid_tuv    : $car.has_valid_tuv
+            tuv_valid_until  : $car.tuv_valid_until
             status           : $car.status
             moderation_status: $car.moderation_status
             created_at       : $car.created_at
@@ -132,6 +198,10 @@ query "dashboard/listings" verb=GET {
             homepage_at      : $car.homepage_at
             homepage_until   : $car.homepage_until
             last_promoted_at : $car.last_promoted_at
+            views_total      : $car_views|count
+            views_unique     : $unique_sessions|count
+            views_7d         : $car_views_7d|count
+            last_viewed_at   : $last_viewed_at
           }
         }
       }

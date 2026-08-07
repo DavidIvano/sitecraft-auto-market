@@ -1,13 +1,14 @@
-import { Activity, ArrowUp, Badge, BadgeCheck, Calendar, CalendarCheck, CalendarDays, CalendarPlus, Car, CarFront, CircleDot, Coins, DoorOpen, Euro, Fuel, Gauge, Globe2, Heart, Mail, MapPin, Palette, Phone, RefreshCw, Route, ScanLine, Settings2, ShieldCheck, Sparkles, UserRound, Users, X, createIcons } from "lucide";
 import { trackProductEvent } from "./analytics/events";
 import { API_ROUTES, buildApiUrl } from "./apiRoutes";
-import { getAuthToken, redirectToLogin } from "./authClient";
+import { refreshAppIcons } from "./appIcons";
+import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "./authClient";
+import { fetchWithRetry } from "./http/fetchWithRetry";
 import { showToast } from "./toast";
 
 function setFavoriteState(id: string, selected: boolean) {
   document.querySelectorAll<HTMLButtonElement>(`[data-car-favourite="${CSS.escape(id)}"]`).forEach((button) => {
     button.setAttribute("aria-pressed", String(selected));
-    const label = selected ? "Удалить из сохранённых" : "Сохранить";
+    const label = selected ? "Удалить из избранного" : "Сохранить в избранное";
     button.setAttribute("aria-label", label);
     button.title = label;
     button.dataset.state = selected ? "saved" : "not-saved";
@@ -16,6 +17,19 @@ function setFavoriteState(id: string, selected: boolean) {
 }
 
 let favoriteStatusRequest: Promise<void> | null = null;
+const pendingFavoriteRoots = new Set<ParentNode>();
+const pendingFavoriteMutations = new Set<string>();
+
+const wait = (milliseconds: number) => new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+
+async function getInitializedAuthToken() {
+  for (const delay of [0, 120, 300]) {
+    if (delay) await wait(delay);
+    const token = getAuthToken();
+    if (token) return token;
+  }
+  return null;
+}
 
 function favoriteIds(root: ParentNode) {
   return [...new Set(
@@ -25,41 +39,51 @@ function favoriteIds(root: ParentNode) {
   )].slice(0, 100);
 }
 
-export function refreshFavoriteStatuses(root: ParentNode = document) {
-  const token = getAuthToken();
-  const ids = favoriteIds(root);
-  if (!token || ids.length === 0) return Promise.resolve();
-  if (favoriteStatusRequest) return favoriteStatusRequest;
+export function refreshFavoriteStatuses(root: ParentNode = document): Promise<void> {
+  pendingFavoriteRoots.add(root);
+  if (favoriteStatusRequest) {
+    return favoriteStatusRequest.then(async () => {
+      if (pendingFavoriteRoots.size) await refreshFavoriteStatuses();
+    });
+  }
 
-  favoriteStatusRequest = fetch(buildApiUrl(API_ROUTES.favoriteStatuses), {
-    method: "POST",
-    headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-    body: JSON.stringify({ listing_ids: ids.map(Number).filter(Number.isInteger) }),
-  })
-    .then(async (response) => {
-      if (response.status === 401) return;
-      if (!response.ok) throw new Error(`favorite status request failed ${response.status}`);
-      const payload = await response.json() as { items?: Array<{ listing_id?: number | string; is_saved?: boolean }> };
-      const statuses = new Map((payload.items || []).map((item) => [String(item.listing_id), item.is_saved === true]));
-      ids.forEach((id) => setFavoriteState(id, statuses.get(id) === true));
-    })
+  const roots = Array.from(pendingFavoriteRoots);
+  pendingFavoriteRoots.clear();
+  favoriteStatusRequest = (async () => {
+    const token = await getInitializedAuthToken();
+    if (!token) return;
+    const ids = [...new Set(roots.flatMap((currentRoot) => favoriteIds(currentRoot)))].slice(0, 100);
+    if (ids.length === 0) return;
+
+    const response = await fetchWithRetry(buildApiUrl(API_ROUTES.favoriteStatuses), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ listing_ids: ids.map(Number).filter(Number.isInteger) }),
+    }, { attempts: 3, timeoutMs: 8_000, delaysMs: [300, 900] });
+    if (response.status === 401 || !response.ok) return;
+    const payload = await response.json() as { items?: Array<{ listing_id?: number | string; is_saved?: boolean }> };
+    const statuses = new Map((payload.items || []).map((item) => [String(item.listing_id), item.is_saved === true]));
+    ids.forEach((id) => setFavoriteState(id, statuses.get(id) === true));
+  })()
     .catch(() => undefined)
     .finally(() => {
       favoriteStatusRequest = null;
     });
 
-  return favoriteStatusRequest;
+  return favoriteStatusRequest.then(async () => {
+    if (pendingFavoriteRoots.size) await refreshFavoriteStatuses();
+  });
 }
 
 export function refreshPublicCarCardIcons(_root: ParentNode = document) {
-  createIcons({ icons: { Activity, ArrowUp, Badge, BadgeCheck, Calendar, CalendarCheck, CalendarDays, CalendarPlus, Car, CarFront, CircleDot, Coins, DoorOpen, Euro, Fuel, Gauge, Globe2, Heart, Mail, MapPin, Palette, Phone, RefreshCw, Route, ScanLine, Settings2, ShieldCheck, Sparkles, UserRound, Users, X }, attrs: { width: 18, height: 18, "stroke-width": 2 } });
+  refreshAppIcons(_root);
   void refreshFavoriteStatuses(_root);
 }
 
 async function toggleFavorite(button: HTMLButtonElement) {
   const id = String(button.dataset.carFavourite || "");
-  if (!id) return;
-  const token = getAuthToken();
+  if (!id || pendingFavoriteMutations.has(id)) return;
+  const token = await getInitializedAuthToken();
   if (!token) {
     redirectToLogin(window.location.pathname + window.location.search);
     return;
@@ -67,7 +91,9 @@ async function toggleFavorite(button: HTMLButtonElement) {
   const wasSaved = button.getAttribute("aria-pressed") === "true";
   const nextSaved = !wasSaved;
   setFavoriteState(id, nextSaved);
-  document.querySelectorAll<HTMLButtonElement>(`[data-car-favourite="${CSS.escape(id)}"]`).forEach((item) => { item.disabled = true; item.dataset.state = nextSaved ? "saving" : "removing"; });
+  pendingFavoriteMutations.add(id);
+  button.disabled = true;
+  button.dataset.state = nextSaved ? "saving" : "removing";
   try {
     const response = await fetch(buildApiUrl(API_ROUTES.favorite(id)), {
       method: nextSaved ? "POST" : "DELETE",
@@ -75,19 +101,30 @@ async function toggleFavorite(button: HTMLButtonElement) {
     });
     if (response.status === 401) {
       setFavoriteState(id, wasSaved);
-      redirectToLogin(window.location.pathname + window.location.search);
+      if (await isSessionConfirmedExpired(undefined, token)) {
+        redirectToLogin(window.location.pathname + window.location.search);
+      } else {
+        showToast("Не удалось подтвердить сессию. Повторите попытку.", "error");
+      }
       return;
     }
     const idempotentSuccess = (nextSaved && response.status === 409) || (!nextSaved && response.status === 404);
     if (!response.ok && !idempotentSuccess) throw new Error(`favorite request failed ${response.status}`);
+    if (!idempotentSuccess) {
+      const payload = await response.json().catch(() => null) as { is_saved?: unknown } | null;
+      if (payload?.is_saved !== nextSaved) throw new Error("favorite response state mismatch");
+    }
     setFavoriteState(id, nextSaved);
     window.dispatchEvent(new CustomEvent("car-favorite-changed", { detail: { listingId: id, isSaved: nextSaved } }));
     showToast(nextSaved ? "Добавлено в избранное" : "Удалено из избранного");
     trackProductEvent("promotion_favourite", { listing_id: id, status: nextSaved ? "added" : "removed", source: button.dataset.favoriteSource || "public_car_card" });
   } catch {
     setFavoriteState(id, wasSaved);
-    document.querySelectorAll<HTMLButtonElement>(`[data-car-favourite="${CSS.escape(id)}"]`).forEach((item) => { item.dataset.state = "error"; });
+    button.dataset.state = "error";
+    button.disabled = false;
     showToast("Не удалось изменить избранное. Повторите попытку.", "error");
+  } finally {
+    pendingFavoriteMutations.delete(id);
   }
 }
 
