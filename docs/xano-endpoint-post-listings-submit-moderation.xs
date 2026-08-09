@@ -8,6 +8,8 @@ query "listings/submit-moderation" verb=POST {
   input {
     int draft_id?
     int listing_id?
+    text has_valid_tuv_explicit? filters=trim|lower
+    text tuv_valid_until_explicit? filters=trim
   }
 
   stack {
@@ -557,6 +559,23 @@ query "listings/submit-moderation" verb=POST {
             |to_text
             |trim
         }
+
+        // The browser submits the explicit text value as well as the draft boolean.
+        // This preserves a deliberate "false" even when an older nullable draft lost it.
+        conditional {
+          if ($input.has_valid_tuv_explicit == "true") {
+            var.update $has_valid_tuv { value = true }
+          }
+          elseif ($input.has_valid_tuv_explicit == "false") {
+            var.update $has_valid_tuv { value = false }
+          }
+        }
+
+        conditional {
+          if (($input.has_valid_tuv_explicit == "true") && ($input.tuv_valid_until_explicit != "")) {
+            var.update $tuv_valid_until { value = $input.tuv_valid_until_explicit }
+          }
+        }
       
         var.update $currency {
           value = $payload
@@ -1077,7 +1096,7 @@ query "listings/submit-moderation" verb=POST {
     }
   
     conditional {
-      if ($has_valid_tuv == null) {
+      if (($has_valid_tuv == null) && ($input.has_valid_tuv_explicit != "true") && ($input.has_valid_tuv_explicit != "false")) {
         array.push $errors {
           value = {
             field  : "has_valid_tuv"

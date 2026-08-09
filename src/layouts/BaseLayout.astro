@@ -23,6 +23,7 @@ import "../styles/components/dialogs.css";
 import "../styles/components/states.css";
 import "../styles/components/dashboard.css";
 import "../styles/promotions.css";
+import "../styles/workspace-overrides.css";
 
 type LayoutVariant = "public" | "workspace" | "legal" | "auth";
 
@@ -358,6 +359,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
             ))
           }
         </nav>
+        <span class="mac-sidebar-scroll-indicator" aria-hidden="true"><i data-lucide="chevron-right"></i></span>
         <div class="mac-sidebar-footer">
           <button class="button button-light mac-sidebar-theme theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
             <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
@@ -420,6 +422,26 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
 
         setCollapsed(localStorage.getItem("sitecraft-sidebar-collapsed") === "true");
         toggle.addEventListener("click", () => setCollapsed(!shell.classList.contains("is-sidebar-collapsed")));
+      })();
+    </script>
+    <script is:inline>
+      (() => {
+        const sidebar = document.querySelector(".mac-sidebar");
+        const nav = sidebar?.querySelector(".mac-sidebar-nav");
+        if (!(sidebar instanceof HTMLElement) || !(nav instanceof HTMLElement)) return;
+
+        const updateScrollHints = () => {
+          const maximum = Math.max(0, nav.scrollWidth - nav.clientWidth);
+          const position = Math.min(maximum, Math.abs(nav.scrollLeft));
+          sidebar.classList.toggle("has-scrollable-nav", maximum > 8);
+          sidebar.classList.toggle("has-nav-before", position > 8);
+          sidebar.classList.toggle("has-nav-after", position < maximum - 8);
+        };
+
+        nav.addEventListener("scroll", updateScrollHints, { passive: true });
+        window.addEventListener("resize", updateScrollHints, { passive: true });
+        requestAnimationFrame(updateScrollHints);
+        if ("ResizeObserver" in window) new ResizeObserver(updateScrollHints).observe(nav);
       })();
     </script>
   </body>

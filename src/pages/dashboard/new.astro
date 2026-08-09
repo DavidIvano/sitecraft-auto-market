@@ -713,7 +713,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 <li>Телефон или email заполнен.</li>
                 <li>Описание без лишних личных данных.</li>
               </ul>
-              <p class="form-message" id="form-message">
+              <p class="form-message" id="form-message" role="status" aria-live="polite" aria-atomic="true" data-state="info">
                 После отправки объявление будет подготовлено к модерации.
               </p>
               <button class="button button-light button-small" type="button" data-return-contact hidden>Вернуться к контактам</button>
@@ -737,6 +737,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           validateSellerContactProfile,
         } from "../../lib/contactProfile";
         import { getFriendlyErrorMessage } from "../../lib/errorMessages";
+        import {
+          buildListingSubmissionFailureMessage,
+          summarizeListingIssues,
+        } from "../../lib/listingSubmissionMessages";
         import { createAiIdempotencyKey } from "../../lib/ai/idempotency";
         import { normalizeAiDraftFields } from "../../lib/ai/normalizeAiDraftFields";
         import {
@@ -1173,9 +1177,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return value;
         }
 
-        function setMessage(value: string) {
+        function setMessage(value: string, state: "info" | "error" | "success" = "info") {
           if (message instanceof HTMLElement) {
             message.textContent = value;
+            message.dataset.state = state;
           }
         }
 
@@ -2423,15 +2428,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           invalidateManualUploadsIfFilesChanged();
 
           if (files.some((file) => file.size === 0)) {
-            setMessage("Пустые файлы не добавлены.");
+            setMessage("Фотографии не добавлены. Причина: выбран пустой файл. Выберите другой файл и повторите.", "error");
           } else if (files.some((file) => file.size > maxSize)) {
-            setMessage("Некоторые фото больше 8 МБ и не добавлены.");
+            setMessage("Некоторые фотографии не добавлены. Причина: размер файла больше 8 МБ. Уменьшите файл и повторите.", "error");
           } else if (files.some((file) => !allowedTypes.has(file.type))) {
-            setMessage("Поддерживаются только AVIF, PNG, JPG и WEBP.");
+            setMessage("Фотография не добавлена. Причина: неподдерживаемый формат. Используйте AVIF, PNG, JPG или WEBP и повторите.", "error");
           } else if (uniqueFiles.length < imageFiles.length) {
-            setMessage("Повторяющиеся фотографии не добавлены.");
+            setMessage("Фотография не добавлена. Причина: этот файл уже выбран. Выберите другую фотографию.", "error");
           } else if (uniqueFiles.length > remainingSlots) {
-            setMessage(`Можно загрузить максимум ${maxFiles} фото. Лишние изображения не добавлены.`);
+            setMessage(`Лишние фотографии не добавлены. Причина: можно загрузить максимум ${maxFiles} фото. Удалите лишние файлы и повторите.`, "error");
           }
 
           syncPhotoInput();
@@ -2641,10 +2646,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             ".listing-form-enhanced input:not([type='file']), .listing-form-enhanced textarea",
           );
 
+          const nativePickerAndChoiceTypes = new Set([
+            "button", "checkbox", "color", "date", "datetime-local", "month",
+            "radio", "range", "reset", "submit", "time", "week",
+          ]);
+
           controls.forEach((control) => {
             control.addEventListener(
               "pointerdown",
               () => {
+                if (control instanceof HTMLInputElement && nativePickerAndChoiceTypes.has(control.type)) {
+                  return;
+                }
                 if (control instanceof HTMLInputElement || control instanceof HTMLTextAreaElement) {
                   if (document.activeElement !== control) {
                     control.focus({ preventScroll: true });
@@ -3830,7 +3843,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           });
         }
 
-        function showManualFieldErrors(issues: ListingFieldIssue[]) {
+        function showManualFieldErrors(issues: ListingFieldIssue[], options: { saved?: boolean } = {}) {
           clearManualFieldErrors();
           if (!(form instanceof HTMLFormElement) || issues.length === 0) return;
 
@@ -3862,8 +3875,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (issueStep === targetStep) targetControls.push(control);
           });
 
-          const summary = Array.from(new Set(issues.map((issue) => issue.message))).slice(0, 4).join(" ");
-          setMessage(`Исправьте отмеченные поля. ${summary}`.trim());
+          const summary = summarizeListingIssues(issues);
+          setMessage(buildListingSubmissionFailureMessage(summary, options), "error");
           const firstControl = targetControls[0];
           if (firstControl) {
             firstControl.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -3916,7 +3929,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             errorNode.hidden = false;
           }
           if (manualContactReturnButton instanceof HTMLButtonElement) manualContactReturnButton.hidden = false;
-          setMessage(`Не удалось сохранить контакты. ${errorMessage}`);
+          setMessage(buildListingSubmissionFailureMessage(`Не удалось сохранить контакты. ${errorMessage}`), "error");
         }
 
         async function ensureManualListingImages(photoFiles: File[]) {
@@ -3989,7 +4002,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return currentManualIdentity;
         }
 
-        async function submitManualDraftToModeration(identity: { draftId: string | number; listingId: string | number | null }) {
+        async function submitManualDraftToModeration(
+          identity: { draftId: string | number; listingId: string | number | null },
+          hasValidTuv: "true" | "false",
+          tuvValidUntil: string,
+        ) {
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
           const authToken = getActiveAuthToken();
           if (!authToken || !apiUrl) throw new Error("Сессия завершена. Войдите снова.");
@@ -4000,7 +4017,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               Authorization: `Bearer ${authToken}`,
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ draft_id: identity.draftId, listing_id: identity.listingId }),
+            body: JSON.stringify({
+              draft_id: identity.draftId,
+              listing_id: identity.listingId,
+              has_valid_tuv_explicit: hasValidTuv,
+              tuv_valid_until_explicit: hasValidTuv === "true" ? tuvValidUntil : "",
+            }),
           });
 
           return await readListingSubmissionApiResponse(submitResponse) as Record<string, any>;
@@ -4026,6 +4048,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           syncPhotoInput();
           const formData = new FormData(form);
+          const manualTuvValue = normalizeTuvSubmissionValue(formData.get("hasValidTuv"));
           const contactValidation = validateSellerContactProfile({
             display_name: formData.get("sellerName"),
             contact_phone: formData.get("sellerPhone"),
@@ -4070,7 +4093,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             show_email: String(sellerContact.show_email),
             preferred_contact_method: sellerContact.preferred_contact_method || "",
             vin: String(formData.get("vin") || ""),
-            has_valid_tuv: String(formData.get("hasValidTuv") || ""),
+            has_valid_tuv: manualTuvValue,
             tuv_valid_until: String(formData.get("tuvValidUntil") || ""),
           });
 
@@ -4116,17 +4139,17 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           payload.set("vehicle_condition", String(formData.get("condition") || ""));
           payload.set("condition", String(formData.get("condition") || ""));
           payload.set("vin", String(formData.get("vin") || "").trim().toUpperCase());
-          payload.set("has_valid_tuv", String(formData.get("hasValidTuv") || ""));
+          payload.set("has_valid_tuv", manualTuvValue);
           payload.set(
             "tuv_valid_until",
-            String(formData.get("hasValidTuv")) === "true" ? String(formData.get("tuvValidUntil") || "") : "",
+            manualTuvValue === "true" ? String(formData.get("tuvValidUntil") || "") : "",
           );
           payload.set("description", String(formData.get("description") || "").trim());
 
           const photoFiles = [...selectedPhotos];
 
           if (photoFiles.length > 8) {
-            setMessage("Можно загрузить максимум 8 фото.");
+            setMessage(buildListingSubmissionFailureMessage("Можно загрузить максимум 8 фотографий"), "error");
             setManualSubmitPhase("error");
             return;
           }
@@ -4139,7 +4162,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               ensureContacts: () => saveSellerContactProfile(form, "manual", true),
               ensureImages: () => ensureManualListingImages(photoFiles),
               ensureListing: (_contacts, uploadedImages) => ensureManualDraft(payload, uploadedImages),
-              submitModeration: (identity) => submitManualDraftToModeration(identity),
+              submitModeration: (identity) => submitManualDraftToModeration(
+                identity,
+                manualTuvValue as "true" | "false",
+                String(formData.get("tuvValidUntil") || ""),
+              ),
               onPhase: (phase) => {
                 if (phase !== "error") submissionState.failedPhase = phase;
                 setManualSubmitPhase(phase);
@@ -4148,7 +4175,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
             const listingId = result?.listing_id || result?.listing?.id || result?.id || null;
             manualModerationRetryOnly = false;
-            setMessage(`Объявление отправлено на модерацию${listingId ? ` №${listingId}` : ""}.`);
+            setMessage(`Объявление отправлено на модерацию${listingId ? ` №${listingId}` : ""}.`, "success");
             localStorage.removeItem(LOCAL_DRAFT_KEY);
             window.location.href = "/dashboard/listings?submitted=1";
           } catch (error) {
@@ -4156,15 +4183,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (error instanceof ContactProfileApiError) {
               showManualContactError(error.field, error.message);
             } else if (error instanceof ListingSubmissionApiError && error.issues.length) {
-              showManualFieldErrors(error.issues);
+              showManualFieldErrors(error.issues, { saved: true });
               manualModerationRetryOnly = false;
             } else {
-              const fallback = submissionState.failedPhase === "creating_listing"
-                ? "Контакты сохранены, но объявление не создано. Повторите отправку."
+              const fallbackReason = submissionState.failedPhase === "creating_listing"
+                ? "Контакты сохранены, но сервер не смог создать объявление"
                 : submissionState.failedPhase === "submitting_moderation"
-                  ? "Объявление сохранено, но не отправлено на модерацию. Повторите отправку."
-                  : "Не удалось сохранить объявление. Проверьте данные и попробуйте ещё раз.";
-              setMessage(getFriendlyErrorMessage(error, fallback));
+                  ? "Сервер отклонил отправку на модерацию"
+                  : "Не удалось сохранить объявление";
+              const reason = getFriendlyErrorMessage(error, fallbackReason);
+              setMessage(buildListingSubmissionFailureMessage(reason, {
+                saved: submissionState.failedPhase === "submitting_moderation",
+              }), "error");
             }
             if (
               submissionState.failedPhase === "submitting_moderation"

@@ -138,7 +138,7 @@ test("manual page uses the canonical contact parser, guarded state machine, imag
   assert.match(source, /import \{ LEGACY_PUBLIC_LOCALE \} from "\.\.\/\.\.\/i18n\/config"/);
   assert.equal((source.match(/payload\.set\("source_locale", LEGACY_PUBLIC_LOCALE\)/g) || []).length, 2);
   assert.match(source, /UNSUPPORTED_SOURCE_LOCALE/);
-  assert.match(source, /showManualFieldErrors\(error\.issues\)/);
+  assert.match(source, /showManualFieldErrors\(error\.issues, \{ saved: true \}\)/);
   assert.match(source, /manualModerationRetryOnly = false/);
   assert.match(source, /price" min="100" max="500000"/);
   assert.match(source, /window\.location\.href = "\/dashboard\/listings\?submitted=1"/);

@@ -1,0 +1,149 @@
+/* Mobile workspace dock: scrollable, evenly spaced, and visibly discoverable. */
+.mac-sidebar-scroll-indicator {
+  display: none;
+}
+
+#form-message[data-state="error"] {
+  border: 1px solid color-mix(in srgb, var(--danger) 42%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  padding: 12px 14px;
+}
+
+#form-message[data-state="success"] {
+  border: 1px solid color-mix(in srgb, var(--success) 42%, transparent);
+  border-radius: var(--radius-control);
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+  padding: 12px 14px;
+}
+
+@media (max-width: 760px) {
+  .mac-app-shell,
+  .mac-app-shell.is-sidebar-collapsed {
+    display: block;
+    padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  }
+
+  .mac-app-shell .mac-sidebar,
+  .mac-app-shell.is-sidebar-collapsed .mac-sidebar {
+    position: fixed;
+    inset: auto max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    z-index: 60;
+    display: block;
+    width: auto;
+    height: 76px;
+    min-height: 76px;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--border-default) 86%, transparent);
+    border-radius: 22px;
+    background: color-mix(in srgb, var(--surface-solid) 88%, transparent);
+    box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.06);
+    padding: 6px;
+    backdrop-filter: blur(22px) saturate(145%);
+    -webkit-backdrop-filter: blur(22px) saturate(145%);
+  }
+
+  .mac-app-shell .mac-sidebar :is(.mac-sidebar-top, .mac-sidebar-footer) {
+    display: none !important;
+  }
+
+  .mac-app-shell .mac-sidebar-nav {
+    display: flex;
+    width: 100%;
+    height: 64px;
+    grid-template-columns: none;
+    align-items: stretch;
+    gap: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    overscroll-behavior-x: contain;
+    scroll-padding-inline: 4px 38px;
+    scroll-snap-type: x proximity;
+    scrollbar-width: none;
+    padding: 0 34px 0 0;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mac-app-shell .mac-sidebar-nav::-webkit-scrollbar {
+    display: none;
+  }
+
+  .mac-app-shell .mac-sidebar-link,
+  .mac-app-shell.is-sidebar-collapsed .mac-sidebar-link,
+  .mac-app-shell .mac-sidebar-link:nth-child(n + 5) {
+    display: flex;
+    min-width: 68px;
+    height: 64px;
+    flex: 0 0 68px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    overflow: hidden;
+    border-radius: 16px;
+    padding: 5px 4px;
+    font-size: 0.66rem;
+    line-height: 1.05;
+    text-align: center;
+    scroll-snap-align: start;
+    white-space: nowrap;
+  }
+
+  .mac-app-shell .mac-sidebar-link[hidden] {
+    display: none !important;
+  }
+
+  .mac-app-shell .mac-sidebar-link svg {
+    width: 21px;
+    height: 21px;
+  }
+
+  .mac-app-shell .mac-sidebar-link span,
+  .mac-app-shell.is-sidebar-collapsed .mac-sidebar-link span {
+    display: block;
+    width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .mac-app-shell .mac-sidebar-link:is(.is-active, [aria-current="page"]) {
+    background: color-mix(in srgb, var(--accent) 18%, var(--surface-muted));
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 34%, transparent);
+  }
+
+  .mac-sidebar.has-scrollable-nav .mac-sidebar-scroll-indicator {
+    position: absolute;
+    top: 15px;
+    right: 10px;
+    z-index: 3;
+    display: grid;
+    width: 34px;
+    height: 46px;
+    place-items: center;
+    border: 1px solid color-mix(in srgb, var(--border-default) 86%, transparent);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface-solid) 94%, transparent);
+    box-shadow: -12px 0 18px color-mix(in srgb, var(--surface-solid) 84%, transparent);
+    color: var(--text-secondary);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 160ms ease;
+  }
+
+  .mac-sidebar.has-nav-after .mac-sidebar-scroll-indicator {
+    opacity: 1;
+  }
+
+  html[dir="rtl"] .mac-sidebar-scroll-indicator {
+    right: auto;
+    left: 10px;
+    transform: rotate(180deg);
+  }
+
+  html[dir="rtl"] .mac-app-shell .mac-sidebar-nav {
+    padding-right: 0;
+    padding-left: 34px;
+  }
+}
