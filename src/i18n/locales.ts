@@ -11,9 +11,15 @@ import { getLocaleFromAcceptLanguage } from "./locale.ts";
 // Compatibility list for dictionaries already shipped in the current UI. New
 // locales are configured in config.ts and are not public until their dictionary
 // and backend readiness checks pass.
-export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
+export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr", "fr"] as const;
 export type LegacyUiLocale = typeof SUPPORTED_LOCALES[number];
 export type Locale = LocaleCode;
+
+// Xano's current public endpoint contract accepts these six values. UI locales
+// can ship independently and safely reuse English listing payloads until the
+// corresponding Xano locale is enabled.
+export const XANO_SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
+export type XanoLocale = typeof XANO_SUPPORTED_LOCALES[number];
 
 export const EU_OFFICIAL_LOCALES = [
   "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu",
@@ -64,6 +70,11 @@ export function resolveContentLocale(value: unknown): LegacyUiLocale {
   return isLegacyUiLocale(resolved) ? resolved : "en";
 }
 
+export function resolveBackendLocale(value: unknown): XanoLocale {
+  const resolved = resolveLocale(value, "en");
+  return XANO_SUPPORTED_LOCALES.includes(resolved as XanoLocale) ? resolved as XanoLocale : "en";
+}
+
 export function resolveLocale(value: unknown, fallback: Locale = DEFAULT_LOCALE): Locale {
   const exact = getLocaleDefinition(value);
   if (exact?.isActive) return exact.code;
@@ -80,7 +91,12 @@ export function resolveLocale(value: unknown, fallback: Locale = DEFAULT_LOCALE)
 }
 
 // Query/cookie resolution exists only for old unprefixed URLs during migration.
-export function resolveRequestLocale(url: URL, cookieLocale?: unknown, acceptLanguage?: string | null): Locale {
+export function resolveRequestLocale(
+  url: URL,
+  cookieLocale?: unknown,
+  acceptLanguage?: string | null,
+  countryCode?: string | null,
+): Locale {
   const candidates = [
     url.searchParams.get("lang") || url.searchParams.get("locale"),
     cookieLocale,
@@ -91,6 +107,15 @@ export function resolveRequestLocale(url: URL, cookieLocale?: unknown, acceptLan
     const resolved = resolveLocale(candidate, "en");
     if (candidate && isSelectableLocale(resolved)) return resolved;
   }
+
+  const countryFallbacks: Record<string, SelectableLocale> = {
+    AT: "de",
+    DE: "de",
+    FR: "fr",
+    RU: "ru",
+  };
+  const regionalLocale = countryFallbacks[String(countryCode || "").trim().toUpperCase()];
+  if (regionalLocale) return regionalLocale;
 
   // English is the safe UI fallback for device languages that the site does
   // not support yet. It also avoids silently falling back to the source data

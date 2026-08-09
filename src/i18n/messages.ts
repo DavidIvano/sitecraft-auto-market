@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrRecord } from "./arTrTranslations.ts";
+import { translateFrCoreRecord } from "./frCoreTranslations.ts";
 
 const ruMessages = {
   language: "Язык",
@@ -145,6 +146,7 @@ export const UI_MESSAGES: Record<Locale, UiMessages> = {
   en: enMessages,
   ar: translateArTrRecord(ruMessages, "ar"),
   tr: translateArTrRecord(ruMessages, "tr"),
+  fr: translateFrCoreRecord(enMessages),
 };
 
 export function hasUiDictionary(locale: string): boolean {

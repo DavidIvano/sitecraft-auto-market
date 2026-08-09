@@ -1,0 +1,133 @@
+import { writeFileSync } from "node:fs";
+
+import { BACKEND_VALUE_CATALOG } from "../../src/i18n/backendValues.ts";
+import { getCatalogMessages } from "../../src/i18n/catalogMessages.ts";
+import { getDetailMessages } from "../../src/i18n/detailMessages.ts";
+import { getMessages } from "../../src/i18n/messages.ts";
+import { UI_PHRASE_TRANSLATIONS } from "../../src/i18n/uiPhraseTranslations.ts";
+import { UI_PHRASE_TRANSLATIONS_DYNAMIC } from "../../src/i18n/uiPhraseTranslationsDynamic.ts";
+import { UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL } from "../../src/i18n/uiPhraseTranslationsSupplemental.ts";
+
+const outputPath = new URL("../../src/i18n/frTranslations.ts", import.meta.url);
+const separator = "|||||";
+const batchSize = 12;
+
+const backendRussianLabels = Object.values(BACKEND_VALUE_CATALOG)
+  .flatMap((items) => items.map((item) => item.labels.ru));
+const sources = [...new Set([
+  ...Object.keys(UI_PHRASE_TRANSLATIONS),
+  ...Object.keys(UI_PHRASE_TRANSLATIONS_DYNAMIC),
+  ...Object.keys(UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL),
+  ...Object.values(getMessages("ru")),
+  ...Object.values(getCatalogMessages("ru")),
+  ...Object.values(getDetailMessages("ru")),
+  ...backendRussianLabels,
+])].sort((left, right) => left.localeCompare(right));
+
+const protectPlaceholders = (value) => {
+  const placeholders = [];
+  const protectedValue = value.replace(/\{[^{}]+\}/g, (placeholder) => {
+    const token = `ZXQPH${placeholders.length}QXZ`;
+    placeholders.push([token, placeholder]);
+    return token;
+  });
+  return { protectedValue, placeholders };
+};
+
+const restorePlaceholders = (value, placeholders) => placeholders.reduce(
+  (result, [token, placeholder]) => result.replaceAll(token, placeholder),
+  value,
+);
+
+async function translateBatch(batch) {
+  const protectedItems = batch.map(protectPlaceholders);
+  const url = new URL("https://translate.googleapis.com/translate_a/single");
+  url.searchParams.set("client", "gtx");
+  url.searchParams.set("sl", "ru");
+  url.searchParams.set("tl", "fr");
+  url.searchParams.set("dt", "t");
+  url.searchParams.set("q", protectedItems.map((item) => item.protectedValue).join(`\n${separator}\n`));
+
+  let lastError;
+  for (let attempt = 1; attempt <= 4; attempt += 1) {
+    try {
+      const response = await fetch(url, { headers: { Accept: "application/json" } });
+      if (!response.ok) throw new Error(`translation request failed: ${response.status}`);
+      const payload = await response.json();
+      const translated = payload[0].map((part) => part[0]).join("");
+      const items = translated.split(separator).map((item) => item.trim());
+      if (items.length !== batch.length) throw new Error(`translation batch mismatch: ${items.length}/${batch.length}`);
+      return items.map((value, index) => restorePlaceholders(value, protectedItems[index].placeholders));
+    } catch (error) {
+      lastError = error;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 250));
+    }
+  }
+  throw lastError;
+}
+
+const translations = {};
+for (let offset = 0; offset < sources.length; offset += batchSize) {
+  const batch = sources.slice(offset, offset + batchSize);
+  const translated = await translateBatch(batch);
+  translated.forEach((value, index) => {
+    translations[batch[index]] = value;
+  });
+}
+
+Object.assign(translations, {
+  "Главная": "Accueil",
+  "Авто": "Voitures",
+  "Автомобили": "Voitures",
+  "Кабинет": "Mon compte",
+  "Продать авто": "Vendre une voiture",
+  "Тарифы": "Tarifs",
+  "Модерация": "Modération",
+  "Приватность": "Confidentialité",
+  "Поддержка": "Assistance",
+  "Войти": "Se connecter",
+  "Выйти": "Se déconnecter",
+  "Регистрация": "Créer un compte",
+  "Добавить объявление": "Ajouter une annonce",
+  "Язык": "Langue",
+  "Каталог автомобилей": "Catalogue de voitures",
+  "Результаты": "Résultats",
+  "{count} авто": "{count} voitures",
+  "{count} объявл.": "{count} annonces",
+  "{count} активных объявлений": "{count} annonces actives",
+  "Легковой автомобиль": "Voiture particulière",
+  "Механика": "Boîte manuelle",
+  "Автомат": "Boîte automatique",
+  "Коробка": "Transmission",
+  "Б/у": "D'occasion",
+  "Бензин": "Essence",
+  "Город": "Ville",
+  "Год": "Année",
+  "Пробег": "Kilométrage",
+  "Топливо": "Carburant",
+  "Цена": "Prix",
+  "Описание автомобиля": "Description du véhicule",
+  "Связаться с продавцом": "Contacter le vendeur",
+  "Смотреть объявления": "Voir les annonces",
+  "Премиальная доска объявлений авто": "Plateforme premium d'annonces automobiles",
+  "Купите или продайте авто быстрее с AI-помощником": "Achetez ou vendez une voiture plus rapidement avec l'aide de l'IA",
+  "Создать объявление по фото": "Créer une annonce à partir de photos",
+  "Подобрать авто с AI": "Trouver une voiture avec l'IA",
+  "Понятно": "Compris",
+  "Cookie и приватность": "Cookies et confidentialité",
+  "Подробнее": "En savoir plus",
+  "Неважно": "Tous",
+});
+
+const output = `// Generated by scripts/i18n/generate-fr-translations.mjs.\n`
+  + `// Contains interface and taxonomy text only; never add user or listing content.\n\n`
+  + `export const FR_TRANSLATIONS: Record<string, string> = ${JSON.stringify(translations, null, 2)};\n\n`
+  + `export function translateFrPhrase(source: string): string {\n`
+  + `  return FR_TRANSLATIONS[source] || source;\n`
+  + `}\n\n`
+  + `export function translateFrRecord<T extends Record<string, string>>(source: T): T {\n`
+  + `  return Object.fromEntries(Object.entries(source).map(([key, value]) => [key, translateFrPhrase(value)])) as T;\n`
+  + `}\n`;
+
+writeFileSync(outputPath, output);
+process.stdout.write(`Generated ${sources.length} French interface translations.\n`);

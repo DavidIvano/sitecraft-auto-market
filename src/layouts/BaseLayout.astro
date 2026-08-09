@@ -59,6 +59,7 @@ const locale = localeProp ?? resolveRequestLocale(
   Astro.url,
   Astro.cookies.get(LOCALE_COOKIE)?.value,
   Astro.request.headers.get("accept-language"),
+  Astro.request.headers.get("cf-ipcountry"),
 );
 const messages = getMessages(locale);
 const documentLocale = resolveContentLocale(locale);
@@ -243,12 +244,12 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
           if (!value || !/[А-Яа-яЁё]/u.test(value)) return value;
           const normalized = value.replace(/\s+/gu, " ").trim();
           const dynamicPatterns = [
-            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів`, ar: (n) => `${n} أيام`, tr: (n) => `${n} gün` }],
-            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів`, ar: (n) => `${n} رصيد`, tr: (n) => `${n} kredi` }],
-            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень`, ar: (n) => `حتى ${n} إعلانات نشطة`, tr: (n) => `${n} adede kadar aktif ilan` }],
-            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця`, ar: (n) => `${n} رصيد AI كل شهر`, tr: (n) => `Her ay ${n} AI kredisi` }],
-            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}`, ar: (n) => `أولوية التاجر: ${n}`, tr: (n) => `Bayi önceliği: ${n}` }],
-            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.`, ar: (n) => `${n} / شهر`, tr: (n) => `${n} / ay` }],
+            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів`, ar: (n) => `${n} أيام`, tr: (n) => `${n} gün`, fr: (n) => `${n} jours` }],
+            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів`, ar: (n) => `${n} رصيد`, tr: (n) => `${n} kredi`, fr: (n) => `${n} crédits` }],
+            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень`, ar: (n) => `حتى ${n} إعلانات نشطة`, tr: (n) => `${n} adede kadar aktif ilan`, fr: (n) => `Jusqu’à ${n} annonces actives` }],
+            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця`, ar: (n) => `${n} رصيد AI كل شهر`, tr: (n) => `Her ay ${n} AI kredisi`, fr: (n) => `${n} crédits IA par mois` }],
+            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}`, ar: (n) => `أولوية التاجر: ${n}`, tr: (n) => `Bayi önceliği: ${n}`, fr: (n) => `Priorité du concessionnaire : ${n}` }],
+            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.`, ar: (n) => `${n} / شهر`, tr: (n) => `${n} / ay`, fr: (n) => `${n} / mois` }],
           ];
           for (const [pattern, handlers] of dynamicPatterns) {
             const match = normalized.match(pattern);

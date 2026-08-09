@@ -32,15 +32,35 @@ const routeOptions = alternateLocales.length > 1
 const routeMode = alternateLocales.length > 1 || compatibilityRoutes.length > 0 ? "path" : "legacy-query";
 const translatedOptions = routeOptions.filter((option) => isLegacyUiLocale(option.locale));
 const fallbackOptions = routeOptions.filter((option) => !isLegacyUiLocale(option.locale));
+const translatedGroupLabels: Record<string, string> = {
+  ar: "اللغات المترجمة",
+  de: "Übersetzte Sprachen",
+  en: "Translated languages",
+  fr: "Langues traduites",
+  ru: "Переведённые языки",
+  tr: "Çevrilmiş diller",
+  uk: "Перекладені мови",
+};
+const fallbackGroupLabels: Record<string, string> = {
+  ar: "اللغات الأوروبية · المحتوى بالإنجليزية",
+  de: "Europäische Sprachen · Inhalt auf Englisch",
+  en: "European languages · English content",
+  fr: "Langues européennes · contenu en anglais",
+  ru: "Европейские языки · контент на английском",
+  tr: "Avrupa dilleri · İngilizce içerik",
+  uk: "Європейські мови · контент англійською",
+};
+const translatedGroupLabel = translatedGroupLabels[locale] || translatedGroupLabels.en;
+const fallbackGroupLabel = fallbackGroupLabels[locale] || fallbackGroupLabels.en;
 ---
 
 <label class="locale-switcher">
   <span class="sr-only">{messages.language}</span>
   <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE} data-route-mode={routeMode}>
-    <optgroup label="Translated">
+    <optgroup label={translatedGroupLabel}>
       {translatedOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
     </optgroup>
-    {fallbackOptions.length > 0 && <optgroup label="European languages · English fallback">
+    {fallbackOptions.length > 0 && <optgroup label={fallbackGroupLabel}>
       {fallbackOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
     </optgroup>}
   </select>

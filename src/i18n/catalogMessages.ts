@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrRecord } from "./arTrTranslations.ts";
+import { translateFrCoreRecord } from "./frCoreTranslations.ts";
 
 const ru = {
   title: "Автомобили", description: "Каталог проверенных автомобилей SiteCraft Auto Market", eyebrow: "Каталог автомобилей", lead: "Свежие проверенные объявления с фотографиями, ценами и быстрым поиском по главным параметрам.", view: "Вид каталога", grid: "Плитка", list: "Список", filters: "Фильтры каталога",
@@ -42,5 +43,6 @@ const dictionaries: Record<Locale, CatalogMessages> = {
   en,
   ar: translateArTrRecord(ru, "ar"),
   tr: translateArTrRecord(ru, "tr"),
+  fr: translateFrCoreRecord(en),
 };
 export const getCatalogMessages = (locale: Locale) => dictionaries[locale] || dictionaries.en;

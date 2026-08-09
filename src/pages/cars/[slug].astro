@@ -25,7 +25,7 @@ import { normalizeBackendValue, translateBackendValue, type BackendValueField } 
 
 export const prerender = false;
 
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"), Astro.request.headers.get("cf-ipcountry"));
 const messages = getDetailMessages(locale);
 const localeTag = LOCALE_TAGS[locale];
 const localizedValue = (field: BackendValueField, value: unknown) =>

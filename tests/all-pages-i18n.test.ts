@@ -11,6 +11,8 @@ test("universal UI translation covers titles, dynamic counters and shared option
   assert.equal(translateUiValue("7 дней", "en"), "7 days");
   assert.equal(translateUiValue("До 50 активных объявлений", "de"), "Bis zu 50 aktive Anzeigen");
   assert.equal(translateUiValue("Частное лицо", "en"), "Private person");
+  assert.equal(translateUiValue("Тарифы | SiteCraft Auto Market", "fr"), "Tarifs | SiteCraft Auto Market");
+  assert.equal(translateUiValue("7 дней", "fr"), "7 jours");
 });
 
 test("server translation preserves marked backend and seller content", () => {
@@ -53,7 +55,7 @@ test("language switching is edge-cacheable and defers duplicate public inventory
   assert.match(catalog, /requestIdleCallback/);
   assert.match(xano, /PUBLIC_CATALOG_FRESH_MS/);
   assert.match(xano, /cacheEverything: true/);
-  assert.match(switcher, /European languages · English fallback/);
+  assert.match(switcher, /Langues européennes · contenu en anglais/);
 });
 
 test("Cloudflare and compatibility redirects keep every page and locale reachable", () => {

@@ -7,13 +7,13 @@ import { getBrandLogoSvg } from "../lib/brandLogos";
 import { getApprovedCars } from "../lib/xano";
 import { isPublicListing } from "../lib/listingStatus";
 import type { CarListing } from "../lib/types";
-import { LOCALE_COOKIE, isSelectableLocale, resolveContentLocale, resolveRequestLocale } from "../i18n/locales";
+import { LOCALE_COOKIE, isSelectableLocale, resolveBackendLocale, resolveRequestLocale } from "../i18n/locales";
 import { getBackendValueOptions } from "../i18n/backendValues";
 import { getMessages } from "../i18n/messages";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
-const contentLocale = resolveContentLocale(locale);
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"), Astro.request.headers.get("cf-ipcountry"));
+const contentLocale = resolveBackendLocale(locale);
 const messages = getMessages(locale);
 const fuelOptions = getBackendValueOptions("fuel_type", locale);
 const transmissionOptions = getBackendValueOptions("transmission", locale);

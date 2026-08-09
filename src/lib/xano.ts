@@ -5,7 +5,7 @@ import { API_ROUTES, buildApiUrl, getXanoApiUrl, isXanoConfigured } from "./apiR
 import { fetchWithRetry } from "./http/fetchWithRetry";
 import { normalizePublicCarList, normalizePublicCarListing } from "./publicCar";
 import { applyListingTranslation, applyListingTranslations, normalizeListingTranslation } from "./listingTranslation.ts";
-import { DEFAULT_LOCALE, resolveContentLocale, type LegacyUiLocale, type Locale } from "../i18n/locales.ts";
+import { DEFAULT_LOCALE, resolveBackendLocale, type Locale, type XanoLocale } from "../i18n/locales.ts";
 
 const API_URL = getXanoApiUrl();
 const PUBLIC_API_TIMEOUT_MS = 8_000;
@@ -13,8 +13,8 @@ const PUBLIC_API_RATE_LIMIT_ATTEMPTS = 5;
 const PUBLIC_CATALOG_FRESH_MS = 60_000;
 const PUBLIC_CATALOG_STALE_MS = 10 * 60_000;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
-const catalogCache = new Map<LegacyUiLocale, { cars: CarListing[]; freshUntil: number; staleUntil: number }>();
-const catalogRequests = new Map<LegacyUiLocale, Promise<CarListing[]>>();
+const catalogCache = new Map<XanoLocale, { cars: CarListing[]; freshUntil: number; staleUntil: number }>();
+const catalogRequests = new Map<XanoLocale, Promise<CarListing[]>>();
 
 const withLocale = (path: string, locale: Locale) =>
   `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}`;
@@ -71,7 +71,7 @@ async function fetchPublicJson(path: string) {
   }
 }
 
-const loadApprovedCatalog = (locale: LegacyUiLocale) => {
+const loadApprovedCatalog = (locale: XanoLocale) => {
   const existing = catalogRequests.get(locale);
   if (existing) return existing;
 
@@ -164,7 +164,7 @@ export async function getApprovedCars(
     return [];
   }
 
-  const locale = resolveContentLocale(options.locale || DEFAULT_LOCALE);
+  const locale = resolveBackendLocale(options.locale || DEFAULT_LOCALE);
   const cached = catalogCache.get(locale);
   const now = Date.now();
   if (cached?.freshUntil && cached.freshUntil > now) return [...cached.cars];
@@ -181,7 +181,7 @@ export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE
     return null;
   }
 
-  const contentLocale = resolveContentLocale(locale);
+  const contentLocale = resolveBackendLocale(locale);
   const payload = await fetchPublicJson(withLocale(API_ROUTES.carBySlug(slug), contentLocale));
   const listing = payload ? normalizePublicCarListing(payload) : null;
   return listing ? applyListingTranslation(listing, contentLocale) : null;
@@ -209,7 +209,7 @@ export async function getLocalizedCarBySlug(slug: string, locale: Locale): Promi
 export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
-  const contentLocale = resolveContentLocale(locale);
+  const contentLocale = resolveBackendLocale(locale);
 
   return queueSellerListingsRequest(async () => {
     const url = buildApiUrl(withLocale(API_ROUTES.carSellerListings(slug), contentLocale), API_URL);
@@ -231,7 +231,7 @@ export async function getSellerListingsBySlug(slug: string, locale: Locale = DEF
 export async function getRelatedCarsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
-  const contentLocale = resolveContentLocale(locale);
+  const contentLocale = resolveBackendLocale(locale);
   const payload = await fetchPublicJson(withLocale(API_ROUTES.carRelated(slug), contentLocale));
   if (!Array.isArray(payload)) return [];
 

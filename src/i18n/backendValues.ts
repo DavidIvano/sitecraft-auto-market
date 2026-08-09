@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrPhrase } from "./arTrTranslations.ts";
+import { translateFrPhrase } from "./frTranslations.ts";
 
 export type BackendValueField =
   | "vehicle_type"
@@ -34,6 +35,7 @@ const value = (
     en,
     ar: translateArTrPhrase(ru, "ar"),
     tr: translateArTrPhrase(ru, "tr"),
+    fr: translateFrPhrase(ru),
   },
   legacy,
 });

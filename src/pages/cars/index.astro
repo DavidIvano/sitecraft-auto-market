@@ -16,11 +16,11 @@ import { isPublicListing } from "../../lib/listingStatus";
 import { buildVehicleTaxonomy } from "../../lib/seo/vehicleTaxonomy";
 import { normalizeBackendValue } from "../../i18n/backendValues";
 import { getCatalogMessages } from "../../i18n/catalogMessages";
-import { LOCALE_COOKIE, resolveContentLocale, resolveRequestLocale } from "../../i18n/locales";
+import { LOCALE_COOKIE, resolveBackendLocale, resolveRequestLocale } from "../../i18n/locales";
 import { interpolate } from "../../i18n/messages";
 
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
-const contentLocale = resolveContentLocale(locale);
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"), Astro.request.headers.get("cf-ipcountry"));
+const contentLocale = resolveBackendLocale(locale);
 const messages = getCatalogMessages(locale);
 
 export const prerender = false;

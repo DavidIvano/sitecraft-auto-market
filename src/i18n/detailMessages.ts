@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrRecord } from "./arTrTranslations.ts";
+import { translateFrCoreRecord } from "./frCoreTranslations.ts";
 
 const ru = {
   buyIn: "{brand} {model} {year} купить в {city}", seoMileage: "пробег {value} км", datePending: "дата уточняется", newListing: "Новое объявление", viewsCount: "{count} просмотров", forSale: "В продаже", dealer: "Дилер", privateSeller: "Частный продавец", seller: "Продавец", carSeller: "Продавец автомобиля", promoted: "Продвигается", sold: "Автомобиль продан", contactSeller: "Связаться с продавцом",
@@ -49,5 +50,6 @@ const dictionaries: Record<Locale, DetailMessages> = {
   en,
   ar: translateArTrRecord(ru, "ar"),
   tr: translateArTrRecord(ru, "tr"),
+  fr: translateFrCoreRecord(en),
 };
 export const getDetailMessages = (locale: Locale) => dictionaries[locale] || dictionaries.en;

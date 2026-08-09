@@ -10,6 +10,8 @@ import {
   translateBackendValue,
 } from "../src/i18n/backendValues.ts";
 import { AR_TR_TRANSLATIONS } from "../src/i18n/arTrTranslations.ts";
+import { FR_TRANSLATIONS } from "../src/i18n/frTranslations.ts";
+import { FR_CORE_TRANSLATIONS } from "../src/i18n/frCoreTranslations.ts";
 import { getCatalogMessages } from "../src/i18n/catalogMessages.ts";
 import { getDetailMessages } from "../src/i18n/detailMessages.ts";
 import { getMessages, interpolate, UI_MESSAGES } from "../src/i18n/messages.ts";
@@ -18,6 +20,7 @@ import {
   LOCALE_DIRECTIONS,
   SELECTABLE_LOCALES,
   resolveContentLocale,
+  resolveBackendLocale,
   resolveLocale,
   resolveRequestLocale,
   SUPPORTED_LOCALES,
@@ -27,12 +30,13 @@ import { applyListingTranslation, normalizeListingTranslation } from "../src/lib
 import { renderPublicCarCardMarkup } from "../src/lib/publicCarCard.ts";
 import type { CarListing } from "../src/lib/types.ts";
 
-test("the migration supports all six documented locales and Arabic RTL", () => {
-  assert.deepEqual(SUPPORTED_LOCALES, ["de", "ru", "uk", "en", "ar", "tr"]);
+test("the migration supports all seven translated locales and Arabic RTL", () => {
+  assert.deepEqual(SUPPORTED_LOCALES, ["de", "ru", "uk", "en", "ar", "tr", "fr"]);
   assert.equal(resolveLocale("de-DE"), "de");
   assert.equal(resolveLocale("uk-UA"), "uk");
   assert.equal(resolveLocale("ar-SA"), "ar");
   assert.equal(resolveLocale("tr-TR"), "tr");
+  assert.equal(resolveLocale("fr-FR"), "fr");
   assert.equal(LOCALE_DIRECTIONS.ar, "rtl");
   assert.equal(LOCALE_DIRECTIONS.tr, "ltr");
   assert.equal(resolveLocale("unsupported"), "ru");
@@ -42,9 +46,10 @@ test("the language menu exposes every official EU language with a safe content f
   assert.equal(EU_OFFICIAL_LOCALES.length, 24);
   assert.equal(SELECTABLE_LOCALES.length, 28);
   for (const locale of EU_OFFICIAL_LOCALES) assert.ok(SELECTABLE_LOCALES.includes(locale));
-  assert.equal(resolveContentLocale("fr"), "en");
+  assert.equal(resolveContentLocale("fr"), "fr");
+  assert.equal(resolveBackendLocale("fr"), "en");
   assert.equal(resolveContentLocale("pl"), "en");
-  assert.equal(getMessages("fr"), getMessages("en"));
+  assert.notEqual(getMessages("fr"), getMessages("en"));
   assert.equal(getCatalogMessages("es"), getCatalogMessages("en"));
   assert.equal(getDetailMessages("it"), getDetailMessages("en"));
 });
@@ -100,6 +105,10 @@ test("query language wins over the saved cookie and unsupported device languages
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "ar-SA,ar;q=0.9"), "ar");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "fr-FR,fr;q=0.9"), "fr");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN,hi;q=0.9"), "en");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "DE"), "de");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "FR"), "fr");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "RU"), "ru");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN", "DE"), "de");
 });
 
 test("every supported language has a complete interface dictionary", () => {
@@ -119,6 +128,17 @@ test("Arabic and Turkish generated UI dictionaries are complete and contain no R
     assert.doesNotMatch(translations.ar, /[А-Яа-яЁё]/u);
     assert.doesNotMatch(translations.tr, /[А-Яа-яЁё]/u);
   }
+});
+
+test("French generated UI dictionary is complete and contains no Russian fallback", () => {
+  assert.ok(Object.keys(FR_TRANSLATIONS).length > 1_300);
+  assert.ok(Object.keys(FR_CORE_TRANSLATIONS).length > 250);
+  for (const translation of [...Object.values(FR_TRANSLATIONS), ...Object.values(FR_CORE_TRANSLATIONS)]) {
+    assert.ok(translation.length > 0);
+    assert.doesNotMatch(translation, /[А-Яа-яЁё]/u);
+  }
+  assert.equal(getMessages("fr").navHome, "Accueil");
+  assert.equal(translateBackendValue("fuel_type", "petrol", "fr"), "Essence");
 });
 
 test("the shared layout declares language direction for every page", () => {
