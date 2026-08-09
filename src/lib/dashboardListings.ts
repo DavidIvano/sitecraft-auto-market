@@ -143,7 +143,7 @@ export function getDashboardListingImageUrls(listing: DashboardListing) {
 export function getDashboardListingActions(listing: DashboardListing) {
   const status = normalizeListingStatus(listing.status);
   const publicListing = isPublicListing(listing);
-  const editable = ["draft", "ai_draft", "rejected", "needs_fix"].includes(status);
+  const editable = ["draft", "ai_draft", "rejected", "needs_fix", "approved", "published"].includes(status);
 
   const viewHref = publicListing && listing.slug ? `/cars/${encodeURIComponent(listing.slug)}/` : "";
   const editHref = editable ? `/dashboard/listings/edit?id=${encodeURIComponent(String(listing.id))}` : "";

@@ -101,6 +101,7 @@ test("listing status selects one primary action", () => {
   );
   assert.equal(getDashboardListingActions({ id: 2, status: "needs_fix" }).primaryLabel, "Исправить");
   assert.equal(getDashboardListingActions({ id: 3, status: "published", slug: "public-car" }).primaryLabel, "Посмотреть");
+  assert.equal(getDashboardListingActions({ id: 3, status: "published", slug: "public-car" }).editHref, "/dashboard/listings/edit?id=3");
 });
 
 test("view counters are safe and use correct Russian plural forms", () => {
