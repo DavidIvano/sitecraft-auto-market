@@ -26,7 +26,7 @@
     color: var(--text-primary);
   }
   .app-shell-workspace .dashboard-summary-card :where(strong, span, b) { min-width: 0; overflow-wrap: anywhere; }
-  .app-shell-workspace .dashboard-summary-card > strong { font-size: clamp(1.35rem, 2vw, 1.8rem); line-height: 1.15; }
+  .app-shell-workspace .dashboard-summary-card > strong { font-size: clamp(1.25rem, 1.7vw, 1.7rem); line-height: 1.15; font-variant-numeric: tabular-nums; }
   .app-shell-workspace .dashboard-summary-card > span:not(.dashboard-summary-label) { color: var(--text-secondary); font-size: .86rem; }
   .app-shell-workspace .dashboard-summary-card > b { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--accent); font-size: .84rem; }
   .app-shell-workspace .dashboard-summary-label { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-secondary); font-size: .78rem; font-weight: 800; text-transform: uppercase; }
@@ -53,6 +53,10 @@
   .app-shell-workspace table { width: 100%; border-collapse: collapse; }
   .app-shell-workspace :where(th, td) { border-bottom: 1px solid var(--border-subtle); padding: var(--space-3) var(--space-4); text-align: left; }
   .app-shell-workspace th { color: var(--text-tertiary); font-size: .76rem; text-transform: uppercase; }
+
+  @media (max-width: 1420px) {
+    .app-shell-workspace .dashboard-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
 
   @media (max-width: 1180px) {
     .app-shell-workspace .dashboard-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }

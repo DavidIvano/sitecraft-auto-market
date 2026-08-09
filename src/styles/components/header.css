@@ -16,13 +16,14 @@
     transition: transform 200ms ease;
   }
   .site-header.is-hidden { transform: translateY(-110%); }
-  .header-inner { display: flex; min-height: 72px; align-items: center; gap: var(--space-5); }
+  .header-inner { display: flex; min-height: 72px; align-items: center; gap: var(--space-4); }
   .brand { display: flex; min-width: 0; align-items: center; gap: var(--space-3); font-weight: 800; }
   .brand-logo { width: 42px; height: 42px; flex: 0 0 42px; border: 1px solid var(--border-default); border-radius: var(--radius-control); object-fit: cover; }
   .brand span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .header-menu { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: var(--space-5); }
+  .header-menu { display: flex; min-width: 0; flex: 1; align-items: center; justify-content: space-between; gap: var(--space-4); }
   .main-nav, .header-actions { display: flex; align-items: center; gap: var(--space-2); }
-  .main-nav a { min-height: 42px; display: inline-flex; align-items: center; border-radius: var(--radius-control); padding: 0 var(--space-3); color: var(--text-secondary); font-size: .92rem; font-weight: 700; }
+  .main-nav a { min-height: 42px; display: inline-flex; align-items: center; border-radius: var(--radius-control); padding: 0 var(--space-3); color: var(--text-secondary); font-size: .92rem; font-weight: 700; white-space: nowrap; }
+  .header-actions .button { flex: 0 0 auto; white-space: nowrap; }
   .main-nav a:hover, .main-nav a[aria-current="page"] { background: var(--accent-soft); color: var(--accent); }
   .theme-toggle, .menu-toggle { width: 44px; height: 44px; flex: 0 0 44px; padding: 0; }
   .theme-toggle-icon, .menu-toggle-icon { display: inline-grid; width: 22px; height: 22px; place-items: center; }
@@ -32,7 +33,20 @@
   .site-header-workspace .header-inner { justify-content: flex-end; }
   .site-header-workspace .brand { margin-right: auto; }
 
-  @media (max-width: 860px) {
+  @media (max-width: 1320px) {
+    .site-header-workspace .header-inner { gap: var(--space-2); }
+    .site-header-workspace .header-menu { gap: var(--space-2); }
+    .site-header-workspace .header-actions { gap: var(--space-1); }
+    .site-header-workspace .header-actions .button { padding-inline: var(--space-3); font-size: .84rem; }
+    .site-header-workspace .header-actions :is(.deal-finder-link, .admin-link, .workspace-home-link) { display: none !important; }
+  }
+
+  @media (max-width: 900px) {
+    .site-header-workspace .brand span { display: none; }
+    .site-header-workspace .header-actions .auth-link { display: none !important; }
+  }
+
+  @media (max-width: 1460px) {
     .site-header-public .header-inner { gap: var(--space-2); }
     .site-header-public .brand { margin-right: auto; }
     .site-header-public .brand span { max-width: min(40vw, 260px); }

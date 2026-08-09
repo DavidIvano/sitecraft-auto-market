@@ -30,11 +30,13 @@
   [hidden] { display: none !important; }
 
   h1, h2, h3, p { margin-top: 0; }
-  h1, h2, h3 { color: var(--text-primary); line-height: 1.15; }
+  h1, h2, h3 { color: var(--text-primary); line-height: 1.15; overflow-wrap: anywhere; text-wrap: balance; }
   h1 { margin-bottom: var(--space-4); font-size: clamp(2rem, 4vw, 3.5rem); }
   h2 { margin-bottom: var(--space-3); font-size: clamp(1.65rem, 3vw, 2.35rem); }
   h3 { margin-bottom: var(--space-2); font-size: 1.125rem; }
-  p { margin-bottom: var(--space-4); color: var(--text-secondary); }
+  p { margin-bottom: var(--space-4); color: var(--text-secondary); overflow-wrap: anywhere; }
+
+  :where(li, dd, dt, figcaption) { overflow-wrap: anywhere; }
 
   :where(a, button, input, select, textarea, summary):focus-visible {
     outline: 3px solid var(--focus-ring);

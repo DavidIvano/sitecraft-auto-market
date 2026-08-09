@@ -136,6 +136,7 @@ export const FR_CORE_TRANSLATIONS: Record<string, string> = {
   "Main details": "Principaux détails",
   "Main navigation": "Navigation principale",
   "Make": "Marque",
+  "More filters": "Plus de filtres",
   "Make carousel controls": "Créer des contrôles de carrousel",
   "Mileage": "Kilométrage",
   "Mileage and history": "Kilométrage et historique",

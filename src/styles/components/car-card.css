@@ -36,13 +36,13 @@
   .public-car-card .car-card-title { min-width: 0; min-height: 2.5em; height: auto; margin: 0; overflow: hidden; color: var(--text-primary); font-size: 1.08rem; font-weight: 780; line-height: 1.25; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .public-car-card .car-card-price-row { display: flex; min-width: 0; align-items: center; justify-content: space-between; gap: var(--space-2); }
   .public-car-card .car-price { min-width: 0; margin: 0; color: var(--text-primary); font-size: clamp(1.3rem, 2.1vw, 1.5rem); font-weight: 850; line-height: 1.1; }
-  .public-car-card .listing-status-badge { display: inline-flex; min-height: 28px; flex: 0 0 auto; align-items: center; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); padding: 0 9px; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+  .public-car-card .listing-status-badge { display: inline-flex; min-height: 28px; max-width: 52%; flex: 0 1 auto; align-items: center; justify-content: center; border-radius: var(--radius-pill); background: color-mix(in srgb, var(--success) 14%, var(--surface)); color: var(--success); padding: 5px 9px; font-size: .72rem; font-weight: 800; line-height: 1.15; text-align: center; overflow-wrap: anywhere; }
   .public-car-card .listing-status-badge.is-sold { background: var(--surface-inset); color: var(--text-tertiary); }
   .public-car-card .car-card-specs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2) var(--space-3); margin: 0; }
   .public-car-card .car-card-specs > div { min-width: 0; }
   .public-car-card .car-card-specs dd { display: flex; min-width: 0; align-items: center; gap: var(--space-2); margin: 0; color: var(--text-secondary); font-size: .85rem; font-weight: 650; line-height: 1.25; }
   .public-car-card .car-card-specs dd svg { width: 17px; height: 17px; flex: 0 0 17px; color: var(--accent); }
-  .public-car-card .car-card-specs dd span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .public-car-card .car-card-specs dd span { min-width: 0; overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
   .public-car-card .car-card-footer { display: flex; min-width: 0; min-height: 0; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: auto; border-top: 1px solid var(--border-subtle); padding-top: var(--space-3); color: var(--text-tertiary); font-size: .78rem; }
   .public-car-card .car-card-footer time { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .public-car-card .car-card-views { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; }
@@ -69,7 +69,7 @@
     .public-car-card .car-card-title { min-height: 2.45em; font-size: .96rem; line-height: 1.22; }
     .public-car-card .car-card-price-row { align-items: flex-start; flex-direction: column; gap: 7px; }
     .public-car-card .car-price { font-size: 1.18rem; }
-    .public-car-card .listing-status-badge { min-height: 24px; padding-inline: 8px; font-size: .66rem; }
+    .public-car-card .listing-status-badge { min-height: 24px; max-width: 100%; padding: 4px 8px; font-size: .66rem; }
     .public-car-card .car-card-specs { gap: 8px 6px; }
     .public-car-card .car-card-specs dd { gap: 5px; font-size: .72rem; }
     .public-car-card .car-card-specs dd svg { width: 15px; height: 15px; flex-basis: 15px; }

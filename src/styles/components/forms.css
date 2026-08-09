@@ -1,6 +1,7 @@
 @layer components {
   :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
     width: 100%;
+    min-width: 0;
     min-height: var(--control-md);
     border: 1px solid var(--border-default);
     border-radius: var(--radius-control);
@@ -16,6 +17,7 @@
   :where(input, select, textarea):disabled { cursor: not-allowed; background: var(--surface-muted); opacity: .65; }
   :where(label, .field, .form-field) > :where(span, strong):first-child { color: var(--text-secondary); font-size: .82rem; font-weight: 700; }
   :where(label, .field, .form-field) { min-width: 0; }
+  :where(fieldset, .form-grid, .form-row) { min-width: 0; }
   .form-grid { gap: var(--space-4); }
   .form-message, .field-error { color: var(--danger); font-size: .86rem; }
   .field-help { color: var(--text-tertiary); font-size: .8rem; }

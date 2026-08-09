@@ -5502,6 +5502,7 @@ Object.assign(AR_TR_TRANSLATIONS, {
   "Cookie и приватность": { ar: "ملفات تعريف الارتباط والخصوصية", tr: "Çerezler ve gizlilik" },
   "Подробнее": { ar: "المزيد من التفاصيل", tr: "Daha fazla bilgi" },
   "Неважно": { ar: "أي خيار", tr: "Fark etmez" },
+  "Больше фильтров": { ar: "المزيد من المرشحات", tr: "Daha fazla filtre" },
 });
 
 export function translateArTrPhrase(source: string, locale: ArTrLocale): string {
