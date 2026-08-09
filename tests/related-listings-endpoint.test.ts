@@ -30,8 +30,8 @@ test("vehicle detail fetches only the bounded related endpoint", () => {
 
   assert.match(routes, /carRelatedListings: \(slug: string\) => `\/cars\/\$\{encodeURIComponent\(slug\)\}\/related`/);
   assert.match(xano, /export const getRelatedListingsBySlug = getRelatedCarsBySlug/);
-  assert.match(xano, /fetchPublicJson\(withLocale\(API_ROUTES\.carRelated\(slug\), locale\)\)/);
-  assert.match(xano, /normalizePublicCarList\(publicPayload\), locale\)\.slice\(0, 6\)/);
+  assert.match(xano, /fetchPublicJson\(withLocale\(API_ROUTES\.carRelated\(slug\), contentLocale\)\)/);
+  assert.match(xano, /normalizePublicCarList\(publicPayload\), contentLocale\)\.slice\(0, 6\)/);
   assert.match(detail, /getRelatedListingsBySlug\(slug, locale\)/);
   assert.match(detail, /Promise\.allSettled/);
   assert.doesNotMatch(detail, /getApprovedCars/);

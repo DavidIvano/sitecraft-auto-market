@@ -44,6 +44,18 @@ test("client i18n waits for the body and preserves locale in internal links", ()
   assert.match(layout, /hreflang="x-default"/);
 });
 
+test("language switching is edge-cacheable and defers duplicate public inventory refreshes", () => {
+  const homepage = readProjectFile("src/pages/index.astro");
+  const catalog = readProjectFile("src/pages/cars/index.astro");
+  const xano = readProjectFile("src/lib/xano.ts");
+  const switcher = readProjectFile("src/components/LocaleSwitcher.astro");
+  assert.match(homepage, /requestIdleCallback/);
+  assert.match(catalog, /requestIdleCallback/);
+  assert.match(xano, /PUBLIC_CATALOG_FRESH_MS/);
+  assert.match(xano, /cacheEverything: true/);
+  assert.match(switcher, /European languages · English fallback/);
+});
+
 test("Cloudflare and compatibility redirects keep every page and locale reachable", () => {
   const routes = JSON.parse(readProjectFile("public/_routes.json"));
   assert.deepEqual(routes.include, ["/*"]);

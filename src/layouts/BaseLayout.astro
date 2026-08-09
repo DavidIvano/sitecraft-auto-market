@@ -4,7 +4,7 @@ import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
-import { LOCALE_COOKIE, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { LOCALE_COOKIE, resolveContentLocale, resolveRequestLocale, type Locale } from "../i18n/locales";
 import { getLocaleDefinition as getConfiguredLocale } from "../i18n/config";
 import { getLocaleFromPath } from "../i18n/locale";
 import { getMessages } from "../i18n/messages";
@@ -61,6 +61,7 @@ const locale = localeProp ?? resolveRequestLocale(
   Astro.request.headers.get("accept-language"),
 );
 const messages = getMessages(locale);
+const documentLocale = resolveContentLocale(locale);
 const isLocalePrefixedRoute = Boolean(getLocaleFromPath(Astro.url.pathname));
 const legacyRuntimeTranslation = !isLocalePrefixedRoute && locale !== "ru";
 const uiPhraseMap = legacyRuntimeTranslation ? getUiPhraseMap(locale) : {};
@@ -189,7 +190,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
 ---
 
 <!doctype html>
-<html lang={locale} dir={getConfiguredLocale(locale)?.direction || "ltr"}>
+<html lang={documentLocale} dir={getConfiguredLocale(documentLocale)?.direction || "ltr"} data-requested-locale={locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -202,7 +203,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
     <meta name="sitecraft-build-timestamp" content={buildTimestamp} />
     <meta name="sitecraft-build-environment" content={buildEnvironment} />
     <meta name="description" content={description} />
-    <meta http-equiv="Content-Language" content={locale} />
+    <meta http-equiv="Content-Language" content={documentLocale} />
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />

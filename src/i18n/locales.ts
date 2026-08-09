@@ -15,6 +15,20 @@ export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
 export type LegacyUiLocale = typeof SUPPORTED_LOCALES[number];
 export type Locale = LocaleCode;
 
+export const EU_OFFICIAL_LOCALES = [
+  "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu",
+  "ga", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv",
+] as const;
+
+// The six reviewed dictionaries stay the authoritative translated set. The
+// remaining official EU languages are selectable with an explicit English
+// fallback until their reviewed dictionaries and Xano translations are ready.
+export const SELECTABLE_LOCALES = Object.freeze([
+  ...SUPPORTED_LOCALES,
+  ...EU_OFFICIAL_LOCALES.filter((code) => !SUPPORTED_LOCALES.includes(code as LegacyUiLocale)),
+]);
+export type SelectableLocale = typeof SELECTABLE_LOCALES[number];
+
 // Compatibility default for old query-based routes. The authoritative default
 // for locale-prefixed public routes remains German in config.ts.
 export const DEFAULT_LOCALE = LEGACY_PUBLIC_LOCALE;
@@ -39,6 +53,15 @@ export function isLocale(value: unknown): value is Locale {
 
 export function isLegacyUiLocale(value: unknown): value is LegacyUiLocale {
   return typeof value === "string" && SUPPORTED_LOCALES.includes(value as LegacyUiLocale);
+}
+
+export function isSelectableLocale(value: unknown): value is SelectableLocale {
+  return typeof value === "string" && SELECTABLE_LOCALES.includes(value as SelectableLocale);
+}
+
+export function resolveContentLocale(value: unknown): LegacyUiLocale {
+  const resolved = resolveLocale(value, "en");
+  return isLegacyUiLocale(resolved) ? resolved : "en";
 }
 
 export function resolveLocale(value: unknown, fallback: Locale = DEFAULT_LOCALE): Locale {
@@ -66,7 +89,7 @@ export function resolveRequestLocale(url: URL, cookieLocale?: unknown, acceptLan
 
   for (const candidate of candidates) {
     const resolved = resolveLocale(candidate, "en");
-    if (candidate && isLegacyUiLocale(resolved)) return resolved;
+    if (candidate && isSelectableLocale(resolved)) return resolved;
   }
 
   // English is the safe UI fallback for device languages that the site does

@@ -50,4 +50,4 @@ const dictionaries: Record<Locale, DetailMessages> = {
   ar: translateArTrRecord(ru, "ar"),
   tr: translateArTrRecord(ru, "tr"),
 };
-export const getDetailMessages = (locale: Locale) => dictionaries[locale];
+export const getDetailMessages = (locale: Locale) => dictionaries[locale] || dictionaries.en;

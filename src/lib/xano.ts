@@ -5,12 +5,16 @@ import { API_ROUTES, buildApiUrl, getXanoApiUrl, isXanoConfigured } from "./apiR
 import { fetchWithRetry } from "./http/fetchWithRetry";
 import { normalizePublicCarList, normalizePublicCarListing } from "./publicCar";
 import { applyListingTranslation, applyListingTranslations, normalizeListingTranslation } from "./listingTranslation.ts";
-import { DEFAULT_LOCALE, type Locale } from "../i18n/locales.ts";
+import { DEFAULT_LOCALE, resolveContentLocale, type LegacyUiLocale, type Locale } from "../i18n/locales.ts";
 
 const API_URL = getXanoApiUrl();
 const PUBLIC_API_TIMEOUT_MS = 8_000;
 const PUBLIC_API_RATE_LIMIT_ATTEMPTS = 5;
+const PUBLIC_CATALOG_FRESH_MS = 60_000;
+const PUBLIC_CATALOG_STALE_MS = 10 * 60_000;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
+const catalogCache = new Map<LegacyUiLocale, { cars: CarListing[]; freshUntil: number; staleUntil: number }>();
+const catalogRequests = new Map<LegacyUiLocale, Promise<CarListing[]>>();
 
 const withLocale = (path: string, locale: Locale) =>
   `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}`;
@@ -28,9 +32,14 @@ export class XanoPublicApiError extends Error {
 async function fetchPublicJson(path: string) {
   let response: Response;
   try {
-    response = await fetchWithRetry(buildApiUrl(path, API_URL), {
+    const requestInit = {
       headers: { Accept: "application/json" },
-    }, {
+      // Cloudflare caches the public Xano response close to the visitor. The
+      // short TTL keeps new listings fresh while removing repeated origin wait
+      // time during language switches and simultaneous page renders.
+      cf: { cacheEverything: true, cacheTtl: 60 },
+    } as RequestInit & { cf: { cacheEverything: boolean; cacheTtl: number } };
+    response = await fetchWithRetry(buildApiUrl(path, API_URL), requestInit, {
       attempts: PUBLIC_API_RATE_LIMIT_ATTEMPTS,
       timeoutMs: PUBLIC_API_TIMEOUT_MS,
       delaysMs: [1_000, 3_000, 5_000, 5_000],
@@ -61,6 +70,30 @@ async function fetchPublicJson(path: string) {
     throw new XanoPublicApiError("Xano public API returned invalid JSON", 502);
   }
 }
+
+const loadApprovedCatalog = (locale: LegacyUiLocale) => {
+  const existing = catalogRequests.get(locale);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const path = withLocale(API_ROUTES.cars, locale);
+    const payload = await fetchPublicJson(path);
+    const cars = sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
+    const now = Date.now();
+    catalogCache.set(locale, {
+      cars,
+      freshUntil: now + PUBLIC_CATALOG_FRESH_MS,
+      staleUntil: now + PUBLIC_CATALOG_STALE_MS,
+    });
+    return cars;
+  })();
+
+  catalogRequests.set(locale, request);
+  void request.finally(() => {
+    if (catalogRequests.get(locale) === request) catalogRequests.delete(locale);
+  }).catch(() => {});
+  return request;
+};
 
 const queueSellerListingsRequest = <T>(request: () => Promise<T>) => {
   const result = sellerListingsQueue.then(request, request);
@@ -131,10 +164,15 @@ export async function getApprovedCars(
     return [];
   }
 
-  const locale = options.locale || DEFAULT_LOCALE;
-  const path = withLocale(API_ROUTES.cars, locale);
-  const payload = await fetchPublicJson(path);
-  return sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
+  const locale = resolveContentLocale(options.locale || DEFAULT_LOCALE);
+  const cached = catalogCache.get(locale);
+  const now = Date.now();
+  if (cached?.freshUntil && cached.freshUntil > now) return [...cached.cars];
+  if (cached?.staleUntil && cached.staleUntil > now) {
+    void loadApprovedCatalog(locale).catch(() => {});
+    return [...cached.cars];
+  }
+  return [...await loadApprovedCatalog(locale)];
 }
 
 export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing | null> {
@@ -143,9 +181,10 @@ export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE
     return null;
   }
 
-  const payload = await fetchPublicJson(withLocale(API_ROUTES.carBySlug(slug), locale));
+  const contentLocale = resolveContentLocale(locale);
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carBySlug(slug), contentLocale));
   const listing = payload ? normalizePublicCarListing(payload) : null;
-  return listing ? applyListingTranslation(listing, locale) : null;
+  return listing ? applyListingTranslation(listing, contentLocale) : null;
 }
 
 export async function getLocalizedApprovedCars(locale: Locale): Promise<CarListing[]> {
@@ -170,8 +209,10 @@ export async function getLocalizedCarBySlug(slug: string, locale: Locale): Promi
 export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
+  const contentLocale = resolveContentLocale(locale);
+
   return queueSellerListingsRequest(async () => {
-    const url = buildApiUrl(withLocale(API_ROUTES.carSellerListings(slug), locale), API_URL);
+    const url = buildApiUrl(withLocale(API_ROUTES.carSellerListings(slug), contentLocale), API_URL);
     let response: Response | null = null;
     for (let attempt = 0; attempt < 4; attempt += 1) {
       response = await fetch(url);
@@ -183,14 +224,15 @@ export async function getSellerListingsBySlug(slug: string, locale: Locale = DEF
     if (response.status === 404) return [];
     if (!response.ok) throw new Error("Failed to fetch seller listings");
 
-    return normalizeLimitedPublicCards(await response.json(), locale);
+    return normalizeLimitedPublicCards(await response.json(), contentLocale);
   });
 }
 
 export async function getRelatedCarsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
-  const payload = await fetchPublicJson(withLocale(API_ROUTES.carRelated(slug), locale));
+  const contentLocale = resolveContentLocale(locale);
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.carRelated(slug), contentLocale));
   if (!Array.isArray(payload)) return [];
 
   const publicPayload = payload.map((item) => (
@@ -199,7 +241,7 @@ export async function getRelatedCarsBySlug(slug: string, locale: Locale = DEFAUL
       : item
   ));
 
-  return applyListingTranslations(normalizePublicCarList(publicPayload), locale).slice(0, 6);
+  return applyListingTranslations(normalizePublicCarList(publicPayload), contentLocale).slice(0, 6);
 }
 
 export const getRelatedListingsBySlug = getRelatedCarsBySlug;

@@ -1,5 +1,11 @@
 ---
-import { LOCALE_COOKIE, LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "../i18n/locales";
+import {
+  LOCALE_COOKIE,
+  LOCALE_LABELS,
+  SELECTABLE_LOCALES,
+  isLegacyUiLocale,
+  type Locale,
+} from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
 import { getLocaleFromPath } from "../i18n/locale";
 import { stripLocalePrefix } from "../i18n/routes";
@@ -12,7 +18,7 @@ const { locale, alternateLocales = [] } = Astro.props;
 const messages = getMessages(locale);
 const localizedPath = getLocaleFromPath(Astro.url.pathname) ? stripLocalePrefix(Astro.url.pathname) : "";
 const compatibilityRoutes = localizedPath
-  ? SUPPORTED_LOCALES.map((code) => ({
+  ? SELECTABLE_LOCALES.map((code) => ({
       locale: code,
       path: `${localizedPath}${localizedPath.includes("?") ? "&" : "?"}lang=${encodeURIComponent(code)}`,
       label: LOCALE_LABELS[code],
@@ -22,14 +28,21 @@ const routeOptions = alternateLocales.length > 1
   ? alternateLocales
   : compatibilityRoutes.length > 0
     ? compatibilityRoutes
-    : SUPPORTED_LOCALES.map((code) => ({ locale: code, path: "", label: LOCALE_LABELS[code] }));
+    : SELECTABLE_LOCALES.map((code) => ({ locale: code, path: "", label: LOCALE_LABELS[code] }));
 const routeMode = alternateLocales.length > 1 || compatibilityRoutes.length > 0 ? "path" : "legacy-query";
+const translatedOptions = routeOptions.filter((option) => isLegacyUiLocale(option.locale));
+const fallbackOptions = routeOptions.filter((option) => !isLegacyUiLocale(option.locale));
 ---
 
 <label class="locale-switcher">
   <span class="sr-only">{messages.language}</span>
   <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE} data-route-mode={routeMode}>
-    {routeOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
+    <optgroup label="Translated">
+      {translatedOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
+    </optgroup>
+    {fallbackOptions.length > 0 && <optgroup label="European languages · English fallback">
+      {fallbackOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
+    </optgroup>}
   </select>
 </label>
 
@@ -38,6 +51,8 @@ const routeMode = alternateLocales.length > 1 || compatibilityRoutes.length > 0 
     if (!(element instanceof HTMLSelectElement) || element.dataset.localeReady === "true") return;
     element.dataset.localeReady = "true";
     element.addEventListener("change", () => {
+      element.disabled = true;
+      element.setAttribute("aria-busy", "true");
       const cookieName = element.dataset.localeCookie || "sitecraft-locale";
       document.cookie = `${cookieName}=${encodeURIComponent(element.value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
       const selected = element.selectedOptions[0];

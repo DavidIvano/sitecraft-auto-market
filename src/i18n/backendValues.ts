@@ -131,11 +131,12 @@ export function translateBackendValue(
   locale: Locale,
 ): string {
   const code = normalizeBackendValue(field, input);
-  return BACKEND_VALUE_CATALOG[field].find((item) => item.code === code)?.labels[locale] || code;
+  const labels = BACKEND_VALUE_CATALOG[field].find((item) => item.code === code)?.labels;
+  return labels?.[locale] || labels?.en || code;
 }
 
 export function getBackendValueOptions(field: BackendValueField, locale: Locale) {
-  return BACKEND_VALUE_CATALOG[field].map((item) => ({ value: item.code, label: item.labels[locale] }));
+  return BACKEND_VALUE_CATALOG[field].map((item) => ({ value: item.code, label: item.labels[locale] || item.labels.en }));
 }
 
 // Temporary write adapter. Remove it after Xano accepts canonical codes everywhere.

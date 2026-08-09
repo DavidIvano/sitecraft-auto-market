@@ -43,4 +43,4 @@ const dictionaries: Record<Locale, CatalogMessages> = {
   ar: translateArTrRecord(ru, "ar"),
   tr: translateArTrRecord(ru, "tr"),
 };
-export const getCatalogMessages = (locale: Locale) => dictionaries[locale];
+export const getCatalogMessages = (locale: Locale) => dictionaries[locale] || dictionaries.en;

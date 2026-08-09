@@ -13,7 +13,15 @@ import { AR_TR_TRANSLATIONS } from "../src/i18n/arTrTranslations.ts";
 import { getCatalogMessages } from "../src/i18n/catalogMessages.ts";
 import { getDetailMessages } from "../src/i18n/detailMessages.ts";
 import { getMessages, interpolate, UI_MESSAGES } from "../src/i18n/messages.ts";
-import { LOCALE_DIRECTIONS, resolveLocale, resolveRequestLocale, SUPPORTED_LOCALES } from "../src/i18n/locales.ts";
+import {
+  EU_OFFICIAL_LOCALES,
+  LOCALE_DIRECTIONS,
+  SELECTABLE_LOCALES,
+  resolveContentLocale,
+  resolveLocale,
+  resolveRequestLocale,
+  SUPPORTED_LOCALES,
+} from "../src/i18n/locales.ts";
 import { formatOwnersCount, formatSellerType, formatTuvDetail } from "../src/lib/listingDisplay.ts";
 import { applyListingTranslation, normalizeListingTranslation } from "../src/lib/listingTranslation.ts";
 import { renderPublicCarCardMarkup } from "../src/lib/publicCarCard.ts";
@@ -28,6 +36,17 @@ test("the migration supports all six documented locales and Arabic RTL", () => {
   assert.equal(LOCALE_DIRECTIONS.ar, "rtl");
   assert.equal(LOCALE_DIRECTIONS.tr, "ltr");
   assert.equal(resolveLocale("unsupported"), "ru");
+});
+
+test("the language menu exposes every official EU language with a safe content fallback", () => {
+  assert.equal(EU_OFFICIAL_LOCALES.length, 24);
+  assert.equal(SELECTABLE_LOCALES.length, 28);
+  for (const locale of EU_OFFICIAL_LOCALES) assert.ok(SELECTABLE_LOCALES.includes(locale));
+  assert.equal(resolveContentLocale("fr"), "en");
+  assert.equal(resolveContentLocale("pl"), "en");
+  assert.equal(getMessages("fr"), getMessages("en"));
+  assert.equal(getCatalogMessages("es"), getCatalogMessages("en"));
+  assert.equal(getDetailMessages("it"), getDetailMessages("en"));
 });
 
 test("live Russian Xano values normalize to stable language-neutral codes", () => {
@@ -79,6 +98,7 @@ test("query language wins over the saved cookie and unsupported device languages
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), "uk"), "uk");
   assert.equal(resolveRequestLocale(new URL("https://example.test/?lang=invalid"), "en"), "en");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "ar-SA,ar;q=0.9"), "ar");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "fr-FR,fr;q=0.9"), "fr");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN,hi;q=0.9"), "en");
 });
 
@@ -103,7 +123,7 @@ test("Arabic and Turkish generated UI dictionaries are complete and contain no R
 
 test("the shared layout declares language direction for every page", () => {
   const layout = readFileSync(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8");
-  assert.match(layout, /<html lang=\{locale\} dir=\{getConfiguredLocale\(locale\)\?\.direction \|\| "ltr"\}>/);
+  assert.match(layout, /<html lang=\{documentLocale\} dir=\{getConfiguredLocale\(documentLocale\)\?\.direction \|\| "ltr"\} data-requested-locale=\{locale\}>/);
   assert.match(layout, /pageAlternates\.map\(\(alternate\) => <link rel="alternate" hreflang=\{alternate\.locale\}/);
   assert.doesNotMatch(layout, /SUPPORTED_LOCALES\.map\(\(code\) => <link rel="alternate"/);
 });
@@ -255,9 +275,9 @@ test("the public Xano contract is locale-aware, cache-safe and preserves origina
   assert.match(resolver, /Добавить в публичный DTO, не заменяя оригинальные поля/);
   assert.match(xanoClient, /withLocale\(API_ROUTES\.cars, locale\)/);
   assert.match(xanoClient, /applyListingTranslations\(normalizePublicCarList\(payload\), locale\)/);
-  assert.match(xanoClient, /withLocale\(API_ROUTES\.carBySlug\(slug\), locale\)/);
+  assert.match(xanoClient, /withLocale\(API_ROUTES\.carBySlug\(slug\), contentLocale\)/);
   assert.match(xanoClient, /applyListingTranslation\(listing, locale\)/);
-  assert.match(xanoClient, /withLocale\(API_ROUTES\.carSellerListings\(slug\), locale\)/);
-  assert.match(xanoClient, /withLocale\(API_ROUTES\.carRelated\(slug\), locale\)/);
+  assert.match(xanoClient, /withLocale\(API_ROUTES\.carSellerListings\(slug\), contentLocale\)/);
+  assert.match(xanoClient, /withLocale\(API_ROUTES\.carRelated\(slug\), contentLocale\)/);
   assert.match(xanoClient, /getRelatedCarsBySlug/);
 });

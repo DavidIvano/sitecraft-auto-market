@@ -16,10 +16,11 @@ import { isPublicListing } from "../../lib/listingStatus";
 import { buildVehicleTaxonomy } from "../../lib/seo/vehicleTaxonomy";
 import { normalizeBackendValue } from "../../i18n/backendValues";
 import { getCatalogMessages } from "../../i18n/catalogMessages";
-import { LOCALE_COOKIE, resolveRequestLocale } from "../../i18n/locales";
+import { LOCALE_COOKIE, resolveContentLocale, resolveRequestLocale } from "../../i18n/locales";
 import { interpolate } from "../../i18n/messages";
 
 const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
+const contentLocale = resolveContentLocale(locale);
 const messages = getCatalogMessages(locale);
 
 export const prerender = false;
@@ -170,6 +171,7 @@ const collectionSchema = {
         data-ai-search-intent-path={API_ROUTES.aiSearchIntent}
         data-saved-searches-path={API_ROUTES.savedSearches}
         data-locale={locale}
+        data-content-locale={contentLocale}
         data-messages={JSON.stringify(messages)}
       >
         <div class="catalog-filter-heading">
@@ -324,6 +326,7 @@ const collectionSchema = {
     const filterCloseButton = document.querySelector<HTMLButtonElement>(".catalog-filter-close");
     const filterBackdrop = document.querySelector<HTMLButtonElement>(".catalog-filter-backdrop");
     const locale = resolveLocale(filterPanel instanceof HTMLElement ? filterPanel.dataset.locale : "ru");
+    const contentLocale = resolveLocale(filterPanel instanceof HTMLElement ? filterPanel.dataset.contentLocale : "en");
     const catalogMessages = (() => {
       try {
         return JSON.parse(filterPanel instanceof HTMLElement ? filterPanel.dataset.messages || "{}" : "{}") as Record<string, string>;
@@ -943,7 +946,7 @@ const collectionSchema = {
       syncSearchFormFromUrl();
       const apiUrl = grid.dataset.apiUrl;
       if (apiUrl) {
-        const loadCars = () => fetchWithRetry(`${apiUrl}/cars?lang=${encodeURIComponent(locale)}`, {}, { dedupeKey: `catalog-cars:${locale}:${window.location.search}` })
+        const loadCars = () => fetchWithRetry(`${apiUrl}/cars?lang=${encodeURIComponent(contentLocale)}`, {}, { dedupeKey: `catalog-cars:${contentLocale}:${window.location.search}` })
           .then((response) => {
             if (!response.ok) {
               throw new Error("cars load failed");
@@ -959,7 +962,7 @@ const collectionSchema = {
               return;
             }
 
-            latestCatalogCars = applyListingTranslations(normalizePublicCarList(cars), locale).filter(isPublicListing);
+            latestCatalogCars = applyListingTranslations(normalizePublicCarList(cars), contentLocale).filter(isPublicListing);
             const filteredCars = sortCars(latestCatalogCars.filter(matchesActiveFilters));
 
             renderCatalogCars(filteredCars);
@@ -989,10 +992,12 @@ const collectionSchema = {
             });
         });
 
-        loadCars()
-          .catch(() => {
-            handleCatalogLoadError();
-          });
+        const scheduleCatalogRefresh = () => loadCars().catch(handleCatalogLoadError);
+        if ("requestIdleCallback" in window) {
+          window.requestIdleCallback(scheduleCatalogRefresh, { timeout: 2_500 });
+        } else {
+          globalThis.setTimeout(scheduleCatalogRefresh, 1_200);
+        }
 
         window.addEventListener("online", () => {
           if (retryButton instanceof HTMLButtonElement && !retryButton.hidden) loadCars().catch(handleCatalogLoadError);

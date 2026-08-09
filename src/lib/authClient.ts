@@ -1,6 +1,7 @@
 import { AUTH_TOKEN_KEY, AUTH_USER_KEY, type AuthUser } from "./auth";
 import { API_ROUTES, buildApiUrl } from "./apiRoutes";
 import { normalizeInternalReturnTo } from "./returnTo";
+import { isSelectableLocale } from "../i18n/locales";
 export { normalizeInternalReturnTo } from "./returnTo";
 
 export const AUTH_DEBUG_KEY = "sitecraft_auto_market_auth_debug";
@@ -180,7 +181,7 @@ export async function fetchCurrentUser(
 
 export function redirectToLogin(nextPath = window.location.pathname + window.location.search) {
   const localeCandidate = new URLSearchParams(window.location.search).get("lang") || document.documentElement.lang;
-  const locale = ["de", "ru", "uk", "en", "ar", "tr"].includes(localeCandidate) ? localeCandidate : "ru";
+  const locale = isSelectableLocale(localeCandidate) ? localeCandidate : "en";
   const localizedNext = new URL(nextPath, window.location.origin);
   if (localizedNext.origin === window.location.origin) localizedNext.searchParams.set("lang", locale);
   const returnTo = normalizeInternalReturnTo(`${localizedNext.pathname}${localizedNext.search}${localizedNext.hash}`);

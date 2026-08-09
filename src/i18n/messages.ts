@@ -152,9 +152,7 @@ export function hasUiDictionary(locale: string): boolean {
 }
 
 export function getMessages(locale: Locale): UiMessages {
-  const messages = UI_MESSAGES[locale];
-  if (!messages) throw new Error(`UI dictionary is not ready for locale ${locale}`);
-  return messages;
+  return UI_MESSAGES[locale] || UI_MESSAGES.en;
 }
 
 export function interpolate(message: string, values: Record<string, string | number>): string {

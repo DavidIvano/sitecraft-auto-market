@@ -1,4 +1,5 @@
 import type { Locale } from "./locales.ts";
+import { resolveContentLocale } from "./locales.ts";
 import { AR_TR_TRANSLATIONS } from "./arTrTranslations.ts";
 import { UI_PHRASE_TRANSLATIONS } from "./uiPhraseTranslations.ts";
 import { UI_PHRASE_TRANSLATIONS_DYNAMIC } from "./uiPhraseTranslationsDynamic.ts";
@@ -20,10 +21,11 @@ const SAFE_TRANSLATED_ATTRIBUTES = new Set([
 ]);
 
 export function getUiPhraseMap(locale: Locale): Record<string, string> {
-  if (locale === "ru") return {};
+  const contentLocale = resolveContentLocale(locale);
+  if (contentLocale === "ru") return {};
   return Object.fromEntries(
     Object.entries(UI_TRANSLATIONS)
-      .map(([source, translations]) => [source, translations[locale] || AR_TR_TRANSLATIONS[source]?.[locale as "ar" | "tr"]] as const)
+      .map(([source, translations]) => [source, translations[contentLocale] || AR_TR_TRANSLATIONS[source]?.[contentLocale as "ar" | "tr"]] as const)
       .filter(([, translation]) => Boolean(translation)),
   );
 }
@@ -69,16 +71,17 @@ const translateDynamicValue = (value: string, locale: Locale) => {
 };
 
 export function translateUiValue(value: string, locale: Locale) {
-  if (locale === "ru" || !/[А-Яа-яЁё]/u.test(value)) return value;
+  const contentLocale = resolveContentLocale(locale);
+  if (contentLocale === "ru" || !/[А-Яа-яЁё]/u.test(value)) return value;
   const normalized = value.replace(/\s+/gu, " ").trim();
-  const dynamicTranslation = translateDynamicValue(normalized, locale);
+  const dynamicTranslation = translateDynamicValue(normalized, contentLocale);
   if (dynamicTranslation !== normalized) return preserveWhitespace(value, dynamicTranslation);
   const titleSuffix = " | SiteCraft Auto Market";
   const source = normalized.endsWith(titleSuffix)
     ? normalized.slice(0, -titleSuffix.length)
     : normalized;
-  const phraseTranslation = UI_TRANSLATIONS[source]?.[locale]
-    || AR_TR_TRANSLATIONS[source]?.[locale as "ar" | "tr"];
+  const phraseTranslation = UI_TRANSLATIONS[source]?.[contentLocale]
+    || AR_TR_TRANSLATIONS[source]?.[contentLocale as "ar" | "tr"];
   const translation = phraseTranslation
     ? `${phraseTranslation}${normalized.endsWith(titleSuffix) ? titleSuffix : ""}`
     : undefined;
