@@ -30,6 +30,8 @@
   .theme-toggle, .menu-toggle { width: 44px; height: 44px; flex: 0 0 44px; padding: 0; }
   .theme-toggle-icon, .menu-toggle-icon { display: inline-grid; width: 22px; height: 22px; place-items: center; }
   .theme-toggle-icon svg, .menu-toggle-icon svg { width: 21px; height: 21px; }
+  .mac-sidebar .mac-sidebar-theme { width: 100%; height: auto; flex: 0 0 auto; justify-content: flex-start; padding-inline: var(--space-3); }
+  .mac-sidebar .mac-sidebar-theme strong { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .menu-toggle, .mobile-theme-toggle { display: none; }
   .header-backdrop { display: none; }
   .site-header-workspace .header-inner { justify-content: flex-end; }
