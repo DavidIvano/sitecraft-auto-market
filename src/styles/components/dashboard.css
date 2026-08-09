@@ -44,9 +44,39 @@
   }
   .app-shell-workspace :where(.dashboard-grid, .dashboard-summary-grid, .billing-grid, .promotion-grid) { gap: var(--space-4); }
   .app-shell-workspace :where(.dashboard-card, .dashboard-summary-card, .billing-card, .promotion-card) { padding: var(--space-5); }
-  .app-shell-workspace .dashboard-listing-card { min-height: 0; overflow: hidden; }
-  .app-shell-workspace .dashboard-listing-media { background: var(--surface-inset); }
-  .app-shell-workspace .dashboard-listing-actions { gap: var(--space-2); }
+  .app-shell-workspace .dashboard-listing-card {
+    position: relative;
+    display: grid;
+    min-height: 0;
+    grid-template-areas: "media copy actions";
+    grid-template-columns: minmax(260px, 32%) minmax(0, 1fr) auto;
+    align-items: stretch;
+    gap: var(--space-4);
+    overflow: visible;
+    padding: var(--space-4);
+  }
+  .app-shell-workspace .dashboard-listing-card:has(.dashboard-listing-menu[open]) { z-index: 4; }
+  .app-shell-workspace .dashboard-listing-media {
+    grid-area: media;
+    align-self: start;
+    aspect-ratio: 16 / 10;
+    max-height: 260px;
+    overflow: hidden;
+    border-radius: calc(var(--radius-card) - 8px);
+    background: var(--surface-inset);
+  }
+  .app-shell-workspace .dashboard-listing-media > :is(img, button),
+  .app-shell-workspace .dashboard-listing-media img { width: 100%; height: 100%; }
+  .app-shell-workspace .dashboard-listing-media img { object-fit: cover; }
+  .app-shell-workspace .dashboard-listing-copy { display: grid; min-width: 0; grid-area: copy; align-content: start; gap: var(--space-2); }
+  .app-shell-workspace .dashboard-listing-copy :where(h2, p) { margin: 0; }
+  .app-shell-workspace .dashboard-listing-title-row { display: flex; min-width: 0; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+  .app-shell-workspace .dashboard-listing-title-row h2 { min-width: 0; font-size: clamp(1.25rem, 2vw, 1.7rem); overflow-wrap: anywhere; }
+  .app-shell-workspace .dashboard-listing-price { color: var(--text-primary); font-size: 1.15rem; font-weight: 800; }
+  .app-shell-workspace .dashboard-listing-facts,
+  .app-shell-workspace .dashboard-listing-updated { color: var(--text-secondary); }
+  .app-shell-workspace .dashboard-listing-actions { grid-area: actions; align-self: end; gap: var(--space-2); }
+  .app-shell-workspace .dashboard-listing-menu-popover { top: auto; right: 0; bottom: calc(100% + 8px); z-index: 40; }
   .app-shell-workspace :where(.dashboard-listing-actions, .moderation-actions) .button { min-height: var(--control-md); }
   .app-shell-workspace :where(.stat-card, .dashboard-stat) strong { color: var(--text-primary); }
   .app-shell-workspace :where(.table-shell, .data-table-wrap) { overflow-x: auto; border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface); }
@@ -60,11 +90,21 @@
 
   @media (max-width: 1180px) {
     .app-shell-workspace .dashboard-summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .app-shell-workspace .dashboard-listing-card {
+      grid-template-areas: "media copy" "media actions";
+      grid-template-columns: minmax(240px, 34%) minmax(0, 1fr);
+    }
+    .app-shell-workspace .dashboard-listing-actions { justify-content: flex-start; }
   }
 
   @media (max-width: 760px) {
     .app-shell-workspace .dashboard-home-heading { align-items: stretch; flex-direction: column; }
     .app-shell-workspace .dashboard-home-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+    .app-shell-workspace .dashboard-listing-card {
+      grid-template-areas: "media" "copy" "actions";
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .app-shell-workspace .dashboard-listing-media { width: 100%; max-height: none; }
   }
 
   @media (max-width: 640px) {
