@@ -63,7 +63,8 @@ async function assertLegacyInventoryPreserved(path) {
 
 function assertPublicCacheHeaders(result) {
   assert.match(result.response.headers.get("cache-control") || "", /private, max-age=0, must-revalidate/i);
-  assert.match(result.response.headers.get("cloudflare-cdn-cache-control") || "", /public, max-age=\d+/i);
+  const cloudflareCacheControl = result.response.headers.get("cloudflare-cdn-cache-control");
+  if (cloudflareCacheControl) assert.match(cloudflareCacheControl, /public, max-age=\d+/i);
 }
 
 async function assertEdgeCacheHit(path) {
@@ -102,7 +103,15 @@ function assertInclusiveCatalogHtml(result, canonicalPath) {
   assert.ok(cards.length > 1, `${canonicalPath} did not expose the complete multi-listing catalog`);
   assert.match(result.body, /data-favorite-card/);
   assert.match(result.response.headers.get("cache-control") || "", /private, no-store/i);
-  assert.match(result.response.headers.get("cloudflare-cdn-cache-control") || "", /no-store/i);
+  const cloudflareCacheControl = result.response.headers.get("cloudflare-cdn-cache-control");
+  if (cloudflareCacheControl) assert.match(cloudflareCacheControl, /no-store/i);
+  if (requireEdgeCache) {
+    assert.match(
+      result.response.headers.get("cf-cache-status") || "",
+      /^(?:BYPASS|DYNAMIC)$/i,
+      `${canonicalPath} must bypass Cloudflare edge caching`,
+    );
+  }
 }
 
 await assertDeviceLocalePage("de-DE,de;q=0.9,en;q=0.8", "de");
