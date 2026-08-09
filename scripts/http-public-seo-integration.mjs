@@ -36,14 +36,18 @@ async function request(path, expectedStatus = 200) {
   return { response, body, url };
 }
 
-async function assertDeviceLocaleRedirect(acceptLanguage, expectedPath) {
+async function assertDeviceLocalePage(acceptLanguage, expectedLocale) {
   const url = new URL("/", baseUrl);
   const response = await fetch(url, {
     headers: { Accept: "text/html", "Accept-Language": acceptLanguage },
     redirect: "manual",
   });
-  assert.equal(response.status, 302, `Device locale ${acceptLanguage} did not return a temporary redirect`);
-  assert.equal(new URL(response.headers.get("location") || "", url).pathname, expectedPath);
+  const body = await response.text();
+  assert.equal(response.status, 200, `Device locale ${acceptLanguage} did not keep the complete homepage available`);
+  assert.equal(response.headers.has("location"), false, `Device locale ${acceptLanguage} unexpectedly redirected`);
+  assert.match(body, new RegExp(`<html[^>]+lang=["']${expectedLocale}["']`, "i"));
+  assert.match(body, /data-locale-switcher/);
+  assert.match(body, /<option value="(?:de|en|ru|uk|ar|tr)"/);
 }
 
 async function assertLegacyInventoryPreserved(path) {
@@ -88,9 +92,22 @@ function assertIndexableHtml(result, canonicalPath, type = "CollectionPage") {
   assertPublicCacheHeaders(result);
 }
 
-await assertDeviceLocaleRedirect("de-DE,de;q=0.9,en;q=0.8", `/${requestedLocale}/`);
-await assertDeviceLocaleRedirect("ar-SA,ar;q=0.9", `/${requestedLocale}/`);
-await assertDeviceLocaleRedirect("hi-IN,hi;q=0.9", `/${requestedLocale}/`);
+function assertInclusiveCatalogHtml(result, canonicalPath) {
+  assert.match(result.response.headers.get("content-type") || "", /text\/html/i);
+  assert.match(result.response.headers.get("x-robots-tag") || "", /noindex/i);
+  assert.match(result.body, /<meta[^>]+name=["']robots["'][^>]+noindex/i);
+  const canonical = new URL(canonicalPath, canonicalOrigin).toString();
+  assert.ok(result.body.includes(`<link rel="canonical" href="${canonical}">`), `Missing canonical ${canonical}`);
+  const cards = result.body.match(/<article class="[^"]*public-car-card/g) || [];
+  assert.ok(cards.length > 1, `${canonicalPath} did not expose the complete multi-listing catalog`);
+  assert.match(result.body, /data-favorite-card/);
+  assert.match(result.response.headers.get("cache-control") || "", /private, no-store/i);
+  assert.match(result.response.headers.get("cloudflare-cdn-cache-control") || "", /no-store/i);
+}
+
+await assertDeviceLocalePage("de-DE,de;q=0.9,en;q=0.8", "de");
+await assertDeviceLocalePage("ar-SA,ar;q=0.9", "ar");
+await assertDeviceLocalePage("hi-IN,hi;q=0.9", "en");
 await assertLegacyInventoryPreserved("/cars/");
 
 const sitemapIndex = await request("/sitemap.xml");
@@ -111,29 +128,16 @@ assert.equal(sitemapUrls.every((value) => new URL(value).origin === canonicalOri
 
 const paths = sitemapUrls.map((value) => new URL(value).pathname);
 const localePrefix = `/${requestedLocale}`;
-const brandPath = paths.find((path) => path.startsWith(`${localePrefix}/cars/brand/`) && path.split("/").filter(Boolean).length === 4);
-const modelPath = paths.find((path) => path.startsWith(`${localePrefix}/cars/brand/`) && path.split("/").filter(Boolean).length === 5);
 const vehiclePath = paths.find((path) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path));
 
 const homePath = `${localePrefix}/`;
 const catalogPath = `${localePrefix}/cars/`;
 const home = await request(homePath);
-assertIndexableHtml(home, homePath, "WebPage");
+assertInclusiveCatalogHtml(home, homePath);
 const catalog = await request(catalogPath);
-assertIndexableHtml(catalog, catalogPath);
+assertInclusiveCatalogHtml(catalog, catalogPath);
 
 const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, homePath, catalogPath];
-if (brandPath) {
-  const brand = await request(brandPath);
-  assertIndexableHtml(brand, brandPath);
-  checked.push(brandPath);
-}
-
-if (modelPath) {
-  const model = await request(modelPath);
-  assertIndexableHtml(model, modelPath);
-  checked.push(modelPath);
-}
 
 if (vehiclePath) {
   const vehicle = await request(vehiclePath);
@@ -159,8 +163,8 @@ console.log(JSON.stringify({
   baseUrl: baseUrl.origin,
   locale: requestedLocale,
   checked,
-  inventoryRoutesChecked: { brand: Boolean(brandPath), model: Boolean(modelPath), vehicle: Boolean(vehiclePath) },
-  deviceLocaleRedirectsChecked: ["de-DE", "ar-SA", "hi-IN"],
+  inventoryRoutesChecked: { inclusiveHome: true, inclusiveCatalog: true, vehicle: Boolean(vehiclePath) },
+  deviceLocalePagesChecked: ["de-DE", "ar-SA", "hi-IN"],
   edgeCacheChecked: requireEdgeCache,
   legacyInventoryPreserved: true,
   requestAuthentication: "none",

@@ -21,14 +21,17 @@ test("brand and model routes are on-demand SSR with canonical metadata and fail-
   }
 });
 
-test("catalog exposes crawlable brand links and sitemap includes brand and model URLs", () => {
+test("translation-ready sitemap stays strict while user taxonomy routes retain all public cars", () => {
   const brandRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand].astro");
   const modelRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand]/[model].astro");
   const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
-  assert.match(brandRoute, /projectCatalogForLocale\(listings, locale\)/);
-  assert.match(modelRoute, /projectCatalogForLocale\(listings, locale\)/);
-  assert.match(sitemap, /`\/\$\{locale\}\/cars\/brand\/\$\{encodeURIComponent\(brand\.name\)\}\//);
-  assert.match(sitemap, /\$\{encodeURIComponent\(model\)\}\//);
+  assert.match(brandRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
+  assert.match(modelRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
+  assert.match(brandRoute, /noindex=\{true\}/);
+  assert.match(modelRoute, /noindex=\{true\}/);
+  assert.doesNotMatch(sitemap, /cars\/brand\/\$\{encodeURIComponent/);
+  assert.match(sitemap, /cars\.map\(\(car\)/);
+  assert.match(sitemap, /Home, catalog, brand and model pages intentionally show the complete/);
   assert.doesNotMatch(sitemap, /\/cars\?brand=/);
 });
 
@@ -38,8 +41,8 @@ test("HTTP integration harness is public-only and covers local runtime plus prod
   const packageJson = readProjectFile("package.json");
   assert.doesNotMatch(harness, /Authorization|Cookie|authToken|localStorage/);
   assert.match(harness, /\/sitemap\.xml/);
-  assert.match(harness, /\/cars\/brand\//);
-  assert.match(harness, /CollectionPage/);
+  assert.match(harness, /assertInclusiveCatalogHtml/);
+  assert.match(harness, /deviceLocalePagesChecked/);
   assert.match(runner, /wrangler/);
   assert.match(runner, /pages", "dev"/);
   assert.match(packageJson, /"test:http:local"/);

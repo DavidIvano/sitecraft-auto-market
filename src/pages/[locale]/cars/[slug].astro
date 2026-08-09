@@ -10,7 +10,7 @@ import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/con
 import { isValidPublicCarSlug } from "../../../lib/publicCar";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
 import { buildLocalizedVehicleSeo } from "../../../lib/seo/vehicleSeo";
-import { getLocalizedCarBySlug } from "../../../lib/xano";
+import { getCarBySlug, getLocalizedCarBySlug } from "../../../lib/xano";
 
 export const prerender = false;
 
@@ -44,6 +44,17 @@ try {
 }
 const car = sourceListing ? toPublicListingForLocale(sourceListing, locale) : null;
 if (!car) {
+  // A missing reviewed translation must not hide an otherwise published
+  // vehicle. Send the visitor to the complete locale-aware legacy detail page,
+  // which retains gallery, seller contacts, favorites and related listings.
+  try {
+    const fallbackListing = await getCarBySlug(slug, locale);
+    if (fallbackListing) return Astro.redirect(`/cars/${encodeURIComponent(slug)}/?lang=${encodeURIComponent(locale)}`, 302);
+  } catch {
+    Astro.response.status = 503;
+    setUnavailableHeaders(Astro.response.headers);
+    return Astro.rewrite("/service-unavailable");
+  }
   Astro.response.status = 404;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/404");

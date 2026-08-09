@@ -253,13 +253,14 @@ test("cache keys isolate locale, version, flags, and actor scope", () => {
   assert.notEqual(key, createLocaleCacheKey({ ...base, flags: { ...germanPreviewFlags, I18N_LOCALE_DE_ENABLED: false } }));
 });
 
-test("German catalog and detail reads are bounded and never call a translation provider", () => {
+test("inclusive German catalog and strict detail reads are bounded and never call a translation provider", () => {
   const catalog = read("../src/pages/[locale]/cars/index.astro");
   const detail = read("../src/pages/[locale]/cars/[slug].astro");
-  assert.equal((catalog.match(/getLocalizedApprovedCars\(/g) || []).length, 1);
+  assert.equal((catalog.match(/getApprovedCars\(/g) || []).length, 1);
   assert.equal((detail.match(/getLocalizedCarBySlug\(/g) || []).length, 1);
   assert.match(catalog, /X-SiteCraft-Query-Count", "1"/);
   assert.match(detail, /X-SiteCraft-Query-Count", "1"/);
+  assert.match(catalog, /catalogNoindex = true/);
   assert.doesNotMatch(`${catalog}\n${detail}`, /OpenAI|generateTranslation|translation provider/i);
 });
 

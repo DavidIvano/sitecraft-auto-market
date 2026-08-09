@@ -7,13 +7,12 @@ import { getBrandLogoSvg } from "../lib/brandLogos";
 import { getApprovedCars } from "../lib/xano";
 import { isPublicListing } from "../lib/listingStatus";
 import type { CarListing } from "../lib/types";
-import { GERMAN_PUBLIC_ROUTES_ENABLED } from "../lib/config";
 import { LOCALE_COOKIE, resolveRequestLocale } from "../i18n/locales";
 import { getBackendValueOptions } from "../i18n/backendValues";
 import { getMessages } from "../i18n/messages";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
 const messages = getMessages(locale);
 const fuelOptions = getBackendValueOptions("fuel_type", locale);
 const transmissionOptions = getBackendValueOptions("transmission", locale);
@@ -31,10 +30,6 @@ try {
   title={messages.homeTitle}
   variant="public"
   locale={locale}
-  alternateLocales={GERMAN_PUBLIC_ROUTES_ENABLED ? [
-    { locale: "ru", path: "/", label: "Русский" },
-    { locale: "de", path: "/de/", label: "Deutsch" },
-  ] : []}
 >
   <section class="market-hero">
     <div class="market-hero-media" aria-hidden="true">
@@ -198,7 +193,7 @@ try {
         id="home-live-cars-grid"
         hidden={latestCars.length === 0}
       >
-        {latestCars.map((car, index) => <CarCard car={car} priority={index < 4} source="homepage_latest" />)}
+        {latestCars.map((car, index) => <CarCard car={car} priority={index < 4} source="homepage_latest" locale={locale} />)}
       </div>
       <div id="home-loading-state" hidden={latestCars.length > 0}><LoadingState title={messages.loadingCars} text={messages.loadingCarsText} /></div>
       <p class="form-message" id="home-live-cars-message"></p>

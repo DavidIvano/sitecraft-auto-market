@@ -1,6 +1,8 @@
 ---
 import { LOCALE_COOKIE, LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
+import { getLocaleFromPath } from "../i18n/locale";
+import { stripLocalePrefix } from "../i18n/routes";
 
 type Props = {
   locale: Locale;
@@ -8,14 +10,25 @@ type Props = {
 };
 const { locale, alternateLocales = [] } = Astro.props;
 const messages = getMessages(locale);
-const routeOptions = alternateLocales.length > 0
+const localizedPath = getLocaleFromPath(Astro.url.pathname) ? stripLocalePrefix(Astro.url.pathname) : "";
+const compatibilityRoutes = localizedPath
+  ? SUPPORTED_LOCALES.map((code) => ({
+      locale: code,
+      path: `${localizedPath}${localizedPath.includes("?") ? "&" : "?"}lang=${encodeURIComponent(code)}`,
+      label: LOCALE_LABELS[code],
+    }))
+  : [];
+const routeOptions = alternateLocales.length > 1
   ? alternateLocales
-  : SUPPORTED_LOCALES.map((code) => ({ locale: code, path: "", label: LOCALE_LABELS[code] }));
+  : compatibilityRoutes.length > 0
+    ? compatibilityRoutes
+    : SUPPORTED_LOCALES.map((code) => ({ locale: code, path: "", label: LOCALE_LABELS[code] }));
+const routeMode = alternateLocales.length > 1 || compatibilityRoutes.length > 0 ? "path" : "legacy-query";
 ---
 
 <label class="locale-switcher">
   <span class="sr-only">{messages.language}</span>
-  <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE} data-route-mode={alternateLocales.length > 0 ? "path" : "legacy-query"}>
+  <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE} data-route-mode={routeMode}>
     {routeOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
   </select>
 </label>

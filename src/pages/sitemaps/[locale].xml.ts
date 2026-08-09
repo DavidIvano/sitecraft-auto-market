@@ -46,26 +46,14 @@ export const GET: APIRoute = async ({ params }) => {
   const cars = projectCatalogForLocale(sourceListings, locale)
     .filter((car, index, list) => isValidPublicCarSlug(car.slug) && list.findIndex((candidate) => candidate.slug === car.slug) === index);
   const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
-  const staticPaths = ["/", "/cars/", ...PUBLIC_STATIC_PAGE_CODES.map((page) => `/${page}/`)];
-  const brands = new Map<string, { name: string; models: Set<string>; lastmod: string | null }>();
-  for (const car of cars) {
-    if (!car.brand) continue;
-    const current = brands.get(car.brand) || { name: car.brand, models: new Set<string>(), lastmod: null };
-    if (car.model) current.models.add(car.model);
-    const modified = toIsoDate(car.translation_updated_at || car.updated_at || car.created_at);
-    if (modified && (!current.lastmod || modified > current.lastmod)) current.lastmod = modified;
-    brands.set(car.brand, current);
-  }
+  // Home, catalog, brand and model pages intentionally show the complete
+  // inventory (including source-text fallbacks), so they are noindex and must
+  // not enter the localized sitemap. Static translated pages and reviewed
+  // listing details remain indexable.
+  const staticPaths = PUBLIC_STATIC_PAGE_CODES.map((page) => `/${page}/`);
 
   const urls = [
     ...staticPaths.map((path) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod: null })),
-    ...[...brands.values()].flatMap((brand) => [
-      { loc: new URL(`/${locale}/cars/brand/${encodeURIComponent(brand.name)}/`, siteUrl).toString(), lastmod: brand.lastmod },
-      ...[...brand.models].map((model) => ({
-        loc: new URL(`/${locale}/cars/brand/${encodeURIComponent(brand.name)}/${encodeURIComponent(model)}/`, siteUrl).toString(),
-        lastmod: brand.lastmod,
-      })),
-    ]),
     ...cars.map((car) => ({
       loc: new URL(`/${locale}/cars/${encodeURIComponent(car.slug)}/`, siteUrl).toString(),
       lastmod: toIsoDate(car.translation_updated_at || car.updated_at || car.created_at),

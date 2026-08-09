@@ -11,6 +11,10 @@ import { RELEASE4_FLAGS } from "./lib/config.ts";
 // Catalog/detail redirects remain disabled until every affected legacy URL has
 // a ready target. Redirecting an untranslated listing would create 302 -> 404.
 const SAFE_LEGACY_REDIRECT_PATH = /^\/(?:pricing|sell|support|privacy|impressum)\/?$/u;
+// The locale-prefixed Release 4 pages currently expose only translation-ready
+// records. Keep legacy redirects off until feature parity is complete, so the
+// full marketplace and every published listing remain reachable.
+const LEGACY_REDIRECTS_ENABLED = false;
 
 const preferredPublicLocale = (context: Parameters<Parameters<typeof defineMiddleware>[0]>[0]) => {
   const explicit = normalizeLocale(context.url.searchParams.get("lang") || context.url.searchParams.get("locale"), { activeOnly: true });
@@ -28,7 +32,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   if (getLocaleFromPath(context.url.pathname)) return next();
 
   if (RELEASE4_FLAGS.I18N_PUBLIC_ROUTES_ENABLED && RELEASE4_FLAGS.I18N_ENABLED && RELEASE4_FLAGS.I18N_API_READ_ENABLED) {
-    if (context.url.pathname === "/" || SAFE_LEGACY_REDIRECT_PATH.test(context.url.pathname)) {
+    if (LEGACY_REDIRECTS_ENABLED && (context.url.pathname === "/" || SAFE_LEGACY_REDIRECT_PATH.test(context.url.pathname))) {
       const locale = preferredPublicLocale(context);
       if (isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
         const target = getLocalizedPath(context.url.pathname, locale);
@@ -43,7 +47,11 @@ export const onRequest = defineMiddleware(async (context, next) => {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.toLowerCase().includes("text/html")) return response;
 
-  const locale = resolveRequestLocale(context.url, context.cookies.get(LOCALE_COOKIE)?.value);
+  const locale = resolveRequestLocale(
+    context.url,
+    context.cookies.get(LOCALE_COOKIE)?.value,
+    context.request.headers.get("accept-language"),
+  );
   if (locale === "ru") return response;
 
   const headers = new Headers(response.headers);

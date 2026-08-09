@@ -6,6 +6,7 @@ import {
   localeRegistry,
   type LocaleCode,
 } from "./config.ts";
+import { getLocaleFromAcceptLanguage } from "./locale.ts";
 
 // Compatibility list for dictionaries already shipped in the current UI. New
 // locales are configured in config.ts and are not public until their dictionary
@@ -56,7 +57,20 @@ export function resolveLocale(value: unknown, fallback: Locale = DEFAULT_LOCALE)
 }
 
 // Query/cookie resolution exists only for old unprefixed URLs during migration.
-export function resolveRequestLocale(url: URL, cookieLocale?: unknown): Locale {
-  const resolved = resolveLocale(url.searchParams.get("lang") || url.searchParams.get("locale") || cookieLocale, LEGACY_PUBLIC_LOCALE);
-  return isLegacyUiLocale(resolved) ? resolved : LEGACY_PUBLIC_LOCALE;
+export function resolveRequestLocale(url: URL, cookieLocale?: unknown, acceptLanguage?: string | null): Locale {
+  const candidates = [
+    url.searchParams.get("lang") || url.searchParams.get("locale"),
+    cookieLocale,
+    getLocaleFromAcceptLanguage(acceptLanguage),
+  ];
+
+  for (const candidate of candidates) {
+    const resolved = resolveLocale(candidate, "en");
+    if (candidate && isLegacyUiLocale(resolved)) return resolved;
+  }
+
+  // English is the safe UI fallback for device languages that the site does
+  // not support yet. It also avoids silently falling back to the source data
+  // language when no preference is available.
+  return "en";
 }

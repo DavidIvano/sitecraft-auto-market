@@ -1,15 +1,14 @@
 ---
 import type { CarListing } from "../../../lib/types";
+import CarCard from "../../../components/CarCard.astro";
 import BaseLayout from "../../../layouts/BaseLayout.astro";
-import { formatCurrency, formatMileage } from "../../../i18n/format";
 import { normalizeLocale } from "../../../i18n/locale";
-import { projectCatalogForLocale } from "../../../i18n/publicListing";
 import { getPublicPageMessages, getRouteAlternates } from "../../../i18n/publicRoutes";
 import { isPublicLocaleRouteEnabled } from "../../../i18n/release4";
-import { getVehicleTaxonomyLabel } from "../../../domain/vehicleTaxonomy";
 import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/config";
+import { isPublicListing } from "../../../lib/listingStatus";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
-import { getLocalizedApprovedCars } from "../../../lib/xano";
+import { getApprovedCars } from "../../../lib/xano";
 
 export const prerender = false;
 
@@ -23,18 +22,22 @@ if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
 const requestStarted = performance.now();
 let sourceListings: CarListing[] = [];
 try {
-  sourceListings = await getLocalizedApprovedCars(locale);
+  sourceListings = await getApprovedCars(locale, { requireConfigured: true });
 } catch {
   Astro.response.status = 503;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/service-unavailable");
 }
-const cars = projectCatalogForLocale(sourceListings, locale);
+const cars = sourceListings.filter(isPublicListing);
 const messages = getPublicPageMessages(locale);
 const queryDuration = Math.max(0, performance.now() - requestStarted).toFixed(1);
 Astro.response.headers.set("Server-Timing", `locale-read;dur=${queryDuration};desc="bounded catalog query"`);
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
-setPublicCacheHeaders(Astro.response.headers, "catalog", I18N_PREVIEW_NOINDEX);
+// Until every listing has a reviewed locale payload, this inclusive catalog is
+// user-facing but not indexed. Strict translation-ready detail URLs and the
+// sitemap continue to use the localized Xano endpoint.
+const catalogNoindex = true;
+setPublicCacheHeaders(Astro.response.headers, "catalog", catalogNoindex);
 
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalPath = `/${locale}/cars/`;
@@ -49,7 +52,7 @@ const collectionSchema = {
     itemListElement: cars.map((car, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: new URL(`/${locale}/cars/${car.slug}/`, siteUrl).toString(),
+      url: new URL(`/cars/${car.slug}/?lang=${encodeURIComponent(locale)}`, siteUrl).toString(),
       name: car.title,
     })),
   },
@@ -62,7 +65,7 @@ const collectionSchema = {
   title={messages.catalogTitle}
   description={messages.catalogDescription}
   canonicalPath={canonicalPath}
-  noindex={I18N_PREVIEW_NOINDEX}
+  noindex={catalogNoindex || I18N_PREVIEW_NOINDEX}
   jsonLd={collectionSchema}
   breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: messages.catalogTitle }]}
   alternateLocales={getRouteAlternates("/cars/")}
@@ -83,23 +86,7 @@ const collectionSchema = {
       </div>
       {cars.length > 0 ? (
         <div class="cards-grid catalog-grid">
-          {cars.map((car, index) => (
-            <article class="car-card">
-              <a class="car-card-media" href={`/${locale}/cars/${car.slug}/`} aria-label={car.title}>
-                <img src={car.image_urls[0] || "/deal-finder-placeholder.svg"} alt={car.title} loading={index < 4 ? "eager" : "lazy"} decoding="async" />
-              </a>
-              <div class="car-card-body">
-                <h2><a href={`/${locale}/cars/${car.slug}/`}>{car.title}</a></h2>
-                <p class="car-card-price">{formatCurrency(car.price, car.currency, locale)}</p>
-                <ul class="car-card-specs" aria-label={messages.vehicleData}>
-                  <li>{car.year || "–"}</li>
-                  <li>{formatMileage(car.mileage, locale) || "–"}</li>
-                  <li>{getVehicleTaxonomyLabel("fuel_type", car.fuel_type, locale) || car.fuel_type || "–"}</li>
-                  <li>{car.city || messages.locationMissing}</li>
-                </ul>
-              </div>
-            </article>
-          ))}
+          {cars.map((car, index) => <CarCard car={car} priority={index < 4} source="localized_catalog" locale={locale} />)}
         </div>
       ) : (
         <div class="empty-state" role="status">

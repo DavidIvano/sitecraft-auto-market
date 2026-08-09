@@ -4,7 +4,7 @@ import SearchBar from "../../components/SearchBar.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { getApprovedCars } from "../../lib/xano";
 import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
-import { GERMAN_PUBLIC_ROUTES_ENABLED, SITE_URL } from "../../lib/config";
+import { SITE_URL } from "../../lib/config";
 import { API_ROUTES } from "../../lib/apiRoutes";
 import { getCreditActionPolicy } from "../../lib/credits/model";
 import {
@@ -19,7 +19,7 @@ import { getCatalogMessages } from "../../i18n/catalogMessages";
 import { LOCALE_COOKIE, resolveRequestLocale } from "../../i18n/locales";
 import { interpolate } from "../../i18n/messages";
 
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
 const messages = getCatalogMessages(locale);
 
 export const prerender = false;
@@ -147,10 +147,6 @@ const collectionSchema = {
   canonicalPath="/cars"
   jsonLd={collectionSchema}
   locale={locale}
-  alternateLocales={GERMAN_PUBLIC_ROUTES_ENABLED ? [
-    { locale: "ru", path: "/cars/", label: "Русский" },
-    { locale: "de", path: "/de/cars/", label: "Deutsch" },
-  ] : []}
 >
   <section class="section page-hero catalog-hero">
     <div class="container catalog-hero-grid">

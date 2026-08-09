@@ -5,7 +5,7 @@ import ContactSellerModal from "../../components/ContactSellerModal.astro";
 import VehicleSpecsGrid from "../../components/VehicleSpecsGrid.astro";
 import FavoriteButton from "../../components/cars/FavoriteButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
-import { GERMAN_PUBLIC_ROUTES_ENABLED, SITE_URL } from "../../lib/config";
+import { SITE_URL } from "../../lib/config";
 import { getCarDetailImageUrls } from "../../lib/imageUrls";
 import { isDisplayValue, maskVin, sanitizePublicDescription } from "../../lib/listingFields";
 import { getStoredAiScores, hasStoredAiAnalysis, parseAiPayload } from "../../lib/aiScores";
@@ -18,7 +18,6 @@ import { isValidPublicCarSlug } from "../../lib/publicCar";
 import { getActiveListingPromotion } from "../../lib/promotions/model";
 import { buildVehicleSeo } from "../../lib/seo/vehicleSeo";
 import { shouldShowPublicViewCount } from "../../lib/listingViews";
-import { toGermanPublicListing } from "../../i18n/publicListing";
 import { getDetailMessages } from "../../i18n/detailMessages";
 import { LOCALE_COOKIE, LOCALE_LABELS, LOCALE_TAGS, resolveRequestLocale, type Locale } from "../../i18n/locales";
 import { getMessages, interpolate } from "../../i18n/messages";
@@ -26,7 +25,7 @@ import { normalizeBackendValue, translateBackendValue, type BackendValueField } 
 
 export const prerender = false;
 
-const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"));
 const messages = getDetailMessages(locale);
 const localeTag = LOCALE_TAGS[locale];
 const localizedValue = (field: BackendValueField, value: unknown) =>
@@ -65,15 +64,6 @@ if (!car || !isPublicListing(car)) {
   Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
   return Astro.rewrite(`/404?lang=${encodeURIComponent(locale)}`);
-}
-let germanAlternateAvailable = false;
-if (GERMAN_PUBLIC_ROUTES_ENABLED) {
-  try {
-    const germanListing = await getCarBySlug(slug, "de");
-    germanAlternateAvailable = Boolean(germanListing && toGermanPublicListing(germanListing));
-  } catch {
-    germanAlternateAvailable = false;
-  }
 }
 Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
 Astro.response.headers.set("X-Robots-Tag", "index, follow");
@@ -422,10 +412,6 @@ const siteMessages = getMessages(locale);
     { href: "/cars", label: siteMessages.navCars },
     { label: car.title },
   ]}
-  alternateLocales={germanAlternateAvailable ? [
-    { locale: "ru", path: `/cars/${car.slug}/`, label: "Русский" },
-    { locale: "de", path: `/de/cars/${car.slug}/`, label: "Deutsch" },
-  ] : []}
   locale={locale}
 >
   <section class="section car-detail-section">

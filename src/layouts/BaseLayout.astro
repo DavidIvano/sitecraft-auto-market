@@ -55,7 +55,11 @@ const {
   alternateLocales = [],
   xDefaultPath,
 } = Astro.props;
-const locale = localeProp ?? resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
+const locale = localeProp ?? resolveRequestLocale(
+  Astro.url,
+  Astro.cookies.get(LOCALE_COOKIE)?.value,
+  Astro.request.headers.get("accept-language"),
+);
 const messages = getMessages(locale);
 const isLocalePrefixedRoute = Boolean(getLocaleFromPath(Astro.url.pathname));
 const legacyRuntimeTranslation = !isLocalePrefixedRoute && locale !== "ru";

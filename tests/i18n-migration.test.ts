@@ -74,10 +74,12 @@ test("unknown provider values remain visible instead of being silently erased", 
   assert.equal(translateBackendValue("fuel_type", "synthetic_fuel", "de"), "synthetic_fuel");
 });
 
-test("query language wins over the saved cookie and invalid values fall back safely", () => {
+test("query language wins over the saved cookie and unsupported device languages fall back to English", () => {
   assert.equal(resolveRequestLocale(new URL("https://example.test/?lang=de"), "uk"), "de");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), "uk"), "uk");
-  assert.equal(resolveRequestLocale(new URL("https://example.test/?lang=invalid"), "en"), "ru");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/?lang=invalid"), "en"), "en");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "ar-SA,ar;q=0.9"), "ar");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN,hi;q=0.9"), "en");
 });
 
 test("every supported language has a complete interface dictionary", () => {
