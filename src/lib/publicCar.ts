@@ -5,7 +5,11 @@ import { normalizePublicViewCount } from "./listingViews.ts";
 import type { CarListing, CarListingImage, PublicSellerSummary, TranslationResolution } from "./types.ts";
 import { normalizeListingTranslation } from "./listingTranslation.ts";
 
-const PUBLIC_SLUG_PATTERN = /^[a-z0-9][a-z0-9-]{0,119}$/i;
+// Historical listings may have slugs generated from non-Latin makes (for
+// example ВАЗ). Unicode letters and digits are URL-safe once encoded, while
+// separators, whitespace, query/hash markers and traversal characters remain
+// rejected by this deliberately narrow pattern.
+const PUBLIC_SLUG_PATTERN = /^[\p{L}\p{N}][\p{L}\p{N}-]{0,119}$/u;
 
 const toRecord = (value: unknown): Record<string, unknown> | null => (
   value && typeof value === "object" && !Array.isArray(value)

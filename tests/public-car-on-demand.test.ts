@@ -111,6 +111,7 @@ test("list wrappers are supported and private listings stay out", () => {
 
 test("public slug validation rejects malformed and oversized paths", () => {
   assert.equal(isValidPublicCarSlug("renault-megane-2014-69"), true);
+  assert.equal(isValidPublicCarSlug("ваз-2110-2000-1783682811"), true);
   assert.equal(isValidPublicCarSlug("undefined"), false);
   assert.equal(isValidPublicCarSlug("../admin"), false);
   assert.equal(isValidPublicCarSlug("car name"), false);
