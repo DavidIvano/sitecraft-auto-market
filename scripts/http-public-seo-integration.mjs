@@ -58,7 +58,7 @@ async function assertLegacyInventoryPreserved(path) {
 }
 
 function assertPublicCacheHeaders(result) {
-  assert.match(result.response.headers.get("cache-control") || "", /public, max-age=0, must-revalidate/i);
+  assert.match(result.response.headers.get("cache-control") || "", /private, max-age=0, must-revalidate/i);
   assert.match(result.response.headers.get("cloudflare-cdn-cache-control") || "", /public, max-age=\d+/i);
 }
 

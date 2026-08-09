@@ -164,7 +164,8 @@ sitemap — **1 из 1 (100%)**. Запись с переводом, но без
 - `/sitemaps/de.xml` содержит только строгие ready URL, включая brand, model и
   detail контрольного объявления.
 - Непубличные локали отсутствуют в sitemap.
-- Публичные страницы возвращают browser revalidation и отдельный
+- Публичные страницы возвращают `private, max-age=0, must-revalidate` для
+  browser revalidation (чтобы zone TTL не превращал его в 4 часа) и отдельный
   `Cloudflare-CDN-Cache-Control` с TTL/SWR.
 - В Cloudflare включено активное Cache Rule только для host
   `automarket.sitecraft.agency`, методов GET/HEAD и путей `/de/*`,

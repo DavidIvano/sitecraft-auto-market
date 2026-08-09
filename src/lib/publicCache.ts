@@ -16,7 +16,10 @@ export function setPublicCacheHeaders(headers: Headers, profile: PublicCacheProf
   }
 
   const ttl = EDGE_TTL[profile];
-  headers.set("Cache-Control", "public, max-age=0, must-revalidate");
+  // The zone-level Browser Cache TTL has a 4-hour minimum for public
+  // responses. `private` makes Cloudflare preserve our zero browser TTL while
+  // the separate Cloudflare-CDN-Cache-Control header still caches at the edge.
+  headers.set("Cache-Control", "private, max-age=0, must-revalidate");
   headers.set("Cloudflare-CDN-Cache-Control", `public, max-age=${ttl.maxAge}, stale-while-revalidate=${ttl.stale}`);
   headers.set("X-Robots-Tag", "index, follow");
 }
