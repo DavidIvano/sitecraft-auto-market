@@ -65,31 +65,6 @@ const runPagesFunctions = createPagesFunctions({});
 export default {
   async fetch(request, env, context) {
     const url = new URL(request.url);
-    const localeRoute = url.pathname.match(/^\\/(de|en|uk|zh-Hans)(?:\\/|$)/)?.[1];
-    const enabled = (value) => String(value || "").trim().toLowerCase() === "true";
-    const localeFlags = {
-      de: env.I18N_LOCALE_DE_ENABLED,
-      en: env.I18N_LOCALE_EN_ENABLED,
-      uk: env.I18N_LOCALE_UK_ENABLED,
-      "zh-Hans": env.I18N_LOCALE_ZH_HANS_ENABLED,
-    };
-
-    if (localeRoute && (!enabled(env.I18N_ENABLED)
-      || localeRoute !== "de"
-      || !enabled(env.I18N_PUBLIC_ROUTES_ENABLED)
-      || !enabled(localeFlags[localeRoute])
-      || (localeRoute === "de" && !enabled(env.I18N_API_READ_ENABLED))
-      || (localeRoute === "de" && enabled(env.I18N_AI_TRANSLATION_ENABLED)))) {
-      return new Response("Not found", {
-        status: 404,
-        headers: {
-          "cache-control": "no-store",
-          "content-type": "text/plain; charset=utf-8",
-          "x-content-type-options": "nosniff",
-        },
-      });
-    }
-
     const isApiRoute = url.pathname === "/api" || url.pathname.startsWith("/api/");
     const isStaticAsset = !isApiRoute && (url.pathname.startsWith("/_astro/")
       || url.pathname.startsWith("/images/")

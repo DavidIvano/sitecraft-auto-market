@@ -2,6 +2,8 @@
 import LocaleSwitcher from "./LocaleSwitcher.astro";
 import type { Locale } from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
+import { getLocaleFromPath } from "../i18n/locale";
+import { getLocalizedPath } from "../i18n/routes";
 
 type Props = {
   variant?: "public" | "workspace";
@@ -11,12 +13,14 @@ type Props = {
 
 const { variant = "public", locale, alternateLocales = [] } = Astro.props;
 const messages = getMessages(locale);
-const homeHref = Astro.url.pathname.startsWith("/de") ? "/de/" : "/";
+const isLocalizedPublicRoute = variant === "public" && Boolean(getLocaleFromPath(Astro.url.pathname));
+const localizedHref = (path: string) => isLocalizedPublicRoute ? getLocalizedPath(path, locale) : path;
+const homeHref = localizedHref("/");
 const navItems = [
-  { href: "/", label: messages.navHome },
-  { href: "/cars", label: messages.navCars },
-  { href: "/sell", label: messages.navSell },
-  { href: "/pricing", label: messages.navPricing },
+  { href: localizedHref("/"), label: messages.navHome },
+  { href: localizedHref("/cars/"), label: messages.navCars },
+  { href: localizedHref("/sell/"), label: messages.navSell },
+  { href: localizedHref("/pricing/"), label: messages.navPricing },
 ];
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
@@ -62,12 +66,9 @@ const isCurrentPath = (href: string) => {
     <div class="header-menu" id="site-header-menu">
       {variant === "public" && <nav class="main-nav" aria-label={messages.mainNavigation}>
           {navItems.map((item) => <a href={item.href} aria-current={isCurrentPath(item.href) ? "page" : undefined}>{item.label}</a>)}
-          {alternateLocales.filter((item) => item.locale !== locale).map((item) => (
-            <a href={item.path} hreflang={item.locale}>{item.label || item.locale.toUpperCase()}</a>
-          ))}
         </nav>}
       <div class="header-actions">
-        <LocaleSwitcher locale={locale} />
+        <LocaleSwitcher locale={locale} alternateLocales={alternateLocales} />
         <button class="button button-light theme-toggle desktop-theme-toggle" type="button" aria-label={messages.themeToggle} aria-pressed="false">
           <span class="theme-toggle-icon" aria-hidden="true"><i data-lucide="moon"></i></span>
         </button>

@@ -15,7 +15,7 @@ export type PublicLocaleResolution = {
   fallback_reason: string | null;
 };
 
-export type GermanPublicListingDto = {
+export type PublicListingDto = {
   id: number;
   slug: string;
   title: string;
@@ -35,8 +35,13 @@ export type GermanPublicListingDto = {
   image_urls: string[];
   created_at?: string | number;
   updated_at?: string | number;
+  translation_updated_at?: string | number;
+  available_locales: string[];
   locale_resolution: PublicLocaleResolution;
 };
+
+/** @deprecated Use PublicListingDto. */
+export type GermanPublicListingDto = PublicListingDto;
 
 const text = (value: unknown) => String(value ?? "").trim();
 const positiveInteger = (value: unknown) => {
@@ -47,7 +52,7 @@ const positiveInteger = (value: unknown) => {
 const mapStatus = (value: unknown): PublicTranslationStatus => {
   const status = text(value).toLowerCase();
   if (["source", "original"].includes(status)) return "source";
-  if (["translated", "reviewed", "machine_translated"].includes(status)) return "translated";
+  if (["translated", "reviewed", "machine_translated", "completed"].includes(status)) return "translated";
   if (["stale", "outdated"].includes(status)) return "stale";
   if (["pending", "processing", "queued"].includes(status)) return "pending";
   if (["failed", "error"].includes(status)) return "failed";
@@ -61,10 +66,15 @@ export function resolvePublicListingLocale(
   const translation = listing.translation as (Record<string, unknown> & { status?: unknown }) | undefined;
   const requested = text(translation?.requested_locale) || requestedLocale;
   const sourceLocale = text(translation?.source_locale) || text(listing.source_locale) || "unknown";
-  const resolvedLocale = text(translation?.resolved_locale) || (sourceLocale === requested ? sourceLocale : "");
+  const resolvedLocale = text(translation?.resolved_locale)
+    || (mapStatus(translation?.translation_status ?? translation?.status) === "translated" ? text(translation?.locale) : "")
+    || (sourceLocale === requested ? sourceLocale : "");
   const listingVersion = positiveInteger((listing as CarListing & { translation_version?: unknown }).translation_version);
   const resolvedVersion = positiveInteger(translation?.translation_version ?? listingVersion);
-  const rawReady = (listing as CarListing & { translations_ready?: unknown }).translations_ready === true;
+  const sourceHash = text(translation?.source_hash);
+  const resolvedSourceHash = text(translation?.resolved_source_hash ?? translation?.source_hash);
+  const rawReady = (listing as CarListing & { translations_ready?: unknown }).translations_ready === true
+    || text(translation?.readiness) === "ready";
   let translationStatus = mapStatus(translation?.translation_status ?? translation?.status);
 
   if (sourceLocale === requested && resolvedLocale === requested && translationStatus === "unavailable") {
@@ -78,9 +88,10 @@ export function resolvePublicListingLocale(
   const validTranslation = translationStatus === "translated"
     && resolvedLocale === requested
     && rawReady
-    && (listingVersion === 0 || resolvedVersion === listingVersion);
+    && (listingVersion === 0 || resolvedVersion === listingVersion)
+    && (!sourceHash || !resolvedSourceHash || sourceHash === resolvedSourceHash);
   const available = validSource || validTranslation;
-  const fallbackUsed = Boolean(resolvedLocale && resolvedLocale !== requested);
+  const fallbackUsed = translation?.is_fallback === true || Boolean(resolvedLocale && resolvedLocale !== requested);
 
   return {
     requested_locale: requested,
@@ -98,13 +109,13 @@ export function resolvePublicListingLocale(
   };
 }
 
-export function toGermanPublicListing(listing: CarListing): GermanPublicListingDto | null {
-  const resolution = resolvePublicListingLocale(listing, "de");
+export function toPublicListingForLocale(listing: CarListing, requestedLocale: string): PublicListingDto | null {
+  const resolution = resolvePublicListingLocale(listing, requestedLocale);
   const title = text(listing.title);
   const description = sanitizePublicDescription(listing.description).trim();
 
-  if (resolution.requested_locale !== "de"
-    || resolution.resolved_locale !== "de"
+  if (resolution.requested_locale !== requestedLocale
+    || resolution.resolved_locale !== requestedLocale
     || resolution.fallback_used
     || !["source", "translated"].includes(resolution.translation_status)
     || !resolution.translations_ready
@@ -133,13 +144,29 @@ export function toGermanPublicListing(listing: CarListing): GermanPublicListingD
     image_urls: getCarDetailImageUrls(listing).slice(0, 8),
     created_at: listing.created_at,
     updated_at: listing.updated_at,
+    translation_updated_at: listing.translation && "updated_at" in listing.translation
+      ? listing.translation.updated_at as string | number | undefined
+      : undefined,
+    available_locales: Array.isArray(listing.available_locales)
+      ? [...new Set(listing.available_locales.map(text).filter(Boolean))]
+      : [requestedLocale],
     locale_resolution: resolution,
   };
 }
 
-export function projectGermanCatalog(listings: CarListing[]) {
+export function projectCatalogForLocale(listings: CarListing[], requestedLocale: string) {
   return listings.flatMap((listing) => {
-    const projected = toGermanPublicListing(listing);
+    const projected = toPublicListingForLocale(listing, requestedLocale);
     return projected ? [projected] : [];
   });
+}
+
+/** @deprecated Compatibility wrapper for the Release 3 German route. */
+export function toGermanPublicListing(listing: CarListing): GermanPublicListingDto | null {
+  return toPublicListingForLocale(listing, "de");
+}
+
+/** @deprecated Compatibility wrapper for the Release 3 German route. */
+export function projectGermanCatalog(listings: CarListing[]) {
+  return projectCatalogForLocale(listings, "de");
 }

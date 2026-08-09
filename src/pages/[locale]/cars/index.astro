@@ -1,0 +1,112 @@
+---
+import type { CarListing } from "../../../lib/types";
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { formatCurrency, formatMileage } from "../../../i18n/format";
+import { normalizeLocale } from "../../../i18n/locale";
+import { projectCatalogForLocale } from "../../../i18n/publicListing";
+import { getPublicPageMessages, getRouteAlternates } from "../../../i18n/publicRoutes";
+import { isPublicLocaleRouteEnabled } from "../../../i18n/release4";
+import { getVehicleTaxonomyLabel } from "../../../domain/vehicleTaxonomy";
+import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/config";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
+import { getLocalizedApprovedCars } from "../../../lib/xano";
+
+export const prerender = false;
+
+const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
+if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+const requestStarted = performance.now();
+let sourceListings: CarListing[] = [];
+try {
+  sourceListings = await getLocalizedApprovedCars(locale);
+} catch {
+  Astro.response.status = 503;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/service-unavailable");
+}
+const cars = projectCatalogForLocale(sourceListings, locale);
+const messages = getPublicPageMessages(locale);
+const queryDuration = Math.max(0, performance.now() - requestStarted).toFixed(1);
+Astro.response.headers.set("Server-Timing", `locale-read;dur=${queryDuration};desc="bounded catalog query"`);
+Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
+setPublicCacheHeaders(Astro.response.headers, "catalog", I18N_PREVIEW_NOINDEX);
+
+const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
+const canonicalPath = `/${locale}/cars/`;
+const collectionSchema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: messages.catalogTitle,
+  description: messages.catalogDescription,
+  inLanguage: locale,
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: cars.map((car, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: new URL(`/${locale}/cars/${car.slug}/`, siteUrl).toString(),
+      name: car.title,
+    })),
+  },
+};
+---
+
+<BaseLayout
+  variant="public"
+  locale={locale}
+  title={messages.catalogTitle}
+  description={messages.catalogDescription}
+  canonicalPath={canonicalPath}
+  noindex={I18N_PREVIEW_NOINDEX}
+  jsonLd={collectionSchema}
+  breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: messages.catalogTitle }]}
+  alternateLocales={getRouteAlternates("/cars/")}
+  xDefaultPath="/"
+>
+  <section class="section page-hero catalog-hero">
+    <div class="container">
+      <p class="eyebrow">SiteCraft Auto Market</p>
+      <h1>{messages.catalogTitle}</h1>
+      <p class="lead">{messages.catalogLead}</p>
+    </div>
+  </section>
+
+  <section class="section catalog-results-section">
+    <div class="container">
+      <div class="catalog-results-toolbar">
+        <div><span>{messages.results}</span><strong>{cars.length} {messages.vehicles}</strong></div>
+      </div>
+      {cars.length > 0 ? (
+        <div class="cards-grid catalog-grid">
+          {cars.map((car, index) => (
+            <article class="car-card">
+              <a class="car-card-media" href={`/${locale}/cars/${car.slug}/`} aria-label={car.title}>
+                <img src={car.image_urls[0] || "/deal-finder-placeholder.svg"} alt={car.title} loading={index < 4 ? "eager" : "lazy"} decoding="async" />
+              </a>
+              <div class="car-card-body">
+                <h2><a href={`/${locale}/cars/${car.slug}/`}>{car.title}</a></h2>
+                <p class="car-card-price">{formatCurrency(car.price, car.currency, locale)}</p>
+                <ul class="car-card-specs" aria-label={messages.vehicleData}>
+                  <li>{car.year || "–"}</li>
+                  <li>{formatMileage(car.mileage, locale) || "–"}</li>
+                  <li>{getVehicleTaxonomyLabel("fuel_type", car.fuel_type, locale) || car.fuel_type || "–"}</li>
+                  <li>{car.city || messages.locationMissing}</li>
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state" role="status">
+          <h2>{messages.emptyTitle}</h2>
+          <p>{messages.emptyText}</p>
+        </div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

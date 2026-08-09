@@ -9,6 +9,8 @@ Allow: /
 Disallow: /admin/
 Disallow: /dashboard/
 Disallow: /login
+Disallow: /register
+Disallow: /auth/
 Disallow: /billing
 Disallow: /payment/
 

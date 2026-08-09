@@ -2,15 +2,21 @@
 import { LOCALE_COOKIE, LOCALE_LABELS, SUPPORTED_LOCALES, type Locale } from "../i18n/locales";
 import { getMessages } from "../i18n/messages";
 
-type Props = { locale: Locale };
-const { locale } = Astro.props;
+type Props = {
+  locale: Locale;
+  alternateLocales?: Array<{ locale: string; path: string; label?: string }>;
+};
+const { locale, alternateLocales = [] } = Astro.props;
 const messages = getMessages(locale);
+const routeOptions = alternateLocales.length > 0
+  ? alternateLocales
+  : SUPPORTED_LOCALES.map((code) => ({ locale: code, path: "", label: LOCALE_LABELS[code] }));
 ---
 
 <label class="locale-switcher">
   <span class="sr-only">{messages.language}</span>
-  <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE}>
-    {SUPPORTED_LOCALES.map((code) => <option value={code} selected={code === locale}>{LOCALE_LABELS[code]}</option>)}
+  <select aria-label={messages.language} data-locale-switcher data-locale-cookie={LOCALE_COOKIE} data-route-mode={alternateLocales.length > 0 ? "path" : "legacy-query"}>
+    {routeOptions.map((option) => <option value={option.locale} data-path={option.path} selected={option.locale === locale}>{option.label || LOCALE_LABELS[option.locale] || option.locale}</option>)}
   </select>
 </label>
 
@@ -21,6 +27,11 @@ const messages = getMessages(locale);
     element.addEventListener("change", () => {
       const cookieName = element.dataset.localeCookie || "sitecraft-locale";
       document.cookie = `${cookieName}=${encodeURIComponent(element.value)}; Path=/; Max-Age=31536000; SameSite=Lax`;
+      const selected = element.selectedOptions[0];
+      if (element.dataset.routeMode === "path" && selected?.dataset.path) {
+        window.location.assign(selected.dataset.path);
+        return;
+      }
       const nextUrl = new URL(window.location.href);
       nextUrl.searchParams.set("lang", element.value);
       window.location.assign(nextUrl.toString());

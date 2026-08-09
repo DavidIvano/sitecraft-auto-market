@@ -54,9 +54,16 @@ export type ListingTranslatableContent = {
 export type CarListingTranslation = ListingTranslatableContent & {
   id?: number;
   locale: string;
+  requested_locale?: string;
+  resolved_locale?: string;
   source_locale?: string;
   source_hash?: string;
+  resolved_source_hash?: string;
   status: ListingTranslationStatus;
+  translation_status?: "source" | "translated" | "unavailable" | "stale" | "pending" | "failed";
+  readiness?: "ready";
+  translation_version?: number;
+  is_fallback?: boolean;
   updated_at?: string | number;
 };
 
@@ -99,6 +106,9 @@ export type TranslationResolution = {
   status: "original" | "machine_translated" | "reviewed" | "missing" | "outdated" | "pending" | "failed";
   translation_status?: "source" | "translated" | "unavailable" | "stale" | "pending" | "failed";
   translation_version?: number;
+  source_hash?: string;
+  resolved_source_hash?: string;
+  updated_at?: string | number;
 };
 
 export type ListingTranslation = {
@@ -120,6 +130,7 @@ export type CarListing = {
   source_locale?: string;
   translation_version?: number;
   translations_ready?: boolean;
+  available_locales?: string[];
   translation?: TranslationResolution | CarListingTranslation | null;
   brand: string;
   model: string;

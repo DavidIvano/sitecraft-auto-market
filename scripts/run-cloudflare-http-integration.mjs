@@ -2,8 +2,9 @@ import { spawn } from "node:child_process";
 import { once } from "node:events";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 
-const root = resolve(new URL("..", import.meta.url).pathname);
+const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const port = process.env.HTTP_TEST_PORT || "4349";
 const baseUrl = `http://127.0.0.1:${port}`;
 const wrangler = join(root, "node_modules", ".bin", "wrangler");

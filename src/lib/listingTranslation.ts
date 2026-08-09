@@ -1,4 +1,5 @@
-import { SUPPORTED_LOCALES, type Locale } from "../i18n/locales.ts";
+import { normalizeLocale } from "../i18n/locale.ts";
+import { type Locale } from "../i18n/locales.ts";
 import { sanitizePublicDescription } from "./listingFields.ts";
 import type {
   CarListing,
@@ -40,8 +41,7 @@ const toStringArray = (value: unknown): string[] => {
 };
 
 const supportedLocale = (value: unknown): Locale | null => {
-  const locale = toText(value).toLowerCase();
-  return SUPPORTED_LOCALES.includes(locale as Locale) ? locale as Locale : null;
+  return normalizeLocale(toText(value), { activeOnly: true });
 };
 
 const translatedContentFrom = (source: Record<string, unknown>): ListingTranslatableContent => {
@@ -74,9 +74,20 @@ export function normalizeListingTranslation(payload: unknown): CarListingTransla
   return {
     id: Number(source.id) > 0 ? Number(source.id) : undefined,
     locale,
+    requested_locale: supportedLocale(source.requested_locale) || undefined,
+    resolved_locale: supportedLocale(source.resolved_locale) || undefined,
     source_locale: supportedLocale(source.source_locale) || undefined,
     source_hash: toText(source.source_hash) || undefined,
+    resolved_source_hash: toText(source.resolved_source_hash) || undefined,
     status,
+    translation_status: ["source", "translated", "unavailable", "stale", "pending", "failed"].includes(toText(source.translation_status))
+      ? toText(source.translation_status) as CarListingTranslation["translation_status"]
+      : undefined,
+    readiness: toText(source.readiness) === "ready" ? "ready" : undefined,
+    translation_version: Number.isInteger(Number(source.translation_version)) && Number(source.translation_version) >= 0
+      ? Number(source.translation_version)
+      : undefined,
+    is_fallback: source.is_fallback === true,
     updated_at: typeof source.updated_at === "string" || typeof source.updated_at === "number"
       ? source.updated_at
       : undefined,

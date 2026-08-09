@@ -1,0 +1,52 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { normalizeLocale } from "../../i18n/locale";
+import { getPublicPageMessages, getRouteAlternates } from "../../i18n/publicRoutes";
+import { isPublicLocaleRouteEnabled } from "../../i18n/release4";
+import { getPublicStaticPage, isPublicStaticPageCode } from "../../i18n/staticPages";
+import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS } from "../../lib/config";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache";
+
+export const prerender = false;
+
+const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
+const pageCode = Astro.params.page;
+if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS) || !isPublicStaticPageCode(pageCode)) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+const page = getPublicStaticPage(locale, pageCode);
+if (!page) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+const messages = getPublicPageMessages(locale);
+const canonicalPath = `/${locale}/${pageCode}/`;
+setPublicCacheHeaders(Astro.response.headers, "page", I18N_PREVIEW_NOINDEX);
+const schema = { "@context": "https://schema.org", "@type": "WebPage", name: page.title, description: page.description, inLanguage: locale };
+---
+
+<BaseLayout
+  variant={pageCode === "privacy" || pageCode === "impressum" || pageCode === "support" ? "legal" : "public"}
+  locale={locale}
+  title={page.title}
+  description={page.description}
+  canonicalPath={canonicalPath}
+  noindex={I18N_PREVIEW_NOINDEX}
+  jsonLd={schema}
+  breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: page.title }]}
+  alternateLocales={getRouteAlternates(`/${pageCode}/`)}
+  xDefaultPath="/"
+>
+  <section class="section page-hero">
+    <div class="container"><p class="eyebrow">SiteCraft Auto Market</p><h1>{page.heading}</h1><p class="lead">{page.lead}</p></div>
+  </section>
+  <section class="section">
+    <div class="container legal-content">
+      {page.sections.map((section) => <section><h2>{section.heading}</h2><p>{section.body}</p></section>)}
+    </div>
+  </section>
+</BaseLayout>

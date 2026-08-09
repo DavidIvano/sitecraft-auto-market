@@ -170,15 +170,17 @@ test("homepage renders crawlable latest-car links before client enhancement", ()
 
 test("sitemap is dynamic, edge cached and fails closed", () => {
   const sitemap = readProjectFile("src/pages/sitemap.xml.ts");
+  const localizedSitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
   const config = readProjectFile("src/lib/config.ts");
   assert.match(sitemap, /export const prerender = false/);
-  assert.match(sitemap, /getApprovedCars\(\{ requireConfigured: true \}\)/);
-  assert.match(sitemap, /isPublicListing/);
-  assert.match(sitemap, /status: 503/);
-  assert.match(sitemap, /"Retry-After": "300"/);
-  assert.match(sitemap, /public, max-age=0, s-maxage=300, stale-while-revalidate=3600/);
-  assert.doesNotMatch(sitemap, /lastmod: new Date\(\)\.toISOString\(\)/);
-  assert.match(sitemap, /https:\/\/automarket\.sitecraft\.agency/);
+  assert.match(sitemap, /<sitemapindex/);
+  assert.match(localizedSitemap, /getLocalizedApprovedCars\(locale\)/);
+  assert.match(localizedSitemap, /projectCatalogForLocale/);
+  assert.match(localizedSitemap, /status: 503/);
+  assert.match(localizedSitemap, /"Retry-After": "300"/);
+  assert.match(localizedSitemap, /setPublicCacheHeaders\(headers, "sitemap"\)/);
+  assert.doesNotMatch(localizedSitemap, /lastmod: new Date\(\)\.toISOString\(\)/);
+  assert.match(localizedSitemap, /https:\/\/automarket\.sitecraft\.agency/);
   assert.match(config, /https:\/\/automarket\.sitecraft\.agency/);
 });
 

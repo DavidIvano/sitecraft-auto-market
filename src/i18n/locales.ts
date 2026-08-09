@@ -1,53 +1,62 @@
+import {
+  DEFAULT_LOCALE as CONFIG_DEFAULT_LOCALE,
+  LEGACY_PUBLIC_LOCALE,
+  LOCALE_COOKIE_NAME,
+  getLocaleDefinition,
+  localeRegistry,
+  type LocaleCode,
+} from "./config.ts";
+
+// Compatibility list for dictionaries already shipped in the current UI. New
+// locales are configured in config.ts and are not public until their dictionary
+// and backend readiness checks pass.
 export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
+export type LegacyUiLocale = typeof SUPPORTED_LOCALES[number];
+export type Locale = LocaleCode;
 
-export type Locale = typeof SUPPORTED_LOCALES[number];
+// Compatibility default for old query-based routes. The authoritative default
+// for locale-prefixed public routes remains German in config.ts.
+export const DEFAULT_LOCALE = LEGACY_PUBLIC_LOCALE;
+export const PUBLIC_DEFAULT_LOCALE = CONFIG_DEFAULT_LOCALE;
+export const LOCALE_COOKIE = LOCALE_COOKIE_NAME;
 
-// Keep Russian as the compatibility default until localized routes are released.
-// The production default can move to German only after every public route exists in /de.
-export const DEFAULT_LOCALE: Locale = "ru";
+export const LOCALE_LABELS = Object.fromEntries(
+  [...localeRegistry].map(([code, definition]) => [code, definition.nativeName]),
+) as Record<string, string>;
 
-export const LOCALE_LABELS: Record<Locale, string> = {
-  de: "Deutsch",
-  ru: "Русский",
-  uk: "Українська",
-  en: "English",
-  ar: "العربية",
-  tr: "Türkçe",
-};
+export const LOCALE_TAGS = Object.fromEntries(
+  [...localeRegistry].map(([code]) => [code, code]),
+) as Record<string, string>;
 
-export const LOCALE_TAGS: Record<Locale, string> = {
-  de: "de-DE",
-  ru: "ru-RU",
-  uk: "uk-UA",
-  en: "en-GB",
-  ar: "ar",
-  tr: "tr-TR",
-};
-
-export const LOCALE_DIRECTIONS: Record<Locale, "ltr" | "rtl"> = {
-  de: "ltr",
-  ru: "ltr",
-  uk: "ltr",
-  en: "ltr",
-  ar: "rtl",
-  tr: "ltr",
-};
-
-export const LOCALE_COOKIE = "sitecraft-locale";
+export const LOCALE_DIRECTIONS = Object.fromEntries(
+  [...localeRegistry].map(([code, definition]) => [code, definition.direction]),
+) as Record<string, "ltr" | "rtl">;
 
 export function isLocale(value: unknown): value is Locale {
-  return typeof value === "string" && SUPPORTED_LOCALES.includes(value as Locale);
+  return Boolean(getLocaleDefinition(value)?.isActive);
+}
+
+export function isLegacyUiLocale(value: unknown): value is LegacyUiLocale {
+  return typeof value === "string" && SUPPORTED_LOCALES.includes(value as LegacyUiLocale);
 }
 
 export function resolveLocale(value: unknown, fallback: Locale = DEFAULT_LOCALE): Locale {
-  if (isLocale(value)) return value;
+  const exact = getLocaleDefinition(value);
+  if (exact?.isActive) return exact.code;
+
   if (typeof value === "string") {
     const base = value.trim().toLowerCase().split(/[-_]/)[0];
-    if (isLocale(base)) return base;
+    const matched = [...localeRegistry.values()].find(
+      (definition) => definition.isActive && (definition.code.toLowerCase() === base || definition.baseLanguage === base),
+    );
+    if (matched) return matched.code;
   }
-  return fallback;
+
+  return getLocaleDefinition(fallback)?.isActive ? fallback : DEFAULT_LOCALE;
 }
 
+// Query/cookie resolution exists only for old unprefixed URLs during migration.
 export function resolveRequestLocale(url: URL, cookieLocale?: unknown): Locale {
-  return resolveLocale(url.searchParams.get("lang") || cookieLocale, DEFAULT_LOCALE);
+  const resolved = resolveLocale(url.searchParams.get("lang") || url.searchParams.get("locale") || cookieLocale, LEGACY_PUBLIC_LOCALE);
+  return isLegacyUiLocale(resolved) ? resolved : LEGACY_PUBLIC_LOCALE;
 }

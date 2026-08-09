@@ -1,0 +1,127 @@
+---
+import BaseLayout from "../../../layouts/BaseLayout.astro";
+import { formatCurrency, formatDate, formatMileage } from "../../../i18n/format";
+import { normalizeLocale } from "../../../i18n/locale";
+import { toPublicListingForLocale } from "../../../i18n/publicListing";
+import { getPublicPageMessages, getRouteAlternates } from "../../../i18n/publicRoutes";
+import { isPublicLocaleRouteEnabled } from "../../../i18n/release4";
+import { getVehicleTaxonomyLabel } from "../../../domain/vehicleTaxonomy";
+import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/config";
+import { isValidPublicCarSlug } from "../../../lib/publicCar";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
+import { buildLocalizedVehicleSeo } from "../../../lib/seo/vehicleSeo";
+import { getLocalizedCarBySlug } from "../../../lib/xano";
+
+export const prerender = false;
+
+const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
+if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+let slug = typeof Astro.params.slug === "string" ? Astro.params.slug.trim() : "";
+try {
+  slug = decodeURIComponent(slug).trim();
+} catch {
+  slug = "";
+}
+if (!isValidPublicCarSlug(slug)) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+const requestStarted = performance.now();
+let sourceListing = null;
+try {
+  sourceListing = await getLocalizedCarBySlug(slug, locale);
+} catch {
+  Astro.response.status = 503;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/service-unavailable");
+}
+const car = sourceListing ? toPublicListingForLocale(sourceListing, locale) : null;
+if (!car) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+const queryDuration = Math.max(0, performance.now() - requestStarted).toFixed(1);
+Astro.response.headers.set("Server-Timing", `locale-read;dur=${queryDuration};desc="single listing query"`);
+Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
+setPublicCacheHeaders(Astro.response.headers, "detail", I18N_PREVIEW_NOINDEX);
+
+const messages = getPublicPageMessages(locale);
+const seo = buildLocalizedVehicleSeo(car, locale, SITE_URL);
+const specs = [
+  [messages.price, formatCurrency(car.price, car.currency, locale)],
+  [messages.mileage, formatMileage(car.mileage, locale)],
+  [messages.firstRegistration, car.year ? String(car.year) : ""],
+  [messages.fuel, getVehicleTaxonomyLabel("fuel_type", car.fuel_type, locale) || car.fuel_type],
+  [messages.transmission, getVehicleTaxonomyLabel("transmission", car.transmission, locale) || car.transmission],
+  [messages.bodyType, getVehicleTaxonomyLabel("body_type", car.body_type, locale) || car.body_type],
+  [messages.location, car.city],
+  [messages.updated, formatDate(car.translation_updated_at || car.updated_at, locale)],
+].filter(([, value]) => Boolean(value));
+const readyLocales = car.available_locales.includes(locale) ? car.available_locales : [locale];
+---
+
+<BaseLayout
+  variant="public"
+  locale={locale}
+  title={seo.title}
+  description={seo.description}
+  canonicalPath={`/${locale}/cars/${car.slug}/`}
+  image={seo.imageUrl}
+  noindex={I18N_PREVIEW_NOINDEX}
+  ogType="product"
+  jsonLd={[seo.vehicle, seo.offer, seo.breadcrumb]}
+  breadcrumbs={[
+    { href: `/${locale}/`, label: messages.homeTitle },
+    { href: `/${locale}/cars/`, label: messages.catalogTitle },
+    { label: seo.heading },
+  ]}
+  alternateLocales={getRouteAlternates(`/cars/${car.slug}/`, readyLocales)}
+  xDefaultPath="/"
+>
+  <section class="section car-detail-section">
+    <div class="container detail-container">
+      <article class="detail-grid car-detail-grid">
+        <div class="gallery car-slider">
+          <div class="gallery-stage">
+            <img src={car.image_urls[0] || "/deal-finder-placeholder.svg"} alt={seo.imageAlt} width="1200" height="800" fetchpriority="high" decoding="async" />
+          </div>
+        </div>
+        <div class="detail-panel compact-detail-panel">
+          <span class="status-badge status-approved">{messages.verifiedListing}</span>
+          <h1>{seo.heading}</h1>
+          <p class="detail-price">{formatCurrency(car.price, car.currency, locale)}</p>
+          <p>{car.city || messages.locationMissing}</p>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section class="section detail-properties-section" aria-labelledby="vehicle-data">
+    <div class="container">
+      <div class="detail-properties-panel">
+        <div class="section-heading"><div><p class="eyebrow">{messages.vehicleData}</p><h2 id="vehicle-data">{messages.technicalDetails}</h2></div></div>
+        <dl class="detail-property-grid">
+          {specs.map(([label, value]) => <div><dt>{label}</dt><dd>{value}</dd></div>)}
+        </dl>
+      </div>
+    </div>
+  </section>
+
+  <section class="section detail-description-section" aria-labelledby="vehicle-description">
+    <div class="container">
+      <div class="detail-description-panel">
+        <div class="section-heading"><div><p class="eyebrow">{messages.description}</p><h2 id="vehicle-description">{messages.aboutVehicle}</h2></div></div>
+        <p class="detail-description">{car.description}</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

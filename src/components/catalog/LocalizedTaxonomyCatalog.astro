@@ -1,0 +1,89 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { formatCurrency, formatMileage } from "../../i18n/format";
+import { getVehicleTaxonomyLabel } from "../../domain/vehicleTaxonomy";
+import type { PublicListingDto } from "../../i18n/publicListing";
+import type { PublicPageMessages } from "../../i18n/publicRoutes";
+
+type Props = {
+  locale: string;
+  title: string;
+  description: string;
+  canonicalPath: string;
+  cars: PublicListingDto[];
+  messages: PublicPageMessages;
+  noindex: boolean;
+  alternateLocales: Array<{ locale: string; path: string; label?: string }>;
+};
+
+const { locale, title, description, canonicalPath, cars, messages, noindex, alternateLocales } = Astro.props;
+const schema = {
+  "@context": "https://schema.org",
+  "@type": "CollectionPage",
+  name: title,
+  description,
+  inLanguage: locale,
+  mainEntity: {
+    "@type": "ItemList",
+    itemListElement: cars.map((car, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      url: new URL(`/${locale}/cars/${car.slug}/`, Astro.site || Astro.url.origin).toString(),
+      name: car.title,
+    })),
+  },
+};
+---
+
+<BaseLayout
+  variant="public"
+  locale={locale}
+  title={title}
+  description={description}
+  canonicalPath={canonicalPath}
+  noindex={noindex}
+  jsonLd={schema}
+  breadcrumbs={[
+    { href: `/${locale}/`, label: messages.homeTitle },
+    { href: `/${locale}/cars/`, label: messages.catalogTitle },
+    { label: title },
+  ]}
+  alternateLocales={alternateLocales}
+  xDefaultPath="/"
+>
+  <section class="section page-hero catalog-hero">
+    <div class="container">
+      <p class="eyebrow">{messages.catalogTitle}</p>
+      <h1>{title}</h1>
+      <p class="lead">{description}</p>
+    </div>
+  </section>
+  <section class="section catalog-results-section">
+    <div class="container">
+      <div class="catalog-results-toolbar"><div><span>{messages.results}</span><strong>{cars.length} {messages.vehicles}</strong></div></div>
+      {cars.length > 0 ? (
+        <div class="cards-grid catalog-grid">
+          {cars.map((car, index) => (
+            <article class="car-card">
+              <a class="car-card-media" href={`/${locale}/cars/${car.slug}/`} aria-label={car.title}>
+                <img src={car.image_urls[0] || "/deal-finder-placeholder.svg"} alt={car.title} loading={index < 4 ? "eager" : "lazy"} decoding="async" />
+              </a>
+              <div class="car-card-body">
+                <h2><a href={`/${locale}/cars/${car.slug}/`}>{car.title}</a></h2>
+                <p class="car-card-price">{formatCurrency(car.price, car.currency, locale)}</p>
+                <ul class="car-card-specs" aria-label={messages.vehicleData}>
+                  <li>{car.year || "–"}</li>
+                  <li>{formatMileage(car.mileage, locale) || "–"}</li>
+                  <li>{getVehicleTaxonomyLabel("fuel_type", car.fuel_type, locale) || car.fuel_type || "–"}</li>
+                  <li>{car.city || messages.locationMissing}</li>
+                </ul>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div class="empty-state" role="status"><h2>{messages.emptyTitle}</h2><p>{messages.emptyText}</p></div>
+      )}
+    </div>
+  </section>
+</BaseLayout>

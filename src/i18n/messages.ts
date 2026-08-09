@@ -147,8 +147,14 @@ export const UI_MESSAGES: Record<Locale, UiMessages> = {
   tr: translateArTrRecord(ruMessages, "tr"),
 };
 
+export function hasUiDictionary(locale: string): boolean {
+  return Object.hasOwn(UI_MESSAGES, locale);
+}
+
 export function getMessages(locale: Locale): UiMessages {
-  return UI_MESSAGES[locale];
+  const messages = UI_MESSAGES[locale];
+  if (!messages) throw new Error(`UI dictionary is not ready for locale ${locale}`);
+  return messages;
 }
 
 export function interpolate(message: string, values: Record<string, string | number>): string {

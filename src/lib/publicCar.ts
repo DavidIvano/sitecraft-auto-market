@@ -231,6 +231,9 @@ export function normalizeCarListing(payload: unknown): CarListing | null {
     locale: toString(source.locale) || undefined,
     translation_version: toNumber(source.translation_version) || undefined,
     translations_ready: source.translations_ready === true,
+    available_locales: Array.isArray(source.available_locales)
+      ? [...new Set(source.available_locales.map(toString).filter(Boolean))]
+      : undefined,
     brand,
     model,
     vehicle_type: toString(source.vehicle_type),

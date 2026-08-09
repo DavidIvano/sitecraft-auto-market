@@ -4,7 +4,9 @@ import Footer from "../components/Footer.astro";
 import ImageLightbox from "../components/media/ImageLightbox.astro";
 import CookieNotice from "../components/CookieNotice.astro";
 import { DEAL_FINDER_ENABLED, SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "../lib/config";
-import { DEFAULT_LOCALE, LOCALE_COOKIE, LOCALE_DIRECTIONS, LOCALE_TAGS, SUPPORTED_LOCALES, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { LOCALE_COOKIE, resolveRequestLocale, type Locale } from "../i18n/locales";
+import { getLocaleDefinition as getConfiguredLocale } from "../i18n/config";
+import { getLocaleFromPath } from "../i18n/locale";
 import { getMessages } from "../i18n/messages";
 import { getUiPhraseMap, translateUiData } from "../i18n/uiTranslator";
 import "../styles/global.css";
@@ -36,6 +38,7 @@ type Props = {
   variant?: LayoutVariant;
   locale?: Locale;
   alternateLocales?: Array<{ locale: string; path: string; label?: string }>;
+  xDefaultPath?: string;
 };
 
 const {
@@ -50,25 +53,25 @@ const {
   variant: requestedVariant,
   locale: localeProp,
   alternateLocales = [],
+  xDefaultPath,
 } = Astro.props;
 const locale = localeProp ?? resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value);
 const messages = getMessages(locale);
-const uiPhraseMap = getUiPhraseMap(locale);
+const isLocalePrefixedRoute = Boolean(getLocaleFromPath(Astro.url.pathname));
+const legacyRuntimeTranslation = !isLocalePrefixedRoute && locale !== "ru";
+const uiPhraseMap = legacyRuntimeTranslation ? getUiPhraseMap(locale) : {};
 const pageLocale = locale;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalPathname = canonicalPath ?? Astro.url.pathname;
-const localeUrl = (targetLocale: Locale) => {
-  const url = new URL(canonicalPathname, siteUrl);
-  if (targetLocale !== DEFAULT_LOCALE) url.searchParams.set("lang", targetLocale);
-  return url.toString();
-};
-const canonicalUrl = localeUrl(locale);
+const canonicalUrl = new URL(canonicalPathname, siteUrl).toString();
 const imageUrl = new URL(image, siteUrl).toString();
 const pageAlternates = alternateLocales.flatMap((alternate) => {
-  if (!SUPPORTED_LOCALES.includes(alternate.locale as Locale) || !alternate.path.startsWith("/")) return [];
-  return [{ ...alternate, locale: alternate.locale as Locale, href: new URL(alternate.path, siteUrl).toString() }];
+  const definition = getConfiguredLocale(alternate.locale);
+  if (!definition?.isActive || !definition.isPublic || !alternate.path.startsWith("/")) return [];
+  return [{ ...alternate, locale: definition.code, href: new URL(alternate.path, siteUrl).toString() }];
 });
+const xDefaultUrl = xDefaultPath?.startsWith("/") ? new URL(xDefaultPath, siteUrl).toString() : null;
 const buildSha = import.meta.env.PUBLIC_BUILD_SHA || import.meta.env.CF_PAGES_COMMIT_SHA || "local";
 const buildTimestamp = import.meta.env.PUBLIC_BUILD_TIMESTAMP || new Date().toISOString();
 const buildEnvironment =
@@ -166,9 +169,10 @@ const defaultSchemaItems = [
     "@type": "WebSite",
     name: SITE_NAME,
     url: siteUrl,
+    inLanguage: locale,
     potentialAction: {
       "@type": "SearchAction",
-      target: `${new URL(pageLocale === "de" ? "/de/cars/" : "/cars", siteUrl).toString()}?q={search_term_string}`,
+      target: `${new URL(`/${pageLocale}/cars/`, siteUrl).toString()}?q={search_term_string}`,
       "query-input": "required name=search_term_string",
     },
   },
@@ -177,11 +181,11 @@ const schemaItems = [
   ...defaultSchemaItems,
   ...(Array.isArray(jsonLd) ? jsonLd : jsonLd ? [jsonLd] : []),
 ];
-const localizedSchemaItems = translateUiData(schemaItems, locale);
+const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiData(schemaItems, locale);
 ---
 
 <!doctype html>
-<html lang={locale} dir={LOCALE_DIRECTIONS[locale]}>
+<html lang={locale} dir={getConfiguredLocale(locale)?.direction || "ltr"}>
   <head>
     <meta charset="utf-8" />
     <meta name="google-site-verification" content="hl6ai62kYZBVuSHXumUNoaL4SJ5f0Shbdeda_Mf_s1I" />
@@ -198,8 +202,8 @@ const localizedSchemaItems = translateUiData(schemaItems, locale);
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
     <link rel="canonical" href={canonicalUrl} />
-    {SUPPORTED_LOCALES.map((code) => <link rel="alternate" hreflang={LOCALE_TAGS[code]} href={localeUrl(code)} />)}
-    <link rel="alternate" hreflang="x-default" href={localeUrl(DEFAULT_LOCALE)} />
+    {pageAlternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={alternate.href} />)}
+    {xDefaultUrl && <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />}
     <meta property="og:site_name" content={SITE_NAME} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={description} />
@@ -223,7 +227,7 @@ const localizedSchemaItems = translateUiData(schemaItems, locale);
         document.documentElement.dataset.theme = savedTheme || systemTheme;
       })();
     </script>
-    <script is:inline define:vars={{ uiPhraseMap }}>
+    {legacyRuntimeTranslation && <script is:inline define:vars={{ uiPhraseMap }}>
       (() => {
         const initializeI18n = () => {
         const translations = uiPhraseMap || {};
@@ -319,7 +323,7 @@ const localizedSchemaItems = translateUiData(schemaItems, locale);
           initializeI18n();
         }
       })();
-    </script>
+    </script>}
   </head>
   <body>
     <div class:list={["app-shell", `app-shell-${layoutVariant}`, layoutVariant === "workspace" && "mac-app-shell is-workspace-shell"]}>

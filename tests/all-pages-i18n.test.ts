@@ -33,7 +33,7 @@ test("every Astro page uses the multilingual BaseLayout", () => {
   };
   visit(pagesRoot);
   assert.ok(pages.length >= 35);
-  for (const page of pages) assert.match(page, /<BaseLayout\b/);
+  for (const page of pages) assert.match(page, /<(?:BaseLayout|LocalizedTaxonomyCatalog)\b/);
 });
 
 test("client i18n waits for the body and preserves locale in internal links", () => {

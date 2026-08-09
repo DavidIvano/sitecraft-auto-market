@@ -22,13 +22,13 @@ test("brand and model routes are on-demand SSR with canonical metadata and fail-
 });
 
 test("catalog exposes crawlable brand links and sitemap includes brand and model URLs", () => {
-  const catalog = readProjectFile("src/pages/cars/index.astro");
-  const sitemap = readProjectFile("src/pages/sitemap.xml.ts");
-  assert.match(catalog, /buildVehicleTaxonomy\(cars\)/);
-  assert.match(catalog, /href=\{`\/cars\/brand\/\$\{brand\.slug\}`\}/);
-  assert.match(sitemap, /buildVehicleTaxonomy\(cars\)/);
-  assert.match(sitemap, /`\/cars\/brand\/\$\{brand\.slug\}`/);
-  assert.match(sitemap, /`\/cars\/brand\/\$\{brand\.slug\}\/\$\{model\.slug\}`/);
+  const brandRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand].astro");
+  const modelRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand]/[model].astro");
+  const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
+  assert.match(brandRoute, /projectCatalogForLocale\(listings, locale\)/);
+  assert.match(modelRoute, /projectCatalogForLocale\(listings, locale\)/);
+  assert.match(sitemap, /`\/\$\{locale\}\/cars\/brand\/\$\{encodeURIComponent\(brand\.name\)\}\//);
+  assert.match(sitemap, /\$\{encodeURIComponent\(model\)\}\//);
   assert.doesNotMatch(sitemap, /\/cars\?brand=/);
 });
 

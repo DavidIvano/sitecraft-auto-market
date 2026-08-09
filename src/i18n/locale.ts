@@ -1,7 +1,6 @@
 import {
   DEFAULT_LOCALE,
   LOCALE_COOKIE_NAME,
-  localeDefinitions,
   localeRegistry,
   type LocaleCode,
   type LocaleDefinition,
@@ -23,9 +22,9 @@ export function normalizeLocale(value: unknown, options: { activeOnly?: boolean 
   if (!canonical) return null;
 
   const exact = localeRegistry.get(canonical);
-  if (exact && (!options.activeOnly || exact.isActive)) return exact.code;
+  if (exact) return !options.activeOnly || exact.isActive ? exact.code : null;
 
-  const caseInsensitive = localeDefinitions.find((definition) => (
+  const caseInsensitive = [...localeRegistry.values()].find((definition) => (
     definition.code.toLowerCase() === canonical.toLowerCase()
     && (!options.activeOnly || definition.isActive)
   ));
@@ -109,7 +108,7 @@ export function getLocaleFromAcceptLanguage(header: string | null | undefined): 
     const exact = normalizeLocale(candidate.code, { activeOnly: true });
     if (exact) return exact;
     const base = candidate.code.split("-")[0];
-    const baseMatch = localeDefinitions.find((definition) => definition.isActive && definition.baseLanguage === base);
+    const baseMatch = [...localeRegistry.values()].find((definition) => definition.isActive && definition.baseLanguage === base);
     if (baseMatch) return baseMatch.code;
   }
   return null;

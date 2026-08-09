@@ -1,0 +1,66 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { normalizeLocale } from "../../i18n/locale";
+import { getPublicPageMessages, getRouteAlternates } from "../../i18n/publicRoutes";
+import { isPublicLocaleRouteEnabled } from "../../i18n/release4";
+import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS } from "../../lib/config";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache";
+
+export const prerender = false;
+
+const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
+if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
+  Astro.response.status = 404;
+  setUnavailableHeaders(Astro.response.headers);
+  return Astro.rewrite("/404");
+}
+
+const messages = getPublicPageMessages(locale);
+const canonicalPath = `/${locale}/`;
+const alternateLocales = getRouteAlternates("/");
+setPublicCacheHeaders(Astro.response.headers, "page", I18N_PREVIEW_NOINDEX);
+
+const pageSchema = {
+  "@context": "https://schema.org",
+  "@type": "WebPage",
+  name: messages.homeTitle,
+  description: messages.homeDescription,
+  inLanguage: locale,
+};
+---
+
+<BaseLayout
+  variant="public"
+  locale={locale}
+  title={messages.homeTitle}
+  description={messages.homeDescription}
+  canonicalPath={canonicalPath}
+  noindex={I18N_PREVIEW_NOINDEX}
+  jsonLd={pageSchema}
+  alternateLocales={alternateLocales}
+  xDefaultPath="/"
+>
+  <section class="section page-hero">
+    <div class="container">
+      <p class="eyebrow">SiteCraft Auto Market</p>
+      <h1>{messages.homeHeading}</h1>
+      <p class="lead">{messages.homeLead}</p>
+      <div class="hero-cta-row">
+        <a class="button button-accent" href={`/${locale}/cars/`}><i data-lucide="search" aria-hidden="true"></i><span>{messages.browseCars}</span></a>
+        <a class="button button-light" href="/dashboard/new"><i data-lucide="plus" aria-hidden="true"></i><span>{messages.sellCar}</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">{messages.reliabilityEyebrow}</p>
+          <h2>{messages.reliabilityHeading}</h2>
+          <p class="section-subtitle">{messages.reliabilityText}</p>
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

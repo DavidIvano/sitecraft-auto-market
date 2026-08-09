@@ -120,6 +120,7 @@ test("Release 1 schema is additive and feature flags remain disabled", () => {
   const env = readFileSync(new URL("../.env.example", import.meta.url), "utf8");
   const routes = JSON.parse(readFileSync(new URL("../public/_routes.json", import.meta.url), "utf8")) as { include: string[] };
   const pagesBuild = readFileSync(new URL("../scripts/prepare-cloudflare-pages.mjs", import.meta.url), "utf8");
+  const middleware = readFileSync(new URL("../src/middleware.ts", import.meta.url), "utf8");
   for (const table of ["locales", "taxonomy_translations", "car_listing_translations", "translation_jobs", "content_migration_logs"]) {
     assert.match(schema, new RegExp(`table ${table} \\{`));
   }
@@ -129,6 +130,7 @@ test("Release 1 schema is additive and feature flags remain disabled", () => {
     assert.match(env, new RegExp(`${flag}=false`));
   }
   assert.deepEqual(routes.include, ["/*"]);
-  assert.match(pagesBuild, /localeRoute && \(!enabled\(env\.I18N_ENABLED\)/);
-  assert.match(pagesBuild, /status: 404/);
+  assert.match(middleware, /RELEASE4_FLAGS\.I18N_PUBLIC_ROUTES_ENABLED/);
+  assert.match(middleware, /isPublicLocaleRouteEnabled\(locale, RELEASE4_FLAGS\)/);
+  assert.doesNotMatch(pagesBuild, /I18N_LOCALE_[A-Z_]+_ENABLED/);
 });

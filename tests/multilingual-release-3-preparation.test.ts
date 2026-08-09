@@ -76,9 +76,10 @@ const listing = (overrides: Partial<CarListing> = {}): CarListing => ({
 test("all Release 3 locale flags default to false", () => {
   assert.deepEqual(readRelease3Flags({}), disabledFlags);
   const env = read("../.env.example");
-  for (const flag of Object.keys(disabledFlags)) {
+  for (const flag of Object.keys(disabledFlags).filter((flag) => !flag.startsWith("I18N_LOCALE_"))) {
     assert.match(env, new RegExp(`^${flag}=false$`, "m"));
   }
+  assert.doesNotMatch(env, /^I18N_LOCALE_[A-Z_]+_ENABLED=/m);
   assert.equal(isGermanPublicRouteEnabled(disabledFlags), false);
 });
 
@@ -104,20 +105,19 @@ test("German public enablement rejects every incomplete or forbidden dependency 
   assert.equal(isGermanPublicRouteEnabled(germanPreviewFlags), true);
 });
 
-test("German routes are server-gated and non-German Release 3 routes do not exist", () => {
-  for (const path of ["../src/pages/de/index.astro", "../src/pages/de/cars/index.astro", "../src/pages/de/cars/[slug].astro"]) {
+test("locale routes are universal, server-gated, and do not use copied locale trees", () => {
+  for (const path of ["../src/pages/[locale]/index.astro", "../src/pages/[locale]/cars/index.astro", "../src/pages/[locale]/cars/[slug].astro"]) {
     const route = read(path);
-    assert.match(route, /if \(!GERMAN_PUBLIC_ROUTES_ENABLED\)/);
+    assert.match(route, /isPublicLocaleRouteEnabled\(locale, RELEASE4_FLAGS\)/);
     assert.match(route, /Astro\.response\.status = 404/);
     assert.match(route, /Astro\.rewrite\("\/404"\)/);
   }
-  for (const locale of ["en", "uk", "zh-Hans"]) {
+  for (const locale of ["de", "en", "uk", "zh-Hans"]) {
     assert.equal(existsSync(new URL(`../src/pages/${locale}/index.astro`, import.meta.url)), false);
   }
   const worker = read("../scripts/prepare-cloudflare-pages.mjs");
-  assert.match(worker, /localeRoute !== "de"/);
-  assert.match(worker, /localeRoute === "de" && !enabled\(env\.I18N_API_READ_ENABLED\)/);
-  assert.match(worker, /localeRoute === "de" && enabled\(env\.I18N_AI_TRANSLATION_ENABLED\)/);
+  assert.doesNotMatch(worker, /I18N_LOCALE_[A-Z_]+_ENABLED/);
+  assert.doesNotMatch(worker, /localeRoute !== "de"/);
 });
 
 test("malformed locales and traversal-like slugs are rejected", () => {
@@ -228,11 +228,12 @@ test("German SEO uses a German canonical and complete structured data", () => {
   assert.equal(seo.breadcrumb["@type"], "BreadcrumbList");
 
   const layout = read("../src/layouts/BaseLayout.astro");
-  assert.match(layout, /SUPPORTED_LOCALES\.map\(\(code\) => <link rel="alternate" hreflang=\{LOCALE_TAGS\[code\]\}/);
+  assert.match(layout, /pageAlternates\.map\(\(alternate\) => <link rel="alternate" hreflang=\{alternate\.locale\}/);
   assert.match(layout, /hreflang="x-default"/);
   const sitemap = read("../src/pages/sitemap.xml.ts");
-  assert.match(sitemap, /GERMAN_PUBLIC_ROUTES_ENABLED \? \[/);
-  assert.match(sitemap, /projectGermanCatalog/);
+  const localizedSitemap = read("../src/pages/sitemaps/[locale].xml.ts");
+  assert.match(sitemap, /<sitemapindex/);
+  assert.match(localizedSitemap, /projectCatalogForLocale/);
 });
 
 test("cache keys isolate locale, version, flags, and actor scope", () => {
@@ -253,10 +254,10 @@ test("cache keys isolate locale, version, flags, and actor scope", () => {
 });
 
 test("German catalog and detail reads are bounded and never call a translation provider", () => {
-  const catalog = read("../src/pages/de/cars/index.astro");
-  const detail = read("../src/pages/de/cars/[slug].astro");
-  assert.equal((catalog.match(/getApprovedCars\(/g) || []).length, 1);
-  assert.equal((detail.match(/getCarBySlug\(/g) || []).length, 1);
+  const catalog = read("../src/pages/[locale]/cars/index.astro");
+  const detail = read("../src/pages/[locale]/cars/[slug].astro");
+  assert.equal((catalog.match(/getLocalizedApprovedCars\(/g) || []).length, 1);
+  assert.equal((detail.match(/getLocalizedCarBySlug\(/g) || []).length, 1);
   assert.match(catalog, /X-SiteCraft-Query-Count", "1"/);
   assert.match(detail, /X-SiteCraft-Query-Count", "1"/);
   assert.doesNotMatch(`${catalog}\n${detail}`, /OpenAI|generateTranslation|translation provider/i);
@@ -269,8 +270,8 @@ test("candidate Xano locale reads are additive, bounded, fail-closed, and privac
   const detail = read("../docs/xano/multilingual-stage-10/release-3/GET_public_locale_cars_slug.xs");
   assert.match(routes, /localizedCars: "\/public\/locale\/cars"/);
   assert.match(routes, /localizedCarBySlug/);
-  assert.match(client, /withLocale\(API_ROUTES\.cars, locale\)/);
-  assert.match(client, /withLocale\(API_ROUTES\.carBySlug\(slug\), locale\)/);
+  assert.match(client, /withLocale\(API_ROUTES\.localizedCars, locale\)/);
+  assert.match(client, /withLocale\(API_ROUTES\.localizedCarBySlug\(slug\), locale\)/);
 
   for (const source of [catalog, detail]) {
     assert.match(source, /\$input\.locale == "de"/);

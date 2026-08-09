@@ -101,8 +101,9 @@ test("Arabic and Turkish generated UI dictionaries are complete and contain no R
 
 test("the shared layout declares language direction for every page", () => {
   const layout = readFileSync(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8");
-  assert.match(layout, /<html lang=\{locale\} dir=\{LOCALE_DIRECTIONS\[locale\]\}>/);
-  assert.match(layout, /hreflang=\{LOCALE_TAGS\[code\]\}/);
+  assert.match(layout, /<html lang=\{locale\} dir=\{getConfiguredLocale\(locale\)\?\.direction \|\| "ltr"\}>/);
+  assert.match(layout, /pageAlternates\.map\(\(alternate\) => <link rel="alternate" hreflang=\{alternate\.locale\}/);
+  assert.doesNotMatch(layout, /SUPPORTED_LOCALES\.map\(\(code\) => <link rel="alternate"/);
 });
 
 test("catalog and vehicle detail dictionaries stay complete in every language", () => {

@@ -148,6 +148,25 @@ export async function getCarBySlug(slug: string, locale: Locale = DEFAULT_LOCALE
   return listing ? applyListingTranslation(listing, locale) : null;
 }
 
+export async function getLocalizedApprovedCars(locale: Locale): Promise<CarListing[]> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.localizedCars, locale));
+  return sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
+}
+
+export async function getLocalizedCarBySlug(slug: string, locale: Locale): Promise<CarListing | null> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+
+  const payload = await fetchPublicJson(withLocale(API_ROUTES.localizedCarBySlug(slug), locale));
+  const listing = payload ? normalizePublicCarListing(payload) : null;
+  return listing ? applyListingTranslation(listing, locale) : null;
+}
+
 export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 
