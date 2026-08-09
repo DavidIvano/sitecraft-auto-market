@@ -97,16 +97,21 @@ export function resolveRequestLocale(
   acceptLanguage?: string | null,
   countryCode?: string | null,
 ): Locale {
+  const deviceLocale = getLocaleFromAcceptLanguage(acceptLanguage);
   const candidates = [
     url.searchParams.get("lang") || url.searchParams.get("locale"),
     cookieLocale,
-    getLocaleFromAcceptLanguage(acceptLanguage),
+    deviceLocale,
   ];
 
   for (const candidate of candidates) {
     const resolved = resolveLocale(candidate, "en");
     if (candidate && isSelectableLocale(resolved)) return resolved;
   }
+
+  // An explicitly reported but unsupported device language is unambiguous:
+  // use English instead of guessing from the visitor's physical location.
+  if (String(acceptLanguage || "").trim() && !deviceLocale) return "en";
 
   const countryFallbacks: Record<string, SelectableLocale> = {
     AT: "de",

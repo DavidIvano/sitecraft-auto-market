@@ -108,7 +108,7 @@ test("query language wins over the saved cookie and unsupported device languages
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "DE"), "de");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "FR"), "fr");
   assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, undefined, "RU"), "ru");
-  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN", "DE"), "de");
+  assert.equal(resolveRequestLocale(new URL("https://example.test/"), undefined, "hi-IN", "DE"), "en");
 });
 
 test("every supported language has a complete interface dictionary", () => {
