@@ -56,7 +56,12 @@ export class ListingSubmissionApiError extends Error {
       : {};
     const issues = extractListingFieldIssues(payload);
     const rawMessage = String(source.message || source.payload?.message || (typeof payload === "string" ? payload : "")).trim();
-    super(rawMessage || issues[0]?.message || "Не удалось отправить объявление на модерацию.");
+    const statusMessage = status === 401
+      ? "Сессия завершена. Войдите снова и повторите отправку."
+      : status === 403
+        ? "Сервер отклонил право на отправку объявления. Обновите вход и повторите отправку."
+        : "Не удалось отправить объявление на модерацию.";
+    super([401, 403].includes(status) ? statusMessage : rawMessage || issues[0]?.message || statusMessage);
     this.name = "ListingSubmissionApiError";
     this.status = status;
     this.code = String(source.code || source.payload?.code || "LISTING_SUBMISSION_FAILED").trim();

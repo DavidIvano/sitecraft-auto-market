@@ -1,4 +1,6 @@
 ---
+import InternationalPhoneField from "../InternationalPhoneField.astro";
+
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 <section id="contact-profile" class="contact-profile-panel" data-contact-profile data-api-url={xanoApiUrl} aria-labelledby="contact-profile-title">
@@ -7,7 +9,14 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     <label>Имя<input name="first_name" type="text" autocomplete="given-name" maxlength="80" /></label>
     <label>Фамилия<input name="last_name" type="text" autocomplete="family-name" maxlength="80" /></label>
     <label>Публичное имя<input name="display_name" type="text" maxlength="120" /></label>
-    <label data-contact-field="contact_phone">Телефон<input name="contact_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="+49 123 4567890" aria-describedby="contact-phone-error" /><small id="contact-phone-error" class="field-error" data-contact-field-error="contact_phone" hidden></small></label>
+    <InternationalPhoneField
+      canonicalName="contact_phone"
+      countryName="contact_phone_country"
+      nationalName="contact_phone_national"
+      label="Телефон"
+      errorId="contact-phone-error"
+      errorDataAttribute="contact_phone"
+    />
     <label>Email для покупателей<input name="contact_email" type="email" autocomplete="email" /></label>
     <label class="contact-profile-check"><input name="show_phone" type="checkbox" />Показывать телефон</label>
     <label class="contact-profile-check"><input name="show_email" type="checkbox" />Показывать email</label>
@@ -26,6 +35,12 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     validateSellerContactProfile,
   } from "../../lib/contactProfile";
   import { showToast } from "../../lib/toast";
+  import {
+    focusInternationalPhoneField,
+    initializeInternationalPhoneFields,
+    readInternationalPhoneField,
+    setInternationalPhoneField,
+  } from "../../lib/internationalPhoneFieldClient";
   import type { SellerContactProfile } from "../../lib/types";
 
   type ContactFormState = "checking" | "ready" | "saving" | "saved" | "retry";
@@ -60,7 +75,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
   function clearContactFieldError(field = "") {
     if (!form) return;
-    const controls = field ? [form.elements.namedItem(field)] : Array.from(form.elements);
+    const controls = field === "contact_phone"
+      ? [form.elements.namedItem("contact_phone_national")]
+      : field ? [form.elements.namedItem(field)] : Array.from(form.elements);
     controls.forEach((control) => {
       if (control instanceof HTMLElement) control.removeAttribute("aria-invalid");
     });
@@ -76,7 +93,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   function showContactFieldError(field: string, message: string) {
     if (!form || !field) return;
     clearContactFieldError(field);
-    const control = form.elements.namedItem(field);
+    const control = form.elements.namedItem(field === "contact_phone" ? "contact_phone_national" : field);
     if (control instanceof HTMLElement) control.setAttribute("aria-invalid", "true");
     const error = form.querySelector<HTMLElement>(`[data-contact-field-error="${field}"]`);
     if (error) {
@@ -88,6 +105,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   function fillContactForm(profile: Partial<SellerContactProfile>) {
     if (!form) return;
     for (const [key, value] of Object.entries(profile)) {
+      if (key === "contact_phone") {
+        setInternationalPhoneField(form, "contact_phone", value);
+        continue;
+      }
       const field = form.elements.namedItem(key);
       if (field instanceof HTMLInputElement && field.type === "checkbox") {
         field.checked = value === true;
@@ -100,6 +121,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
   function readContactForm(): ContactProfilePayload {
     if (!form) throw new Error("CONTACT_FORM_MISSING");
+    readInternationalPhoneField(form, "contact_phone");
     const data = new FormData(form);
     const raw = {
       display_name: data.get("display_name"),
@@ -124,6 +146,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
   function validateContactProfile() {
     if (!form) return { valid: false, message: "Форма контактов недоступна.", field: "" };
+    readInternationalPhoneField(form, "contact_phone");
     const data = new FormData(form);
     return validateSellerContactProfile({
       display_name: data.get("display_name"),
@@ -136,6 +159,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
   }
 
   function focusContactField(field: string) {
+    if (field === "contact_phone" && form) {
+      focusInternationalPhoneField(form, "contact_phone");
+      return;
+    }
     const control = form?.elements.namedItem(field);
     if (control instanceof HTMLElement) control.focus();
   }
@@ -278,6 +305,7 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 
   if (form && form.dataset.contactProfileBound !== "true") {
     form.dataset.contactProfileBound = "true";
+    initializeInternationalPhoneFields(form);
     form.addEventListener("change", (event) => {
       if (event.target instanceof HTMLInputElement && ["show_phone", "show_email"].includes(event.target.name)) {
         reconcilePreferredMethod();
@@ -285,7 +313,9 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
     });
     form.addEventListener("input", (event) => {
       if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) {
-        clearContactFieldError(event.target.name);
+        clearContactFieldError(event.target.name === "contact_phone_national" || event.target.name === "contact_phone_country"
+          ? "contact_phone"
+          : event.target.name);
       }
     });
     form.addEventListener("submit", (event) => {

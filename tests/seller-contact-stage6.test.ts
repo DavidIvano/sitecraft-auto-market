@@ -14,12 +14,12 @@ import {
 const read = (path: string) => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("contact phone normalization accepts international user input", () => {
-  assert.equal(normalizeContactPhone("+49 123 4567890"), "+491234567890");
-  assert.equal(normalizeContactPhone("+49 (123) 4567890"), "+491234567890");
-  assert.equal(normalizeContactPhone("0049 123 4567890"), "+491234567890");
-  assert.equal(normalizeContactPhone("0123 4567890"), "+491234567890");
-  assert.equal(normalizeContactPhone("+49 (0) 123 4567890"), "+491234567890");
-  for (const invalid of ["491234567890", "+0123456789", "+49call-me", "<b>+491234567890</b>", "+49123\n456"]) {
+  assert.equal(normalizeContactPhone("+49 160 96556543"), "+4916096556543");
+  assert.equal(normalizeContactPhone("+49 (160) 96556543"), "+4916096556543");
+  assert.equal(normalizeContactPhone("0049 160 96556543"), "+4916096556543");
+  assert.equal(normalizeContactPhone("0160 96556543"), "+4916096556543");
+  assert.equal(normalizeContactPhone("+49 (0) 160 96556543"), "+4916096556543");
+  for (const invalid of ["491234567890", "+0123456789", "+49call-me", "<b>+4916096556543</b>", "+49160\n96556543"]) {
     assert.equal(normalizeContactPhone(invalid), "");
   }
 });
@@ -35,21 +35,21 @@ test("profile visibility and preferred method are validated consistently", () =>
   assert.match(validateSellerContactProfile({ show_phone: true }).message, /номер телефона/);
   assert.match(validateSellerContactProfile({ show_email: true }).message, /email/);
   assert.match(validateSellerContactProfile({
-    contact_phone: "+491234567890",
+    contact_phone: "+4916096556543",
     preferred_contact_method: "phone",
   }).message, /предпочтительного/);
   assert.equal(validateSellerContactProfile({
-    contact_phone: "+49 123 4567890",
+    contact_phone: "+49 160 96556543",
     show_phone: true,
     preferred_contact_method: "phone",
-  }).value.contact_phone, "+491234567890");
+  }).value.contact_phone, "+4916096556543");
   assert.equal(validateSellerContactProfile({}, { requirePublicContact: false }).valid, true);
   assert.equal(validateSellerContactProfile({}, { requirePublicContact: true }).valid, false);
 });
 
 test("public contact projection never includes disabled values", () => {
   const hidden = buildPublicSellerContact({
-    contact_phone: "+491234567890",
+    contact_phone: "+4916096556543",
     contact_email: "seller@example.com",
     show_phone: false,
     show_email: false,
@@ -57,7 +57,7 @@ test("public contact projection never includes disabled values", () => {
   assert.equal(hidden, null);
 
   const emailOnly = buildPublicSellerContact({
-    contact_phone: "+491234567890",
+    contact_phone: "+4916096556543",
     contact_email: "Seller@Example.com",
     show_phone: false,
     show_email: true,
@@ -95,7 +95,7 @@ test("dashboard contact form initializes once, refreshes auth, retries only GET,
   assert.match(source, /method: "PATCH"/);
   assert.match(source, /seller-contact-profile-updated/);
   assert.match(source, /cache: "no-store"/);
-  assert.match(source, /data-contact-field-error="contact_phone"/);
+  assert.match(source, /errorDataAttribute="contact_phone"/);
   assert.match(source, /aria-invalid/);
   assert.doesNotMatch(source, /form\.reset\(\)/);
 });

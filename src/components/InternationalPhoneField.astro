@@ -1,0 +1,56 @@
+---
+import { PHONE_COUNTRIES } from "../lib/internationalPhone";
+
+interface Props {
+  canonicalName: string;
+  countryName: string;
+  nationalName: string;
+  label?: string;
+  errorId?: string;
+  errorDataAttribute?: string;
+  defaultCountry?: string;
+}
+
+const {
+  canonicalName,
+  countryName,
+  nationalName,
+  label = "Телефон",
+  errorId,
+  errorDataAttribute,
+  defaultCountry = "DE",
+} = Astro.props;
+---
+
+<div class="international-phone-field" data-international-phone data-contact-field={canonicalName}>
+  <span class="international-phone-label">{label}</span>
+  <div class="international-phone-controls">
+    <select name={countryName} aria-label="Страна и телефонный код" data-phone-country>
+      {PHONE_COUNTRIES.map((country) => (
+        <option value={country.code} selected={country.code === defaultCountry}>{country.label}</option>
+      ))}
+    </select>
+    <input
+      type="text"
+      name={nationalName}
+      inputmode="numeric"
+      autocomplete="tel-national"
+      pattern="[0-9]*"
+      maxlength="15"
+      placeholder="Номер без кода страны"
+      aria-describedby={errorId}
+      data-phone-national
+    />
+    <input type="hidden" name={canonicalName} autocomplete="tel" data-phone-canonical />
+  </div>
+  <small class="form-field-hint">Только цифры. Код страны выбирается отдельно.</small>
+  {errorId && (
+    <small
+      id={errorId}
+      class="field-error"
+      data-contact-field-error={errorDataAttribute}
+      data-manual-contact-error={errorDataAttribute}
+      hidden
+    ></small>
+  )}
+</div>

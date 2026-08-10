@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
+import InternationalPhoneField from "../../components/InternationalPhoneField.astro";
 import { API_ROUTES } from "../../lib/apiRoutes";
 import {
   bodyTypes,
@@ -308,10 +309,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <span>Имя продавца</span>
               <input type="text" name="seller_name" placeholder="Ваше имя" required />
             </label>
-            <label>
-              <span>Телефон продавца</span>
-              <input type="tel" name="seller_phone" placeholder="+49 ..." />
-            </label>
+            <InternationalPhoneField
+              canonicalName="seller_phone"
+              countryName="seller_phone_country"
+              nationalName="seller_phone_national"
+              label="Телефон продавца"
+            />
             <label>
               <span>Email продавца</span>
               <input type="email" name="seller_email" placeholder="name@example.com" />
@@ -621,11 +624,14 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <small id="manual-contact-error-display_name" class="form-field-error" data-manual-contact-error="display_name" hidden></small>
             </label>
 
-            <label>
-              <span>Телефон продавца</span>
-              <input type="tel" name="sellerPhone" placeholder="+49 ..." aria-describedby="manual-contact-error-contact_phone" />
-              <small id="manual-contact-error-contact_phone" class="form-field-error" data-manual-contact-error="contact_phone" hidden></small>
-            </label>
+            <InternationalPhoneField
+              canonicalName="sellerPhone"
+              countryName="sellerPhoneCountry"
+              nationalName="sellerPhoneNational"
+              label="Телефон продавца"
+              errorId="manual-contact-error-contact_phone"
+              errorDataAttribute="contact_phone"
+            />
 
             <label>
               <span>Email продавца</span>
@@ -759,6 +765,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         import { LEGACY_PUBLIC_LOCALE } from "../../i18n/config";
         import { formatBytes } from "../../lib/imageCompression";
         import { refreshAppIcons } from "../../lib/appIcons";
+        import {
+          focusInternationalPhoneField,
+          initializeInternationalPhoneFields,
+          readInternationalPhoneField,
+          setInternationalPhoneField,
+        } from "../../lib/internationalPhoneFieldClient";
         import { uploadListingImages } from "../../lib/listingImageUpload";
         import {
           createListingSubmitIdempotencyKey,
@@ -838,6 +850,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         let manualContactRestoredFromDraft = false;
 
         function readSellerContact(target: HTMLFormElement, mode: "ai" | "manual"): SellerContactSubmission {
+          readInternationalPhoneField(target, mode === "ai" ? "seller_phone" : "sellerPhone");
           const data = new FormData(target);
           return normalizeSellerContactProfile({
             display_name: data.get(mode === "ai" ? "seller_name" : "sellerName"),
@@ -870,7 +883,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           currentSellerContactProfile = profile;
           if (aiReviewForm instanceof HTMLFormElement) {
             setFormControl(aiReviewForm, "seller_name", profile.display_name || [profile.first_name, profile.last_name].filter(Boolean).join(" "));
-            setFormControl(aiReviewForm, "seller_phone", profile.contact_phone);
+            setInternationalPhoneField(aiReviewForm, "seller_phone", profile.contact_phone);
             setFormControl(aiReviewForm, "seller_email", profile.contact_email);
             setFormControl(aiReviewForm, "show_phone", profile.show_phone);
             setFormControl(aiReviewForm, "show_email", profile.show_email);
@@ -878,7 +891,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
           if (form instanceof HTMLFormElement && !manualContactRestoredFromDraft) {
             setFormControl(form, "sellerName", profile.display_name || [profile.first_name, profile.last_name].filter(Boolean).join(" "));
-            setFormControl(form, "sellerPhone", profile.contact_phone);
+            setInternationalPhoneField(form, "sellerPhone", profile.contact_phone);
             setFormControl(form, "sellerEmail", profile.contact_email);
             setFormControl(form, "showPhone", profile.show_phone);
             setFormControl(form, "showEmail", profile.show_email);
@@ -927,6 +940,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         async function saveSellerContactProfile(target: HTMLFormElement, mode: "ai" | "manual", requirePublicContact: boolean) {
+          readInternationalPhoneField(target, mode === "ai" ? "seller_phone" : "sellerPhone");
           const data = new FormData(target);
           const raw = {
             display_name: data.get(mode === "ai" ? "seller_name" : "sellerName"),
@@ -1033,7 +1047,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           "vehicleType", "brand", "model", "year", "price", "mileage", "location", "country", "currency",
           "bodyType", "fuelType", "engineVolume", "transmission", "drivetrain", "doors", "seats", "color",
           "ownerCount", "firstRegistrationDate", "condition", "hasValidTuv", "tuvValidUntil", "sellerType", "description",
-          "sellerName", "sellerPhone", "sellerEmail", "preferredContactMethod",
+          "sellerName", "sellerPhone", "sellerPhoneCountry", "sellerPhoneNational", "sellerEmail", "preferredContactMethod",
         ];
 
         function ensureManualSubmissionId() {
@@ -1080,6 +1094,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 control.value = value;
               }
             }
+            if (fields.sellerPhoneNational) {
+              readInternationalPhoneField(form, "sellerPhone");
+            } else if (fields.sellerPhone) {
+              setInternationalPhoneField(form, "sellerPhone", fields.sellerPhone);
+            }
             updateEngineVolumesForFuel();
             const engineVolumeControl = form.elements.namedItem("engineVolume");
             if (engineVolumeControl instanceof HTMLSelectElement) engineVolumeControl.value = fields.engineVolume || "";
@@ -1092,6 +1111,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
         function updateReviewSummary() {
           if (!(form instanceof HTMLFormElement) || !(reviewSummary instanceof HTMLElement)) return;
+          readInternationalPhoneField(form, "sellerPhone");
           const data = new FormData(form);
           const hasTuv = String(data.get("hasValidTuv") || "");
           const phone = String(data.get("sellerPhone") || "").trim();
@@ -1425,6 +1445,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             return null;
           }
 
+          if (name === "seller_phone") {
+            const phoneControl = aiReviewForm.elements.namedItem("seller_phone_national");
+            return phoneControl instanceof HTMLInputElement ? phoneControl : null;
+          }
+
           const control = aiReviewForm.elements.namedItem(name);
           if (control instanceof RadioNodeList) {
             return Array.from(control).find((item) => item instanceof HTMLInputElement && item.checked)
@@ -1436,6 +1461,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         function setFormField(name: string, value: unknown) {
+          if (name === "seller_phone" && aiReviewForm instanceof HTMLFormElement) {
+            const stringValue = String(value ?? "").trim();
+            if (stringValue) setInternationalPhoneField(aiReviewForm, "seller_phone", stringValue);
+            return null;
+          }
+
           if (aiReviewForm instanceof HTMLFormElement) {
             const namedControl = aiReviewForm.elements.namedItem(name);
             if (namedControl instanceof RadioNodeList) {
@@ -2686,6 +2717,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           redirectToLogin("/dashboard/new/");
         }
 
+        initializeInternationalPhoneFields(document);
         enableFastFieldActivation();
         restoreLocalDraft();
         setListingMode("manual");
@@ -3783,7 +3815,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           condition: "condition",
           seller_type: "sellerType",
           seller_name: "sellerName",
-          seller_phone: "sellerPhone",
+          seller_phone: "sellerPhoneNational",
           seller_email: "sellerEmail",
           seller_contact: "showPhone",
           has_valid_tuv: "hasValidTuv",
@@ -3909,7 +3941,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             node.textContent = "";
             node.hidden = true;
           });
-          ["sellerName", "sellerPhone", "sellerEmail", "preferredContactMethod"].forEach((name) => {
+          ["sellerName", "sellerPhoneNational", "sellerPhoneCountry", "sellerEmail", "preferredContactMethod"].forEach((name) => {
             const control = form instanceof HTMLFormElement ? form.elements.namedItem(name) : null;
             if (control instanceof HTMLElement) {
               control.classList.remove("is-invalid");
@@ -3922,7 +3954,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         function showManualContactError(field: string, errorMessage: string) {
           const controlNames: Record<string, string> = {
             display_name: "sellerName",
-            contact_phone: "sellerPhone",
+            contact_phone: "sellerPhoneNational",
             contact_email: "sellerEmail",
             preferred_contact_method: "preferredContactMethod",
           };
@@ -3934,6 +3966,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             control.classList.add("is-invalid");
             control.setAttribute("aria-invalid", "true");
             control.focus();
+          }
+          if (field === "contact_phone" && form instanceof HTMLFormElement) {
+            focusInternationalPhoneField(form, "sellerPhone");
           }
           if (errorNode) {
             errorNode.textContent = errorMessage;
@@ -4079,6 +4114,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           clearManualContactErrors();
           clearManualFieldErrors();
           setManualSubmitPhase("validating");
+          readInternationalPhoneField(form, "sellerPhone");
 
           for (let index = 0; index < quizSteps.length; index += 1) {
             if (!validateQuizStep(index)) {

@@ -1,6 +1,14 @@
 # Submit moderation: root cause and fix
 
-Updated: 2026-07-15
+Updated: 2026-08-10
+
+## Production authorization incident — 2026-08-10
+
+The production request history showed that `POST /listings/create-draft` completed with HTTP 200, immediately followed by HTTP 403 from `POST /listings/submit-moderation`. The failed request therefore was not caused by an incomplete vehicle, TÜV/HU, photo, email, or phone field.
+
+The published Xano endpoint had lost its `auth = "automarket_users"` declaration while still checking `$auth.id`. Xano could not bind the bearer token to `$auth`, so every moderation submit was rejected before the listing validation ran.
+
+The declaration was restored on endpoint `3982675`, the XanoScript was validated, published, fetched again, and retained in `docs/xano-endpoint-post-listings-submit-moderation.xs`. The repository token and the pre-change backup remain ignored by Git. Future HTTP 401 and 403 responses are also presented as explicit authorization errors instead of the generic moderation message.
 
 ## Incident
 

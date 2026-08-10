@@ -11,17 +11,17 @@ import {
 test("validates public phone and email visibility", () => {
   assert.match(validateContactProfile({ show_phone: true }), /номер телефона/);
   assert.match(validateContactProfile({ show_email: true, contact_email: "bad" }), /email/);
-  assert.equal(validateContactProfile({ show_phone: true, contact_phone: "+491234567890" }), "");
+  assert.equal(validateContactProfile({ show_phone: true, contact_phone: "+4916096556543" }), "");
   assert.equal(validateContactProfile({ show_email: true, contact_email: "seller@example.com" }), "");
 });
 
 test("requires the preferred contact method to be public", () => {
-  assert.match(validateContactProfile({ preferred_contact_method: "phone", contact_phone: "+491234567890" }), /предпочтительного способа/);
+  assert.match(validateContactProfile({ preferred_contact_method: "phone", contact_phone: "+4916096556543" }), /предпочтительного способа/);
   assert.match(validateContactProfile({ preferred_contact_method: "email", contact_email: "seller@example.com" }), /предпочтительного способа/);
 });
 
 test("normalizes phone and email before PATCH", () => {
-  assert.equal(normalizeContactPhone("0049 (123) 4567890"), "+491234567890");
+  assert.equal(normalizeContactPhone("0049 (160) 96556543"), "+4916096556543");
   assert.equal(normalizeContactEmail(" Seller@Example.COM "), "seller@example.com");
 });
 

@@ -3,6 +3,7 @@ import type {
   SellerContactProfile,
   SellerContactSubmission,
 } from "./types";
+import { normalizeStrictInternationalPhone } from "./internationalPhone.ts";
 
 export type ContactProfileInput = {
   first_name?: unknown;
@@ -68,25 +69,7 @@ const CONTACT_ERROR_MESSAGES: Record<string, { field: ContactProfileIssue["field
 };
 
 export function normalizeContactPhone(value: unknown, defaultCountryCode = "49") {
-  const raw = String(value ?? "").trim();
-  if (!raw) return "";
-  if (CONTROL_OR_MARKUP_PATTERN.test(raw) || /[A-Za-zА-Яа-яЁё]/.test(raw)) return "";
-
-  const compact = raw.replace(/[\s()./-]/g, "");
-  const countryCode = String(defaultCountryCode).replace(/\D/g, "");
-  let normalized = compact.startsWith("00")
-    ? `+${compact.slice(2)}`
-    : compact.startsWith("+")
-      ? compact
-      : compact.startsWith("0") && countryCode
-        ? `+${countryCode}${compact.slice(1)}`
-        : "";
-
-  const internationalTrunkPrefix = `+${countryCode}0`;
-  if (countryCode && normalized.startsWith(internationalTrunkPrefix)) {
-    normalized = `+${countryCode}${normalized.slice(internationalTrunkPrefix.length)}`;
-  }
-  return /^\+[1-9]\d{7,14}$/.test(normalized) ? normalized : "";
+  return normalizeStrictInternationalPhone(value, defaultCountryCode);
 }
 
 export function normalizeContactEmail(value: unknown) {
@@ -123,7 +106,7 @@ export function normalizeContactProfile(
   if (firstName === null) issues.push({ field: "first_name", code: "INVALID_FIRST_NAME", message: "Проверьте имя." });
   if (lastName === null) issues.push({ field: "last_name", code: "INVALID_LAST_NAME", message: "Проверьте фамилию." });
   if (displayName === null) issues.push({ field: "display_name", code: "DISPLAY_NAME_INVALID", message: "Проверьте публичное имя." });
-  if (rawPhone && !contactPhone) issues.push({ field: "contact_phone", code: "PHONE_INVALID", message: "Введите телефон в международном формате, например +49 123 4567890." });
+  if (rawPhone && !contactPhone) issues.push({ field: "contact_phone", code: "PHONE_INVALID", message: "Проверьте страну и количество цифр в номере телефона." });
   if (rawEmail && !contactEmail) issues.push({ field: "contact_email", code: "EMAIL_INVALID", message: "Проверьте правильность email." });
   if (showPhone && !contactPhone) issues.push({ field: "contact_phone", code: "PHONE_REQUIRED", message: "Введите корректный номер телефона." });
   if (showEmail && !contactEmail) issues.push({ field: "contact_email", code: "EMAIL_REQUIRED", message: "Введите корректный email." });

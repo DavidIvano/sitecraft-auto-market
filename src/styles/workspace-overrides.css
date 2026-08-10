@@ -35,6 +35,41 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
 }
 
+/* International phone input: country code is explicit and the national number stays digits-only. */
+.international-phone-field {
+  display: grid;
+  min-width: 0;
+  gap: 8px;
+}
+
+.international-phone-label {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  font-weight: 700;
+}
+
+.international-phone-controls {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(116px, 0.8fr) minmax(0, 1.45fr);
+  gap: 8px;
+}
+
+.international-phone-controls :is(select, input) {
+  width: 100%;
+  min-width: 0;
+}
+
+.international-phone-field:has([aria-invalid="true"]) .international-phone-label {
+  color: var(--danger);
+}
+
+@media (max-width: 420px) {
+  .international-phone-controls {
+    grid-template-columns: minmax(108px, 0.72fr) minmax(0, 1.28fr);
+  }
+}
+
 @media (max-width: 760px) {
   .mac-app-shell,
   .mac-app-shell.is-sidebar-collapsed {
