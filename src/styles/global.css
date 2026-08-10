@@ -7860,7 +7860,6 @@ textarea {
 }
 
 @media (max-width: 980px) {
-  .ai-feature-grid,
   .similar-cars-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -7871,7 +7870,6 @@ textarea {
     display: grid;
   }
 
-  .ai-feature-grid,
   .similar-cars-grid {
     grid-template-columns: 1fr;
   }
@@ -8058,9 +8056,44 @@ textarea {
 }
 
 @media (max-width: 980px) {
-  .ai-feature-grid,
   .similar-cars-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .home-ai-features .ai-feature-grid {
+    grid-template-columns: none;
+    grid-auto-flow: column;
+    grid-auto-columns: min(56vw, 430px);
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 2px 14px;
+    scroll-behavior: smooth;
+    scroll-padding-inline: 2px;
+    scroll-snap-type: x mandatory;
+    scrollbar-color: color-mix(in srgb, var(--accent) 55%, transparent) transparent;
+    scrollbar-width: thin;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .home-ai-features .ai-feature-card {
+    min-width: 0;
+    height: 100%;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  .home-ai-features .ai-feature-grid::-webkit-scrollbar {
+    height: 5px;
+  }
+
+  .home-ai-features .ai-feature-grid::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--mac-border) 48%, transparent);
+  }
+
+  .home-ai-features .ai-feature-grid::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 58%, transparent);
   }
 }
 
@@ -8069,9 +8102,12 @@ textarea {
     display: grid;
   }
 
-  .ai-feature-grid,
   .similar-cars-grid {
     grid-template-columns: 1fr;
+  }
+
+  .home-ai-features .ai-feature-grid {
+    grid-auto-columns: calc(100% - 42px);
   }
 
   .ai-feature-card,
