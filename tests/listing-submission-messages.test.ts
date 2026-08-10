@@ -31,6 +31,21 @@ test("manual form preserves native month and radio activation", async () => {
   assert.match(source, /has_valid_tuv_explicit: hasValidTuv/);
 });
 
+test("manual submission replaces a closed restored draft and focuses concrete field errors", async () => {
+  const [source, styles] = await Promise.all([
+    readFile(new URL("../src/pages/dashboard/new.astro", import.meta.url), "utf8"),
+    readFile(new URL("../src/styles/workspace-overrides.css", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(source, /isNonEditableListingDraftError\(errorPayload\)/);
+  assert.match(source, /resetClosedManualDraft\(payload\)[\s\S]*?ensureManualDraft\(payload, uploadedImages, false\)/);
+  assert.match(source, /manualSubmissionId = crypto\.randomUUID\(\)/);
+  assert.match(source, /payload\.delete\("draft_id"\)/);
+  assert.match(source, /requestAnimationFrame[\s\S]*?focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /container\.classList\.add\("has-field-error"\)/);
+  assert.match(styles, /fieldset\.has-field-error[\s\S]*?border-color: var\(--danger\)/);
+});
+
 test("mobile workspace navigation keeps every visible item scrollable and shows a hint", async () => {
   const [layout, styles] = await Promise.all([
     readFile(new URL("../src/layouts/BaseLayout.astro", import.meta.url), "utf8"),

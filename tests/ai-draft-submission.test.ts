@@ -4,7 +4,9 @@ import test from "node:test";
 import {
   BACKEND_FIELD_TO_CONTROL,
   extractAiDraftIdentity,
+  extractListingDraftFieldIssues,
   extractListingFieldIssues,
+  isNonEditableListingDraftError,
   ListingSubmissionApiError,
   normalizeTuvSubmissionValue,
   readListingSubmissionApiResponse,
@@ -61,6 +63,30 @@ test("extracts structured Xano payload errors and maps legacy fields", () => {
   assert.equal(issues.length, 2);
   assert.equal(BACKEND_FIELD_TO_CONTROL[issues[0].field], "owners_count");
   assert.equal(BACKEND_FIELD_TO_CONTROL[issues[1].field], "photos");
+});
+
+test("recognizes a restored draft that Xano has already closed", () => {
+  assert.equal(isNonEditableListingDraftError({
+    code: "ERROR_CODE_INPUT_ERROR",
+    message: "This draft is no longer editable",
+    payload: "",
+  }), true);
+  assert.equal(isNonEditableListingDraftError({ message: "Year must be between 1900 and 2027" }), false);
+});
+
+test("maps create-draft validation messages to form controls", () => {
+  assert.deepEqual(
+    extractListingDraftFieldIssues({ message: "Year must be between 1900 and 2027" }),
+    [{ field: "year", message: "Проверьте год выпуска автомобиля." }],
+  );
+  assert.equal(
+    extractListingDraftFieldIssues({ message: "TÜV/HU date must use YYYY-MM" })[0]?.field,
+    "tuv_valid_until",
+  );
+  assert.equal(
+    extractListingDraftFieldIssues({ message: "Invalid r2_images payload" })[0]?.field,
+    "images",
+  );
 });
 
 test("requires phone or email, but not both", () => {

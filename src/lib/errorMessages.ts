@@ -35,6 +35,10 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "Что-то 
     return "Вход сохранён, но сервис временно отклонил запрос. Попробуйте ещё раз.";
   }
 
+  if (value.includes("this draft is no longer editable")) {
+    return "Предыдущий черновик уже закрыт. Обновите страницу и повторите отправку — будет создан новый черновик.";
+  }
+
   if (value.includes("missing param") || value.includes("input_error") || value.includes("required")) {
     return "Заполните обязательные поля и попробуйте снова.";
   }

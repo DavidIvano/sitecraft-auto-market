@@ -19,6 +19,22 @@
   padding: 12px 14px;
 }
 
+/* Make the exact invalid listing field unmistakable, including grouped radio fields. */
+.listing-form-enhanced :is(label, fieldset, .photo-uploader).has-field-error > :is(span:first-child, legend) {
+  color: var(--danger);
+}
+
+.listing-form-enhanced fieldset.has-field-error {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
+}
+
+.listing-form-enhanced .photo-uploader.has-field-error .photo-dropzone,
+.listing-form-enhanced .photo-dropzone.is-invalid {
+  border-color: var(--danger);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--danger) 16%, transparent);
+}
+
 @media (max-width: 760px) {
   .mac-app-shell,
   .mac-app-shell.is-sidebar-collapsed {

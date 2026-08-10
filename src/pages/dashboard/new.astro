@@ -746,7 +746,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         import {
           BACKEND_FIELD_TO_CONTROL,
           extractAiDraftIdentity,
+          extractListingDraftFieldIssues,
           extractListingFieldIssues,
+          isNonEditableListingDraftError,
           ListingSubmissionApiError,
           normalizeTuvSubmissionValue,
           readListingSubmissionApiResponse,
@@ -3841,6 +3843,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (describedBy.length) control.setAttribute("aria-describedby", describedBy.join(" "));
             else control.removeAttribute("aria-describedby");
           });
+          form.querySelectorAll<HTMLElement>(".has-field-error").forEach((container) => {
+            container.classList.remove("has-field-error");
+          });
         }
 
         function showManualFieldErrors(issues: ListingFieldIssue[], options: { saved?: boolean } = {}) {
@@ -3860,6 +3865,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               ? control.closest(".photo-uploader")
               : control.closest("label, fieldset");
             if (!(container instanceof HTMLElement)) return;
+            container.classList.add("has-field-error");
 
             const errorId = `manual-listing-error-${index}`;
             const errorNode = document.createElement("small");
@@ -3879,8 +3885,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           setMessage(buildListingSubmissionFailureMessage(summary, options), "error");
           const firstControl = targetControls[0];
           if (firstControl) {
-            firstControl.scrollIntoView({ behavior: "smooth", block: "center" });
-            firstControl.focus();
+            const focusContainer = firstControl.closest<HTMLElement>("label, fieldset, .photo-uploader") || firstControl;
+            requestAnimationFrame(() => {
+              focusContainer.scrollIntoView({ behavior: "smooth", block: "center" });
+              firstControl.focus({ preventScroll: true });
+            });
           }
         }
 
@@ -3950,7 +3959,20 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return uploads;
         }
 
-        async function ensureManualDraft(payload: FormData, uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }>) {
+        function resetClosedManualDraft(payload: FormData) {
+          currentManualDraftId = null;
+          currentManualIdentity = null;
+          manualModerationRetryOnly = false;
+          manualSubmissionId = crypto.randomUUID();
+          payload.delete("draft_id");
+          saveLocalDraft();
+        }
+
+        async function ensureManualDraft(
+          payload: FormData,
+          uploadedImages: Array<{ url: string; key: string; contentType: string; size: number }>,
+          allowClosedDraftRecovery = true,
+        ) {
           if (manualModerationRetryOnly && currentManualIdentity) return currentManualIdentity;
           const apiUrl = form instanceof HTMLFormElement ? form.dataset.apiUrl : undefined;
           const authToken = getActiveAuthToken();
@@ -3972,6 +3994,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           payload.set("r2_images", JSON.stringify(uploadedImages));
           payload.set("is_ai_generated", "false");
           payload.set("idempotency_key", createListingSubmitIdempotencyKey(manualUserId, ensureManualSubmissionId()));
+          payload.delete("draft_id");
           if (currentManualDraftId) payload.set("draft_id", String(currentManualDraftId));
 
           const createResponse = await fetch(`${apiUrl}${apiRoute("listingsCreateDraft", "/listings/create-draft")}`, {
@@ -3984,10 +4007,27 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           if (!createResponse.ok) {
             const errorText = await createResponse.text();
+            const errorPayload = readJsonResponse(errorText);
             if (isWrongTokenError(errorText)) {
               throw new Error(getAuthObjectError());
             }
-            throw new Error(getXanoListingError(errorText) || errorText || "Не удалось создать черновик объявления.");
+            if (allowClosedDraftRecovery && isNonEditableListingDraftError(errorPayload)) {
+              resetClosedManualDraft(payload);
+              setMessage("Предыдущий черновик уже закрыт. Автоматически создаю новый черновик…");
+              return ensureManualDraft(payload, uploadedImages, false);
+            }
+            const fieldIssues = extractListingDraftFieldIssues(errorPayload);
+            if (fieldIssues.length) {
+              throw new ListingSubmissionApiError(createResponse.status, {
+                ...(errorPayload && typeof errorPayload === "object" ? errorPayload : {}),
+                errors: fieldIssues,
+              });
+            }
+            const serverMessage = firstValue(
+              errorPayload && typeof errorPayload === "object" ? (errorPayload as Record<string, unknown>).message : "",
+              errorText,
+            );
+            throw new Error(getXanoListingError(serverMessage) || serverMessage || "Не удалось создать черновик объявления.");
           }
 
           const createdDraft = await createResponse.json();
@@ -4183,7 +4223,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (error instanceof ContactProfileApiError) {
               showManualContactError(error.field, error.message);
             } else if (error instanceof ListingSubmissionApiError && error.issues.length) {
-              showManualFieldErrors(error.issues, { saved: true });
+              showManualFieldErrors(error.issues, {
+                saved: submissionState.failedPhase === "submitting_moderation",
+              });
               manualModerationRetryOnly = false;
             } else {
               const fallbackReason = submissionState.failedPhase === "creating_listing"

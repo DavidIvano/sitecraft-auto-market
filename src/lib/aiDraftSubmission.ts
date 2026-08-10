@@ -11,6 +11,39 @@ export type ListingFieldIssue = {
   message: string;
 };
 
+function listingApiMessage(payload: unknown) {
+  if (typeof payload === "string") return payload.trim();
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return "";
+  const source = payload as Record<string, any>;
+  return String(source.message || source.error || source.payload?.message || "").trim();
+}
+
+export function isNonEditableListingDraftError(payload: unknown) {
+  return /this draft is no longer editable|draft not found/i.test(listingApiMessage(payload));
+}
+
+export function extractListingDraftFieldIssues(payload: unknown): ListingFieldIssue[] {
+  const structured = extractListingFieldIssues(payload);
+  if (structured.length) return structured;
+
+  const message = listingApiMessage(payload);
+  const knownIssues: Array<[RegExp, ListingFieldIssue]> = [
+    [/year must be between/i, { field: "year", message: "Проверьте год выпуска автомобиля." }],
+    [/mileage must be zero or greater/i, { field: "mileage", message: "Пробег не может быть отрицательным." }],
+    [/price must be zero or greater/i, { field: "price", message: "Цена не может быть отрицательной." }],
+    [/vin must contain 17 valid characters/i, { field: "vin", message: "VIN должен состоять из 17 допустимых символов." }],
+    [/city cannot contain digits only/i, { field: "city", message: "Укажите название города, а не только цифры." }],
+    [/tüv\/hu date must use yyyy-mm/i, { field: "tuv_valid_until", message: "Укажите срок TÜV / HU в формате месяц и год." }],
+    [/maximum of 8 images|images must use public https urls|invalid (r2_images|image_urls|image_keys)/i, {
+      field: "images",
+      message: "Проверьте фотографии: можно загрузить до 8 изображений поддерживаемого формата.",
+    }],
+  ];
+
+  const match = knownIssues.find(([pattern]) => pattern.test(message));
+  return match ? [match[1]] : [];
+}
+
 export class ListingSubmissionApiError extends Error {
   readonly status: number;
   readonly code: string;
