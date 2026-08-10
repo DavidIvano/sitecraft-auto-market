@@ -168,7 +168,7 @@ query "dashboard/listings/{id}" verb=PATCH {
     }
 
     var $translation_source_hash {
-      value = $translation_source_document|json_encode|sha256:true
+      value = $translation_source_document|json_encode|sha256:false
     }
 
     conditional {

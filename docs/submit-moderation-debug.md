@@ -10,6 +10,10 @@ The published Xano endpoint had lost its `auth = "automarket_users"` declaration
 
 The declaration was restored on endpoint `3982675`, the XanoScript was validated, published, fetched again, and retained in `docs/xano-endpoint-post-listings-submit-moderation.xs`. The repository token and the pre-change backup remain ignored by Git. Future HTTP 401 and 403 responses are also presented as explicit authorization errors instead of the generic moderation message.
 
+### Post-submit HTTP 500 — 2026-08-10
+
+Two later retries for draft `86` returned HTTP 500 even though Xano had already created listing `104` and changed both records to `pending_review`. The failure happened after the core moderation transition, while preparing multilingual translation jobs. The source hash used `sha256:true`, which requests raw binary output, but the destination fields and idempotency keys are text. It was changed to `sha256:false`, the documented hexadecimal representation. The frontend also reconciles a failed response against the authenticated dashboard list before declaring moderation unsuccessful.
+
 ## Incident
 
 `POST /listings/submit-moderation` returned HTTP 400 with `Listing is not ready for moderation`, although the AI review form looked complete.

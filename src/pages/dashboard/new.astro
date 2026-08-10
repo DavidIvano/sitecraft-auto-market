@@ -914,6 +914,37 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return "";
         }
 
+        async function reconcileModerationSubmission(
+          apiUrl: string,
+          authToken: string,
+          identity: { draftId: string | number | null; listingId: string | number | null },
+        ) {
+          if (!apiUrl || !authToken || (!identity.draftId && !identity.listingId)) return null;
+          try {
+            const response = await fetch(`${apiUrl}${API_ROUTES.dashboardListings}?moderation_reconcile=${Date.now()}`, {
+              headers: { Authorization: `Bearer ${authToken}` },
+              cache: "no-store",
+            });
+            if (!response.ok) return null;
+            const payload = await response.json();
+            const listings = Array.isArray(payload)
+              ? payload
+              : Array.isArray(payload?.items)
+                ? payload.items
+                : Array.isArray(payload?.listings)
+                  ? payload.listings
+                  : [];
+            return listings.find((listing: Record<string, unknown>) => {
+              const matchesListing = identity.listingId != null && String(listing.id || "") === String(identity.listingId);
+              const matchesDraft = identity.draftId != null && String(listing.draft_id || "") === String(identity.draftId);
+              const status = String(listing.moderation_status || listing.status || "").toLowerCase();
+              return (matchesListing || matchesDraft) && ["pending", "pending_review"].includes(status);
+            }) || null;
+          } catch {
+            return null;
+          }
+        }
+
         async function loadSellerContactProfile() {
           const token = await waitForListingAuth();
           const apiUrl = form instanceof HTMLFormElement ? String(form.dataset.apiUrl || "") : "";
@@ -3686,6 +3717,17 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             const result = readJsonResponse(responseText);
 
             if (!response.ok) {
+              if (response.status >= 500) {
+                const reconciled = await reconcileModerationSubmission(apiUrl, authToken, {
+                  draftId: currentAiDraftId,
+                  listingId: currentAiListingId,
+                });
+                if (reconciled) {
+                  setAiMessage("Объявление принято и находится на модерации.");
+                  window.location.href = "/dashboard/listings?submitted=1";
+                  return;
+                }
+              }
               if (response.status === 404 && shouldUseNewAiEndpoints()) {
                 throw new Error("Endpoint /listings/submit-moderation не найден в Xano или сайт использует неправильный API URL.");
               }
@@ -4257,6 +4299,21 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             window.location.href = "/dashboard/listings?submitted=1";
           } catch (error) {
             console.error(error);
+            const moderationWasAccepted = submissionState.failedPhase === "submitting_moderation" && currentManualIdentity
+              ? await reconcileModerationSubmission(
+                  String(form.dataset.apiUrl || ""),
+                  getActiveAuthToken(),
+                  currentManualIdentity,
+                )
+              : null;
+            if (moderationWasAccepted) {
+              const listingId = moderationWasAccepted.id || currentManualIdentity?.listingId || null;
+              manualModerationRetryOnly = false;
+              setMessage(`Объявление принято и находится на модерации${listingId ? ` №${listingId}` : ""}.`, "success");
+              localStorage.removeItem(LOCAL_DRAFT_KEY);
+              window.location.href = "/dashboard/listings?submitted=1";
+              return;
+            }
             if (error instanceof ContactProfileApiError) {
               showManualContactError(error.field, error.message);
             } else if (error instanceof ListingSubmissionApiError && error.issues.length) {

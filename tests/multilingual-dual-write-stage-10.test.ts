@@ -26,7 +26,10 @@ for (const [name, source] of [
   ["owner listing edit", editListing],
 ] as const) {
   test(`${name} dual-writes original content and idempotent translation jobs`, () => {
-    assert.match(source, /json_encode\|sha256:true/);
+    // Source hashes are stored in text columns and idempotency keys, so they must
+    // be the 64-character hexadecimal representation, never raw binary bytes.
+    assert.match(source, /json_encode\|sha256:false/);
+    assert.doesNotMatch(source, /json_encode\|sha256:true/);
     assert.match(source, /schema_version\s*:\s*"listing-i18n-v1"/);
     assert.match(source, /if \(\(\$car\.translation_source_hash\|first_notnull:""\) != \$translation_source_hash\)/);
     assert.match(source, /translation_source_hash/);

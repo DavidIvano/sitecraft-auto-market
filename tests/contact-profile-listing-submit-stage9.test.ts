@@ -135,6 +135,12 @@ test("manual page uses the canonical contact parser, guarded state machine, imag
   assert.match(source, /listingsCreateDraft/);
   assert.match(source, /listingsSubmitModeration/);
   assert.match(source, /readListingSubmissionApiResponse/);
+  assert.match(source, /async function reconcileModerationSubmission/);
+  assert.match(source, /API_ROUTES\.dashboardListings/);
+  assert.match(source, /\["pending", "pending_review"\]\.includes\(status\)/);
+  assert.match(source, /response\.status >= 500[\s\S]*?reconcileModerationSubmission/);
+  assert.match(source, /submissionState\.failedPhase === "submitting_moderation"[\s\S]*?reconcileModerationSubmission/);
+  assert.match(source, /Объявление принято и находится на модерации/);
   assert.match(source, /import \{ LEGACY_PUBLIC_LOCALE \} from "\.\.\/\.\.\/i18n\/config"/);
   assert.equal((source.match(/payload\.set\("source_locale", LEGACY_PUBLIC_LOCALE\)/g) || []).length, 2);
   assert.match(source, /UNSUPPORTED_SOURCE_LOCALE/);
