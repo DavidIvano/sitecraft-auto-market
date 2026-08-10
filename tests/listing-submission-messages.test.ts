@@ -43,6 +43,7 @@ test("manual submission replaces a closed restored draft and focuses concrete fi
   assert.match(source, /payload\.delete\("draft_id"\)/);
   assert.match(source, /requestAnimationFrame[\s\S]*?focus\(\{ preventScroll: true \}\)/);
   assert.match(source, /container\.classList\.add\("has-field-error"\)/);
+  assert.doesNotMatch(source, /if \(!validateQuizStep\(index\)\) \{\s*updateQuizStep\(index\)/);
   assert.match(styles, /fieldset\.has-field-error[\s\S]*?border-color: var\(--danger\)/);
 });
 

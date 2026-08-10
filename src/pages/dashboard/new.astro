@@ -2320,7 +2320,6 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (targetStep > activeQuizStep) {
             for (let index = activeQuizStep; index < targetStep; index += 1) {
               if (!validateQuizStep(index)) {
-                updateQuizStep(index);
                 return;
               }
             }
@@ -4080,7 +4079,6 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           for (let index = 0; index < quizSteps.length; index += 1) {
             if (!validateQuizStep(index)) {
-              updateQuizStep(index);
               setManualSubmitPhase("error");
               return;
             }
