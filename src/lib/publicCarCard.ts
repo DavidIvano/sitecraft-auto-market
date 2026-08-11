@@ -41,6 +41,7 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
   const detailPath = safeSlugPath(car.slug, locale);
   const image = getCarCardImageUrl(car);
   const promotion = getHighestActivePromotion(car);
+  const isHomepagePremium = promotion?.slug === "homepage_premium_7_days";
   const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
   const title = String(car.title || [car.brand, car.model].filter(Boolean).join(" ") || messages.carDefault);
   const loading = options.priority ? "eager" : "lazy";
@@ -52,7 +53,10 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
       ? messages.promotionFeatured
       : messages.promotionPremium;
   const promotionBadge = promotion
-    ? `<span class="promotion-badge promotion-badge-${escapeHtml(promotion.slug)}" aria-label="${promotion.slug === "homepage_premium_7_days" ? "Premium, " : ""}${escapeHtml(promotionLabel)}"><i data-lucide="${promotion.slug === "boost_7_days" ? "arrow-up" : promotion.slug === "featured_14_days" ? "badge-check" : "sparkles"}" aria-hidden="true"></i>${escapeHtml(promotionLabel)}</span><span class="promotion-disclosure">${escapeHtml(messages.promoted)}</span>`
+    ? `${isHomepagePremium ? "" : `<span class="promotion-badge promotion-badge-${escapeHtml(promotion.slug)}"><i data-lucide="${promotion.slug === "boost_7_days" ? "arrow-up" : "badge-check"}" aria-hidden="true"></i>${escapeHtml(promotionLabel)}</span>`}<span class="promotion-disclosure">${escapeHtml(messages.promoted)}</span>`
+    : "";
+  const premiumDecoration = isHomepagePremium
+    ? `<div class="car-card-premium-banner" aria-label="${escapeHtml(promotionLabel)}"><i data-lucide="crown" aria-hidden="true"></i><span>${escapeHtml(promotionLabel)}</span></div><span class="car-card-premium-marker" aria-hidden="true"><i data-lucide="gem"></i></span>`
     : "";
   const media = image
     ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" class="car-image" loading="${loading}" decoding="async" width="800" height="500" referrerpolicy="no-referrer"${priority}>`
@@ -73,6 +77,7 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
   const dateLabel = options.source === "dashboard_favorites" ? interpolate(messages.savedOn, { value: formattedDate }) : formattedDate;
   const dateTime = formatDateTime(dateValue);
   return `<article class="${cardClass}" data-car-id="${escapeHtml(car.id)}" data-favorite-card>
+    ${premiumDecoration}
     ${detailPath ? `<a class="car-card-link" href="${escapeHtml(detailPath)}" aria-label="${escapeHtml(interpolate(messages.openListing, { value: title }))}" data-car-card-link data-card-source="${source}">` : '<span class="car-card-link car-card-link-disabled" aria-disabled="true">'}
     <div class="car-card-media">${media}
       ${cityBadge}

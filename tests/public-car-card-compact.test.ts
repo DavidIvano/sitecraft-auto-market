@@ -27,11 +27,31 @@ test("compact public card has no details button or description and keeps require
 
 test("premium is disclosed and unsafe card images are rejected", () => {
   const premium = renderPublicCarCardMarkup(car({ promotion: { status: "active", promotion_type: "premium", placement: "catalog_and_homepage", priority: 100, starts_at: "2026-07-20", ends_at: "2099-07-27" } }));
-  assert.match(premium, /Premium/);
+  assert.match(premium, /Премиум/);
   assert.match(premium, /Продвигается/);
+  assert.match(premium, /car-card-premium-banner[\s\S]*data-lucide="crown"/);
+  assert.match(premium, /car-card-premium-marker[\s\S]*data-lucide="gem"/);
   const unsafe = renderPublicCarCardMarkup(car({ main_image_url: "javascript:alert(1)", image_urls: [] }));
   assert.doesNotMatch(unsafe, /javascript:/);
   assert.match(unsafe, /Фото пока не добавлено/);
+});
+
+test("homepage premium section is rendered before all regular cars", () => {
+  const homepage = readProjectFile("src/pages/index.astro");
+  const premiumSection = homepage.indexOf('id="homepage-promotions"');
+  const regularSection = homepage.indexOf('class="section home-all-cars"');
+  assert.ok(premiumSection >= 0, "premium section must exist");
+  assert.ok(regularSection >= 0, "regular cars section must exist");
+  assert.ok(premiumSection < regularSection, "premium cars must be above regular cars");
+  assert.match(homepage, /homepagePromotedCars\.map[\s\S]*source="homepage_premium"/);
+});
+
+test("premium card modifier uses the shared card and gold visual language", () => {
+  const css = readProjectFile("src/styles/promotions.css");
+  for (const marker of ["#e9b949", "#ffd978", "car-card-premium-banner", "car-card-premium-marker", "--premium-gold"]) {
+    assert.match(css, new RegExp(marker));
+  }
+  assert.doesNotMatch(css, /#9a72e8|#8058d6/);
 });
 
 test("card client keeps native navigation and Xano-backed favourite targets", () => {
