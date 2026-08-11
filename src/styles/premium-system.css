@@ -598,7 +598,12 @@
 
   .car-card-premium:hover { border-color: var(--premium-bright); box-shadow: 0 24px 56px color-mix(in srgb, var(--premium) 23%, transparent); }
 
-  .car-card-premium .car-card-footer { padding-inline-end: 42px; }
+  .car-card-premium .car-card-premium-marker {
+    top: 6px;
+    right: 10px;
+    bottom: auto;
+    border-radius: 10px;
+  }
 
   /* The promoted placement is the visual lead, not a small card stranded in a
      four-column grid. On wide screens it becomes a compact editorial feature. */
