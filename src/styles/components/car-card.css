@@ -21,12 +21,11 @@
   .public-car-card .car-image { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 220ms ease; }
   .public-car-card .car-image-empty { display: grid; place-items: center; color: var(--text-tertiary); font-size: .86rem; }
   .public-car-card .car-card-overlay-badges { position: absolute; inset-block-start: auto; inset-block-end: var(--space-3); inset-inline: var(--space-3) 64px; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); pointer-events: none; }
-  .public-car-card .car-card-location,
   .public-car-card .car-card-media-views { position: absolute; z-index: 2; display: inline-flex; min-width: 0; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.22); border-radius: var(--radius-pill); background: rgba(12, 15, 21, .72); color: #fff; padding: 7px 10px; font-size: .76rem; font-weight: 750; line-height: 1; backdrop-filter: blur(10px); }
-  .public-car-card .car-card-location { top: var(--space-3); left: var(--space-3); max-width: calc(100% - 76px); }
+  .public-car-card .car-card-location { display: inline-flex; min-width: 0; max-width: 58%; align-items: center; justify-content: flex-end; gap: 5px; margin-inline-start: auto; color: var(--text-secondary); font-weight: 700; line-height: 1.15; }
   .public-car-card .car-card-location span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .public-car-card .car-card-media-views { inset-block-end: var(--space-3); inset-inline-end: var(--space-3); }
-  .public-car-card .car-card-location svg,
+  .public-car-card .car-card-location svg { width: 14px; height: 14px; flex: 0 0 14px; color: var(--accent); }
   .public-car-card .car-card-media-views svg { width: 16px; height: 16px; flex: 0 0 16px; }
   .public-car-card .favorite-button { position: absolute; top: var(--space-3); right: var(--space-3); z-index: 3; display: inline-grid; width: 44px; height: 44px; place-items: center; border: 1px solid rgba(255,255,255,.28); border-radius: 50%; background: rgba(12, 15, 21, .72); color: #fff; backdrop-filter: blur(10px); }
   .public-car-card .favorite-button svg { width: 21px; height: 21px; }
@@ -74,7 +73,7 @@
     .public-car-card .car-card-specs dd { gap: 5px; font-size: .72rem; }
     .public-car-card .car-card-specs dd svg { width: 15px; height: 15px; flex-basis: 15px; }
     .public-car-card .car-card-footer { padding-top: 8px; font-size: .68rem; }
-    .public-car-card .car-card-location { top: 10px; right: 58px; left: 10px; max-width: none; width: auto; padding: 6px 8px; font-size: .68rem; }
+    .public-car-card .car-card-location { max-width: 62%; font-size: .68rem; }
     .public-car-card .car-card-media-views { inset-block-end: 10px; inset-inline-end: 10px; padding: 6px 8px; font-size: .68rem; }
     .public-car-card .car-card-overlay-badges { inset-block-end: 10px; inset-inline: 10px 60px; flex-wrap: nowrap; gap: 5px; }
     .public-car-card .car-card-overlay-badges .promotion-disclosure { display: none; }

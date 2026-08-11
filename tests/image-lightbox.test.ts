@@ -33,8 +33,16 @@ test("one global native dialog owns close, navigation, zoom and focus restoratio
   assert.match(module, /event\.key === "ArrowLeft"/);
   assert.match(module, /Math\.abs\(deltaX\) > 48/);
   assert.match(module, /MAX_SCALE = 3/);
-  assert.match(module, /viewport\.addEventListener\("dblclick"/);
+  assert.doesNotMatch(module, /viewport\.addEventListener\("dblclick"/);
+  assert.doesNotMatch(module, /lastTapAt|now - lastTapAt/);
   assert.match(module, /pointers\.size === 2/);
+});
+
+test("rapid taps do not zoom the page or the lightbox", () => {
+  const base = readProjectFile("src/styles/base.css");
+  const module = readProjectFile("src/lib/media/lightbox.ts");
+  assert.match(base, /html\s*\{[^}]*touch-action:\s*manipulation/s);
+  assert.doesNotMatch(module, /dblclick|lastTapAt/);
 });
 
 test("vehicle galleries use the shared trigger while logos and icons do not", () => {

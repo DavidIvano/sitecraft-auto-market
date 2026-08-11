@@ -19,6 +19,8 @@ test("compact public card has no details button or description and keeps require
   assert.doesNotMatch(html, /Подробнее|This must never/);
   for (const value of ["Volkswagen Golf", "15", "2020", "54", "Дизель", "Автомат", "Berlin"]) assert.match(html, new RegExp(value));
   assert.match(html, /car-card-location[\s\S]*Berlin/);
+  assert.match(html, /car-card-footer[\s\S]*car-card-location[\s\S]*Berlin/);
+  assert.doesNotMatch(html.match(/<div class="car-card-media">[\s\S]*?<\/div>\s*<div class="car-card-body">/)?.[0] || "", /car-card-location/);
   assert.match(html, /listing-status-badge[\s\S]*В продаже/);
   assert.match(html, /car-card-media-views/);
   assert.match(html, /class="car-card-link" href="\/cars\/vw-golf\/\?lang=ru"/);
@@ -72,6 +74,8 @@ test("compact card CSS clamps titles and fixes card and media dimensions", () =>
   assert.match(css, /\.catalog-grid-list \.public-car-card[\s\S]*?--public-card-height:\s*238px/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?--public-card-height:\s*222px/);
   assert.match(css, /\.public-car-card \.car-card-media-views \{ inset-block-end:\s*var\(--space-3\)/);
+  assert.match(css, /\.public-car-card \.car-card-location \{[^}]*margin-inline-start:\s*auto/);
+  assert.doesNotMatch(css, /\.public-car-card \.car-card-location \{[^}]*position:\s*absolute/);
   assert.match(css, /\.public-car-card \.car-card-overlay-badges \{[^}]*inset-block-start:\s*auto;[^}]*inset-block-end:\s*var\(--space-3\)/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-media-views \{ inset-block-end:\s*10px/);
   assert.match(css, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-overlay-badges \{ inset-block-end:\s*10px; inset-inline:\s*10px 60px/);

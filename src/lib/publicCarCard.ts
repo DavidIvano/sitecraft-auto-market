@@ -80,7 +80,6 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
     ${premiumDecoration}
     ${detailPath ? `<a class="car-card-link" href="${escapeHtml(detailPath)}" aria-label="${escapeHtml(interpolate(messages.openListing, { value: title }))}" data-car-card-link data-card-source="${source}">` : '<span class="car-card-link car-card-link-disabled" aria-disabled="true">'}
     <div class="car-card-media">${media}
-      ${cityBadge}
       <div class="car-card-overlay-badges">${promotionBadge}${isSold ? `<span class="sold-ribbon">${escapeHtml(messages.sold)}</span>` : ""}</div>
       <span class="car-card-media-views">${publicViews}</span>
     </div>
@@ -93,7 +92,7 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
         <div><dt class="sr-only">${escapeHtml(messages.specFuel)}</dt><dd aria-label="${escapeHtml(messages.specFuel)}: ${escapeHtml(car.fuel_type ? translateBackendValue("fuel_type", car.fuel_type, locale) : "—")}"><i data-lucide="fuel" aria-hidden="true"></i><span>${escapeHtml(car.fuel_type ? translateBackendValue("fuel_type", car.fuel_type, locale) : "—")}</span></dd></div>
         <div><dt class="sr-only">${escapeHtml(messages.specTransmission)}</dt><dd aria-label="${escapeHtml(messages.specTransmission)}: ${escapeHtml(car.transmission ? translateBackendValue("transmission", car.transmission, locale) : "—")}"><i data-lucide="settings-2" aria-hidden="true"></i><span>${escapeHtml(car.transmission ? translateBackendValue("transmission", car.transmission, locale) : "—")}</span></dd></div>
       </dl>
-      <div class="car-card-footer"><time${dateTime ? ` datetime="${escapeHtml(dateTime)}"` : ""}>${escapeHtml(dateLabel)}</time></div>
+      <div class="car-card-footer"><time${dateTime ? ` datetime="${escapeHtml(dateTime)}"` : ""}>${escapeHtml(dateLabel)}</time>${cityBadge}</div>
     </div>
     ${detailPath ? "</a>" : "</span>"}
     ${renderFavoriteButtonMarkup(car.id, saved, options.source || "public_car_card", locale)}

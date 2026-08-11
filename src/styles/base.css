@@ -5,6 +5,7 @@
     min-width: 320px;
     color-scheme: light dark;
     scroll-behavior: smooth;
+    touch-action: manipulation;
     -webkit-text-size-adjust: 100%;
   }
 

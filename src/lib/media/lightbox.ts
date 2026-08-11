@@ -72,7 +72,6 @@ export function installImageLightbox() {
   const pointers = new Map<number, { x: number; y: number }>();
   let pinchDistance = 0;
   let pinchScale = 1;
-  let lastTapAt = 0;
 
   const applyTransform = () => {
     image.style.transform = `translate3d(${translateX}px, ${translateY}px, 0) scale(${scale})`;
@@ -197,7 +196,6 @@ export function installImageLightbox() {
     if (event.key === "+" || event.key === "=") setScale(scale + 0.5);
     if (event.key === "-") setScale(scale - 0.5);
   });
-  viewport.addEventListener("dblclick", () => setScale(scale > 1 ? 1 : 2));
   viewport.addEventListener("pointerdown", (event) => {
     viewport.setPointerCapture(event.pointerId);
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
@@ -234,9 +232,6 @@ export function installImageLightbox() {
       const deltaY = event.clientY - start.y;
       if (Math.abs(deltaX) > 48 && Math.abs(deltaX) > Math.abs(deltaY)) showItem(activeIndex + (deltaX < 0 ? 1 : -1));
     }
-    const now = Date.now();
-    if (event.pointerType === "touch" && now - lastTapAt < 320) setScale(scale > 1 ? 1 : 2);
-    lastTapAt = now;
   });
   viewport.addEventListener("pointercancel", (event) => {
     pointers.delete(event.pointerId);
