@@ -82,7 +82,7 @@ query "public/locale/cars/{slug}" verb=GET {
         }
       }
 
-      elseif (($car.translations_ready == true) && ($source_locale != "") && ($source_hash != "")) {
+      elseif (($source_locale != "") && ($source_hash != "")) {
         array.filter ($ready_translation_rows) if (($this.locale_code == $input.lang) && (($this.title|first_notnull:""|trim) != "") && (($this.description|first_notnull:""|trim) != "")) as $requested_translation_rows
 
         foreach ($requested_translation_rows) {
@@ -144,7 +144,7 @@ query "public/locale/cars/{slug}" verb=GET {
             var.update $locale_is_ready { value = true }
           }
 
-          elseif ($car.translations_ready == true) {
+          else {
             array.filter ($ready_translation_rows) if (($this.locale_code == $public_locale_row.code) && (($this.title|first_notnull:""|trim) != "") && (($this.description|first_notnull:""|trim) != "")) as $ready_locale_translations
             conditional {
               if (($ready_locale_translations|count) > 0) {

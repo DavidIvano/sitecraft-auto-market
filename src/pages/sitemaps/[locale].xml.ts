@@ -3,6 +3,7 @@ import { normalizeLocale } from "../../i18n/locale.ts";
 import { projectCatalogForLocale } from "../../i18n/publicListing.ts";
 import { getPublicPageMessages } from "../../i18n/publicRoutes.ts";
 import { isPublicLocaleRouteEnabled } from "../../i18n/release4.ts";
+import { isStrictSeoReleaseLocale } from "../../i18n/releaseStage3.ts";
 import { PUBLIC_STATIC_PAGE_CODES } from "../../i18n/staticPages.ts";
 import { RELEASE4_FLAGS, SITE_URL } from "../../lib/config.ts";
 import { isValidPublicCarSlug } from "../../lib/publicCar.ts";
@@ -46,14 +47,21 @@ export const GET: APIRoute = async ({ params }) => {
   const cars = projectCatalogForLocale(sourceListings, locale)
     .filter((car, index, list) => isValidPublicCarSlug(car.slug) && list.findIndex((candidate) => candidate.slug === car.slug) === index);
   const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
-  // Home, catalog, brand and model pages intentionally show the complete
-  // inventory (including source-text fallbacks), so they are noindex and must
-  // not enter the localized sitemap. Static translated pages and reviewed
-  // listing details remain indexable.
   const staticPaths = PUBLIC_STATIC_PAGE_CODES.map((page) => `/${page}/`);
+  const strictSeoRelease = isStrictSeoReleaseLocale(locale);
+  const brandPaths = [...new Set(cars.map((car) => car.brand).filter(Boolean))]
+    .map((brand) => `/cars/brand/${encodeURIComponent(brand)}/`);
+  const modelPaths = [...new Set(cars.map((car) => `${car.brand}\u0000${car.model}`).filter((value) => !value.endsWith("\u0000")))]
+    .map((value) => {
+      const [brand, model] = value.split("\u0000");
+      return `/cars/brand/${encodeURIComponent(brand)}/${encodeURIComponent(model)}/`;
+    });
+  const indexablePagePaths = strictSeoRelease
+    ? ["/", "/cars/", ...staticPaths, ...brandPaths, ...modelPaths]
+    : staticPaths;
 
   const urls = [
-    ...staticPaths.map((path) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod: null })),
+    ...indexablePagePaths.map((path) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod: null })),
     ...cars.map((car) => ({
       loc: new URL(`/${locale}/cars/${encodeURIComponent(car.slug)}/`, siteUrl).toString(),
       lastmod: toIsoDate(car.translation_updated_at || car.updated_at || car.created_at),

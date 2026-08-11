@@ -4,9 +4,10 @@ import LocalizedTaxonomyCatalog from "../../../../components/catalog/LocalizedTa
 import { normalizeLocale } from "../../../../i18n/locale";
 import { getPublicPageMessages, getRouteAlternates } from "../../../../i18n/publicRoutes";
 import { isPublicLocaleRouteEnabled } from "../../../../i18n/release4";
+import { isStrictSeoReleaseLocale } from "../../../../i18n/releaseStage3";
 import { RELEASE4_FLAGS } from "../../../../lib/config";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../lib/publicCache";
-import { getApprovedCars } from "../../../../lib/xano";
+import { getApprovedCars, getLocalizedApprovedCars } from "../../../../lib/xano";
 import { isPublicListing } from "../../../../lib/listingStatus";
 
 export const prerender = false;
@@ -21,7 +22,12 @@ if (!locale || !brand || brand.length > 80 || !isPublicLocaleRouteEnabled(locale
 }
 
 let listings: CarListing[] = [];
-try { listings = await getApprovedCars(locale, { requireConfigured: true }); }
+const strictSeoRelease = isStrictSeoReleaseLocale(locale);
+try {
+  listings = strictSeoRelease
+    ? await getLocalizedApprovedCars(locale)
+    : await getApprovedCars(locale, { requireConfigured: true });
+}
 catch {
   Astro.response.status = 503;
   setUnavailableHeaders(Astro.response.headers);
@@ -39,7 +45,7 @@ const canonicalPath = `/${locale}/cars/brand/${encodedBrand}/`;
 const title = `${brand} ${messages.vehicles}`;
 const description = `${messages.catalogDescription} ${brand}.`;
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
-setPublicCacheHeaders(Astro.response.headers, "catalog", true);
+setPublicCacheHeaders(Astro.response.headers, "catalog", !strictSeoRelease);
 ---
 
 <LocalizedTaxonomyCatalog
@@ -49,6 +55,6 @@ setPublicCacheHeaders(Astro.response.headers, "catalog", true);
   canonicalPath={canonicalPath}
   cars={cars}
   messages={messages}
-  noindex={true}
+  noindex={!strictSeoRelease}
   alternateLocales={getRouteAlternates(`/cars/brand/${encodedBrand}/`)}
 />

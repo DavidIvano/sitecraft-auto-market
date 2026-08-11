@@ -27,7 +27,7 @@ const schema = {
     itemListElement: cars.map((car, index) => ({
       "@type": "ListItem",
       position: index + 1,
-      url: new URL(`/cars/${car.slug}/?lang=${encodeURIComponent(locale)}`, Astro.site || Astro.url.origin).toString(),
+      url: new URL(`/${locale}/cars/${car.slug}/`, Astro.site || Astro.url.origin).toString(),
       name: car.title,
     })),
   },
@@ -48,7 +48,7 @@ const schema = {
     { label: title },
   ]}
   alternateLocales={alternateLocales}
-  xDefaultPath="/"
+  xDefaultPath={canonicalPath.replace(new RegExp(`^/${locale}`), "") || "/"}
 >
   <section class="section page-hero catalog-hero">
     <div class="container">

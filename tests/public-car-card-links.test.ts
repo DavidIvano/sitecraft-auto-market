@@ -18,7 +18,8 @@ test("public CarCard delegates to one compact safe renderer", () => {
 test("public card links preserve the selected page language", () => {
   const renderer = readProjectFile("src/lib/publicCarCard.ts");
 
-  assert.match(renderer, /safeSlugPath\(car\.slug, locale\)/);
+  assert.match(renderer, /const detailPath = safeSlugPath\(car\.slug, locale,/);
+  assert.match(renderer, /startsWith\("localized_"\)/);
   assert.match(renderer, /\?lang=\$\{encodeURIComponent\(locale\)\}/);
 });
 

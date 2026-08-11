@@ -4,10 +4,11 @@ import CarCard from "../../components/CarCard.astro";
 import { normalizeLocale } from "../../i18n/locale";
 import { getPublicPageMessages, getRouteAlternates } from "../../i18n/publicRoutes";
 import { isPublicLocaleRouteEnabled } from "../../i18n/release4";
+import { isStrictSeoReleaseLocale } from "../../i18n/releaseStage3";
 import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS } from "../../lib/config";
 import { isPublicListing } from "../../lib/listingStatus";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache";
-import { getApprovedCars } from "../../lib/xano";
+import { getApprovedCars, getLocalizedApprovedCars } from "../../lib/xano";
 import type { CarListing } from "../../lib/types";
 
 export const prerender = false;
@@ -21,8 +22,11 @@ if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
 
 const messages = getPublicPageMessages(locale);
 let cars: CarListing[] = [];
+const strictSeoRelease = isStrictSeoReleaseLocale(locale);
 try {
-  cars = (await getApprovedCars(locale, { requireConfigured: true })).filter(isPublicListing);
+  cars = strictSeoRelease
+    ? await getLocalizedApprovedCars(locale)
+    : (await getApprovedCars(locale, { requireConfigured: true })).filter(isPublicListing);
 } catch {
   Astro.response.status = 503;
   setUnavailableHeaders(Astro.response.headers);
@@ -30,7 +34,7 @@ try {
 }
 const canonicalPath = `/${locale}/`;
 const alternateLocales = getRouteAlternates("/");
-const pageNoindex = true;
+const pageNoindex = !strictSeoRelease;
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
 setPublicCacheHeaders(Astro.response.headers, "page", pageNoindex);
 

@@ -1,6 +1,8 @@
 import { getLocaleDefinition, publicLocaleDefinitions } from "./config.ts";
 import { hasUiDictionary } from "./messages.ts";
 import { hasPublicPageDictionary } from "./publicRoutes.ts";
+import { hasPublicStaticPageDictionary } from "./staticPages.ts";
+import { hasCompleteVehicleTaxonomy } from "../domain/vehicleTaxonomy.ts";
 
 export const RELEASE4_FLAG_NAMES = [
   "I18N_ENABLED",
@@ -44,6 +46,8 @@ export function isPublicLocaleRouteEnabled(locale: unknown, flags: Release4Flags
       && definition.isPublic
       && hasUiDictionary(definition.code)
       && hasPublicPageDictionary(definition.code)
+      && hasPublicStaticPageDictionary(definition.code)
+      && hasCompleteVehicleTaxonomy(definition.code)
       && flags.I18N_ENABLED
       && flags.I18N_API_READ_ENABLED
       && flags.I18N_PUBLIC_ROUTES_ENABLED

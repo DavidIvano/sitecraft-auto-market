@@ -39,7 +39,7 @@ const schema = { "@context": "https://schema.org", "@type": "WebPage", name: pag
   jsonLd={schema}
   breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: page.title }]}
   alternateLocales={getRouteAlternates(`/${pageCode}/`)}
-  xDefaultPath="/"
+  xDefaultPath={`/${pageCode}/`}
 >
   <section class="section page-hero">
     <div class="container"><p class="eyebrow">SiteCraft Auto Market</p><h1>{page.heading}</h1><p class="lead">{page.lead}</p></div>

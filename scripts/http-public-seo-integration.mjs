@@ -9,6 +9,7 @@ const readArg = (name, fallback) => {
 const baseUrl = new URL(readArg("--base-url", "http://127.0.0.1:4349"));
 const canonicalOrigin = new URL(readArg("--canonical-origin", DEFAULT_CANONICAL_ORIGIN));
 const requestedLocale = readArg("--locale", "de");
+const strictSeoRelease = requestedLocale === "en";
 const requireEdgeCache = args.includes("--require-edge-cache");
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -114,6 +115,13 @@ function assertInclusiveCatalogHtml(result, canonicalPath) {
   }
 }
 
+function assertStrictCatalogHtml(result, canonicalPath, type) {
+  assertIndexableHtml(result, canonicalPath, type);
+  const cards = result.body.match(/<article class="[^"]*public-car-card/g) || [];
+  assert.ok(cards.length > 1, `${canonicalPath} did not expose the complete translated catalog`);
+  assert.match(result.body, /data-favorite-card/);
+}
+
 await assertDeviceLocalePage("de-DE,de;q=0.9,en;q=0.8", "de");
 await assertDeviceLocalePage("ar-SA,ar;q=0.9", "ar");
 await assertDeviceLocalePage("hi-IN,hi;q=0.9", "en");
@@ -142,9 +150,21 @@ const vehiclePath = paths.find((path) => new RegExp(`^/${requestedLocale}/cars/[
 const homePath = `${localePrefix}/`;
 const catalogPath = `${localePrefix}/cars/`;
 const home = await request(homePath);
-assertInclusiveCatalogHtml(home, homePath);
+if (strictSeoRelease) assertStrictCatalogHtml(home, homePath, "WebPage");
+else assertInclusiveCatalogHtml(home, homePath);
 const catalog = await request(catalogPath);
-assertInclusiveCatalogHtml(catalog, catalogPath);
+if (strictSeoRelease) assertStrictCatalogHtml(catalog, catalogPath, "CollectionPage");
+else assertInclusiveCatalogHtml(catalog, catalogPath);
+
+if (strictSeoRelease) {
+  for (const result of [home, catalog]) {
+    assert.ok(result.body.includes('hreflang="en"'), `${result.url.pathname} has no English hreflang`);
+    assert.ok(result.body.includes('hreflang="de"'), `${result.url.pathname} has no reciprocal German hreflang`);
+    assert.ok(result.body.includes('hreflang="x-default"'), `${result.url.pathname} has no x-default hreflang`);
+  }
+  const reciprocalGermanHome = await request("/de/");
+  assert.ok(reciprocalGermanHome.body.includes('hreflang="en"'), "German home has no reciprocal English hreflang");
+}
 
 const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, homePath, catalogPath];
 
@@ -152,10 +172,10 @@ if (vehiclePath) {
   const vehicle = await request(vehiclePath);
   assertIndexableHtml(vehicle, vehiclePath, "Vehicle");
   assert.equal(vehicle.response.headers.get("x-sitecraft-query-count"), "1");
-  assert.match(stripTags(vehicle.body), /Audi 80 Baujahr 2026/i);
+  assert.ok(stripTags(vehicle.body).length > 100, "Vehicle page has no localized content");
   assert.ok(vehicle.body.includes(`hreflang="${requestedLocale}"`), "Vehicle page has no self hreflang");
   assert.ok(vehicle.body.includes('hreflang="x-default"'), "Vehicle page has no x-default hreflang");
-  assert.doesNotMatch(vehicle.body, /hreflang=["'](?:en|ru|uk|tr|ar|fr)["']/i);
+  if (!strictSeoRelease) assert.doesNotMatch(vehicle.body, /hreflang=["'](?:en|ru|uk|tr|ar|fr)["']/i);
   await assertLegacyInventoryPreserved(vehiclePath.replace(`/${requestedLocale}/`, "/"));
   checked.push(vehiclePath);
 }
@@ -172,7 +192,7 @@ console.log(JSON.stringify({
   baseUrl: baseUrl.origin,
   locale: requestedLocale,
   checked,
-  inventoryRoutesChecked: { inclusiveHome: true, inclusiveCatalog: true, vehicle: Boolean(vehiclePath) },
+  inventoryRoutesChecked: { inclusiveHome: !strictSeoRelease, inclusiveCatalog: !strictSeoRelease, strictSeoRelease, vehicle: Boolean(vehiclePath) },
   deviceLocalePagesChecked: ["de-DE", "ar-SA", "hi-IN"],
   edgeCacheChecked: requireEdgeCache,
   legacyInventoryPreserved: true,

@@ -30,7 +30,7 @@ const xanoWorkerSources = readdirSync(xanoWorkerDirectory)
   .map((name) => readFileSync(new URL(name, xanoWorkerDirectory), "utf8"));
 
 test("translation Xano endpoints are protected, bounded and use canonical source hashing", () => {
-  assert.equal(xanoWorkerSources.length, 8);
+  assert.equal(xanoWorkerSources.length, 9);
   for (const source of xanoWorkerSources) {
     assert.match(source, /X-Translation-Worker-Secret/);
     assert.match(source, /__TRANSLATION_WORKER_SECRET_RAW__/);

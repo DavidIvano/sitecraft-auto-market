@@ -160,3 +160,9 @@ export function getVehicleTaxonomyOptions(taxonomy: VehicleTaxonomyName, locale:
     label: getVehicleTaxonomyLabel(taxonomy, code, locale),
   }));
 }
+
+export function hasCompleteVehicleTaxonomy(locale: string) {
+  return (Object.keys(vehicleTaxonomyCodes) as VehicleTaxonomyName[]).every((taxonomy) => (
+    (vehicleTaxonomyCodes[taxonomy] as readonly string[]).every((code) => Boolean(vehicleTaxonomyLabels[taxonomy][code]?.[locale]))
+  ));
+}

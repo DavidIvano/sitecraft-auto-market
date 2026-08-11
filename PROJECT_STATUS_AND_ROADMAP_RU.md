@@ -107,10 +107,10 @@ flowchart LR
 - В frontend настроено 29 локалей.
 - Полностью вручную проверяемый UI-пакет сейчас есть для `de`, `ru`, `uk`, `en`, `ar`, `tr`, `fr`.
 - Остальные европейские локали присутствуют в selector/URL, но значительная часть UI использует английский fallback. Их нельзя называть полностью переведёнными.
-- Xano-данные сейчас поддерживают только шесть локалей: `de`, `ru`, `uk`, `en`, `ar`, `tr`.
+- Legacy Xano-данные поддерживают шесть локалей: `de`, `ru`, `uk`, `en`, `ar`, `tr`; strict SEO contract публично выпущен для `en`.
 - `GET /cars?lang=` отвечает 200 для этих шести языков и 400 для `fr`.
-- Strict Release 4 endpoint `/public/locale/cars?lang=de` существует, но 11 августа вернул пустой список; strict detail для legacy slug вернул 404. Значит strict data contract ещё `PARTIAL`.
-- Индексируемые locale-prefixed SEO-страницы сейчас полноценно выпущены только для немецкого `/de/`; `/fr/` пока 404.
+- Strict Release 4 endpoint для `en` 11 августа вернул 10/10 объявлений, strict detail — HTTP 200. Немецкая strict-волна остаётся неполной и не переведена в Stage 3.
+- Полный indexable Stage 3 комплект выпущен для `/en/`; немецкие маршруты сохраняют legacy-режим до завершения немецких данных, `/fr/` пока 404.
 
 Итог: язык оболочки определяется и переключается, но «29 полностью переведённых языков с переведёнными данными» ещё не готово.
 
@@ -131,13 +131,14 @@ flowchart LR
 
 ### Мультиязычные данные
 
-- Английские свободные тексты всех 10 публичных объявлений переведены, hash совпадают с текущими источниками, публичный каталог возвращает 10 из 10 completed translations.
+- Английский Stage 3 выпущен первым: полный UI и public/static словари, полная taxonomy, 10/10 актуальных переводов объявлений, strict catalog/detail, indexable sitemap, canonical, reciprocal `hreflang` и smoke-тест.
+- Xano release-gate `POST /translations/internal/locales/release` (ID `4011207`) сначала выполняет dry-run и включает `is_public` только при 100% готовности переводов публичного каталога.
 - Управляемый Cloudflare Worker выпущен с пакетами 1–2 задания, hard limit 3, идемпотентным claim/complete, dry-run и раздельными kill switches для manual и cron.
 - Для `fr`, `tr`, `ar` подготовлено по 10 pending jobs публичных объявлений. Provider для этих волн ещё не запускался.
 - В первом историческом batch остаются немецкое задание №6 и украинские №4/7; №1 относится к удалённому объявлению. Старые английские №2/5/8 закрыты как outdated и заменены актуальной завершённой волной.
 - Не завершён массовый перевод справочников и остальных языков ЕС.
 - Нет полного Xano data contract для `fr` и остальных европейских языков.
-- Нет locale-prefixed SEO routes, canonical/hreflang и sitemap для всех готовых локалей.
+- Для следующих языков ещё нет полного комплекта locale-prefixed SEO routes, canonical/hreflang и sitemap.
 
 ### Backend-продукты
 
@@ -166,10 +167,11 @@ flowchart LR
 
 ### Этап 3 — SEO локалей
 
-1. Сделать strict catalog/detail непустыми и стабильными.
-2. Выпускать locale-prefixed маршруты по одному проверенному языку.
-3. Для каждого языка одновременно добавить canonical, hreflang и sitemap.
-4. Не индексировать язык, пока его UI и данные используют массовый английский fallback.
+1. `DONE en`: strict catalog/detail возвращают 10/10 английских объявлений и не используют fallback.
+2. `DONE en`: `/en/`, `/en/cars/`, brand/model/detail и public static routes получили canonical и indexable sitemap.
+3. `DONE en`: карточки ведут на locale-prefixed detail, `x-default` указывает на эквивалентный legacy route, `de`/`en` имеют взаимные `hreflang` на общих страницах.
+4. `NEXT fr`: выполнить canary и малые translation batches, затем повторить тот же release-gate без преждевременного `isPublic=true`.
+5. `NEXT`: отдельно `tr`, затем `ar`, затем `ru` и `uk`; остальные языки ЕС выпускать пакетами из `src/i18n/releaseStage3.ts`.
 
 ### Этап 4 — server-backed функции
 

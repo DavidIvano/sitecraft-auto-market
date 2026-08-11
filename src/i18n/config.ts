@@ -21,7 +21,7 @@ export const LOCALE_COOKIE_NAME = "sitecraft-locale";
 
 const rawDefinitions: LocaleDefinition[] = [
   { code: "de", baseLanguage: "de", nativeName: "Deutsch", englishName: "German", direction: "ltr", isActive: true, isPublic: true, isDefault: true, sortOrder: 10 },
-  { code: "en", baseLanguage: "en", nativeName: "English", englishName: "English", direction: "ltr", fallbackLocale: "de", isActive: true, isPublic: false, isDefault: false, sortOrder: 20 },
+  { code: "en", baseLanguage: "en", nativeName: "English", englishName: "English", direction: "ltr", fallbackLocale: "de", isActive: true, isPublic: true, isDefault: false, sortOrder: 20 },
   { code: "ru", baseLanguage: "ru", nativeName: "Русский", englishName: "Russian", direction: "ltr", fallbackLocale: "de", isActive: true, isPublic: false, isDefault: false, sortOrder: 30 },
   { code: "uk", baseLanguage: "uk", nativeName: "Українська", englishName: "Ukrainian", direction: "ltr", fallbackLocale: "de", isActive: true, isPublic: false, isDefault: false, sortOrder: 40 },
   { code: "tr", baseLanguage: "tr", nativeName: "Türkçe", englishName: "Turkish", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 50 },

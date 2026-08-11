@@ -67,8 +67,41 @@ const de: PublicPageMessages = {
   locationMissing: "Ort nicht angegeben",
 };
 
+const en: PublicPageMessages = {
+  homeTitle: "Find and sell vehicles safely",
+  homeDescription: "All published vehicle listings on SiteCraft Auto Market with a complete English interface.",
+  homeHeading: "All published vehicles",
+  homeLead: "Browse the complete translated inventory with consistent vehicle data and no silent language fallback.",
+  browseCars: "Browse vehicles",
+  sellCar: "Sell a vehicle",
+  reliabilityEyebrow: "Reliable language resolution",
+  reliabilityHeading: "No silent language changes",
+  reliabilityText: "A localized vehicle page is published only when its English content is complete, current, and verified by the release gate.",
+  catalogTitle: "Vehicles",
+  catalogDescription: "All published vehicle listings with a complete English interface.",
+  catalogLead: "Every listing in this catalog has a current English title and description. Vehicle attributes use stable translated taxonomy values.",
+  results: "Results",
+  vehicles: "vehicles",
+  emptyTitle: "No listings are currently available",
+  emptyText: "Published vehicles will appear here after their English content passes the release checks.",
+  verifiedListing: "Verified listing",
+  vehicleData: "Vehicle data",
+  technicalDetails: "Technical details",
+  description: "Description",
+  aboutVehicle: "About this vehicle",
+  price: "Price",
+  mileage: "Mileage",
+  firstRegistration: "First registration",
+  fuel: "Fuel",
+  transmission: "Transmission",
+  bodyType: "Body type",
+  location: "Location",
+  updated: "Updated",
+  locationMissing: "Location not provided",
+};
+
 // A locale cannot become public until a complete dictionary is added here.
-const dictionaries: Partial<Record<string, PublicPageMessages>> = { de };
+const dictionaries: Partial<Record<string, PublicPageMessages>> = { de, en };
 
 export function hasPublicPageDictionary(locale: string) {
   return Object.hasOwn(dictionaries, locale);

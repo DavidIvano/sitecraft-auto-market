@@ -29,16 +29,19 @@ const formatPrice = (car: CarListing, locale: Locale) => {
   }
 };
 
-const safeSlugPath = (slug: unknown, locale: Locale) => {
+const safeSlugPath = (slug: unknown, locale: Locale, localizedRoute: boolean) => {
   const value = String(slug || "").trim();
-  return value ? `/cars/${encodeURIComponent(value)}/?lang=${encodeURIComponent(locale)}` : "";
+  if (!value) return "";
+  return localizedRoute
+    ? `/${encodeURIComponent(locale)}/cars/${encodeURIComponent(value)}/`
+    : `/cars/${encodeURIComponent(value)}/?lang=${encodeURIComponent(locale)}`;
 };
 
 export function renderPublicCarCardMarkup(car: CarListing, options: { priority?: boolean; source?: string; locale?: Locale } = {}) {
   const locale = options.locale || DEFAULT_LOCALE;
   const messages = getMessages(locale);
   const detailMessages = getDetailMessages(locale);
-  const detailPath = safeSlugPath(car.slug, locale);
+  const detailPath = safeSlugPath(car.slug, locale, String(options.source || "").startsWith("localized_"));
   const image = getCarCardImageUrl(car);
   const promotion = getHighestActivePromotion(car);
   const isHomepagePremium = promotion?.slug === "homepage_premium_7_days";

@@ -96,7 +96,7 @@ const readyLocales = car.available_locales.includes(locale) ? car.available_loca
     { label: seo.heading },
   ]}
   alternateLocales={getRouteAlternates(`/cars/${car.slug}/`, readyLocales)}
-  xDefaultPath="/"
+  xDefaultPath={`/cars/${car.slug}/`}
 >
   <section class="section car-detail-section">
     <div class="container detail-container">

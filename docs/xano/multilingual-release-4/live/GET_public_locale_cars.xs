@@ -119,7 +119,7 @@ query "public/locale/cars" verb=GET {
             }
           }
 
-          elseif (($car.translations_ready == true) && ($source_locale != "") && ($source_hash != "")) {
+          elseif (($source_locale != "") && ($source_hash != "")) {
             array.filter ($translation_rows) if (($this.car_listing_id == $car.id) && ($this.locale_code == $input.lang) && ($this.source_locale == $source_locale) && ($this.source_hash == $source_hash) && (($this.translation_status == "completed") || ($this.translation_status == "reviewed")) && (($this.title|first_notnull:""|trim) != "") && (($this.description|first_notnull:""|trim) != "")) as $matching_translations
 
             foreach ($matching_translations) {

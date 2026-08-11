@@ -54,7 +54,9 @@ try {
   }
   if (!ready) throw new Error(`Cloudflare runtime did not become ready.\n${runtimeLog}`);
 
-  const testProcess = spawn(process.execPath, ["scripts/http-public-seo-integration.mjs", "--base-url", baseUrl], {
+  const testArguments = ["scripts/http-public-seo-integration.mjs", "--base-url", baseUrl];
+  if (process.env.HTTP_TEST_LOCALE) testArguments.push("--locale", process.env.HTTP_TEST_LOCALE);
+  const testProcess = spawn(process.execPath, testArguments, {
     cwd: root,
     env: process.env,
     stdio: "inherit",

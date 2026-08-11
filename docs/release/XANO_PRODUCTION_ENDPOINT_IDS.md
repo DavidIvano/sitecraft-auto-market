@@ -12,5 +12,6 @@ Workspace `sitecraft.agency` (`115940`), live branch `v1`, API group `sitecraft-
 | 3997837 | GET | `/me/contact-profile` |
 | 3997838 | PATCH | `/me/contact-profile` |
 | 3997839 | POST | `/deal-finder/listings/{id}/translate-description` |
+| 4011207 | POST | `/translations/internal/locales/release` |
 
 The frontend uses route paths, not numeric endpoint IDs. IDs are recorded for Xano audit, rollback, and request-history lookup.

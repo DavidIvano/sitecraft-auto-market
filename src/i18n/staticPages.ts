@@ -50,7 +50,53 @@ const de: Record<PublicStaticPageCode, PublicStaticPage> = {
   },
 };
 
-const dictionaries: Partial<Record<string, Record<PublicStaticPageCode, PublicStaticPage>>> = { de };
+const en: Record<PublicStaticPageCode, PublicStaticPage> = {
+  sell: {
+    title: "Sell a vehicle",
+    description: "Create and publish your vehicle listing on SiteCraft Auto Market.",
+    heading: "Sell your vehicle safely",
+    lead: "Photos and vehicle data are saved as a draft and checked before publication.",
+    sections: [{ heading: "Create a listing", body: "Sign in, upload your photos, and review every detail before submitting the listing." }],
+  },
+  pricing: {
+    title: "Pricing",
+    description: "Pricing and optional services on SiteCraft Auto Market.",
+    heading: "Transparent services",
+    lead: "Draft creation and optional promotion are clearly explained before any paid action.",
+    sections: [{ heading: "No hidden costs", body: "The final price is shown before you confirm a paid service." }],
+  },
+  support: {
+    title: "Support",
+    description: "Help and contact information for SiteCraft Auto Market.",
+    heading: "How can we help?",
+    lead: "For questions about listings, accounts, or personal data, contact us by email.",
+    sections: [{ heading: "Contact", body: "Email ivanovdavid119@gmail.com and include the relevant URL or listing ID when possible." }],
+  },
+  privacy: {
+    title: "Privacy",
+    description: "Privacy information for SiteCraft Auto Market.",
+    heading: "Privacy",
+    lead: "We process only the data required for accounts, listings, and secure operation of the service.",
+    sections: [
+      { heading: "Data we process", body: "This includes account details, listing data, uploaded images, and technically necessary logs." },
+      { heading: "Your rights", body: "You may request access to, correction of, or deletion of your personal data." },
+    ],
+  },
+  impressum: {
+    title: "Legal notice",
+    description: "Provider information for SiteCraft Auto Market.",
+    heading: "Legal notice",
+    lead: "Information about the provider of this service.",
+    sections: [{ heading: "Contact", body: "SiteCraft Agency · Email: ivanovdavid119@gmail.com" }],
+  },
+};
+
+const dictionaries: Partial<Record<string, Record<PublicStaticPageCode, PublicStaticPage>>> = { de, en };
+
+export function hasPublicStaticPageDictionary(locale: string) {
+  return Object.hasOwn(dictionaries, locale)
+    && PUBLIC_STATIC_PAGE_CODES.every((page) => Boolean(dictionaries[locale]?.[page]));
+}
 
 export function isPublicStaticPageCode(value: unknown): value is PublicStaticPageCode {
   return typeof value === "string" && PUBLIC_STATIC_PAGE_CODES.includes(value as PublicStaticPageCode);
