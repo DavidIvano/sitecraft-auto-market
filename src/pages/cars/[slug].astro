@@ -68,6 +68,7 @@ if (!car || !isPublicListing(car)) {
 Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=86400");
 Astro.response.headers.set("X-Robots-Tag", "index, follow");
 const activePromotion = getActiveListingPromotion(car);
+const isPremiumDetail = activePromotion?.promotion_type === "premium";
 const translationMeta = car.translation_meta;
 const sourceLocale = translationMeta?.source_locale as Locale | undefined;
 const translationNotice = translationMeta && sourceLocale && sourceLocale !== locale
@@ -414,9 +415,23 @@ const siteMessages = getMessages(locale);
   ]}
   locale={locale}
 >
+  <div class:list={["vehicle-detail-page", isPremiumDetail && "vehicle-detail-page-premium"]} data-promotion={isPremiumDetail ? "premium" : undefined}>
+  {
+    isPremiumDetail && (
+      <div class="container car-detail-premium-intro">
+        <aside class="car-detail-premium-banner" aria-label={`${siteMessages.promotionPremium}: ${messages.promoted}`}>
+          <span class="car-detail-premium-identity">
+            <i data-lucide="crown" aria-hidden="true"></i>
+            <span><strong>{siteMessages.promotionPremium}</strong><small>{messages.promoted}</small></span>
+          </span>
+          <i class="car-detail-premium-gem" data-lucide="gem" aria-hidden="true"></i>
+        </aside>
+      </div>
+    )
+  }
   <section class="section car-detail-section">
     <div class="container detail-container">
-      <article class:list={["detail-grid", "car-detail-grid", isSold && "car-detail-sold"]}>
+      <article class:list={["detail-grid", "car-detail-grid", isSold && "car-detail-sold", isPremiumDetail && "car-detail-premium"]}>
         <div class="gallery car-slider" data-gallery>
           <div class="gallery-stage">
             {
@@ -474,7 +489,7 @@ const siteMessages = getMessages(locale);
           </div>
         </div>
         <div class="detail-panel compact-detail-panel">
-          {activePromotion?.promotion_type === "premium" && <div class="detail-promotion-disclosure"><span class="promotion-badge">Premium</span><span>{messages.promoted}</span></div>}
+          {isPremiumDetail && <div class="detail-promotion-disclosure"><span class="promotion-badge"><i data-lucide="crown" aria-hidden="true"></i>{siteMessages.promotionPremium}</span><span>{messages.promoted}</span></div>}
           <StatusBadge status={car.status} locale={locale} />
           {isSold && <span class="sold-detail-badge">{messages.sold}</span>}
           <h1 data-i18n-skip>{car.title}</h1>
@@ -666,6 +681,7 @@ const siteMessages = getMessages(locale);
       </section>
     )
   }
+  </div>
   <script
     is:inline
     type="application/json"

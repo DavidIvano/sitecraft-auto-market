@@ -91,3 +91,23 @@ test("public normalization preserves only the timestamps needed for promotion re
   }
   assert.doesNotMatch(publicEndpoint, /user_id\s*:|seller_email\s*:|seller_phone\s*:|vin\s*:/);
 });
+
+test("active homepage premium promotion decorates the complete vehicle page", () => {
+  const detail = readFileSync(new URL("../src/pages/cars/[slug].astro", import.meta.url), "utf8");
+  const css = readFileSync(new URL("../src/styles/promotions.css", import.meta.url), "utf8");
+  for (const marker of [
+    'const isPremiumDetail = activePromotion?.promotion_type === "premium"',
+    "vehicle-detail-page-premium",
+    "car-detail-premium-banner",
+    'data-lucide="crown"',
+    'data-lucide="gem"',
+  ]) assert.match(detail, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  for (const marker of [
+    "--premium-detail-gold",
+    "premium-detail-enter",
+    "premium-detail-sheen",
+    "detail-contact-jump",
+    "prefers-reduced-motion: reduce",
+  ]) assert.match(css, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.doesNotMatch(css, /animation:\s*[^;]*(infinite|linear infinite)/);
+});
