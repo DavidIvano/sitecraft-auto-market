@@ -20,14 +20,14 @@ test("Release 4 configures every official EU language plus existing additional l
   assert.equal(localeDefinitions.length, 29);
   assert.equal(DEFAULT_LOCALE, "de");
   assert.deepEqual(validateLocaleDefinitions(localeDefinitions), []);
-  assert.deepEqual(publicLocaleDefinitions.map((locale) => locale.code), ["de", "en"]);
+  assert.deepEqual(publicLocaleDefinitions.map((locale) => locale.code), ["de", "en", "fr"]);
 });
 
 test("public route rollout uses global gates plus registry and complete dictionaries", () => {
   assert.deepEqual(getRelease4ConfigErrors(readRelease4Flags({ I18N_PUBLIC_ROUTES_ENABLED: "true" })).length, 1);
   assert.equal(isPublicLocaleRouteEnabled("de", enabledFlags), true);
   assert.equal(isPublicLocaleRouteEnabled("en", enabledFlags), true);
-  assert.equal(isPublicLocaleRouteEnabled("fr", enabledFlags), false);
+  assert.equal(isPublicLocaleRouteEnabled("fr", enabledFlags), true);
   assert.equal(isPublicLocaleRouteEnabled("unknown", enabledFlags), false);
 });
 

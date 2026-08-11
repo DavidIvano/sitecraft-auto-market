@@ -9,7 +9,8 @@ const readArg = (name, fallback) => {
 const baseUrl = new URL(readArg("--base-url", "http://127.0.0.1:4349"));
 const canonicalOrigin = new URL(readArg("--canonical-origin", DEFAULT_CANONICAL_ORIGIN));
 const requestedLocale = readArg("--locale", "de");
-const strictSeoRelease = requestedLocale === "en";
+const strictSeoReleaseLocales = ["en", "fr"];
+const strictSeoRelease = strictSeoReleaseLocales.includes(requestedLocale);
 const requireEdgeCache = args.includes("--require-edge-cache");
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -48,7 +49,7 @@ async function assertDeviceLocalePage(acceptLanguage, expectedLocale) {
   assert.equal(response.headers.has("location"), false, `Device locale ${acceptLanguage} unexpectedly redirected`);
   assert.match(body, new RegExp(`<html[^>]+lang=["']${expectedLocale}["']`, "i"));
   assert.match(body, /data-locale-switcher/);
-  assert.match(body, /<option value="(?:de|en|ru|uk|ar|tr)"/);
+  assert.match(body, /<option value="(?:de|en|ru|uk|ar|tr|fr)"/);
 }
 
 async function assertLegacyInventoryPreserved(path) {
@@ -123,6 +124,7 @@ function assertStrictCatalogHtml(result, canonicalPath, type) {
 }
 
 await assertDeviceLocalePage("de-DE,de;q=0.9,en;q=0.8", "de");
+await assertDeviceLocalePage("fr-FR,fr;q=0.9,en;q=0.8", "fr");
 await assertDeviceLocalePage("ar-SA,ar;q=0.9", "ar");
 await assertDeviceLocalePage("hi-IN,hi;q=0.9", "en");
 await assertLegacyInventoryPreserved("/cars/");
@@ -158,12 +160,17 @@ else assertInclusiveCatalogHtml(catalog, catalogPath);
 
 if (strictSeoRelease) {
   for (const result of [home, catalog]) {
-    assert.ok(result.body.includes('hreflang="en"'), `${result.url.pathname} has no English hreflang`);
-    assert.ok(result.body.includes('hreflang="de"'), `${result.url.pathname} has no reciprocal German hreflang`);
+    for (const locale of ["de", ...strictSeoReleaseLocales]) {
+      assert.ok(result.body.includes(`hreflang="${locale}"`), `${result.url.pathname} has no ${locale} hreflang`);
+    }
     assert.ok(result.body.includes('hreflang="x-default"'), `${result.url.pathname} has no x-default hreflang`);
   }
   const reciprocalGermanHome = await request("/de/");
-  assert.ok(reciprocalGermanHome.body.includes('hreflang="en"'), "German home has no reciprocal English hreflang");
+  for (const locale of strictSeoReleaseLocales) {
+    assert.ok(reciprocalGermanHome.body.includes(`hreflang="${locale}"`), `German home has no reciprocal ${locale} hreflang`);
+  }
+  const reciprocalStrictHome = await request(`/${requestedLocale === "en" ? "fr" : "en"}/`);
+  assert.ok(reciprocalStrictHome.body.includes(`hreflang="${requestedLocale}"`), "Strict locale homes are not reciprocal");
 }
 
 const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, homePath, catalogPath];
@@ -180,7 +187,27 @@ if (vehiclePath) {
   checked.push(vehiclePath);
 }
 
-const unpublishedLocale = await request("/fr/", 404);
+if (strictSeoRelease) {
+  for (const path of paths.filter((candidate) => !checked.includes(candidate))) {
+    const result = await request(path);
+    const type = new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path)
+      ? "Vehicle"
+      : path === `/${requestedLocale}/` || /^\/(?:en|fr)\/(?:sell|pricing|support|privacy|impressum)\/$/.test(path)
+        ? "WebPage"
+        : "CollectionPage";
+    assertIndexableHtml(result, path, type);
+    assert.ok(result.body.includes(`hreflang="${requestedLocale}"`), `${path} has no self hreflang`);
+    for (const locale of strictSeoReleaseLocales) {
+      assert.ok(result.body.includes(`hreflang="${locale}"`), `${path} has no reciprocal ${locale} hreflang`);
+    }
+    assert.ok(result.body.includes('hreflang="x-default"'), `${path} has no x-default hreflang`);
+    checked.push(path);
+  }
+  assert.equal(paths.every((path) => checked.includes(path)), true, "Not every sitemap URL passed the HTML readiness smoke test");
+}
+
+const unpublishedLocaleCode = "tr";
+const unpublishedLocale = await request(`/${unpublishedLocaleCode}/`, 404);
 assert.match(unpublishedLocale.response.headers.get("x-robots-tag") || "", /noindex/i);
 assert.match(unpublishedLocale.response.headers.get("cache-control") || "", /no-store/i);
 checked.push(unpublishedLocale.url.pathname);
@@ -193,7 +220,7 @@ console.log(JSON.stringify({
   locale: requestedLocale,
   checked,
   inventoryRoutesChecked: { inclusiveHome: !strictSeoRelease, inclusiveCatalog: !strictSeoRelease, strictSeoRelease, vehicle: Boolean(vehiclePath) },
-  deviceLocalePagesChecked: ["de-DE", "ar-SA", "hi-IN"],
+  deviceLocalePagesChecked: ["de-DE", "fr-FR", "ar-SA", "hi-IN"],
   edgeCacheChecked: requireEdgeCache,
   legacyInventoryPreserved: true,
   requestAuthentication: "none",

@@ -91,7 +91,48 @@ const en: Record<PublicStaticPageCode, PublicStaticPage> = {
   },
 };
 
-const dictionaries: Partial<Record<string, Record<PublicStaticPageCode, PublicStaticPage>>> = { de, en };
+const fr: Record<PublicStaticPageCode, PublicStaticPage> = {
+  sell: {
+    title: "Vendre un véhicule",
+    description: "Créez et publiez votre annonce de véhicule sur SiteCraft Auto Market.",
+    heading: "Vendez votre véhicule en toute sécurité",
+    lead: "Les photos et les données du véhicule sont enregistrées comme brouillon et vérifiées avant publication.",
+    sections: [{ heading: "Créer une annonce", body: "Connectez-vous, ajoutez vos photos et vérifiez chaque information avant d’envoyer l’annonce." }],
+  },
+  pricing: {
+    title: "Tarifs",
+    description: "Tarifs et services optionnels de SiteCraft Auto Market.",
+    heading: "Des services transparents",
+    lead: "La création du brouillon et les options de promotion sont clairement expliquées avant toute action payante.",
+    sections: [{ heading: "Aucun coût caché", body: "Le prix final est affiché avant la confirmation d’un service payant." }],
+  },
+  support: {
+    title: "Assistance",
+    description: "Aide et coordonnées de SiteCraft Auto Market.",
+    heading: "Comment pouvons-nous vous aider ?",
+    lead: "Pour toute question concernant une annonce, un compte ou vos données, contactez-nous par e-mail.",
+    sections: [{ heading: "Contact", body: "Écrivez à ivanovdavid119@gmail.com et indiquez si possible l’URL ou l’identifiant de l’annonce." }],
+  },
+  privacy: {
+    title: "Confidentialité",
+    description: "Informations sur la confidentialité de SiteCraft Auto Market.",
+    heading: "Confidentialité",
+    lead: "Nous traitons uniquement les données nécessaires aux comptes, aux annonces et au fonctionnement sécurisé du service.",
+    sections: [
+      { heading: "Données traitées", body: "Cela comprend les informations du compte, les données des annonces, les images ajoutées et les journaux techniquement nécessaires." },
+      { heading: "Vos droits", body: "Vous pouvez demander l’accès, la rectification ou la suppression de vos données personnelles." },
+    ],
+  },
+  impressum: {
+    title: "Mentions légales",
+    description: "Informations sur l’éditeur de SiteCraft Auto Market.",
+    heading: "Mentions légales",
+    lead: "Informations concernant l’éditeur de ce service.",
+    sections: [{ heading: "Contact", body: "SiteCraft Agency · E-mail : ivanovdavid119@gmail.com" }],
+  },
+};
+
+const dictionaries: Partial<Record<string, Record<PublicStaticPageCode, PublicStaticPage>>> = { de, en, fr };
 
 export function hasPublicStaticPageDictionary(locale: string) {
   return Object.hasOwn(dictionaries, locale)

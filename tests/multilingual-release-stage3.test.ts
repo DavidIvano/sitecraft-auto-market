@@ -12,7 +12,7 @@ import { hasPublicStaticPageDictionary } from "../src/i18n/staticPages.ts";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");
 
-test("stage 3 release order is explicit and English static assets are complete", () => {
+test("stage 3 release order is explicit and released static assets are complete", () => {
   assert.deepEqual(STAGE3_PRIMARY_RELEASE_ORDER, ["en", "fr", "tr", "ar", "ru", "uk"]);
   assert.deepEqual(getStaticLocaleReleaseReadiness("en"), {
     configured: true,
@@ -24,6 +24,16 @@ test("stage 3 release order is explicit and English static assets are complete",
   assert.equal(hasPublicStaticPageDictionary("en"), true);
   assert.equal(hasCompleteVehicleTaxonomy("en"), true);
   assert.equal(isStrictSeoReleaseLocale("en"), true);
+  assert.deepEqual(getStaticLocaleReleaseReadiness("fr"), {
+    configured: true,
+    uiReady: true,
+    publicPagesReady: true,
+    staticPagesReady: true,
+    taxonomyReady: true,
+  });
+  assert.equal(hasPublicStaticPageDictionary("fr"), true);
+  assert.equal(hasCompleteVehicleTaxonomy("fr"), true);
+  assert.equal(isStrictSeoReleaseLocale("fr"), true);
   assert.equal(isStrictSeoReleaseLocale("de"), false);
 });
 

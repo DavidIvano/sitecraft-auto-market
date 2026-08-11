@@ -141,6 +141,83 @@ export const vehicleTaxonomyLabels: Record<VehicleTaxonomyName, TaxonomyLabels> 
   },
 };
 
+const frenchVehicleTaxonomyLabels: Record<VehicleTaxonomyName, Record<string, string>> = {
+  vehicle_type: {
+    passenger_car: "Voiture particulière",
+    electric_car: "Voiture électrique",
+    commercial_vehicle: "Véhicule utilitaire",
+    motorcycle: "Moto",
+    truck: "Camion",
+    trailer: "Remorque",
+  },
+  body_type: {
+    sedan: "Berline",
+    wagon: "Break",
+    hatchback: "Voiture à hayon",
+    coupe: "Coupé",
+    convertible: "Cabriolet",
+    suv: "SUV",
+    crossover: "Crossover",
+    minivan: "Monospace",
+    van: "Fourgon",
+    pickup: "Pick-up",
+    limousine: "Limousine",
+  },
+  fuel_type: {
+    petrol: "Essence",
+    diesel: "Diesel",
+    lpg: "GPL",
+    hybrid: "Hybride",
+    plugin_hybrid: "Hybride rechargeable",
+    electric: "Électrique",
+    hydrogen: "Hydrogène",
+  },
+  transmission: {
+    manual: "Boîte manuelle",
+    automatic: "Boîte automatique",
+    automated_manual: "Boîte robotisée",
+    cvt: "CVT",
+  },
+  drivetrain: {
+    front_wheel_drive: "Traction avant",
+    rear_wheel_drive: "Propulsion arrière",
+    all_wheel_drive: "Transmission intégrale",
+  },
+  color: {
+    white: "Blanc",
+    black: "Noir",
+    gray: "Gris",
+    silver: "Argent",
+    blue: "Bleu",
+    red: "Rouge",
+    green: "Vert",
+    brown: "Marron",
+    beige: "Beige",
+    yellow: "Jaune",
+    orange: "Orange",
+    purple: "Violet",
+    gold: "Or",
+    other: "Autre",
+  },
+  vehicle_condition: {
+    new: "Neuf",
+    used: "Occasion",
+    accident_damaged: "Accidenté",
+    needs_repair: "À réparer",
+    not_running: "Non roulant",
+  },
+  seller_type: {
+    private: "Particulier",
+    dealer: "Professionnel",
+  },
+};
+
+for (const taxonomy of Object.keys(frenchVehicleTaxonomyLabels) as VehicleTaxonomyName[]) {
+  for (const [code, label] of Object.entries(frenchVehicleTaxonomyLabels[taxonomy])) {
+    vehicleTaxonomyLabels[taxonomy][code]!.fr = label;
+  }
+}
+
 export function isVehicleTaxonomyCode(taxonomy: VehicleTaxonomyName, value: unknown): value is VehicleTaxonomyCode {
   return (vehicleTaxonomyCodes[taxonomy] as readonly string[]).includes(String(value ?? ""));
 }

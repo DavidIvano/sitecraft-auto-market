@@ -100,8 +100,41 @@ const en: PublicPageMessages = {
   locationMissing: "Location not provided",
 };
 
+const fr: PublicPageMessages = {
+  homeTitle: "Trouvez et vendez des véhicules en toute sécurité",
+  homeDescription: "Toutes les annonces de véhicules publiées sur SiteCraft Auto Market avec une interface entièrement en français.",
+  homeHeading: "Tous les véhicules publiés",
+  homeLead: "Parcourez l’ensemble du catalogue traduit avec des données cohérentes, sans changement silencieux de langue.",
+  browseCars: "Voir les véhicules",
+  sellCar: "Vendre un véhicule",
+  reliabilityEyebrow: "Résolution linguistique fiable",
+  reliabilityHeading: "Aucun changement de langue silencieux",
+  reliabilityText: "Une page de véhicule localisée est publiée uniquement lorsque son contenu français est complet, à jour et validé par le contrôle de publication.",
+  catalogTitle: "Véhicules",
+  catalogDescription: "Toutes les annonces de véhicules publiées avec une interface entièrement en français.",
+  catalogLead: "Chaque annonce de ce catalogue possède un titre et une description en français à jour. Les caractéristiques utilisent des valeurs de taxonomie traduites et stables.",
+  results: "Résultats",
+  vehicles: "véhicules",
+  emptyTitle: "Aucune annonce n’est disponible actuellement",
+  emptyText: "Les véhicules publiés apparaîtront ici après validation de leur contenu français.",
+  verifiedListing: "Annonce vérifiée",
+  vehicleData: "Données du véhicule",
+  technicalDetails: "Caractéristiques techniques",
+  description: "Description",
+  aboutVehicle: "À propos de ce véhicule",
+  price: "Prix",
+  mileage: "Kilométrage",
+  firstRegistration: "Première immatriculation",
+  fuel: "Carburant",
+  transmission: "Boîte de vitesses",
+  bodyType: "Carrosserie",
+  location: "Localisation",
+  updated: "Mis à jour",
+  locationMissing: "Localisation non indiquée",
+};
+
 // A locale cannot become public until a complete dictionary is added here.
-const dictionaries: Partial<Record<string, PublicPageMessages>> = { de, en };
+const dictionaries: Partial<Record<string, PublicPageMessages>> = { de, en, fr };
 
 export function hasPublicPageDictionary(locale: string) {
   return Object.hasOwn(dictionaries, locale);

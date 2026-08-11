@@ -37,7 +37,7 @@ const rawDefinitions: LocaleDefinition[] = [
   { code: "nl", baseLanguage: "nl", nativeName: "Nederlands", englishName: "Dutch", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 140 },
   { code: "et", baseLanguage: "et", nativeName: "Eesti", englishName: "Estonian", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 150 },
   { code: "fi", baseLanguage: "fi", nativeName: "Suomi", englishName: "Finnish", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 160 },
-  { code: "fr", baseLanguage: "fr", nativeName: "Français", englishName: "French", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 170 },
+  { code: "fr", baseLanguage: "fr", nativeName: "Français", englishName: "French", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: true, isDefault: false, sortOrder: 170 },
   { code: "el", baseLanguage: "el", nativeName: "Ελληνικά", englishName: "Greek", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 180 },
   { code: "hu", baseLanguage: "hu", nativeName: "Magyar", englishName: "Hungarian", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 190 },
   { code: "ga", baseLanguage: "ga", nativeName: "Gaeilge", englishName: "Irish", direction: "ltr", fallbackLocale: "en", isActive: true, isPublic: false, isDefault: false, sortOrder: 200 },
