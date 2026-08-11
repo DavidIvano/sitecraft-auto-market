@@ -17,35 +17,21 @@ const getDealerFit = (slug: string) => {
   if (slug.includes("pro")) return "Для дилеров, которые регулярно публикуют новые автомобили.";
   return "Для небольших продавцов, которым нужен аккуратный старт.";
 };
-const pricingSchema = {
-  "@context": "https://schema.org",
-  "@type": "Product",
-  name: "SiteCraft Auto Market paid listing tools",
-  description: "Платные функции для продвижения автомобильных объявлений и дилерских профилей.",
-  offers: paidProducts.map((product) => ({
-    "@type": "Offer",
-    name: product.name,
-    price: (product.price_cents / 100).toFixed(2),
-    priceCurrency: product.currency,
-    availability: "https://schema.org/InStock",
-  })),
-};
 ---
 
 <BaseLayout
   variant="public"
   title="Тарифы"
-  description="Платные функции SiteCraft Auto Market: поднятие объявлений, выделение, премиум на главной, AI-кредиты и дилерские пакеты."
+  description="Предварительный каталог будущих платных функций SiteCraft Auto Market. Онлайн-покупка пока не запущена."
   canonicalPath="/pricing"
-  jsonLd={pricingSchema}
 >
   <section class="section page-hero">
     <div class="container pricing-hero">
       <p class="eyebrow">Монетизация без рекламы</p>
       <h1>Продвигайте автомобили внутри SiteCraft Auto Market</h1>
       <p class="lead">
-        Выберите платную опцию для конкретного объявления или подключите дилерский пакет. Секретные платежные ключи
-        хранятся только в Xano, а сайт получает только безопасные статусы покупок.
+        Это предварительный каталог будущих опций. Онлайн-покупка и дилерские подписки пока не подключены,
+        поэтому недоступные действия скрыты. Рабочее продвижение за внутренние кредиты запускается из кабинета объявления.
       </p>
     </div>
   </section>
@@ -65,7 +51,7 @@ const pricingSchema = {
               <p class="pricing-fit">{getPrivateFit(product.slug)}</p>
             </div>
             <strong>{formatPaidPrice(product)}</strong>
-            <a class="button button-dark" href={`/dashboard/billing?product=${product.slug}`}>Купить</a>
+            <p class="form-message">Покупка пока недоступна</p>
           </article>
         ))}
       </div>
@@ -91,7 +77,7 @@ const pricingSchema = {
               </ul>
             </div>
             <strong>{formatPaidPrice(product)} / мес.</strong>
-            <a class="button button-dark" href={`/dashboard/dealer?plan=${product.slug}`}>Выбрать</a>
+            <p class="form-message">Подключение пока недоступно</p>
           </article>
         ))}
       </div>

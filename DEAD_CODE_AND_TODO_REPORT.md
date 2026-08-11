@@ -1,5 +1,7 @@
 # SiteCraft Auto Market: Dead Code and TODO Report
 
+> Исторический аудит от 23 июля 2026 года. Legacy-файл `src/pages/dashboard/cars/[id]/promote.astro` удалён 11 августа 2026 года; redirect Pages Function и каноническое продвижение за кредиты сохранены.
+
 Audit date: 2026-07-23. This report identifies cleanup candidates only; no product code was removed or changed.
 
 ## Confirmed Unreferenced Components

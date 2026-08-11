@@ -1,145 +1,47 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout
   variant="workspace"
-  title="Профиль дилера"
-  description="Профиль автодилера SiteCraft Auto Market"
+  title="Профиль дилера — прототип"
+  description="Предварительный интерфейс профиля автодилера SiteCraft Auto Market"
   noindex
 >
   <section class="section page-hero">
     <div class="container">
-      <p class="eyebrow">Кабинет дилера</p>
+      <p class="eyebrow">UI-прототип</p>
       <h1>Профиль дилера</h1>
-      <p class="lead">Заполните данные компании, чтобы покупатели быстрее понимали, кто продаёт автомобиль.</p>
+      <p class="lead">
+        Серверный профиль дилера и подписки ещё не реализованы. Страница оставлена только как макет будущей функции;
+        она не загружает и не сохраняет данные.
+      </p>
     </div>
   </section>
 
   <section class="section">
-    <div class="container dealer-dashboard" data-api-url={xanoApiUrl}>
-      <form class="form-card dealer-profile-form" id="dealer-profile-form">
-        <div class="form-grid">
-          <label>
-            Название компании
-            <input name="company_name" type="text" autocomplete="organization" />
-          </label>
-          <label>
-            Логотип URL
-            <input name="logo_url" type="url" placeholder="https://..." />
-          </label>
-          <label>
-            Сайт
-            <input name="website_url" type="url" placeholder="https://..." />
-          </label>
-          <label>
-            Телефон
-            <input name="phone" type="tel" autocomplete="tel" />
-          </label>
-          <label>
-            WhatsApp
-            <input name="whatsapp" type="tel" />
-          </label>
-          <label>
-            Город
-            <input name="city" type="text" autocomplete="address-level2" />
-          </label>
-        </div>
-        <label>
-          Описание
-          <textarea name="description" rows="5" placeholder="Коротко о компании, специализации и условиях продажи"></textarea>
-        </label>
-        <button class="button button-dark" type="submit">Сохранить профиль</button>
-        <p class="form-message" id="dealer-profile-message">Проверяю доступ...</p>
-      </form>
+    <div class="container dealer-dashboard">
+      <div class="form-card dealer-profile-form" aria-disabled="true">
+        <fieldset disabled>
+          <legend>Предварительный состав профиля</legend>
+          <div class="form-grid">
+            <label>Название компании<input type="text" /></label>
+            <label>Логотип URL<input type="url" placeholder="https://..." /></label>
+            <label>Сайт<input type="url" placeholder="https://..." /></label>
+            <label>Телефон<input type="tel" /></label>
+            <label>WhatsApp<input type="tel" /></label>
+            <label>Город<input type="text" /></label>
+          </div>
+          <label>Описание<textarea rows="5"></textarea></label>
+        </fieldset>
+        <p class="form-message">Сохранение станет доступно после выпуска Xano endpoints профиля дилера.</p>
+      </div>
 
       <aside class="dealer-plan-card">
-        <p class="eyebrow">Dealer plan</p>
-        <h2 id="dealer-plan-title">Пакет не подключён</h2>
-        <p id="dealer-plan-note">Подключите тариф, чтобы получить лимиты объявлений, AI-кредиты и бейдж дилера.</p>
-        <a class="button button-light" href="/pricing">Подключить Dealer Plan</a>
+        <p class="eyebrow">UI-прототип</p>
+        <h2>Dealer Plan не подключён</h2>
+        <p>Покупка тарифа и выдача прав дилера появятся только после реализации оплаты и server-side entitlement.</p>
       </aside>
     </div>
   </section>
-
-  <script>
-    import { getAuthToken, redirectToLogin } from "../../lib/authClient";
-    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
-
-    const token = getAuthToken();
-    const page = document.querySelector(".dealer-dashboard");
-    const form = document.querySelector("#dealer-profile-form");
-    const message = document.querySelector("#dealer-profile-message");
-    const planTitle = document.querySelector("#dealer-plan-title");
-    const planNote = document.querySelector("#dealer-plan-note");
-    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
-
-    const setFormValues = (profile: Record<string, unknown>) => {
-      if (!(form instanceof HTMLFormElement)) return;
-
-      ["company_name", "logo_url", "website_url", "phone", "whatsapp", "city", "description"].forEach((name) => {
-        const field = form.elements.namedItem(name);
-        if (field instanceof HTMLInputElement || field instanceof HTMLTextAreaElement) {
-          field.value = String(profile[name] || "");
-        }
-      });
-    };
-
-    const loadProfile = async () => {
-      if (!token) {
-        redirectToLogin("/dashboard/dealer");
-        return;
-      }
-
-      try {
-        const response = await fetch(`${apiUrl}/dealer-profile`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (!response.ok) {
-          if (message) message.textContent = "Профиль можно будет загрузить после добавления Xano endpoint /dealer-profile.";
-          return;
-        }
-
-        const profile = await response.json();
-        setFormValues(profile);
-        if (planTitle) planTitle.textContent = profile.dealer_plan ? `Пакет: ${profile.dealer_plan}` : "Пакет не подключён";
-        if (planNote) planNote.textContent = profile.plan_expires_at ? `Активен до ${profile.plan_expires_at}` : "Можно подключить пакет на странице тарифов.";
-        if (message) message.textContent = "Профиль загружен.";
-      } catch {
-        if (message) message.textContent = "Профиль можно заполнить и сохранить после настройки Xano.";
-      }
-    };
-
-    form?.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      if (!(form instanceof HTMLFormElement) || !token) return;
-
-      const payload = Object.fromEntries(new FormData(form).entries());
-
-      try {
-        const response = await fetch(`${apiUrl}/dealer-profile/update`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(data.message || data.code || "Не удалось сохранить профиль");
-        }
-
-        if (message) message.textContent = "Профиль дилера сохранён.";
-      } catch (error) {
-        if (message) message.textContent = getFriendlyErrorMessage(error, "Не удалось сохранить профиль дилера.");
-      }
-    });
-
-    loadProfile();
-  </script>
 </BaseLayout>

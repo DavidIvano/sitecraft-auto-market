@@ -180,10 +180,8 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     const actionLabels: Record<string, string> = {
       approve: "Одобрить",
       reject: "Отклонить",
-      archive: "В архив",
       block: "Заблокировать",
       delete: "Удалить",
-      restore: "Вернуть",
       sold: "Продано",
     };
 
@@ -532,7 +530,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     };
 
     const getActions = (car: AdminCar) => {
-      const candidates: ModerationAction[] = ["approve", "reject", "archive", "block", "delete", "sold"];
+      const candidates: ModerationAction[] = ["approve", "reject", "block", "delete", "sold"];
       return candidates.filter((action) => canRunModerationAction(car, action));
     };
 
@@ -648,10 +646,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                 <section class="admin-image-editor" aria-label="Изображения объявления ${escapeHtml(title)}">
                   <div class="admin-image-editor-head">
                     <strong>Изображения${images.length ? ` · ${images.length}` : ""}</strong>
-                    <label class="button button-light button-small">
-                      Добавить фото
-                      <input class="admin-image-input" type="file" accept="image/avif,image/webp,image/jpeg,image/png" multiple data-add-images-for="${escapeHtml(car.id)}" hidden />
-                    </label>
+                    <span class="form-message">Только просмотр</span>
                   </div>
                   <div class="admin-image-grid" role="list">
                     ${
@@ -666,14 +661,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
                                   </button>
                                   <div class="admin-image-actions">
                                     <span>${item.isMain || index === 0 ? "Главное" : `Фото ${index + 1}`}</span>
-                                    <div>
-                                      ${
-                                        item.id
-                                          ? `<button type="button" data-image-action="main" data-id="${escapeHtml(car.id)}" data-image-id="${escapeHtml(item.id)}">Главным</button>
-                                             <button type="button" data-image-action="delete" data-id="${escapeHtml(car.id)}" data-image-id="${escapeHtml(item.id)}">Удалить</button>`
-                                          : `<span>Нет ID фото</span>`
-                                      }
-                                    </div>
                                   </div>
                                 </article>
                               `,
@@ -975,92 +962,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       message.textContent = "Требуется ручная проверка модератором.";
     };
 
-    const runImageAction = async (action: string, carId: string, imageId: string) => {
-      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement)) {
-        return;
-      }
-
-      const apiUrl = board.dataset.apiUrl;
-
-      if (!apiUrl) {
-        return;
-      }
-
-      if (action === "delete" && !window.confirm("Удалить это фото из объявления?")) {
-        return;
-      }
-
-      try {
-        message.textContent = action === "delete" ? "Удаляю фото..." : "Обновляю главное фото...";
-        const endpoint = action === "delete" ? "delete" : "main";
-        const response = await fetch(`${apiUrl}/admin/cars/${carId}/images/${imageId}/${endpoint}`, {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        await loadCars();
-      } catch (error) {
-        console.error(error);
-        message.textContent = "Не удалось обновить фото. Проверьте Xano endpoint.";
-      }
-    };
-
-    const addImagesToCar = async (carId: string, files: File[]) => {
-      if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement) || files.length === 0) {
-        return;
-      }
-
-      const apiUrl = board.dataset.apiUrl;
-
-      if (!apiUrl) {
-        return;
-      }
-
-      try {
-        const { uploadListingImages } = await import("../../lib/listingImageUpload");
-        const imageFiles = files.filter((file) => file.type.startsWith("image/")).slice(0, 8);
-
-        if (imageFiles.length === 0) {
-          message.textContent = "Выберите изображения.";
-          return;
-        }
-
-        message.textContent = "Сжимаю и загружаю фото...";
-        const uploadedImages = await uploadListingImages(imageFiles, {
-          onProgress: (progressMessage) => {
-            message.textContent = progressMessage;
-          },
-        });
-
-        message.textContent = "Добавляю фото в Xano...";
-        const response = await fetch(`${apiUrl}/admin/cars/${carId}/images`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${adminToken}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            r2_images: uploadedImages,
-          }),
-        });
-
-        if (!response.ok) {
-          throw new Error(await response.text());
-        }
-
-        await loadCars();
-      } catch (error) {
-        console.error(error);
-        message.textContent = "Не удалось добавить фото. Проверьте Xano endpoint для изображений.";
-      }
-    };
-
     search?.addEventListener("input", renderList);
     status?.addEventListener("change", () => {
       const selected = status instanceof HTMLSelectElement ? normalizeQueueFilter(status.value) : "all";
@@ -1083,7 +984,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
 
     list?.addEventListener("click", async (event) => {
       const target = event.target;
-      const imageButton = target instanceof HTMLElement ? target.closest("button[data-image-action]") : null;
       const aiCheckButton = target instanceof HTMLElement ? target.closest("button[data-ai-moderation-check]") : null;
       const aiReasonButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-generate]") : null;
       const aiCopyButton = target instanceof HTMLElement ? target.closest("button[data-ai-rejection-copy]") : null;
@@ -1131,21 +1031,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return;
       }
 
-      if (imageButton instanceof HTMLButtonElement) {
-        const carId = imageButton.dataset.id;
-        const imageId = imageButton.dataset.imageId;
-        const action = imageButton.dataset.imageAction;
-
-        if (!carId || !imageId || !action) {
-          return;
-        }
-
-        imageButton.disabled = true;
-        await runImageAction(action, carId, imageId);
-        imageButton.disabled = false;
-        return;
-      }
-
       if (!(button instanceof HTMLButtonElement)) {
         return;
       }
@@ -1160,23 +1045,6 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       button.disabled = true;
       await runAction(action, id);
       button.disabled = false;
-    });
-
-    list?.addEventListener("change", async (event) => {
-      const input = event.target instanceof HTMLElement ? event.target.closest("input[data-add-images-for]") : null;
-
-      if (!(input instanceof HTMLInputElement)) {
-        return;
-      }
-
-      const carId = input.dataset.addImagesFor;
-
-      if (!carId) {
-        return;
-      }
-
-      await addImagesToCar(carId, Array.from(input.files || []));
-      input.value = "";
     });
 
     requireAdminAccess().then((hasAccess) => {

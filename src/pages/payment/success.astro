@@ -1,72 +1,18 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
 <BaseLayout title="Оплата успешна" description="Оплата успешно создана" variant="public" noindex>
   <section class="section page-hero">
-    <div class="container payment-result" data-api-url={xanoApiUrl}>
+    <div class="container payment-result">
       <p class="eyebrow">Оплата</p>
-      <h1>Оплата успешно создана</h1>
+      <h1>Платёжный сценарий ещё не запущен</h1>
       <p class="lead" id="payment-success-message">
-        Если услуга относится к объявлению, её можно применить прямо сейчас.
+        Эта техническая страница сохранена для будущей интеграции. Покупка и применение услуги сейчас недоступны.
       </p>
       <div class="payment-actions">
-        <button class="button button-dark" id="apply-purchase-button" type="button">Применить к объявлению</button>
         <a class="button button-light" href="/dashboard/billing">Вернуться в кабинет оплат</a>
       </div>
     </div>
   </section>
-
-  <script>
-    import { getAuthToken, redirectToLogin } from "../../lib/authClient";
-    import { API_ROUTES } from "../../lib/apiRoutes";
-    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
-
-    const token = getAuthToken();
-    const root = document.querySelector(".payment-result");
-    const message = document.querySelector("#payment-success-message");
-    const button = document.querySelector("#apply-purchase-button");
-    const apiUrl = root instanceof HTMLElement ? root.dataset.apiUrl : "";
-    const params = new URLSearchParams(window.location.search);
-    const purchaseId = params.get("purchase_id");
-    const carId = params.get("car_id");
-
-    if (!purchaseId || !carId) {
-      if (button instanceof HTMLButtonElement) button.hidden = true;
-    }
-
-    button?.addEventListener("click", async () => {
-      if (!(button instanceof HTMLButtonElement)) return;
-      if (!token) {
-        redirectToLogin(window.location.pathname + window.location.search);
-        return;
-      }
-
-      button.disabled = true;
-
-      try {
-        const response = await fetch(`${apiUrl}${API_ROUTES.purchaseApply}`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ purchase_id: Number(purchaseId), car_id: Number(carId) }),
-        });
-        const data = await response.json().catch(() => ({}));
-
-        if (!response.ok) {
-          throw new Error(data.message || data.code || "Не удалось применить услугу");
-        }
-
-        if (message) message.textContent = "Услуга применена. Объявление обновит позицию после следующей загрузки каталога.";
-      } catch (error) {
-        if (message) message.textContent = getFriendlyErrorMessage(error, "Не удалось применить услугу.");
-      } finally {
-        button.disabled = false;
-      }
-    });
-  </script>
 </BaseLayout>

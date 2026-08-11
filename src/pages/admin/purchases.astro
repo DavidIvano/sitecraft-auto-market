@@ -1,83 +1,18 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
-
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Покупки" description="Админка покупок" variant="workspace" noindex>
+<BaseLayout title="Покупки — прототип" description="Будущий интерфейс администрирования покупок" variant="workspace" noindex>
   <section class="section page-hero">
-    <div class="container admin-page" data-api-url={xanoApiUrl}>
-      <p class="eyebrow">Admin</p>
+    <div class="container">
+      <p class="eyebrow">Admin · UI-прототип</p>
       <h1>Покупки</h1>
-      <p class="lead">История оплат, статусы платежей и ручные проверки.</p>
+      <p class="lead">Backend `/admin/purchases` и платёжная система ещё не выпущены. Страница не выполняет сетевые запросы.</p>
     </div>
   </section>
-
   <section class="section">
     <div class="container">
-      <label class="compact-filter">
-        Статус
-        <select id="purchase-status-filter">
-          <option value="all">Все</option>
-          <option value="pending">Pending</option>
-          <option value="active">Active</option>
-          <option value="failed">Failed</option>
-          <option value="refunded">Refunded</option>
-        </select>
-      </label>
-      <div class="admin-table" id="purchases-table">
-        <p class="form-message">Загружаю покупки...</p>
-      </div>
+      <p class="form-message">Просмотр и управление покупками скрыты до появления платёжного backend.</p>
     </div>
   </section>
-
-  <script>
-    import { getAuthToken } from "../../lib/authClient";
-
-    const token = getAuthToken();
-    const page = document.querySelector(".admin-page");
-    const table = document.querySelector("#purchases-table");
-    const filter = document.querySelector("#purchase-status-filter");
-    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
-
-    const escapeHtml = (value: unknown) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    const loadPurchases = async () => {
-      if (!token || !(table instanceof HTMLElement)) return;
-      const status = filter instanceof HTMLSelectElement ? filter.value : "all";
-      const response = await fetch(`${apiUrl}/admin/purchases?status=${encodeURIComponent(status)}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (!response.ok) {
-        table.innerHTML = '<p class="form-message">Добавьте Xano endpoint /admin/purchases для просмотра покупок.</p>';
-        return;
-      }
-
-      const purchases = await response.json();
-      table.innerHTML = Array.isArray(purchases) && purchases.length
-        ? purchases
-            .map(
-              (purchase) => `
-                <div class="admin-table-row">
-                  <strong>#${escapeHtml(purchase.id)}</strong>
-                  <span>${escapeHtml(purchase.product_slug || purchase.product?.slug || "product")}</span>
-                  <span>${escapeHtml(purchase.status)}</span>
-                  <span>${Number(purchase.amount_cents || 0) / 100} ${escapeHtml(purchase.currency || "EUR")}</span>
-                </div>
-              `,
-            )
-            .join("")
-        : '<p class="form-message">Покупок пока нет.</p>';
-    };
-
-    filter?.addEventListener("change", loadPurchases);
-    loadPurchases();
-  </script>
 </BaseLayout>

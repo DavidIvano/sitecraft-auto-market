@@ -1,77 +1,29 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { formatPaidPrice, paidProducts } from "../../lib/monetization";
-
-const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 ---
 
-<BaseLayout title="Платные продукты" description="Админка платных продуктов" variant="workspace" noindex>
+<BaseLayout title="Платные продукты — прототип" description="Локальный каталог будущих платных продуктов" variant="workspace" noindex>
   <section class="section page-hero">
-    <div class="container admin-page" data-api-url={xanoApiUrl}>
-      <p class="eyebrow">Admin</p>
+    <div class="container">
+      <p class="eyebrow">Admin · UI-прототип</p>
       <h1>Платные продукты</h1>
-      <p class="lead">Цены, активность и порядок тарифов управляются в Xano.</p>
+      <p class="lead">Это read-only макет из frontend-конфигурации. Xano CRUD и платёжный backend ещё не выпущены.</p>
     </div>
   </section>
-
   <section class="section">
     <div class="container">
-      <div class="admin-table" id="paid-products-table">
+      <div class="admin-table">
         {paidProducts.map((product) => (
           <div class="admin-table-row">
             <strong>{product.name}</strong>
             <span>{product.slug}</span>
             <span>{formatPaidPrice(product)}</span>
-            <span>{product.is_active ? "Активен" : "Выключен"}</span>
+            <span>Прототип</span>
           </div>
         ))}
       </div>
-      <p class="form-message" id="paid-products-message">Загружаю продукты из Xano...</p>
+      <p class="form-message">Редактирование продуктов скрыто до появления защищённого Xano-контракта.</p>
     </div>
   </section>
-
-  <script>
-    import { getAuthToken } from "../../lib/authClient";
-
-    const token = getAuthToken();
-    const page = document.querySelector(".admin-page");
-    const table = document.querySelector("#paid-products-table");
-    const message = document.querySelector("#paid-products-message");
-    const apiUrl = page instanceof HTMLElement ? page.dataset.apiUrl : "";
-
-    const escapeHtml = (value: unknown) =>
-      String(value ?? "")
-        .replaceAll("&", "&amp;")
-        .replaceAll("<", "&lt;")
-        .replaceAll(">", "&gt;")
-        .replaceAll('"', "&quot;")
-        .replaceAll("'", "&#039;");
-
-    if (token && table instanceof HTMLElement) {
-      fetch(`${apiUrl}/admin/paid-products`, { headers: { Authorization: `Bearer ${token}` } })
-        .then((response) => (response.ok ? response.json() : null))
-        .then((products) => {
-          if (!Array.isArray(products)) {
-            if (message) message.textContent = "Показываю локальные тарифы. Добавьте Xano endpoint /admin/paid-products для управления.";
-            return;
-          }
-
-          table.innerHTML = products
-            .map(
-              (product) => `
-                <div class="admin-table-row">
-                  <strong>${escapeHtml(product.name)}</strong>
-                  <span>${escapeHtml(product.slug)}</span>
-                  <span>${Number(product.price_cents || 0) / 100} ${escapeHtml(product.currency || "EUR")}</span>
-                  <button class="button button-light" type="button" data-product-id="${escapeHtml(product.id)}" data-active="${product.is_active ? "0" : "1"}">
-                    ${product.is_active ? "Выключить" : "Включить"}
-                  </button>
-                </div>
-              `,
-            )
-            .join("");
-          if (message) message.textContent = `Загружено продуктов: ${products.length}.`;
-        });
-    }
-  </script>
 </BaseLayout>

@@ -1,5 +1,7 @@
 # SiteCraft Auto Market: API Endpoint Audit
 
+> Исторический аудит от 23 июля 2026 года. Актуальные статусы, включая выпущенный translate-description и strict multilingual ограничения, находятся в `docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md` (11 августа 2026 года).
+
 Audit date: 2026-07-23; Security updates: 2026-07-25. Xano API group: `sitecraft-auto-market` (421515), canonical prefix `api:jAAj839u`. Registration/credits stop-risk endpoints and the ten admin/AI endpoints listed in `ADMIN_SECURITY_AND_TEST_CREDITS_REMEDIATION.md` are now published. Endpoint IDs are included so findings can be located without relying on route-name searches.
 
 ## Summary
