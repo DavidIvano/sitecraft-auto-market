@@ -737,6 +737,65 @@
     box-shadow: var(--shadow-card);
   }
 
+  .app-shell-workspace .promotion-credit-summary {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: clamp(18px, 3vw, 34px);
+    margin-bottom: 18px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-panel);
+    background:
+      radial-gradient(circle at 96% 0%, var(--accent-soft), transparent 18rem),
+      var(--surface-solid);
+    padding: clamp(20px, 3vw, 30px);
+    box-shadow: var(--shadow-card);
+  }
+
+  .app-shell-workspace .promotion-credit-summary > div:first-child { min-width: 0; }
+  .app-shell-workspace .promotion-credit-summary :where(h2, p) { margin-bottom: 0; }
+  .app-shell-workspace .promotion-credit-summary > div:first-child > p:last-child {
+    max-width: 64ch;
+    margin-top: 10px;
+    color: var(--text-secondary);
+  }
+
+  .app-shell-workspace .promotion-credit-summary > div:last-child {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 12px;
+  }
+
+  .app-shell-workspace #promotion-credit-balance {
+    display: inline-flex;
+    min-height: var(--control-md);
+    align-items: center;
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--border-default));
+    border-radius: var(--radius-control);
+    background: var(--accent-soft);
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-size: clamp(0.95rem, 1.6vw, 1.08rem);
+    font-weight: 760;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+  }
+
+  .app-shell-workspace .promotion-credit-summary > div:last-child > a {
+    display: inline-flex;
+    min-height: var(--control-md);
+    align-items: center;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-control);
+    background: var(--surface-muted);
+    padding: 10px 14px;
+    color: var(--text-primary);
+    font-weight: 720;
+    text-decoration: none;
+  }
+
   .app-shell-workspace .dashboard-listing-media {
     width: 100%;
     max-height: 210px;
@@ -998,6 +1057,14 @@
     .app-shell-workspace .dashboard-listing-media { max-height: none; }
     .app-shell-workspace .dashboard-listing-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .app-shell-workspace .dashboard-listing-primary { grid-column: 1 / -1; }
+
+    .app-shell-workspace .promotion-credit-summary { grid-template-columns: minmax(0, 1fr); }
+    .app-shell-workspace .promotion-credit-summary > div:last-child {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      justify-content: stretch;
+    }
+    .app-shell-workspace .promotion-credit-summary > div:last-child > :where(output, a) { width: 100%; justify-content: center; }
 
     .form-section { padding: 18px; }
     .form-grid { grid-template-columns: minmax(0, 1fr); }
