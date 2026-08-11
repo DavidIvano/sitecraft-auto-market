@@ -24,6 +24,7 @@ import "../styles/components/states.css";
 import "../styles/components/dashboard.css";
 import "../styles/promotions.css";
 import "../styles/workspace-overrides.css";
+import "../styles/premium-system.css";
 
 type LayoutVariant = "public" | "workspace" | "legal" | "auth";
 
@@ -373,7 +374,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
           locale={pageLocale}
           alternateLocales={pageAlternates.map(({ locale, path, label }) => ({ locale, path, label }))}
         />
-        <main class="mac-main">
+        <main class="mac-main" id="main-content">
           {
             pageBreadcrumbs.length > 0 && (
               <nav class="breadcrumbs" aria-label={messages.breadcrumbs}>
