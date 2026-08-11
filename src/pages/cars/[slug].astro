@@ -15,7 +15,7 @@ import { API_ROUTES } from "../../lib/apiRoutes";
 import type { CarListing } from "../../lib/types";
 import { isPublicListing } from "../../lib/listingStatus";
 import { isValidPublicCarSlug } from "../../lib/publicCar";
-import { getActiveListingPromotion } from "../../lib/promotions/model";
+import { getActiveListingPromotion, parseApiDate } from "../../lib/promotions/model";
 import { buildVehicleSeo } from "../../lib/seo/vehicleSeo";
 import { shouldShowPublicViewCount } from "../../lib/listingViews";
 import { getDetailMessages } from "../../i18n/detailMessages";
@@ -69,6 +69,11 @@ Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, st
 Astro.response.headers.set("X-Robots-Tag", "index, follow");
 const activePromotion = getActiveListingPromotion(car);
 const isPremiumDetail = activePromotion?.promotion_type === "premium";
+const premiumPromotionEndsAt = isPremiumDetail ? parseApiDate(activePromotion.ends_at)?.getTime() || 0 : 0;
+if (premiumPromotionEndsAt > Date.now()) {
+  const premiumCacheSeconds = Math.max(1, Math.min(300, Math.floor((premiumPromotionEndsAt - Date.now()) / 1000)));
+  Astro.response.headers.set("Cache-Control", `public, max-age=0, s-maxage=${premiumCacheSeconds}, must-revalidate`);
+}
 const translationMeta = car.translation_meta;
 const sourceLocale = translationMeta?.source_locale as Locale | undefined;
 const translationNotice = translationMeta && sourceLocale && sourceLocale !== locale

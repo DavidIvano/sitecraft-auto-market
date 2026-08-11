@@ -101,6 +101,8 @@ test("active homepage premium promotion decorates the complete vehicle page", ()
     "car-detail-premium-banner",
     'data-lucide="crown"',
     'data-lucide="gem"',
+    "premiumPromotionEndsAt",
+    "must-revalidate",
   ]) assert.match(detail, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   for (const marker of [
     "--premium-detail-gold",
