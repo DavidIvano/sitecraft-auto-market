@@ -38,10 +38,10 @@ API group: `sitecraft-auto-market` (`421515`)
 | 3966699 | GET | `/cars/{slug}` | WORKING | 11.08.2026: реальное объявление вернуло HTTP 200. |
 | 3985671 | GET | `/cars/{slug}/seller-listings` | WORKING | 11.08.2026: HTTP 200. |
 | 3999920 | GET | `/cars/{slug}/related` | WORKING | 11.08.2026: HTTP 200. |
-| 4005564 | GET | `/locales` | WORKING | Возвращает шесть Xano-языков: `de,en,ru,uk,ar,tr`. |
+| 4005564 | GET | `/locales` | WORKING | Публично возвращает шесть готовых Xano-языков: `de,en,ru,uk,ar,tr`; `fr` создана в registry, но ещё не опубликована. |
 | 4005565 | GET | `/taxonomies` | WORKING | 11.08.2026: HTTP 200. |
-| UNKNOWN | GET | `/public/locale/cars?lang=de` | PARTIAL | HTTP 200, но список пуст; strict Release 4 ещё нельзя считать готовым каталогом. |
-| UNKNOWN | GET | `/public/locale/cars/{slug}?lang=de` | PARTIAL | Контракт записан в Release 4, но для slug из legacy-каталога получен 404. |
+| 4009274 | GET | `/public/locale/cars?lang=de` | PARTIAL | HTTP 200, но список пуст; strict Release 4 ещё нельзя считать готовым каталогом. |
+| 4009273 | GET | `/public/locale/cars/{slug}?lang=de` | PARTIAL | Контракт записан в Release 4, но для slug из legacy-каталога получен 404. |
 | 3981281 | POST | `/analytics/listing-view` | WORKING | Публичная аналитика просмотра; повторно не вызывалась, чтобы не менять счётчики. |
 | 3981451 | POST | `/ai/search/intent` | PARTIAL | Работает, но не закрыты rate limit и бюджет провайдера. |
 | 3981320 | POST | `/saved-searches` | WORKING | Создание сохранённого поиска с авторизацией. |
@@ -94,6 +94,21 @@ API group: `sitecraft-auto-market` (`421515`)
 | 3975107 | PATCH | `/admin/cars/{id}/sold` | WORKING |
 | 3968561 | PATCH | `/admin/cars/{id}/assign-owner` | WORKING |
 | 4003322 | GET | `/admin/listings/{id}/translations` | WORKING |
+
+### Управляемая очередь переводов
+
+Все маршруты ниже закрыты отдельным Worker secret, не принимают OpenAI key от браузера и выпущены 11 августа 2026 года.
+
+| ID | Метод | Путь | Статус | Назначение |
+| ---: | --- | --- | --- | --- |
+| 4011152 | POST | `/translations/internal/prepare` | WORKING | Идемпотентная подготовка source hash, original row и заданий одной локали. |
+| 4011153 | POST | `/translations/internal/jobs/pending` | WORKING | Не более трёх pending/queued/failed jobs. |
+| 4011154 | POST | `/translations/internal/jobs/{id}/claim` | WORKING | Атомарный claim; stale и непубличные задания закрываются без provider. |
+| 4011155 | POST | `/translations/internal/jobs/{id}/translate` | WORKING | Server-side OpenAI Responses API со strict JSON schema. |
+| 4011156 | POST | `/translations/internal/jobs/{id}/complete` | WORKING | Идемпотентный upsert перевода и завершение job. |
+| 4011157 | POST | `/translations/internal/jobs/{id}/fail` | WORKING | Безопасный error code и возврат job в retryable failed. |
+| 4011158 | POST | `/translations/internal/sources/{id}` | WORKING | Read-only сверка канонического и сохранённого source hash. |
+| 4011167 | POST | `/translations/internal/locales/prepare` | WORKING | Идемпотентная подготовка registry для `fr/tr/ar`; локаль не публикуется автоматически. |
 
 ## Deal Finder: Worker API
 

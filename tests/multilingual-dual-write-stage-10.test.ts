@@ -30,6 +30,8 @@ for (const [name, source] of [
     // be the 64-character hexadecimal representation, never raw binary bytes.
     assert.match(source, /json_encode\|sha256:false/);
     assert.doesNotMatch(source, /json_encode\|sha256:true/);
+    assert.match(source, /"\/\\\\r\\\\n\?\/"\|regex_replace:"\\n":/);
+    assert.doesNotMatch(source, /\$[\w.()|:"]+\|regex_replace:"\\\\r\\\\n\?":"\\n"/);
     assert.match(source, /schema_version\s*:\s*"listing-i18n-v1"/);
     assert.match(source, /if \(\(\$car\.translation_source_hash\|first_notnull:""\) != \$translation_source_hash\)/);
     assert.match(source, /translation_source_hash/);

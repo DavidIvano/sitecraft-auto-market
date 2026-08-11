@@ -1,0 +1,54 @@
+{
+  "snapshot_at": "2026-08-11",
+  "workspace_id": 115940,
+  "branch": "v1",
+  "purpose": "Rollback reference before installing the managed translation queue Worker endpoints and preparing English jobs.",
+  "public_listings": [
+    { "id": 21, "slug": "mazda-mazda3-2011-1782764887", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 47, "slug": "bmw-7-series-2012-1783382162", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 57, "slug": "audi-a3-1998-1783696859", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 58, "slug": "volkswagen-sharan-2000-1783800337", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 69, "slug": "mercedes-benz-a-170-2008-49", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 88, "slug": "mercedes-benz-a-class-2008-56", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 91, "slug": "renault-megane-2014-69", "source_locale": null, "translation_source_hash": null, "translations_ready": null },
+    { "id": 94, "slug": "bmw-520-2004-73", "source_locale": "ru", "translation_source_hash": "191678ec98f27344e45c1ebd5b254fec307e657aed709b54fa025d2bc61c6649", "translations_ready": false },
+    { "id": 95, "slug": "mercedes-benz-vito-2006-74", "source_locale": "ru", "translation_source_hash": "cbc8983bf23721e881716955deb2e2525a0b99425e4accce27fc3f3e4b4e64e2", "translations_ready": false },
+    { "id": 103, "slug": "volkswagen-polo-2006-83", "source_locale": null, "translation_source_hash": null, "translations_ready": null }
+  ],
+  "translation_rows": [
+    { "id": 1, "listing_id": 96, "locale": "de", "status": "completed", "source_hash": "42d7b7348b0f6cd567f0c6f4a9bbe8c6e44cfc9bf93c903e33f1620e7f1b5e8d" },
+    { "id": 2, "listing_id": 95, "locale": "de", "status": "completed", "source_hash": "cbc8983bf23721e881716955deb2e2525a0b99425e4accce27fc3f3e4b4e64e2" },
+    { "id": 3, "listing_id": 104, "locale": "ru", "status": "original", "source_hash": "3625ea08d7cdd777cc341df8fad42599a1484443657b00cdc6852f54e59f593d" },
+    { "id": 4, "listing_id": 105, "locale": "ru", "status": "original", "source_hash": "3625ea08d7cdd777cc341df8fad42599a1484443657b00cdc6852f54e59f593d" }
+  ],
+  "first_batch_jobs": [
+    { "id": 1, "listing_id": 96, "locale": "uk", "status": "queued", "attempts": 0 },
+    { "id": 2, "listing_id": 96, "locale": "en", "status": "queued", "attempts": 0 },
+    { "id": 3, "listing_id": 95, "locale": "de", "status": "completed", "attempts": 1 },
+    { "id": 4, "listing_id": 95, "locale": "uk", "status": "queued", "attempts": 0 },
+    { "id": 5, "listing_id": 95, "locale": "en", "status": "queued", "attempts": 0 },
+    { "id": 6, "listing_id": 94, "locale": "de", "status": "queued", "attempts": 0 },
+    { "id": 7, "listing_id": 94, "locale": "uk", "status": "queued", "attempts": 0 },
+    { "id": 8, "listing_id": 94, "locale": "en", "status": "queued", "attempts": 0 }
+  ],
+  "other_jobs": {
+    "count": 12,
+    "ids": [9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20],
+    "note": "Jobs belong to non-public listings 104 and 105 and must not be sent to the translation provider."
+  },
+  "locales": [
+    { "code": "de", "active": true, "public": true },
+    { "code": "en", "active": true, "public": false },
+    { "code": "ru", "active": true, "public": false },
+    { "code": "uk", "active": true, "public": false },
+    { "code": "zh-Hans", "active": true, "public": false },
+    { "code": "ar", "active": true, "public": false },
+    { "code": "tr", "active": true, "public": false }
+  ],
+  "observations": [
+    "There are 10 approved public listings.",
+    "Eight legacy public listings have no source locale or source hash yet.",
+    "English has two relevant queued jobs for listings 94 and 95; job 2 targets deleted listing 96 and is obsolete.",
+    "French is not present in the Xano locale registry yet."
+  ]
+}

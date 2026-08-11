@@ -156,8 +156,8 @@ query "dashboard/listings/{id}" verb=PATCH {
 
     var $translation_source_document {
       value = {
-        title          : $input.title|regex_replace:"\\r\\n?":"\n"|trim
-        description    : ($input.description|first_notnull:"")|regex_replace:"\\r\\n?":"\n"|trim
+        title          : ("/\\r\\n?/"|regex_replace:"\n":$input.title)|trim
+        description    : ("/\\r\\n?/"|regex_replace:"\n":($input.description|first_notnull:""))|trim
         seo_title      : null
         seo_description: null
         image_alt_texts: null

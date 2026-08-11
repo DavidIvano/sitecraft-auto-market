@@ -1508,8 +1508,8 @@ query "listings/submit-moderation" verb=POST {
 
     var $translation_source_document {
       value = {
-        title          : $title|regex_replace:"\\r\\n?":"\n"|trim
-        description    : $description|regex_replace:"\\r\\n?":"\n"|trim
+        title          : ("/\\r\\n?/"|regex_replace:"\n":$title)|trim
+        description    : ("/\\r\\n?/"|regex_replace:"\n":$description)|trim
         seo_title      : null
         seo_description: null
         image_alt_texts: null

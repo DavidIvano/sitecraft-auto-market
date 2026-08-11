@@ -1,0 +1,16 @@
+name = "sitecraft-translation-queue"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[vars]
+XANO_API_BASE_URL = "https://x8ki-letl-twmt.n7.xano.io/api:jAAj839u"
+TRANSLATION_QUEUE_ENABLED = "false"
+TRANSLATION_QUEUE_DRY_RUN = "true"
+TRANSLATION_QUEUE_SCHEDULED_ENABLED = "false"
+TRANSLATION_TARGET_LOCALE = "en"
+TRANSLATION_ALLOWED_LOCALES = "en,fr,tr,ar"
+TRANSLATION_MAX_JOBS_PER_RUN = "2"
+TRANSLATION_HTTP_TIMEOUT_MS = "65000"
