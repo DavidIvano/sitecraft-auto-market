@@ -41,7 +41,6 @@
     line-height: 1;
     text-transform: uppercase;
     pointer-events: none;
-    backdrop-filter: blur(10px);
   }
   .public-car-card .car-card-premium-banner::after {
     position: absolute;

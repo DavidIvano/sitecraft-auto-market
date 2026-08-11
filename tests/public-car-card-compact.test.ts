@@ -50,10 +50,15 @@ test("homepage premium section is rendered before all regular cars", () => {
 
 test("premium card modifier uses the shared card and gold visual language", () => {
   const css = readProjectFile("src/styles/promotions.css");
+  const systemCss = readProjectFile("src/styles/premium-system.css");
   for (const marker of ["#e9b949", "#ffd978", "car-card-premium-banner", "car-card-premium-marker", "--premium-gold"]) {
     assert.match(css, new RegExp(marker));
   }
   assert.doesNotMatch(css, /#9a72e8|#8058d6/);
+  assert.match(systemCss, /\.public-car-card:is\(\.car-card-premium, \.is-homepage-premium\) \.car-card-premium-marker[\s\S]*?bottom:\s*auto/);
+  assert.match(systemCss, /\.public-car-card \{[\s\S]*?animation:\s*none/);
+  assert.match(systemCss, /\.mac-main > :where\(\.detail-properties-section, \.detail-description-section\) \{[\s\S]*?content-visibility:\s*auto/);
+  assert.doesNotMatch(systemCss, /\.mac-main > :where\([^)]*\.homepage-promotions[^)]*\) \{[\s\S]*?content-visibility:\s*auto/);
 });
 
 test("card client keeps native navigation and Xano-backed favourite targets", () => {
