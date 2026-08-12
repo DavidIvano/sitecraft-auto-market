@@ -56,6 +56,9 @@ test("premium card modifier uses the shared card and gold visual language", () =
   }
   assert.doesNotMatch(css, /#9a72e8|#8058d6/);
   assert.match(systemCss, /\.public-car-card:is\(\.car-card-premium, \.is-homepage-premium\) \.car-card-premium-marker[\s\S]*?bottom:\s*auto/);
+  assert.match(systemCss, /\.public-car-card \.car-card-premium-banner \{[\s\S]*?left:\s*12px[\s\S]*?border-radius:\s*var\(--radius-pill\)/);
+  assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-premium-marker \{\s*display:\s*none/);
+  assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-price-row \{[\s\S]*?flex-direction:\s*row[\s\S]*?justify-content:\s*space-between/);
   assert.match(systemCss, /\.public-car-card \{[\s\S]*?animation:\s*none/);
   assert.match(systemCss, /\.mac-main > :where\(\.detail-properties-section, \.detail-description-section\) \{[\s\S]*?content-visibility:\s*auto/);
   assert.doesNotMatch(systemCss, /\.mac-main > :where\([^)]*\.homepage-promotions[^)]*\) \{[\s\S]*?content-visibility:\s*auto/);
