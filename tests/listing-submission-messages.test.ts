@@ -41,7 +41,10 @@ test("manual submission replaces a closed restored draft and focuses concrete fi
   assert.match(source, /resetClosedManualDraft\(payload\)[\s\S]*?ensureManualDraft\(payload, uploadedImages, false\)/);
   assert.match(source, /manualSubmissionId = crypto\.randomUUID\(\)/);
   assert.match(source, /payload\.delete\("draft_id"\)/);
-  assert.match(source, /requestAnimationFrame[\s\S]*?focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /scrollIntoView\(\{ behavior: "auto", block: "center" \}\)[\s\S]*?focus\(\{ preventScroll: true \}\)/);
+  assert.match(source, /clearResolvedManualFieldError\(event\.target\)/);
+  assert.match(source, /container\.querySelectorAll<HTMLElement>\("\[data-manual-field-error\]"\)[\s\S]*?node\.remove\(\)/);
+  assert.match(source, /container\.classList\.remove\("has-field-error"\)/);
   assert.match(source, /container\.classList\.add\("has-field-error"\)/);
   assert.doesNotMatch(source, /if \(!validateQuizStep\(index\)\) \{\s*updateQuizStep\(index\)/);
   assert.match(source, /if \(form\?\.querySelector\("\.is-invalid"\)\) return;[\s\S]*?setMessage\(getStepTitle/);

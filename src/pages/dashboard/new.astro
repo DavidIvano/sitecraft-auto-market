@@ -2864,13 +2864,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           window.clearTimeout(localDraftTimer);
           localDraftTimer = window.setTimeout(saveLocalDraft, 250);
         };
-        form?.addEventListener("input", () => {
+        form?.addEventListener("input", (event) => {
           queueLocalDraft();
           updateRequiredFieldState(form);
+          clearResolvedManualFieldError(event.target);
         });
-        form?.addEventListener("change", () => {
+        form?.addEventListener("change", (event) => {
           queueLocalDraft();
           updateRequiredFieldState(form);
+          clearResolvedManualFieldError(event.target);
         });
         aiDraftForm?.addEventListener("input", () => updateRequiredFieldState(aiDraftForm));
         aiDraftForm?.addEventListener("change", () => updateRequiredFieldState(aiDraftForm));
@@ -4043,6 +4045,50 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           });
         }
 
+        function clearResolvedManualFieldError(target: EventTarget | null) {
+          if (!(form instanceof HTMLFormElement)
+            || !(target instanceof HTMLInputElement || target instanceof HTMLSelectElement || target instanceof HTMLTextAreaElement)) {
+            return;
+          }
+
+          const control = target as RequiredListingControl;
+          if ((control.required && !isRequiredControlComplete(control)) || !control.validity.valid) return;
+
+          const container = getRequiredFieldContainer(control) || control.closest<HTMLElement>(".international-phone-field");
+          if (!(container instanceof HTMLElement)) return;
+
+          const errorIds = new Set(
+            Array.from(container.querySelectorAll<HTMLElement>("[data-manual-field-error]"))
+              .map((node) => node.id)
+              .filter(Boolean),
+          );
+          container.querySelectorAll<HTMLElement>("[data-manual-field-error]").forEach((node) => node.remove());
+          container.querySelectorAll<HTMLElement>(".is-invalid").forEach((invalidControl) => {
+            invalidControl.classList.remove("is-invalid");
+            invalidControl.removeAttribute("aria-invalid");
+            const describedBy = String(invalidControl.getAttribute("aria-describedby") || "")
+              .split(/\s+/)
+              .filter((id) => id && !errorIds.has(id));
+            if (describedBy.length) invalidControl.setAttribute("aria-describedby", describedBy.join(" "));
+            else invalidControl.removeAttribute("aria-describedby");
+          });
+          container.classList.remove("has-field-error");
+
+          const remainingIssues = Array.from(form.querySelectorAll<HTMLElement>("[data-manual-field-error]"))
+            .map((node) => String(node.textContent || "").trim())
+            .filter(Boolean);
+          const visibleContactIssue = Array.from(form.querySelectorAll<HTMLElement>("[data-manual-contact-error]"))
+            .some((node) => !node.hidden && Boolean(String(node.textContent || "").trim()));
+
+          if (remainingIssues.length) {
+            setMessage(buildListingSubmissionFailureMessage(summarizeListingIssues(
+              remainingIssues.map((issue) => ({ field: "", message: issue })),
+            )), "error");
+          } else if (!visibleContactIssue) {
+            setMessage(getStepTitle(activeQuizStep));
+          }
+        }
+
         function showManualFieldErrors(issues: ListingFieldIssue[], options: { saved?: boolean } = {}) {
           clearManualFieldErrors();
           if (!(form instanceof HTMLFormElement) || issues.length === 0) return;
@@ -4081,10 +4127,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const firstControl = targetControls[0];
           if (firstControl) {
             const focusContainer = firstControl.closest<HTMLElement>("label, fieldset, .photo-uploader") || firstControl;
-            requestAnimationFrame(() => {
-              focusContainer.scrollIntoView({ behavior: "smooth", block: "center" });
-              firstControl.focus({ preventScroll: true });
-            });
+            focusContainer.scrollIntoView({ behavior: "auto", block: "center" });
+            firstControl.focus({ preventScroll: true });
+            window.setTimeout(() => firstControl.focus({ preventScroll: true }), 0);
           }
         }
 
