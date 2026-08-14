@@ -85,7 +85,7 @@ test("Lucide registry and dashboard addition actions use SVG icons", async () =>
   const layout = await read("../src/layouts/BaseLayout.astro");
   const dashboard = await read("../src/pages/dashboard/index.astro");
   const listings = await read("../src/pages/dashboard/listings.astro");
-  for (const name of ["Eye", "Heart", "Plus", "CarFront", "MoreHorizontal", "Pencil", "Trash2"]) {
+  for (const name of ["Eye", "Heart", "Plus", "CarFront", "MoreHorizontal", "Pencil", "Trash2", "Languages"]) {
     assert.match(icons, new RegExp(`\\b${name}\\b`));
   }
   assert.match(layout, /installAppIcons\(document\)/);
