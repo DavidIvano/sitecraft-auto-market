@@ -1751,6 +1751,33 @@ export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Partial<Record<
     "en": "Such a record already exists. Check your details or log in to your existing account.",
     "uk": "Такий запис уже існує. Перевірте дані або увійдіть до наявного облікового запису."
   },
+  "Повторный запрос уже был обработан. Данные объявления сохранены — повторите действие.": {
+    "ru": "Повторный запрос уже был обработан. Данные объявления сохранены — повторите действие.",
+    "de": "Die wiederholte Anfrage wurde bereits verarbeitet. Die Anzeigendaten bleiben erhalten – wiederholen Sie die Aktion.",
+    "en": "The repeated request was already processed. Your listing data is preserved — try the action again.",
+    "uk": "Повторний запит уже оброблено. Дані оголошення збережено — повторіть дію.",
+    "fr": "La requête répétée a déjà été traitée. Les données de l’annonce sont conservées — réessayez.",
+    "tr": "Tekrarlanan istek zaten işlendi. İlan verileriniz korundu — işlemi yeniden deneyin.",
+    "ar": "تمت معالجة الطلب المكرر بالفعل. بيانات الإعلان محفوظة — أعد المحاولة."
+  },
+  "Предыдущий черновик уже использован. Автоматически сохраняю данные в новый черновик…": {
+    "ru": "Предыдущий черновик уже использован. Автоматически сохраняю данные в новый черновик…",
+    "de": "Der vorherige Entwurf wurde bereits verwendet. Die Daten werden automatisch in einem neuen Entwurf gespeichert…",
+    "en": "The previous draft was already used. Saving the data to a new draft automatically…",
+    "uk": "Попередню чернетку вже використано. Автоматично зберігаємо дані в нову чернетку…",
+    "fr": "Le brouillon précédent a déjà été utilisé. Enregistrement automatique des données dans un nouveau brouillon…",
+    "tr": "Önceki taslak zaten kullanıldı. Veriler otomatik olarak yeni bir taslağa kaydediliyor…",
+    "ar": "تم استخدام المسودة السابقة بالفعل. جارٍ حفظ البيانات تلقائيًا في مسودة جديدة…"
+  },
+  "Предыдущий запрос уже использован. Автоматически создаю новый черновик…": {
+    "ru": "Предыдущий запрос уже использован. Автоматически создаю новый черновик…",
+    "de": "Die vorherige Anfrage wurde bereits verwendet. Ein neuer Entwurf wird automatisch erstellt…",
+    "en": "The previous request was already used. Creating a new draft automatically…",
+    "uk": "Попередній запит уже використано. Автоматично створюємо нову чернетку…",
+    "fr": "La requête précédente a déjà été utilisée. Création automatique d’un nouveau brouillon…",
+    "tr": "Önceki istek zaten kullanıldı. Otomatik olarak yeni bir taslak oluşturuluyor…",
+    "ar": "تم استخدام الطلب السابق بالفعل. جارٍ إنشاء مسودة جديدة تلقائيًا…"
+  },
   "Телефон указан в неверном формате.": {
     "ru": "Телефон указан в неверном формате.",
     "de": "Die Telefonnummer hat das falsche Format.",

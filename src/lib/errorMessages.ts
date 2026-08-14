@@ -11,8 +11,16 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "Что-то 
     return fallback;
   }
 
-  if (value.includes("duplicate") || value.includes("already exists")) {
+  if (value.includes("email_already_registered") || value.includes("account_link_required")) {
     return "Такая запись уже существует. Проверьте данные или войдите в существующий аккаунт.";
+  }
+
+  if (value.includes("this draft is no longer editable")) {
+    return "Предыдущий черновик уже закрыт. Обновите страницу и повторите отправку — будет создан новый черновик.";
+  }
+
+  if (value.includes("duplicate") || value.includes("already exists") || value.includes("unique constraint") || value.includes("idempotency")) {
+    return "Повторный запрос уже был обработан. Данные объявления сохранены — повторите действие.";
   }
 
   if (value.includes("invalid login") || value.includes("invalid credentials") || value.includes("wrong password") || value.includes("incorrect password")) {
@@ -33,10 +41,6 @@ export function getFriendlyErrorMessage(error: unknown, fallback = "Что-то 
 
   if (value.includes("auth_state_mismatch")) {
     return "Вход сохранён, но сервис временно отклонил запрос. Попробуйте ещё раз.";
-  }
-
-  if (value.includes("this draft is no longer editable")) {
-    return "Предыдущий черновик уже закрыт. Обновите страницу и повторите отправку — будет создан новый черновик.";
   }
 
   if (value.includes("missing param") || value.includes("input_error") || value.includes("required")) {

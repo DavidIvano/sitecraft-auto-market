@@ -38,6 +38,7 @@ test("manual submission replaces a closed restored draft and focuses concrete fi
   ]);
 
   assert.match(source, /isNonEditableListingDraftError\(errorPayload\)/);
+  assert.match(source, /isDuplicateListingDraftError\(errorPayload\)/);
   assert.match(source, /resetClosedManualDraft\(payload\)[\s\S]*?ensureManualDraft\(payload, uploadedImages, false\)/);
   assert.match(source, /manualSubmissionId = crypto\.randomUUID\(\)/);
   assert.match(source, /payload\.delete\("draft_id"\)/);
@@ -49,6 +50,14 @@ test("manual submission replaces a closed restored draft and focuses concrete fi
   assert.doesNotMatch(source, /if \(!validateQuizStep\(index\)\) \{\s*updateQuizStep\(index\)/);
   assert.match(source, /if \(form\?\.querySelector\("\.is-invalid"\)\) return;[\s\S]*?setMessage\(getStepTitle/);
   assert.match(styles, /fieldset\.has-field-error[\s\S]*?border-color: var\(--danger\)/);
+});
+
+test("restored AI drafts keep their explicit URL identity and recover duplicate saves", async () => {
+  const source = await readFile(new URL("../src/pages/dashboard/new.astro", import.meta.url), "utf8");
+
+  assert.match(source, /currentAiDraftId = draftId;[\s\S]*?renderAiDraftPreview\(\{ \.\.\.payload, draft_id: draftId \}\)/);
+  assert.match(source, /aiDraftSaveIdempotencyKey \|\|= createAiIdempotencyKey\("ai-listing-save"\)/);
+  assert.match(source, /isDuplicateListingDraftError\(result\)[\s\S]*?saveConfirmedAiDraft\(apiUrl, data, false\)/);
 });
 
 test("mobile workspace navigation keeps every visible item scrollable and shows a hint", async () => {

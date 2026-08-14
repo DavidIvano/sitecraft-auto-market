@@ -6,6 +6,7 @@ import {
   extractAiDraftIdentity,
   extractListingDraftFieldIssues,
   extractListingFieldIssues,
+  isDuplicateListingDraftError,
   isNonEditableListingDraftError,
   ListingSubmissionApiError,
   normalizeTuvSubmissionValue,
@@ -72,6 +73,14 @@ test("recognizes a restored draft that Xano has already closed", () => {
     payload: "",
   }), true);
   assert.equal(isNonEditableListingDraftError({ message: "Year must be between 1900 and 2027" }), false);
+});
+
+test("recognizes a duplicate create-draft request as recoverable", () => {
+  assert.equal(isDuplicateListingDraftError({
+    code: "ERROR_CODE_INPUT_ERROR",
+    message: "A record with this value already exists",
+  }), true);
+  assert.equal(isDuplicateListingDraftError({ message: "Year must be between 1900 and 2027" }), false);
 });
 
 test("maps create-draft validation messages to form controls", () => {

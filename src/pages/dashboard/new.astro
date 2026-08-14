@@ -764,6 +764,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           extractAiDraftIdentity,
           extractListingDraftFieldIssues,
           extractListingFieldIssues,
+          isDuplicateListingDraftError,
           isNonEditableListingDraftError,
           ListingSubmissionApiError,
           normalizeTuvSubmissionValue,
@@ -1069,6 +1070,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const photoUrls = new Map<File, string>();
         const aiPhotoUrls = new Map<File, string>();
         let aiPhotoRequestIdempotencyKey = "";
+        let aiDraftSaveIdempotencyKey = "";
         let activeQuizStep = 0;
         let currentAiDraftId: string | number | null = null;
         let currentAiListingId: string | number | null = null;
@@ -2969,7 +2971,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 size: Number(image.size || image.size_bytes || 0),
               }))
               .filter((image: { url: string }) => isPublicImageUrl(image.url));
-            renderAiDraftPreview(payload);
+            currentAiDraftId = draftId;
+            renderAiDraftPreview({ ...payload, draft_id: draftId });
             markAiDraftSaved();
             setAiMessage("AI-черновик восстановлен. Проверьте данные перед отправкой.");
           } catch {
@@ -3425,6 +3428,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           if (currentAiDraftId) {
             payload.set("draft_id", String(currentAiDraftId));
+          } else {
+            aiDraftSaveIdempotencyKey ||= createAiIdempotencyKey("ai-listing-save");
+            payload.set("idempotency_key", aiDraftSaveIdempotencyKey);
           }
           if (currentAiListingId) {
             payload.set("listing_id", String(currentAiListingId));
@@ -3433,7 +3439,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return payload;
         }
 
-        async function saveConfirmedAiDraft(apiUrl: string, data = getAiReviewData()) {
+        async function saveConfirmedAiDraft(
+          apiUrl: string,
+          data = getAiReviewData(),
+          allowDraftRecovery = true,
+        ) {
           const authToken = getActiveAuthToken();
           if (!authToken) {
             recoverAuthOrRelogin();
@@ -3480,6 +3490,17 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               throw new Error("Endpoint /listings/create-draft не найден в Xano или сайт использует неправильный API URL.");
             }
 
+            if (allowDraftRecovery && (isNonEditableListingDraftError(result) || isDuplicateListingDraftError(result))) {
+              currentAiDraftId = null;
+              currentAiListingId = null;
+              aiDraftSaveIdempotencyKey = createAiIdempotencyKey("ai-listing-save");
+              const url = new URL(window.location.href);
+              url.searchParams.delete("draft_id");
+              window.history.replaceState({}, "", `${url.pathname}${url.search}`);
+              setAiMessage("Предыдущий черновик уже использован. Автоматически сохраняю данные в новый черновик…");
+              return saveConfirmedAiDraft(apiUrl, data, false);
+            }
+
             const fieldIssues = extractListingFieldIssues(result);
             if (fieldIssues.length) showAiFieldErrors(fieldIssues);
             throw new Error(fieldIssues.map((issue) => issue.message).join("\n") || result?.message || responseText || "Не удалось сохранить AI-черновик.");
@@ -3491,6 +3512,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           if (!currentAiDraftId && !currentAiListingId) {
             throw new Error("Черновик сохранён, но сервер не вернул его номер.");
+          }
+
+          if (currentAiDraftId) {
+            const url = new URL(window.location.href);
+            url.searchParams.set("draft_id", String(currentAiDraftId));
+            window.history.replaceState({}, "", `${url.pathname}${url.search}`);
           }
 
           markAiDraftSaved();
@@ -4295,9 +4322,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             if (isWrongTokenError(errorText)) {
               throw new Error(getAuthObjectError());
             }
-            if (allowClosedDraftRecovery && isNonEditableListingDraftError(errorPayload)) {
+            if (allowClosedDraftRecovery && (isNonEditableListingDraftError(errorPayload) || isDuplicateListingDraftError(errorPayload))) {
               resetClosedManualDraft(payload);
-              setMessage("Предыдущий черновик уже закрыт. Автоматически создаю новый черновик…");
+              setMessage("Предыдущий запрос уже использован. Автоматически создаю новый черновик…");
               return ensureManualDraft(payload, uploadedImages, false);
             }
             const fieldIssues = extractListingDraftFieldIssues(errorPayload);

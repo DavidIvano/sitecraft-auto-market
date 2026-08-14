@@ -22,6 +22,16 @@ export function isNonEditableListingDraftError(payload: unknown) {
   return /this draft is no longer editable|draft not found/i.test(listingApiMessage(payload));
 }
 
+export function isDuplicateListingDraftError(payload: unknown) {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    return /duplicate|already exists|unique constraint|idempotency/i.test(listingApiMessage(payload));
+  }
+
+  const source = payload as Record<string, any>;
+  const code = String(source.code || source.error_type || source.payload?.code || "").trim();
+  return /duplicate|already exists|unique constraint|idempotency/i.test(`${code} ${listingApiMessage(payload)}`);
+}
+
 export function extractListingDraftFieldIssues(payload: unknown): ListingFieldIssue[] {
   const structured = extractListingFieldIssues(payload);
   if (structured.length) return structured;
