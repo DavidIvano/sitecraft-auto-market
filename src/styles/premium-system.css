@@ -1688,9 +1688,20 @@
   flex-wrap: nowrap;
 }
 
+.new-listing-hero .ai-suggestion-actions .button {
+  flex: 0 0 auto;
+}
+
+.new-listing-hero .ai-suggestion-actions [data-suggestion-insert] {
+  min-width: 118px;
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
 .new-listing-hero .ai-suggestion-actions .icon-button {
   width: 38px;
   min-width: 38px;
+  flex-basis: 38px;
   min-height: 38px;
   padding: 0;
 }
