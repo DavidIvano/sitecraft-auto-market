@@ -1444,10 +1444,27 @@
   align-items: center;
 }
 
+.new-listing-hero :is(
+  .ai-review-heading,
+  .ai-review-form > .section-heading,
+  .ai-suggestions > .section-heading,
+  .ai-next-actions > .section-heading
+) {
+  flex-direction: row;
+}
+
 .new-listing-hero .ai-review-heading .section-step,
 .new-listing-hero .ai-review-form > .section-heading .section-step,
 .new-listing-hero .ai-suggestions .section-step,
 .new-listing-hero .ai-next-actions .section-step {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  flex: 0 0 40px;
+  place-items: center;
+  align-self: flex-start;
+  border-radius: 12px;
   background: linear-gradient(135deg, var(--ai-accent), var(--ai-cyan));
   color: #fff;
 }

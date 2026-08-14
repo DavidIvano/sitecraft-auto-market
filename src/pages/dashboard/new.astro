@@ -3500,9 +3500,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
         function buildLocalDescription(data: Record<string, string>, mode = "sales") {
           const title = data.title || [data.brand, data.model, data.year].filter(Boolean).join(" ");
+          const hasMileage = Number(data.mileage) > 0;
+          const hasPrice = Number(data.price) > 0;
           const details = [
             data.year ? `${data.year} г.` : "",
-            data.mileage ? `пробег ${data.mileage} км` : "",
+            hasMileage ? `пробег ${data.mileage} км` : "",
             data.fuel_type || "",
             data.transmission || "",
             data.body_type || "",
@@ -3511,7 +3513,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const factLine = details.join(" · ");
           const name = title || "Автомобиль";
           const locationLine = data.city ? `Автомобиль находится в ${data.city}.` : "";
-          const priceLine = data.price ? `Цена: ${Number(data.price).toLocaleString("ru-RU")} ${data.currency || "EUR"}.` : "";
+          const priceLine = hasPrice ? `Цена: ${Number(data.price).toLocaleString("ru-RU")} ${data.currency || "EUR"}.` : "";
           const facts = [factLine ? `${factLine}.` : "", locationLine, priceLine].filter(Boolean).join(" ");
 
           if (mode === "short") {
@@ -3523,7 +3525,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               data.brand ? `Марка: ${data.brand}.` : "",
               data.model ? `Модель: ${data.model}.` : "",
               data.year ? `Год: ${data.year}.` : "",
-              data.mileage ? `Пробег: ${data.mileage} км.` : "",
+              hasMileage ? `Пробег: ${data.mileage} км.` : "",
               data.fuel_type ? `Топливо: ${data.fuel_type}.` : "",
               data.transmission ? `Коробка: ${data.transmission}.` : "",
               data.city ? `Город: ${data.city}.` : "",
@@ -3535,11 +3537,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (mode === "de") {
             const germanFacts = [
               data.year ? `Baujahr ${data.year}` : "",
-              data.mileage ? `${data.mileage} km` : "",
+              hasMileage ? `${data.mileage} km` : "",
               data.fuel_type ? `Kraftstoff: ${data.fuel_type}` : "",
               data.transmission ? `Getriebe: ${data.transmission}` : "",
             ].filter(Boolean).join(" · ");
-            return `${[data.brand, data.model].filter(Boolean).join(" ") || "Fahrzeug"} zu verkaufen.${germanFacts ? ` ${germanFacts}.` : ""}${data.city ? ` Standort: ${data.city}.` : ""}${data.price ? ` Preis: ${Number(data.price).toLocaleString("de-DE")} ${data.currency || "EUR"}.` : ""} Bei Interesse gerne melden.`.replace(/\s+/g, " ").trim();
+            return `${[data.brand, data.model].filter(Boolean).join(" ") || "Fahrzeug"} zu verkaufen.${germanFacts ? ` ${germanFacts}.` : ""}${data.city ? ` Standort: ${data.city}.` : ""}${hasPrice ? ` Preis: ${Number(data.price).toLocaleString("de-DE")} ${data.currency || "EUR"}.` : ""} Bei Interesse gerne melden.`.replace(/\s+/g, " ").trim();
           }
 
           if (mode === "kleinanzeigen") {
