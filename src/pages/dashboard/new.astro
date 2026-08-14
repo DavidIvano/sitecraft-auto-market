@@ -1148,7 +1148,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             const engineVolumeControl = form.elements.namedItem("engineVolume");
             if (engineVolumeControl instanceof HTMLSelectElement) engineVolumeControl.value = fields.engineVolume || "";
             syncVehicleReferenceConstraints();
-            activeQuizStep = Math.min(3, Math.max(0, Number(draft.step || 0)));
+            // Browsers cannot restore File objects from localStorage. Always resume at
+            // the photo step so a visually complete draft cannot reach review without
+            // reselecting its required images.
+            activeQuizStep = 0;
             setMessage("Восстановлен локальный черновик. Фотографии нужно выбрать заново.");
           } catch {
             localStorage.removeItem(LOCAL_DRAFT_KEY);

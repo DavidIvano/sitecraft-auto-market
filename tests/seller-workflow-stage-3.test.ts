@@ -18,6 +18,7 @@ test("seller workflow has four short steps, one submit action, and AI as a helpe
   assert.match(source, /LOCAL_DRAFT_KEY/);
   assert.match(source, /LOCAL_DRAFT_FIELDS[\s\S]{0,500}"sellerPhone"/);
   assert.match(source, /LOCAL_DRAFT_FIELDS[\s\S]{0,700}"sellerEmail"/);
+  assert.match(source, /Browsers cannot restore File objects[\s\S]*?activeQuizStep = 0/);
   assert.match(source, /submissionId:\s*ensureManualSubmissionId\(\)/);
 });
 
