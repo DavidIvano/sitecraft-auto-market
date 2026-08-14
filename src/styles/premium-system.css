@@ -1493,6 +1493,14 @@
       padding: 18px;
     }
 
+    .listing-form-enhanced .section-heading > .section-step {
+      width: 32px;
+      height: 32px;
+      align-self: flex-start;
+      place-items: center;
+      text-align: center;
+    }
+
     .listing-form-enhanced .ai-helper-callout {
       align-items: stretch;
       flex-direction: column;

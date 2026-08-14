@@ -50,6 +50,10 @@ test("dashboard status never renders an account email", async () => {
 });
 
 test("seller form labels the visible photo stage as step one", async () => {
-  const page = await read("src/pages/dashboard/new.astro");
+  const [page, premiumCss] = await Promise.all([
+    read("src/pages/dashboard/new.astro"),
+    read("src/styles/premium-system.css"),
+  ]);
   assert.match(page, /data-quiz-step="0"[\s\S]*?<span class="section-step">1<\/span>[\s\S]*?<h2>Добавьте фотографии<\/h2>/);
+  assert.match(premiumCss, /listing-form-enhanced \.section-heading > \.section-step[\s\S]*?width: 32px/);
 });
