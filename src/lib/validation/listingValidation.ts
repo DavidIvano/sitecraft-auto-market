@@ -92,6 +92,7 @@ export function validateListingData(
         preferred_contact_method: null,
       };
   const vin = asString(listing.vin);
+  const firstRegistration = asString(canonical.first_registration);
   const fuelType = asString(listing.fuel_type).toLowerCase();
   const vehicleType = asString(listing.vehicle_type).toLowerCase();
   const description = asString(listing.description);
@@ -129,7 +130,11 @@ export function validateListingData(
   if (!asString(canonical.seats)) addIssue(issues, "seats", "seats_required", "Укажите количество мест.");
   if (!asString(canonical.color)) addIssue(issues, "color", "color_required", "Укажите цвет.");
   if (!asString(canonical.owners_count)) addIssue(issues, "owners_count", "owners_required", "Укажите количество владельцев.");
-  if (!asString(canonical.first_registration)) addIssue(issues, "first_registration", "registration_required", "Укажите дату первой регистрации.");
+  if (!firstRegistration) {
+    addIssue(issues, "first_registration", "registration_required", "Укажите дату первой регистрации.");
+  } else if (year != null && /^\d{4}-\d{2}$/.test(firstRegistration) && Number(firstRegistration.slice(0, 4)) < year) {
+    addIssue(issues, "first_registration", "registration_before_production", "Дата первой регистрации не может быть раньше года выпуска.");
+  }
   if (!asString(canonical.vehicle_condition)) addIssue(issues, "vehicle_condition", "condition_required", "Укажите состояние автомобиля.");
   if (!asString(canonical.seller_type)) addIssue(issues, "seller_type", "seller_type_required", "Укажите тип продавца.");
   if (!asString(canonical.seller_name)) addIssue(issues, "seller_name", "seller_name_required", "Укажите имя продавца.");

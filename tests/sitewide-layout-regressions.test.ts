@@ -51,5 +51,5 @@ test("dashboard status never renders an account email", async () => {
 
 test("seller form labels the visible photo stage as step one", async () => {
   const page = await read("src/pages/dashboard/new.astro");
-  assert.match(page, /data-quiz-step="0"[\s\S]*?<span class="section-step">1<\/span>[\s\S]*?<h2>Фото и описание<\/h2>/);
+  assert.match(page, /data-quiz-step="0"[\s\S]*?<span class="section-step">1<\/span>[\s\S]*?<h2>Добавьте фотографии<\/h2>/);
 });

@@ -1,13 +1,17 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { getUiPhraseMap } from "../src/i18n/uiTranslator.ts";
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
-test("seller workflow has three steps, one submit action, and AI as a helper", async () => {
+test("seller workflow has four short steps, one submit action, and AI as a helper", async () => {
   const source = await read("../src/pages/dashboard/new.astro");
-  assert.equal((source.match(/data-quiz-jump=/g) || []).length, 3);
-  assert.match(source, /Фото[\s\S]*Данные автомобиля[\s\S]*Проверка и отправка/);
+  assert.equal((source.match(/data-quiz-jump=/g) || []).length, 4);
+  assert.match(source, /Фото[\s\S]*Автомобиль[\s\S]*Контакты[\s\S]*Проверка и отправка/);
+  assert.match(source, /data-quiz-step="2"[\s\S]*Как с вами связаться/);
+  assert.match(source, /data-first-registration/);
+  assert.match(source, /регистрация не может быть раньше .*года выпуска/i);
   assert.match(source, /data-open-ai-helper>Заполнить данные с AI/);
   assert.equal((source.match(/data-quiz-submit/g) || []).length, 2);
   assert.doesNotMatch(source, /data-side-submit/);
@@ -15,6 +19,15 @@ test("seller workflow has three steps, one submit action, and AI as a helper", a
   assert.match(source, /LOCAL_DRAFT_FIELDS[\s\S]{0,500}"sellerPhone"/);
   assert.match(source, /LOCAL_DRAFT_FIELDS[\s\S]{0,700}"sellerEmail"/);
   assert.match(source, /submissionId:\s*ensureManualSubmissionId\(\)/);
+});
+
+test("new question flow is translated in every reviewed UI locale", () => {
+  for (const locale of ["de", "en", "uk", "ar", "tr", "fr"] as const) {
+    const phrases = getUiPhraseMap(locale);
+    assert.ok(phrases["Какой автомобиль вы продаёте?"], `${locale} vehicle question`);
+    assert.ok(phrases["Как с вами связаться?"], `${locale} contact question`);
+    assert.ok(phrases["Марка ограничивает список моделей. Точную модификацию и двигатель сверьте с документами."], `${locale} reference note`);
+  }
 });
 
 test("global seller CTA uses one name and canonical route", async () => {

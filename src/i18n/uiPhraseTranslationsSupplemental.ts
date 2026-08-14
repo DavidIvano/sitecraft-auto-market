@@ -2,6 +2,202 @@
 import type { Locale } from "./locales.ts";
 
 export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Partial<Record<Locale, string>>> = {
+  "Четыре коротких шага: фото, ответы об автомобиле, контакты и отправка на модерацию.": {
+    "ru": "Четыре коротких шага: фото, ответы об автомобиле, контакты и отправка на модерацию.",
+    "de": "Vier kurze Schritte: Fotos, Fahrzeugdaten, Kontaktdaten und Einreichung zur Prüfung.",
+    "en": "Four short steps: photos, vehicle details, contact details, and submission for review.",
+    "uk": "Чотири короткі кроки: фото, дані автомобіля, контакти та надсилання на модерацію.",
+    "ar": "أربع خطوات قصيرة: الصور، بيانات السيارة، معلومات الاتصال، والإرسال للمراجعة.",
+    "tr": "Dört kısa adım: fotoğraflar, araç bilgileri, iletişim bilgileri ve incelemeye gönderme.",
+    "fr": "Quatre étapes courtes : photos, informations sur le véhicule, coordonnées et envoi pour validation."
+  },
+  "Добавьте фотографии": {
+    "ru": "Добавьте фотографии", "de": "Fotos hinzufügen", "en": "Add photos", "uk": "Додайте фотографії",
+    "ar": "أضف الصور", "tr": "Fotoğraf ekleyin", "fr": "Ajoutez des photos"
+  },
+  "Начните с главного фото. Можно загрузить до 8 изображений и поменять их порядок.": {
+    "ru": "Начните с главного фото. Можно загрузить до 8 изображений и поменять их порядок.",
+    "de": "Beginnen Sie mit dem Hauptfoto. Sie können bis zu 8 Bilder hochladen und ihre Reihenfolge ändern.",
+    "en": "Start with the main photo. You can upload up to 8 images and change their order.",
+    "uk": "Почніть із головного фото. Можна завантажити до 8 зображень і змінити їх порядок.",
+    "ar": "ابدأ بالصورة الرئيسية. يمكنك تحميل ما يصل إلى 8 صور وتغيير ترتيبها.",
+    "tr": "Ana fotoğrafla başlayın. En fazla 8 görsel yükleyebilir ve sıralarını değiştirebilirsiniz.",
+    "fr": "Commencez par la photo principale. Vous pouvez télécharger jusqu’à 8 images et modifier leur ordre."
+  },
+  "JPG, PNG, WEBP или AVIF. Первое фото будет главным.": {
+    "ru": "JPG, PNG, WEBP или AVIF. Первое фото будет главным.",
+    "de": "JPG, PNG, WEBP oder AVIF. Das erste Foto wird zum Hauptfoto.",
+    "en": "JPG, PNG, WEBP, or AVIF. The first photo will be the main one.",
+    "uk": "JPG, PNG, WEBP або AVIF. Перше фото буде головним.",
+    "ar": "JPG أو PNG أو WEBP أو AVIF. ستكون الصورة الأولى هي الصورة الرئيسية.",
+    "tr": "JPG, PNG, WEBP veya AVIF. İlk fotoğraf ana fotoğraf olacaktır.",
+    "fr": "JPG, PNG, WEBP ou AVIF. La première photo sera la photo principale."
+  },
+  "Хотите заполнить быстрее?": {
+    "ru": "Хотите заполнить быстрее?", "de": "Möchten Sie das Formular schneller ausfüllen?", "en": "Want to fill this out faster?",
+    "uk": "Хочете заповнити швидше?", "ar": "هل تريد إكمال البيانات بشكل أسرع؟", "tr": "Daha hızlı doldurmak ister misiniz?", "fr": "Vous souhaitez remplir le formulaire plus rapidement ?"
+  },
+  "Какой автомобиль вы продаёте?": {
+    "ru": "Какой автомобиль вы продаёте?", "de": "Welches Fahrzeug verkaufen Sie?", "en": "What vehicle are you selling?",
+    "uk": "Який автомобіль ви продаєте?", "ar": "ما السيارة التي تبيعها؟", "tr": "Hangi aracı satıyorsunuz?", "fr": "Quel véhicule vendez-vous ?"
+  },
+  "Отвечайте по порядку. После выбора марки будут показаны только её модели.": {
+    "ru": "Отвечайте по порядку. После выбора марки будут показаны только её модели.",
+    "de": "Beantworten Sie die Fragen der Reihe nach. Nach der Markenauswahl werden nur passende Modelle angezeigt.",
+    "en": "Answer in order. After choosing a make, only its models will be shown.",
+    "uk": "Відповідайте по черзі. Після вибору марки буде показано лише її моделі.",
+    "ar": "أجب بالترتيب. بعد اختيار العلامة التجارية، ستظهر طرازاتها فقط.",
+    "tr": "Soruları sırayla yanıtlayın. Marka seçildikten sonra yalnızca o markanın modelleri gösterilir.",
+    "fr": "Répondez dans l’ordre. Après avoir choisi une marque, seuls ses modèles seront affichés."
+  },
+  "Что вы продаёте?": {
+    "ru": "Что вы продаёте?", "de": "Was verkaufen Sie?", "en": "What are you selling?", "uk": "Що ви продаєте?",
+    "ar": "ماذا تبيع؟", "tr": "Ne satıyorsunuz?", "fr": "Que vendez-vous ?"
+  },
+  "Какая марка?": {
+    "ru": "Какая марка?", "de": "Welche Marke?", "en": "What make?", "uk": "Яка марка?",
+    "ar": "ما العلامة التجارية؟", "tr": "Hangi marka?", "fr": "Quelle marque ?"
+  },
+  "Какая модель?": {
+    "ru": "Какая модель?", "de": "Welches Modell?", "en": "What model?", "uk": "Яка модель?",
+    "ar": "ما الطراز؟", "tr": "Hangi model?", "fr": "Quel modèle ?"
+  },
+  "Какой год выпуска?": {
+    "ru": "Какой год выпуска?", "de": "Welches Baujahr?", "en": "What is the model year?", "uk": "Який рік випуску?",
+    "ar": "ما سنة الصنع؟", "tr": "Üretim yılı nedir?", "fr": "Quelle est l’année de fabrication ?"
+  },
+  "Какую цену вы хотите?": {
+    "ru": "Какую цену вы хотите?", "de": "Welchen Preis möchten Sie?", "en": "What price do you want?", "uk": "Яку ціну ви хочете?",
+    "ar": "ما السعر الذي تريده؟", "tr": "Hangi fiyatı istiyorsunuz?", "fr": "Quel prix souhaitez-vous ?"
+  },
+  "Какой пробег?": {
+    "ru": "Какой пробег?", "de": "Wie hoch ist der Kilometerstand?", "en": "What is the mileage?", "uk": "Який пробіг?",
+    "ar": "ما المسافة المقطوعة؟", "tr": "Kilometresi nedir?", "fr": "Quel est le kilométrage ?"
+  },
+  "В каком городе находится автомобиль?": {
+    "ru": "В каком городе находится автомобиль?", "de": "In welcher Stadt befindet sich das Fahrzeug?", "en": "Which city is the vehicle in?",
+    "uk": "У якому місті знаходиться автомобіль?", "ar": "في أي مدينة توجد السيارة؟", "tr": "Araç hangi şehirde?", "fr": "Dans quelle ville se trouve le véhicule ?"
+  },
+  "В какой стране?": {
+    "ru": "В какой стране?", "de": "In welchem Land?", "en": "Which country?", "uk": "У якій країні?",
+    "ar": "في أي بلد؟", "tr": "Hangi ülkede?", "fr": "Dans quel pays ?"
+  },
+  "Валюта цены": {
+    "ru": "Валюта цены", "de": "Preiswährung", "en": "Price currency", "uk": "Валюта ціни",
+    "ar": "عملة السعر", "tr": "Fiyat para birimi", "fr": "Devise du prix"
+  },
+  "EUR — евро": {
+    "ru": "EUR — евро", "de": "EUR — Euro", "en": "EUR — euro", "uk": "EUR — євро",
+    "ar": "EUR — يورو", "tr": "EUR — avro", "fr": "EUR — euro"
+  },
+  "Марка ограничивает список моделей. Точную модификацию и двигатель сверьте с документами.": {
+    "ru": "Марка ограничивает список моделей. Точную модификацию и двигатель сверьте с документами.",
+    "de": "Die Marke begrenzt die Modellliste. Gleichen Sie die genaue Variante und den Motor mit den Fahrzeugpapieren ab.",
+    "en": "The make limits the model list. Check the exact variant and engine against the vehicle documents.",
+    "uk": "Марка обмежує список моделей. Точну модифікацію та двигун звірте з документами.",
+    "ar": "تحدد العلامة التجارية قائمة الطرازات. طابق الفئة الدقيقة والمحرك مع وثائق السيارة.",
+    "tr": "Marka, model listesini sınırlar. Tam versiyonu ve motoru araç belgeleriyle karşılaştırın.",
+    "fr": "La marque limite la liste des modèles. Vérifiez la version exacte et le moteur dans les documents du véhicule."
+  },
+  "Ещё несколько ответов": {
+    "ru": "Ещё несколько ответов", "de": "Noch ein paar Angaben", "en": "A few more details", "uk": "Ще кілька відповідей",
+    "ar": "بعض التفاصيل الإضافية", "tr": "Birkaç bilgi daha", "fr": "Quelques informations supplémentaires"
+  },
+  "Выбирайте значения из документов. Поля зависят друг от друга и проверяются перед отправкой.": {
+    "ru": "Выбирайте значения из документов. Поля зависят друг от друга и проверяются перед отправкой.",
+    "de": "Wählen Sie die Angaben aus den Fahrzeugpapieren. Abhängige Felder werden vor dem Senden geprüft.",
+    "en": "Choose the values from the vehicle documents. Related fields are checked before submission.",
+    "uk": "Вибирайте значення з документів. Пов’язані поля перевіряються перед надсиланням.",
+    "ar": "اختر القيم من وثائق السيارة. يتم فحص الحقول المرتبطة قبل الإرسال.",
+    "tr": "Değerleri araç belgelerinden seçin. İlişkili alanlar gönderimden önce kontrol edilir.",
+    "fr": "Choisissez les valeurs dans les documents du véhicule. Les champs liés sont vérifiés avant l’envoi."
+  },
+  "Какой тип кузова?": {
+    "ru": "Какой тип кузова?", "de": "Welche Karosserieform?", "en": "What body style?", "uk": "Який тип кузова?",
+    "ar": "ما نوع الهيكل؟", "tr": "Kasa tipi nedir?", "fr": "Quel type de carrosserie ?"
+  },
+  "Какое топливо?": {
+    "ru": "Какое топливо?", "de": "Welcher Kraftstoff?", "en": "What fuel type?", "uk": "Яке паливо?",
+    "ar": "ما نوع الوقود؟", "tr": "Yakıt türü nedir?", "fr": "Quel carburant ?"
+  },
+  "Какой двигатель?": {
+    "ru": "Какой двигатель?", "de": "Welcher Motor?", "en": "What engine?", "uk": "Який двигун?",
+    "ar": "ما المحرك؟", "tr": "Motor nedir?", "fr": "Quel moteur ?"
+  },
+  "Какая коробка передач?": {
+    "ru": "Какая коробка передач?", "de": "Welches Getriebe?", "en": "What transmission?", "uk": "Яка коробка передач?",
+    "ar": "ما ناقل الحركة؟", "tr": "Şanzıman türü nedir?", "fr": "Quelle boîte de vitesses ?"
+  },
+  "Какой привод?": {
+    "ru": "Какой привод?", "de": "Welcher Antrieb?", "en": "What drivetrain?", "uk": "Який привід?",
+    "ar": "ما نظام الدفع؟", "tr": "Çekiş türü nedir?", "fr": "Quel type de transmission ?"
+  },
+  "Сколько дверей?": {
+    "ru": "Сколько дверей?", "de": "Wie viele Türen?", "en": "How many doors?", "uk": "Скільки дверей?",
+    "ar": "كم عدد الأبواب؟", "tr": "Kaç kapı var?", "fr": "Combien de portes ?"
+  },
+  "Сколько мест?": {
+    "ru": "Сколько мест?", "de": "Wie viele Sitzplätze?", "en": "How many seats?", "uk": "Скільки місць?",
+    "ar": "كم عدد المقاعد؟", "tr": "Kaç koltuk var?", "fr": "Combien de places ?"
+  },
+  "Какой цвет?": {
+    "ru": "Какой цвет?", "de": "Welche Farbe?", "en": "What color?", "uk": "Який колір?",
+    "ar": "ما اللون؟", "tr": "Rengi nedir?", "fr": "Quelle couleur ?"
+  },
+  "Сколько было владельцев?": {
+    "ru": "Сколько было владельцев?", "de": "Wie viele Vorbesitzer gab es?", "en": "How many previous owners?", "uk": "Скільки було власників?",
+    "ar": "كم عدد المالكين السابقين؟", "tr": "Kaç önceki sahibi vardı?", "fr": "Combien y a-t-il eu de propriétaires ?"
+  },
+  "Когда первая регистрация?": {
+    "ru": "Когда первая регистрация?", "de": "Wann war die Erstzulassung?", "en": "When was it first registered?", "uk": "Коли була перша реєстрація?",
+    "ar": "متى كان أول تسجيل؟", "tr": "İlk tescil ne zamandı?", "fr": "Quand a eu lieu la première immatriculation ?"
+  },
+  "В каком состоянии автомобиль?": {
+    "ru": "В каком состоянии автомобиль?", "de": "In welchem Zustand ist das Fahrzeug?", "en": "What condition is the vehicle in?", "uk": "У якому стані автомобіль?",
+    "ar": "ما حالة السيارة؟", "tr": "Araç ne durumda?", "fr": "Dans quel état est le véhicule ?"
+  },
+  "VIN / номер кузова (необязательно)": {
+    "ru": "VIN / номер кузова (необязательно)", "de": "FIN / Fahrgestellnummer (optional)", "en": "VIN / chassis number (optional)",
+    "uk": "VIN / номер кузова (необов’язково)", "ar": "VIN / رقم الهيكل (اختياري)", "tr": "VIN / şasi numarası (isteğe bağlı)", "fr": "VIN / numéro de châssis (facultatif)"
+  },
+  "17 символов": {
+    "ru": "17 символов", "de": "17 Zeichen", "en": "17 characters", "uk": "17 символів",
+    "ar": "17 رمزًا", "tr": "17 karakter", "fr": "17 caractères"
+  },
+  "Что ещё важно знать покупателю? (необязательно)": {
+    "ru": "Что ещё важно знать покупателю? (необязательно)", "de": "Was sollte der Käufer noch wissen? (optional)",
+    "en": "What else should the buyer know? (optional)", "uk": "Що ще важливо знати покупцеві? (необов’язково)",
+    "ar": "ما الذي ينبغي أن يعرفه المشتري أيضًا؟ (اختياري)", "tr": "Alıcı başka ne bilmeli? (isteğe bağlı)", "fr": "Que doit également savoir l’acheteur ? (facultatif)"
+  },
+  "Состояние, обслуживание, известные особенности": {
+    "ru": "Состояние, обслуживание, известные особенности", "de": "Zustand, Wartung, bekannte Besonderheiten", "en": "Condition, maintenance, known issues",
+    "uk": "Стан, обслуговування, відомі особливості", "ar": "الحالة والصيانة والملاحظات المعروفة", "tr": "Durum, bakım, bilinen özellikler", "fr": "État, entretien, particularités connues"
+  },
+  "Как с вами связаться?": {
+    "ru": "Как с вами связаться?", "de": "Wie können Käufer Sie erreichen?", "en": "How can buyers contact you?", "uk": "Як із вами зв’язатися?",
+    "ar": "كيف يمكن للمشترين التواصل معك؟", "tr": "Alıcılar size nasıl ulaşabilir?", "fr": "Comment les acheteurs peuvent-ils vous contacter ?"
+  },
+  "Контакты уже подставлены из профиля. Проверьте их и выберите, что увидят покупатели.": {
+    "ru": "Контакты уже подставлены из профиля. Проверьте их и выберите, что увидят покупатели.",
+    "de": "Die Kontaktdaten wurden aus Ihrem Profil übernommen. Prüfen Sie sie und wählen Sie, was Käufer sehen dürfen.",
+    "en": "Contact details were filled from your profile. Check them and choose what buyers can see.",
+    "uk": "Контакти вже підставлено з профілю. Перевірте їх і виберіть, що бачитимуть покупці.",
+    "ar": "تم ملء بيانات الاتصال من ملفك الشخصي. تحقق منها واختر ما يمكن للمشترين رؤيته.",
+    "tr": "İletişim bilgileri profilinizden dolduruldu. Kontrol edin ve alıcıların neleri görebileceğini seçin.",
+    "fr": "Les coordonnées ont été reprises de votre profil. Vérifiez-les et choisissez ce que les acheteurs peuvent voir."
+  },
+  "Кто продаёт автомобиль?": {
+    "ru": "Кто продаёт автомобиль?", "de": "Wer verkauft das Fahrzeug?", "en": "Who is selling the vehicle?", "uk": "Хто продає автомобіль?",
+    "ar": "من يبيع السيارة؟", "tr": "Aracı kim satıyor?", "fr": "Qui vend le véhicule ?"
+  },
+  "Как вас зовут?": {
+    "ru": "Как вас зовут?", "de": "Wie heißen Sie?", "en": "What is your name?", "uk": "Як вас звати?",
+    "ar": "ما اسمك؟", "tr": "Adınız nedir?", "fr": "Comment vous appelez-vous ?"
+  },
+  "Ваш email": {
+    "ru": "Ваш email", "de": "Ihre E-Mail-Adresse", "en": "Your email", "uk": "Ваш email",
+    "ar": "بريدك الإلكتروني", "tr": "E-posta adresiniz", "fr": "Votre adresse e-mail"
+  },
   "10 AI-генераций": {
     "ru": "10 AI-генераций",
     "de": "10 KI-Generationen",

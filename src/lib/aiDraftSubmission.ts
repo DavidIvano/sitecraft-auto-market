@@ -262,6 +262,8 @@ export function validateAiDraftSubmission(
       add("first_registration", "Укажите дату первой регистрации в формате YYYY-MM.");
     } else if (registrationMonth > maximumMonth) {
       add("first_registration", "Дата первой регистрации не может быть в будущем.");
+    } else if (year && Number(match[1]) < year) {
+      add("first_registration", "Дата первой регистрации не может быть раньше года выпуска.");
     }
   }
 

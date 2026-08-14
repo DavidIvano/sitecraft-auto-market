@@ -131,6 +131,17 @@ test("rejects future first registration and more than eight images", () => {
   );
 });
 
+test("rejects first registration before the production year", () => {
+  const result = validateAiDraftSubmission({
+    ...completeDraft,
+    year: "2020",
+    first_registration: "2019-12",
+  }, { imageCount: 1, now: new Date(2026, 6, 15) });
+
+  assert.match(result.errors.join(" "), /раньше года выпуска/i);
+  assert.equal(result.issues.some((issue) => issue.field === "first_registration"), true);
+});
+
 test("accepts false TUV and ignores a stale AI date", () => {
   const result = validateAiDraftSubmission({
     ...completeDraft,

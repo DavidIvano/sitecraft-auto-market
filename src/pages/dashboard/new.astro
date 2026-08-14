@@ -19,6 +19,7 @@ import {
 } from "../../data/carOptions";
 
 const currentYear = new Date().getFullYear();
+const currentMonth = new Date().toISOString().slice(0, 7);
 const years = Array.from({ length: currentYear - 1980 + 1 }, (_, index) => currentYear - index);
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
@@ -32,7 +33,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
       <p class="eyebrow">Новое объявление</p>
       <h1>Продать авто</h1>
       <p class="lead">
-        Три шага: добавьте фото, заполните данные и проверьте объявление перед модерацией.
+        Четыре коротких шага: фото, ответы об автомобиле, контакты и отправка на модерацию.
       </p>
 
       <div class="listing-mode-switch" aria-label="Выберите способ создания объявления" hidden>
@@ -277,7 +278,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
             <label>
               <span>Дата первой регистрации <b data-confidence-for="first_registration">нужно подтвердить</b></span>
-              <input type="month" name="first_registration" required />
+              <input type="month" name="first_registration" min="1950-01" max={currentMonth} required />
             </label>
             <label>
               <span>Состояние автомобиля <b data-confidence-for="vehicle_condition">нужно подтвердить</b></span>
@@ -399,7 +400,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         </section>
       </section>
 
-      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} novalidate data-mode-panel="manual">
+      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} data-active-quiz-step="0" novalidate data-mode-panel="manual">
         <div class="listing-quiz-progress" aria-label="Шаги добавления объявления">
           <button class="quiz-progress-step is-active" type="button" data-quiz-jump="0">
             <span>1</span>
@@ -407,26 +408,72 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           </button>
           <button class="quiz-progress-step" type="button" data-quiz-jump="1">
             <span>2</span>
-            Данные автомобиля
+            Автомобиль
           </button>
           <button class="quiz-progress-step" type="button" data-quiz-jump="2">
             <span>3</span>
+            Контакты
+          </button>
+          <button class="quiz-progress-step" type="button" data-quiz-jump="3">
+            <span>4</span>
             Проверка и отправка
           </button>
         </div>
         <div class="listing-workspace">
           <div class="listing-main-column">
-        <fieldset class="form-section form-section-highlight" data-quiz-step="1">
+        <fieldset class="form-section photo-form-section" data-quiz-step="0">
           <div class="section-heading">
             <span class="section-step">1</span>
             <div>
-              <h2>Автомобиль</h2>
-              <p>Сначала выберите марку. После этого появятся только модели этой марки.</p>
+              <h2>Добавьте фотографии</h2>
+              <p>Начните с главного фото. Можно загрузить до 8 изображений и поменять их порядок.</p>
             </div>
           </div>
           <div class="form-grid">
+            <div class="full-field photo-uploader" data-photo-uploader>
+              <input
+                class="photo-input"
+                id="photo-input"
+                type="file"
+                name="photos"
+                accept="image/avif,image/webp,image/jpeg,image/png"
+                multiple
+                required
+                data-max-files="8"
+                data-max-size="8388608"
+              />
+              <button class="photo-dropzone" type="button" data-photo-dropzone data-photo-select aria-controls="photo-input">
+                <span class="photo-dropzone-icon"><i data-lucide="plus" aria-hidden="true"></i></span>
+                <strong>Выберите фотографии автомобиля</strong>
+                <small>JPG, PNG, WEBP или AVIF. Первое фото будет главным.</small>
+              </button>
+              <div class="photo-preview-toolbar">
+                <span id="photo-count">0 / 8 фото</span>
+                <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить фото</button>
+              </div>
+              <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
+                <div class="photo-empty-state">Пока фото не выбраны.</div>
+              </div>
+            </div>
+
+            <div class="full-field ai-helper-callout">
+              <div><strong>Хотите заполнить быстрее?</strong><p>AI предложит данные по фотографиям, а вы подтвердите результат.</p></div>
+              <button class="button button-light" type="button" data-open-ai-helper>Заполнить данные с AI</button>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section form-section-highlight listing-question-section" data-quiz-step="1">
+          <div class="section-heading">
+            <span class="section-step">2</span>
+            <div>
+              <h2>Какой автомобиль вы продаёте?</h2>
+              <p>Отвечайте по порядку. После выбора марки будут показаны только её модели.</p>
+            </div>
+          </div>
+          <div class="form-grid listing-question-grid">
             <label>
-              <span>Тип транспортного средства</span>
+              <span>Что вы продаёте?</span>
               <select name="vehicleType" required>
                 <option value="">Выберите тип транспорта</option>
                 {vehicleTypes.map((item) => <option value={item}>{item}</option>)}
@@ -434,7 +481,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Марка автомобиля</span>
+              <span>Какая марка?</span>
               <select name="brand" required data-brand-select>
                 <option value="">Выберите марку</option>
                 {carBrands.map((brand) => <option value={brand}>{brand}</option>)}
@@ -442,58 +489,62 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Модель автомобиля</span>
+              <span>Какая модель?</span>
               <select name="model" required data-model-select disabled>
                 <option value="">Сначала выберите марку</option>
               </select>
             </label>
 
             <label>
-              <span>Год выпуска</span>
-              <select name="year" required>
+              <span>Какой год выпуска?</span>
+              <select name="year" required data-year-select>
                 <option value="">Выберите год</option>
                 {years.map((year) => <option value={year}>{year}</option>)}
               </select>
             </label>
 
             <label>
-              <span>Цена</span>
-              <input type="number" name="price" min="100" max="500000" step="1" placeholder="25000" required />
+              <span>Какую цену вы хотите?</span>
+              <div class="input-with-suffix"><input type="number" name="price" min="100" max="500000" step="1" inputmode="numeric" placeholder="25000" required /><span>€</span></div>
             </label>
 
             <label>
-              <span>Пробег</span>
-              <input type="number" name="mileage" min="0" step="1" placeholder="85000" required />
+              <span>Какой пробег?</span>
+              <div class="input-with-suffix"><input type="number" name="mileage" min="0" step="1" inputmode="numeric" placeholder="85000" required /><span>км</span></div>
             </label>
 
             <label>
-              <span>Город / местоположение</span>
-              <input type="text" name="location" placeholder="Берлин" required />
+              <span>В каком городе находится автомобиль?</span>
+              <input type="text" name="location" autocomplete="address-level2" placeholder="Берлин" required />
             </label>
             <label>
-              <span>Страна</span>
-              <input type="text" name="country" value="Германия" required />
+              <span>В какой стране?</span>
+              <input type="text" name="country" autocomplete="country-name" value="Германия" required />
             </label>
             <label>
-              <span>Валюта</span>
+              <span>Валюта цены</span>
               <select name="currency" required>
-                <option value="EUR">EUR</option>
+                <option value="EUR">EUR — евро</option>
               </select>
             </label>
           </div>
+          <p class="listing-reference-note" role="status">
+            <strong data-vehicle-reference-selection hidden></strong>
+            <span>Марка ограничивает список моделей. Точную модификацию и двигатель сверьте с документами.</span>
+          </p>
         </fieldset>
 
-        <fieldset class="form-section" data-quiz-step="1">
+        <fieldset class="form-section listing-question-section" data-quiz-step="1">
           <div class="section-heading">
-            <span class="section-step">2</span>
+            <span class="section-step section-step-soft">+</span>
             <div>
-              <h2>Характеристики</h2>
-              <p>Эти параметры помогают покупателю быстро понять, подходит ли автомобиль.</p>
+              <h2>Ещё несколько ответов</h2>
+              <p>Выбирайте значения из документов. Поля зависят друг от друга и проверяются перед отправкой.</p>
             </div>
           </div>
-          <div class="form-grid">
+          <div class="form-grid listing-question-grid listing-question-grid-compact">
             <label>
-              <span>Тип кузова</span>
+              <span>Какой тип кузова?</span>
               <select name="bodyType" required>
                 <option value="">Выберите тип кузова</option>
                 {bodyTypes.map((item) => <option value={item}>{item}</option>)}
@@ -501,7 +552,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Вид топлива</span>
+              <span>Какое топливо?</span>
               <select name="fuelType" required data-fuel-select>
                 <option value="">Выберите топливо</option>
                 {fuelTypes.map((item) => <option value={item}>{item}</option>)}
@@ -509,14 +560,14 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Объем двигателя</span>
+              <span>Какой двигатель?</span>
               <select name="engineVolume" data-engine-volume-select disabled>
                 <option value="">Сначала выберите топливо</option>
               </select>
             </label>
 
             <label>
-              <span>Коробка передач</span>
+              <span>Какая коробка передач?</span>
               <select name="transmission" required>
                 <option value="">Выберите коробку</option>
                 {transmissions.map((item) => <option value={item}>{item}</option>)}
@@ -524,7 +575,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Привод</span>
+              <span>Какой привод?</span>
               <select name="drivetrain" required>
                 <option value="">Выберите привод</option>
                 {drivetrains.map((item) => <option value={item}>{item}</option>)}
@@ -532,7 +583,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Количество дверей</span>
+              <span>Сколько дверей?</span>
               <select name="doors" required>
                 <option value="">Выберите двери</option>
                 {doorCounts.map((item) => <option value={item}>{item}</option>)}
@@ -540,7 +591,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Количество мест</span>
+              <span>Сколько мест?</span>
               <select name="seats" required>
                 <option value="">Выберите места</option>
                 {seatCounts.map((item) => <option value={item}>{item}</option>)}
@@ -548,7 +599,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Цвет</span>
+              <span>Какой цвет?</span>
               <select name="color" required>
                 <option value="">Выберите цвет</option>
                 {colors.map((item) => <option value={item}>{item}</option>)}
@@ -556,7 +607,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Количество владельцев</span>
+              <span>Сколько было владельцев?</span>
               <select name="ownerCount" required>
                 <option value="">Выберите количество</option>
                 <option value="1">1 владелец</option>
@@ -568,12 +619,12 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Дата первой регистрации</span>
-              <input type="month" name="firstRegistrationDate" required />
+              <span>Когда первая регистрация?</span>
+              <input type="month" name="firstRegistrationDate" min="1950-01" max={currentMonth} required data-first-registration />
             </label>
 
             <label>
-              <span>Состояние автомобиля</span>
+              <span>В каком состоянии автомобиль?</span>
               <select name="condition" required>
                 <option value="">Выберите состояние</option>
                 {carConditions.map((item) => <option value={item}>{item}</option>)}
@@ -594,7 +645,28 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Тип продавца</span>
+              <span>VIN / номер кузова (необязательно)</span>
+              <input type="text" name="vin" minlength="17" maxlength="17" autocomplete="off" placeholder="17 символов" />
+            </label>
+
+            <label class="full-field">
+              <span>Что ещё важно знать покупателю? (необязательно)</span>
+              <textarea name="description" rows="4" placeholder="Состояние, обслуживание, известные особенности"></textarea>
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="form-section listing-question-section" data-quiz-step="2">
+          <div class="section-heading">
+            <span class="section-step">3</span>
+            <div>
+              <h2>Как с вами связаться?</h2>
+              <p>Контакты уже подставлены из профиля. Проверьте их и выберите, что увидят покупатели.</p>
+            </div>
+          </div>
+          <div class="form-grid listing-question-grid listing-contact-grid">
+            <label>
+              <span>Кто продаёт автомобиль?</span>
               <select name="sellerType" required>
                 <option value="">Выберите тип продавца</option>
                 {sellerTypes.map((item) => <option value={item}>{item}</option>)}
@@ -602,23 +674,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>VIN / номер кузова</span>
-              <input type="text" name="vin" placeholder="Опционально" />
-            </label>
-          </div>
-        </fieldset>
-
-        <fieldset class="form-section" data-quiz-step="1">
-          <div class="section-heading">
-            <span class="section-step">3</span>
-            <div>
-              <h2>Продавец</h2>
-              <p>Кнопка «Связаться» будет использовать телефон, если он указан, иначе email.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <label>
-              <span>Имя продавца</span>
+              <span>Как вас зовут?</span>
               <input type="text" name="sellerName" placeholder="Ваше имя" required aria-describedby="manual-contact-error-display_name" />
               <small id="manual-contact-error-display_name" class="form-field-error" data-manual-contact-error="display_name" hidden></small>
             </label>
@@ -633,7 +689,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             />
 
             <label>
-              <span>Email продавца</span>
+              <span>Ваш email</span>
               <input type="email" name="sellerEmail" placeholder="name@example.com" aria-describedby="manual-contact-error-contact_email" />
               <small id="manual-contact-error-contact_email" class="form-field-error" data-manual-contact-error="contact_email" hidden></small>
             </label>
@@ -648,55 +704,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           </div>
         </fieldset>
 
-        <fieldset class="form-section photo-form-section" data-quiz-step="0">
+        <fieldset class="form-section" data-quiz-step="3">
           <div class="section-heading">
-            <span class="section-step">1</span>
-            <div>
-              <h2>Фото и описание</h2>
-              <p>До 8 изображений. Перетащите карточки, чтобы выбрать главное фото первым.</p>
-            </div>
-          </div>
-          <div class="form-grid">
-            <div class="full-field photo-uploader" data-photo-uploader>
-              <input
-                class="photo-input"
-                id="photo-input"
-                type="file"
-                name="photos"
-                accept="image/avif,image/webp,image/jpeg,image/png"
-                multiple
-                required
-                data-max-files="8"
-                data-max-size="8388608"
-              />
-              <button class="photo-dropzone" type="button" data-photo-dropzone data-photo-select aria-controls="photo-input">
-                <span class="photo-dropzone-icon"><i data-lucide="plus" aria-hidden="true"></i></span>
-                <strong>Перетащите фото сюда или выберите файлы</strong>
-                <small>AVIF, PNG, JPG или WEBP. Первое изображение будет главным.</small>
-              </button>
-              <div class="photo-preview-toolbar">
-                <span id="photo-count">0 / 8 фото</span>
-                <button class="button button-light button-small" type="button" id="photo-clear" hidden>Очистить фото</button>
-              </div>
-              <div class="photo-preview-grid" id="photo-preview-grid" aria-live="polite">
-                <div class="photo-empty-state">Пока фото не выбраны.</div>
-              </div>
-            </div>
-
-            <div class="full-field ai-helper-callout">
-              <div><strong>Хотите заполнить характеристики быстрее?</strong><p>AI предложит данные по фотографиям, а вы подтвердите результат.</p></div>
-              <button class="button button-light" type="button" data-open-ai-helper>Заполнить данные с AI</button>
-            </div>
-
-            <label class="full-field">
-              <span>Краткое описание</span>
-              <textarea name="description" rows="6" placeholder="Опишите состояние, историю обслуживания и важные детали"></textarea>
-            </label>
-          </div>
-        </fieldset>
-        <fieldset class="form-section" data-quiz-step="2">
-          <div class="section-heading">
-            <span class="section-step">3</span>
+            <span class="section-step">4</span>
             <div><h2>Проверка и отправка</h2><p>Проверьте основные данные. После отправки объявление попадёт на модерацию.</p></div>
           </div>
           <div class="listing-review-summary" data-listing-review-summary></div>
@@ -835,8 +845,13 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const photoClear = document.querySelector("#photo-clear");
         const brandSelect = document.querySelector("[data-brand-select]");
         const modelSelect = document.querySelector("[data-model-select]");
+        const yearSelect = document.querySelector("[data-year-select]");
+        const firstRegistrationInput = document.querySelector("[data-first-registration]");
+        const locationInput = form instanceof HTMLFormElement ? form.elements.namedItem("location") : null;
+        const vinInput = form instanceof HTMLFormElement ? form.elements.namedItem("vin") : null;
         const fuelSelect = document.querySelector("[data-fuel-select]");
         const engineVolumeSelect = document.querySelector("[data-engine-volume-select]");
+        const vehicleReferenceSelection = document.querySelector("[data-vehicle-reference-selection]");
         const modelDataElement = document.querySelector("#car-model-data");
         const engineVolumeDataElement = document.querySelector("#engine-volume-data");
         const apiRouteDataElement = document.querySelector("#api-route-data");
@@ -1031,7 +1046,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return normalizeContactProfile(profile).value || validation.value;
         }
         const quizStepNodes = Array.from(document.querySelectorAll<HTMLElement>("[data-quiz-step]"));
-        const quizSteps = [0, 1, 2].map((step) => quizStepNodes.filter((node) => Number(node.dataset.quizStep) === step));
+        const quizSteps = [0, 1, 2, 3].map((step) => quizStepNodes.filter((node) => Number(node.dataset.quizStep) === step));
         const quizProgressSteps = Array.from(document.querySelectorAll("[data-quiz-jump]"));
         const quizPrevButton = document.querySelector("[data-quiz-prev]");
         const quizNextButton = document.querySelector("[data-quiz-next]");
@@ -1132,7 +1147,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             updateEngineVolumesForFuel();
             const engineVolumeControl = form.elements.namedItem("engineVolume");
             if (engineVolumeControl instanceof HTMLSelectElement) engineVolumeControl.value = fields.engineVolume || "";
-            activeQuizStep = Math.min(2, Math.max(0, Number(draft.step || 0)));
+            syncVehicleReferenceConstraints();
+            activeQuizStep = Math.min(3, Math.max(0, Number(draft.step || 0)));
             setMessage("Восстановлен локальный черновик. Фотографии нужно выбрать заново.");
           } catch {
             localStorage.removeItem(LOCAL_DRAFT_KEY);
@@ -2256,7 +2272,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         }
 
         function getStepTitle(index: number) {
-          return ["Фото", "Данные автомобиля", "Проверка и отправка"][index] || "Шаг";
+          const progressStep = quizProgressSteps[index];
+          if (!(progressStep instanceof HTMLElement)) return "";
+          return String(progressStep.textContent || "").replace(/^\s*\d+\s*/, "").trim();
         }
 
         type RequiredListingControl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
@@ -2303,6 +2321,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         function updateQuizStep(nextStep: number) {
           const maxStep = Math.max(quizSteps.length - 1, 0);
           activeQuizStep = Math.min(Math.max(nextStep, 0), maxStep);
+          if (form instanceof HTMLFormElement) form.dataset.activeQuizStep = String(activeQuizStep);
 
           quizSteps.forEach((steps, index) => {
             steps.forEach((step) => {
@@ -2331,13 +2350,13 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             quizSubmitButton.hidden = activeQuizStep !== maxStep;
           }
 
-          if (activeQuizStep === 2) updateReviewSummary();
+          if (activeQuizStep === 3) updateReviewSummary();
           saveLocalDraft();
 
           // A focus/step update must not erase the concrete reason that is still
           // attached to an invalid control. The next validation pass clears it.
           if (form?.querySelector(".is-invalid")) return;
-          setMessage(`Шаг ${activeQuizStep + 1} из ${quizSteps.length}: ${getStepTitle(activeQuizStep)}.`);
+          setMessage(getStepTitle(activeQuizStep));
         }
 
         function validateQuizStep(index: number) {
@@ -2348,18 +2367,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
 
           clearManualFieldErrors();
+          syncVehicleReferenceConstraints();
 
           const controls = steps.flatMap((step) => Array.from(step.querySelectorAll("input, select, textarea")));
           const invalidControl = controls.find((control) => {
             if (
               !(control instanceof HTMLInputElement || control instanceof HTMLSelectElement || control instanceof HTMLTextAreaElement) ||
-              control.disabled ||
-              !control.required
+              control.disabled
             ) {
               return false;
             }
 
-            return !isRequiredControlComplete(control);
+            return (control.required && !isRequiredControlComplete(control)) || !control.validity.valid;
           });
 
           controls.forEach((control) => {
@@ -2375,6 +2394,23 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               message: `Заполните поле «${manualControlLabel(control)}».`,
             }]);
             return false;
+          }
+
+          if (index === 2 && form instanceof HTMLFormElement) {
+            readInternationalPhoneField(form, "sellerPhone");
+            const contactData = new FormData(form);
+            const contactValidation = validateSellerContactProfile({
+              display_name: contactData.get("sellerName"),
+              contact_phone: contactData.get("sellerPhone"),
+              contact_email: contactData.get("sellerEmail"),
+              show_phone: contactData.has("showPhone"),
+              show_email: contactData.has("showEmail"),
+              preferred_contact_method: contactData.get("preferredContactMethod"),
+            }, { requirePublicContact: true });
+            if (!contactValidation.valid) {
+              showManualContactError(contactValidation.field, contactValidation.message);
+              return false;
+            }
           }
 
           return true;
@@ -2690,6 +2726,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             ? `<option value="">Выберите модель</option>${models.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("")}`
             : `<option value="">Сначала выберите марку</option>`;
           modelSelect.disabled = !brand;
+          modelSelect.setCustomValidity("");
         }
 
         function updateEngineVolumesForFuel() {
@@ -2704,6 +2741,64 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             ? `<option value="">Выберите объем</option>${volumes.map((volume) => `<option value="${escapeHtml(volume)}">${escapeHtml(volume)}</option>`).join("")}`
             : `<option value="">Сначала выберите топливо</option>`;
           engineVolumeSelect.disabled = !fuel || volumes.length === 0;
+          engineVolumeSelect.setCustomValidity("");
+          if (volumes.length === 1) engineVolumeSelect.value = volumes[0];
+        }
+
+        function syncVehicleReferenceConstraints() {
+          const brand = brandSelect instanceof HTMLSelectElement ? brandSelect.value : "";
+          const model = modelSelect instanceof HTMLSelectElement ? modelSelect.value : "";
+          const fuel = fuelSelect instanceof HTMLSelectElement ? fuelSelect.value : "";
+          const engineVolume = engineVolumeSelect instanceof HTMLSelectElement ? engineVolumeSelect.value : "";
+          const productionYear = yearSelect instanceof HTMLSelectElement ? Number(yearSelect.value || 0) : 0;
+          const now = new Date();
+          const maximumMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+          if (modelSelect instanceof HTMLSelectElement) {
+            const knownModels = carModelsByBrand[brand] || [];
+            modelSelect.setCustomValidity(model && !knownModels.includes(model)
+              ? "Выберите модель из списка выбранной марки."
+              : "");
+          }
+
+          if (engineVolumeSelect instanceof HTMLSelectElement) {
+            const knownVolumes = engineVolumeOptionsByFuel[fuel] || [];
+            engineVolumeSelect.setCustomValidity(engineVolume && !knownVolumes.includes(engineVolume)
+              ? "Выберите двигатель из списка для указанного типа топлива."
+              : "");
+          }
+
+          if (firstRegistrationInput instanceof HTMLInputElement) {
+            firstRegistrationInput.max = maximumMonth;
+            firstRegistrationInput.min = productionYear ? `${productionYear}-01` : "1950-01";
+            const registrationYear = Number(firstRegistrationInput.value.slice(0, 4) || 0);
+            const message = firstRegistrationInput.value && productionYear && registrationYear < productionYear
+              ? `Первая регистрация не может быть раньше ${productionYear} года выпуска.`
+              : firstRegistrationInput.value > maximumMonth
+                ? "Дата первой регистрации не может быть в будущем."
+                : "";
+            firstRegistrationInput.setCustomValidity(message);
+          }
+
+          if (locationInput instanceof HTMLInputElement) {
+            locationInput.setCustomValidity(locationInput.value.trim() && /^\d+$/.test(locationInput.value.trim())
+              ? "Укажите название города, а не только цифры."
+              : "");
+          }
+
+          if (vinInput instanceof HTMLInputElement) {
+            const normalizedVin = vinInput.value.trim().toUpperCase();
+            vinInput.setCustomValidity(normalizedVin && !/^[A-HJ-NPR-Z0-9]{17}$/.test(normalizedVin)
+              ? "VIN должен состоять из 17 латинских букв и цифр без I, O и Q."
+              : "");
+          }
+
+          if (vehicleReferenceSelection instanceof HTMLElement) {
+            const selectedVehicle = [brand, model, productionYear || ""].filter(Boolean).join(" ");
+            vehicleReferenceSelection.textContent = selectedVehicle;
+            vehicleReferenceSelection.hidden = !selectedVehicle;
+          }
+          updateRequiredFieldState(form);
         }
 
         function enableFastFieldActivation() {
@@ -2750,6 +2845,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         initializeInternationalPhoneFields(document);
         enableFastFieldActivation();
         restoreLocalDraft();
+        syncVehicleReferenceConstraints();
         setListingMode("manual");
         updateQuizStep(activeQuizStep);
         updateRequiredFieldState(form);
@@ -2803,7 +2899,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         });
 
         const returnToManualContacts = () => {
-          updateQuizStep(1);
+          updateQuizStep(2);
           const control = form instanceof HTMLFormElement ? form.elements.namedItem("sellerName") : null;
           if (control instanceof HTMLElement) control.focus();
         };
@@ -2976,8 +3072,20 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         syncTuvDateField(form, "hasValidTuv", "[data-manual-tuv-until-field]");
         syncTuvDateField(aiReviewForm, "has_valid_tuv", "[data-tuv-until-field]");
 
-        brandSelect?.addEventListener("change", updateModelsForBrand);
-        fuelSelect?.addEventListener("change", updateEngineVolumesForFuel);
+        brandSelect?.addEventListener("change", () => {
+          updateModelsForBrand();
+          syncVehicleReferenceConstraints();
+        });
+        modelSelect?.addEventListener("change", syncVehicleReferenceConstraints);
+        yearSelect?.addEventListener("change", syncVehicleReferenceConstraints);
+        firstRegistrationInput?.addEventListener("change", syncVehicleReferenceConstraints);
+        if (locationInput instanceof HTMLInputElement) locationInput.addEventListener("input", syncVehicleReferenceConstraints);
+        if (vinInput instanceof HTMLInputElement) vinInput.addEventListener("input", syncVehicleReferenceConstraints);
+        fuelSelect?.addEventListener("change", () => {
+          updateEngineVolumesForFuel();
+          syncVehicleReferenceConstraints();
+        });
+        engineVolumeSelect?.addEventListener("change", syncVehicleReferenceConstraints);
 
         photoInput?.addEventListener("change", () => {
           if (photoInput instanceof HTMLInputElement) {
@@ -3901,9 +4009,18 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
         function manualControlLabel(control: RequiredListingControl) {
           if (control instanceof HTMLInputElement && control.type === "file") return "Фотографии";
-          const container = getRequiredFieldContainer(control);
+          const container = getRequiredFieldContainer(control) || control.closest(".international-phone-field");
           const label = container?.querySelector("legend, span")?.textContent?.trim();
           return label || control.name || "обязательное поле";
+        }
+
+        function manualStepForIssue(issue: ListingFieldIssue) {
+          if (["images", "photos"].includes(issue.field)) return 0;
+          if ([
+            "seller_type", "seller_name", "seller_phone", "seller_email", "seller_contact",
+            "display_name", "contact_phone", "contact_email", "preferred_contact_method",
+          ].includes(issue.field)) return 2;
+          return 1;
         }
 
         function clearManualFieldErrors() {
@@ -3927,7 +4044,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           clearManualFieldErrors();
           if (!(form instanceof HTMLFormElement) || issues.length === 0) return;
 
-          const targetStep = issues.some((issue) => ["images", "photos"].includes(issue.field)) ? 0 : 1;
+          const targetStep = Math.min(...issues.map(manualStepForIssue));
           updateQuizStep(targetStep);
           const targetControls: HTMLElement[] = [];
 
@@ -3938,7 +4055,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             control.setAttribute("aria-invalid", "true");
             const container = issue.field === "images" || issue.field === "photos"
               ? control.closest(".photo-uploader")
-              : control.closest("label, fieldset");
+              : control.closest("label, fieldset, .international-phone-field");
             if (!(container instanceof HTMLElement)) return;
             container.classList.add("has-field-error");
 
@@ -3952,7 +4069,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             const describedBy = new Set(String(control.getAttribute("aria-describedby") || "").split(/\s+/).filter(Boolean));
             describedBy.add(errorId);
             control.setAttribute("aria-describedby", Array.from(describedBy).join(" "));
-            const issueStep = ["images", "photos"].includes(issue.field) ? 0 : 1;
+            const issueStep = manualStepForIssue(issue);
             if (issueStep === targetStep) targetControls.push(control);
           });
 
@@ -4002,7 +4119,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const controlName = controlNames[field] || "sellerName";
           const control = form instanceof HTMLFormElement ? form.elements.namedItem(controlName) : null;
           const errorNode = form?.querySelector<HTMLElement>(`[data-manual-contact-error="${field}"]`);
-          updateQuizStep(1);
+          updateQuizStep(2);
           if (control instanceof HTMLElement) {
             control.classList.add("is-invalid");
             control.setAttribute("aria-invalid", "true");

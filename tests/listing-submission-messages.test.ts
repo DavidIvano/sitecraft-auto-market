@@ -44,7 +44,7 @@ test("manual submission replaces a closed restored draft and focuses concrete fi
   assert.match(source, /requestAnimationFrame[\s\S]*?focus\(\{ preventScroll: true \}\)/);
   assert.match(source, /container\.classList\.add\("has-field-error"\)/);
   assert.doesNotMatch(source, /if \(!validateQuizStep\(index\)\) \{\s*updateQuizStep\(index\)/);
-  assert.match(source, /if \(form\?\.querySelector\("\.is-invalid"\)\) return;[\s\S]*?setMessage\(`Шаг/);
+  assert.match(source, /if \(form\?\.querySelector\("\.is-invalid"\)\) return;[\s\S]*?setMessage\(getStepTitle/);
   assert.match(styles, /fieldset\.has-field-error[\s\S]*?border-color: var\(--danger\)/);
 });
 
