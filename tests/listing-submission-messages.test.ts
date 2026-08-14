@@ -58,6 +58,8 @@ test("restored AI drafts keep their explicit URL identity and recover duplicate 
   assert.match(source, /currentAiDraftId = draftId;[\s\S]*?renderAiDraftPreview\(\{ \.\.\.payload, draft_id: draftId \}\)/);
   assert.match(source, /aiDraftSaveIdempotencyKey \|\|= createAiIdempotencyKey\("ai-listing-save"\)/);
   assert.match(source, /isDuplicateListingDraftError\(result\)[\s\S]*?saveConfirmedAiDraft\(apiUrl, data, false\)/);
+  assert.match(source, /has_valid_tuv_explicit: normalizeTuvSubmissionValue\(currentData\.has_valid_tuv\)/);
+  assert.match(source, /tuv_valid_until_explicit:[\s\S]*?currentData\.tuv_valid_until/);
 });
 
 test("mobile workspace navigation keeps every visible item scrollable and shows a hint", async () => {
