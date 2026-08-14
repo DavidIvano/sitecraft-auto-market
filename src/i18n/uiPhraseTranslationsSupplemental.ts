@@ -2,6 +2,83 @@
 import type { Locale } from "./locales.ts";
 
 export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Partial<Record<Locale, string>>> = {
+  "Фото → готовое объявление": {
+    "ru": "Фото → готовое объявление", "de": "Foto → fertige Anzeige", "en": "Photo → ready listing", "uk": "Фото → готове оголошення",
+    "ar": "صورة ← إعلان جاهز", "tr": "Fotoğraf → hazır ilan", "fr": "Photo → annonce prête"
+  },
+  "Загрузите фото. AI заполнит только то, что сможет определить.": {
+    "ru": "Загрузите фото. AI заполнит только то, что сможет определить.", "de": "Laden Sie Fotos hoch. Die KI füllt nur sicher erkannte Angaben aus.",
+    "en": "Upload photos. AI fills only what it can identify.", "uk": "Завантажте фото. AI заповнить лише те, що зможе визначити.",
+    "ar": "حمّل الصور. سيملأ الذكاء الاصطناعي ما يمكنه التعرّف عليه فقط.", "tr": "Fotoğrafları yükleyin. AI yalnızca belirleyebildiği bilgileri doldurur.",
+    "fr": "Ajoutez des photos. L’IA ne remplit que les informations qu’elle peut identifier."
+  },
+  "Добавить фото автомобиля": {
+    "ru": "Добавить фото автомобиля", "de": "Fahrzeugfotos hinzufügen", "en": "Add vehicle photos", "uk": "Додати фото автомобіля",
+    "ar": "إضافة صور السيارة", "tr": "Araç fotoğrafı ekle", "fr": "Ajouter des photos du véhicule"
+  },
+  "Распознать автомобиль": {
+    "ru": "Распознать автомобиль", "de": "Fahrzeug erkennen", "en": "Identify vehicle", "uk": "Розпізнати автомобіль",
+    "ar": "التعرّف على السيارة", "tr": "Aracı tanı", "fr": "Identifier le véhicule"
+  },
+  "Сначала вы проверите результат.": {
+    "ru": "Сначала вы проверите результат.", "de": "Sie prüfen zuerst das Ergebnis.", "en": "You review the result first.", "uk": "Спочатку ви перевірите результат.",
+    "ar": "ستراجع النتيجة أولاً.", "tr": "Önce sonucu kontrol edersiniz.", "fr": "Vous vérifierez d’abord le résultat."
+  },
+  "Проверьте только важное": {
+    "ru": "Проверьте только важное", "de": "Nur Wichtiges prüfen", "en": "Review only what matters", "uk": "Перевірте лише важливе",
+    "ar": "راجع المعلومات المهمة فقط", "tr": "Yalnızca önemli bilgileri kontrol edin", "fr": "Vérifiez uniquement l’essentiel"
+  },
+  "Цветная метка показывает, где нужен ваш ответ.": {
+    "ru": "Цветная метка показывает, где нужен ваш ответ.", "de": "Eine farbige Markierung zeigt, wo Ihre Eingabe nötig ist.",
+    "en": "A colored badge shows where your input is needed.", "uk": "Кольорова позначка показує, де потрібна ваша відповідь.",
+    "ar": "توضح العلامة الملونة أين يلزم إدخالك.", "tr": "Renkli etiket, yanıtınızın gerektiği alanı gösterir.",
+    "fr": "Un repère coloré indique où votre réponse est nécessaire."
+  },
+  "Что нужно проверить": {
+    "ru": "Что нужно проверить", "de": "Was ist zu prüfen?", "en": "What needs review", "uk": "Що потрібно перевірити",
+    "ar": "ما الذي يجب مراجعته", "tr": "Kontrol edilmesi gerekenler", "fr": "Éléments à vérifier"
+  },
+  "Данные автомобиля": {
+    "ru": "Данные автомобиля", "de": "Fahrzeugdaten", "en": "Vehicle details", "uk": "Дані автомобіля",
+    "ar": "بيانات السيارة", "tr": "Araç bilgileri", "fr": "Informations du véhicule"
+  },
+  "Проверьте метки и заполните пустые поля.": {
+    "ru": "Проверьте метки и заполните пустые поля.", "de": "Prüfen Sie die Markierungen und füllen Sie leere Felder aus.",
+    "en": "Review the badges and fill in empty fields.", "uk": "Перевірте позначки та заповніть порожні поля.",
+    "ar": "راجع العلامات واملأ الحقول الفارغة.", "tr": "Etiketleri kontrol edin ve boş alanları doldurun.",
+    "fr": "Vérifiez les repères et complétez les champs vides."
+  },
+  "Стиль объявления": {
+    "ru": "Стиль объявления", "de": "Anzeigenstil", "en": "Listing style", "uk": "Стиль оголошення",
+    "ar": "أسلوب الإعلان", "tr": "İlan stili", "fr": "Style de l’annonce"
+  },
+  "Только факты": {
+    "ru": "Только факты", "de": "Nur Fakten", "en": "Facts only", "uk": "Лише факти",
+    "ar": "الحقائق فقط", "tr": "Yalnızca gerçekler", "fr": "Uniquement les faits"
+  },
+  "Создать продающий текст": {
+    "ru": "Создать продающий текст", "de": "Verkaufstext erstellen", "en": "Create sales copy", "uk": "Створити текст для продажу",
+    "ar": "إنشاء نص تسويقي", "tr": "Satış metni oluştur", "fr": "Créer un texte vendeur"
+  },
+  "Готовые блоки": {
+    "ru": "Готовые блоки", "de": "Fertige Textbausteine", "en": "Ready-to-use blocks", "uk": "Готові блоки",
+    "ar": "نصوص جاهزة", "tr": "Hazır bloklar", "fr": "Blocs prêts à l’emploi"
+  },
+  "Добавьте подходящий блок одним нажатием.": {
+    "ru": "Добавьте подходящий блок одним нажатием.", "de": "Fügen Sie einen passenden Baustein mit einem Klick ein.",
+    "en": "Add a suitable block in one tap.", "uk": "Додайте відповідний блок одним натисканням.",
+    "ar": "أضف النص المناسب بلمسة واحدة.", "tr": "Uygun bloğu tek dokunuşla ekleyin.",
+    "fr": "Ajoutez un bloc adapté en un clic."
+  },
+  "Следующий лучший шаг": {
+    "ru": "Следующий лучший шаг", "de": "Der nächste beste Schritt", "en": "Next best step", "uk": "Наступний найкращий крок",
+    "ar": "أفضل خطوة تالية", "tr": "Sonraki en iyi adım", "fr": "Prochaine meilleure étape"
+  },
+  "Только действия, которые сейчас важны.": {
+    "ru": "Только действия, которые сейчас важны.", "de": "Nur Aktionen, die jetzt wichtig sind.", "en": "Only actions that matter now.",
+    "uk": "Лише дії, які зараз важливі.", "ar": "فقط الإجراءات المهمة الآن.", "tr": "Yalnızca şu anda önemli olan işlemler.",
+    "fr": "Uniquement les actions importantes maintenant."
+  },
   "Четыре коротких шага: фото, ответы об автомобиле, контакты и отправка на модерацию.": {
     "ru": "Четыре коротких шага: фото, ответы об автомобиле, контакты и отправка на модерацию.",
     "de": "Vier kurze Schritte: Fotos, Fahrzeugdaten, Kontaktdaten und Einreichung zur Prüfung.",

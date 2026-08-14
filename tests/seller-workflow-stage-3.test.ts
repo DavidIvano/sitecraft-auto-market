@@ -31,6 +31,19 @@ test("new question flow is translated in every reviewed UI locale", () => {
   }
 });
 
+test("AI seller assistant stays compact and rejects invented inspection claims", async () => {
+  const source = await read("../src/pages/dashboard/new.astro");
+  const styles = await read("../src/styles/premium-system.css");
+
+  assert.match(source, /Фото → готовое объявление/);
+  assert.match(source, /Стиль объявления/);
+  assert.match(source, /sanitizeGeneratedSalesCopy/);
+  assert.match(source, /на фото\|на фотограф[\s\S]{0,300}при осмотр/);
+  assert.doesNotMatch(source, /Кузов .* выглядит аккуратно|Салон стоит отдельно проверить при осмотре/);
+  assert.match(styles, /\.new-listing-hero \.ai-review-summary[\s\S]{0,1200}overflow-x: auto/);
+  assert.match(styles, /@media \(prefers-reduced-motion: reduce\)[\s\S]{0,180}animation: none/);
+});
+
 test("global seller CTA uses one name and canonical route", async () => {
   const [header, layout, home] = await Promise.all([
     read("../src/components/Header.astro"),

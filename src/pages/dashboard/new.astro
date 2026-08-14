@@ -42,26 +42,25 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
       </div>
 
       <section class="ai-draft-panel" aria-labelledby="ai-draft-title" data-mode-panel="ai" hidden>
-        <div>
+        <div class="ai-draft-intro">
           <button class="button button-light button-small" type="button" data-close-ai-helper>Вернуться к форме</button>
-          <p class="eyebrow">AI-помощник</p>
-          <h2 id="ai-draft-title">Создать умный черновик по фото</h2>
-          <p>
-            Загрузите от 1 до 8 фотографий. Мы предложим основные данные, а вы сможете всё проверить и изменить.
-          </p>
+          <div class="ai-draft-title-row">
+            <span class="ai-orb" aria-hidden="true"><i data-lucide="sparkles"></i></span>
+            <div>
+              <p class="eyebrow">AI-помощник</p>
+              <h2 id="ai-draft-title">Фото → готовое объявление</h2>
+            </div>
+          </div>
+          <p>Загрузите фото. AI заполнит только то, что сможет определить.</p>
           <div class="ai-model-pills" aria-label="Помощь с объявлением">
-            <span>Фото анализируются автоматически</span>
+            <span><i data-lucide="scan-line" aria-hidden="true"></i> Анализ фото</span>
+            <span><i data-lucide="pencil" aria-hidden="true"></i> Продающий текст</span>
           </div>
           <div class="ai-credit-pill">
-            <span>AI-кредиты:</span>
+            <i data-lucide="coins" aria-hidden="true"></i>
+            <span>Кредиты</span>
             <strong id="ai-credit-balance">проверяю...</strong>
           </div>
-          <ol class="ai-flow-steps" aria-label="Шаги AI создания объявления">
-            <li class="is-active"><span>1</span><strong>Фото</strong><small>1–8 изображений</small></li>
-            <li><span>2</span><strong>Анализ</strong><small>AI заполнит уверенные поля</small></li>
-            <li><span>3</span><strong>Подтверждение</strong><small>Проверка только нужных данных</small></li>
-            <li><span>4</span><strong>Модерация</strong><small>Отправка после подтверждения</small></li>
-          </ol>
         </div>
         <form
           class="ai-draft-form"
@@ -83,8 +82,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           />
           <button class="ai-draft-dropzone" type="button" data-ai-dropzone data-ai-photo-select aria-controls="ai-photo-input">
             <span class="photo-dropzone-icon"><i data-lucide="plus" aria-hidden="true"></i></span>
-            <strong>Выберите фотографии автомобиля</strong>
-            <small>1–8 изображений, до 8 МБ каждое. После анализа проверьте предложенные данные.</small>
+            <strong>Добавить фото автомобиля</strong>
+            <small>1–8 фото · JPG, PNG, WEBP или AVIF</small>
           </button>
           <div class="photo-preview-toolbar">
             <span id="ai-photo-count">0 / 8 фото</span>
@@ -93,8 +92,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <div class="ai-photo-preview-grid" id="ai-photo-preview-grid" aria-live="polite">
             <div class="photo-empty-state">Фото для AI пока не выбраны.</div>
           </div>
-          <button class="button button-dark full-width" type="submit">Создать черновик по фото</button>
-          <p class="form-message" id="ai-draft-message">Объявление не будет опубликовано без вашей проверки.</p>
+          <button class="button button-dark full-width ai-primary-button" type="submit"><i data-lucide="sparkles" aria-hidden="true"></i> Распознать автомобиль</button>
+          <p class="form-message" id="ai-draft-message">Сначала вы проверите результат.</p>
         </form>
       </section>
 
@@ -102,9 +101,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         <div class="section-heading ai-review-heading">
           <span class="section-step">AI</span>
           <div>
-            <p class="eyebrow">Проверка черновика</p>
-            <h2 id="ai-review-title">Подтвердите данные перед модерацией</h2>
-            <p>AI не публикует объявление сам. Проверьте поля, исправьте неточности и только потом отправьте объявление модератору.</p>
+            <p class="eyebrow">AI-черновик</p>
+            <h2 id="ai-review-title">Проверьте только важное</h2>
+            <p>Цветная метка показывает, где нужен ваш ответ.</p>
           </div>
         </div>
 
@@ -124,7 +123,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <article class="ai-trust-score">
             <span>Доверие к объявлению</span>
             <strong id="ai-trust-score">—</strong>
-            <small class="ai-score-label" id="ai-trust-label">AI проверяет полноту данных, а не техническое состояние автомобиля.</small>
+            <small class="ai-score-label" id="ai-trust-label">Оценка полноты данных.</small>
           </article>
         </div>
 
@@ -143,27 +142,30 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           </article>
         </div>
 
-        <div class="ai-review-notes">
-          <div>
-            <h3>Нужно подтвердить</h3>
-            <ul id="ai-missing-fields"><li>После анализа здесь появятся поля для проверки.</li></ul>
+        <details class="ai-review-notes">
+          <summary><i data-lucide="circle-alert" aria-hidden="true"></i><span>Что нужно проверить</span></summary>
+          <div class="ai-review-notes-content">
+            <div>
+              <h3>Обязательные ответы</h3>
+              <ul id="ai-missing-fields"><li>Все обязательные поля заполнены.</li></ul>
+            </div>
+            <div>
+              <h3>Важно</h3>
+              <ul id="ai-warnings"><li>Предупреждений нет.</li></ul>
+            </div>
+            <div class="ai-review-recommendations" hidden>
+              <h3>Рекомендации</h3>
+              <ul id="ai-recommendations"><li>Черновик готов.</li></ul>
+            </div>
           </div>
-          <div>
-            <h3>Предупреждения</h3>
-            <ul id="ai-warnings"><li>Пока предупреждений нет.</li></ul>
-          </div>
-          <div>
-            <h3>Рекомендации</h3>
-            <ul id="ai-recommendations"><li>AI подскажет, как улучшить объявление.</li></ul>
-          </div>
-        </div>
+        </details>
 
         <form class="ai-review-form" id="ai-review-form">
           <div class="section-heading">
             <span class="section-step">AI</span>
             <div>
-              <h2>Поля объявления</h2>
-              <p>Значок уверенности показывает, насколько AI доверяет распознанному значению.</p>
+              <h2>Данные автомобиля</h2>
+              <p>Проверьте метки и заполните пустые поля.</p>
             </div>
           </div>
           <div class="form-grid ai-review-grid">
@@ -330,8 +332,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <span>VIN, если есть</span>
               <input type="text" name="vin" placeholder="Необязательно" />
             </label>
-            <label class="full-field">
-              <span>Описание</span>
+            <label class="full-field ai-sales-description-field">
+              <span><i data-lucide="sparkles" aria-hidden="true"></i> Продающее описание</span>
               <textarea name="description" rows="5" placeholder="AI предложит текст, вы можете отредактировать его перед модерацией."></textarea>
             </label>
           </div>
@@ -339,17 +341,16 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             <button class="button button-dark" type="button" id="ai-confirm-data">Сохранить черновик</button>
             <div class="ai-action-panel" id="ai-description-action-panel" hidden>
               <label class="ai-description-mode">
-                <span>Тип описания</span>
+                <span>Стиль объявления</span>
                 <select id="ai-description-mode">
                   <option value="sales">Продающее описание</option>
                   <option value="short">Короткое описание</option>
-                  <option value="technical">Честное техническое описание</option>
+                  <option value="technical">Только факты</option>
                   <option value="de">Перевести на немецкий</option>
                   <option value="kleinanzeigen">Текст для Kleinanzeigen</option>
-                  <option value="whatsapp">Текст для WhatsApp</option>
                 </select>
               </label>
-              <button class="button button-light" type="button" id="ai-generate-description">Помочь с описанием</button>
+              <button class="button button-light ai-generate-button" type="button" id="ai-generate-description"><i data-lucide="sparkles" aria-hidden="true"></i> Создать продающий текст</button>
             </div>
             <button class="button button-light" type="button" id="ai-quality-score" hidden>Проверить качество объявления</button>
             <button class="button button-dark" type="button" id="ai-submit-moderation" hidden>Отправить на модерацию</button>
@@ -381,8 +382,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <div class="section-heading">
             <span class="section-step">+</span>
             <div>
-              <h2 id="ai-suggestions-title">AI предлагает улучшения</h2>
-              <p id="ai-suggestions-note">Можно вставить подсказки в черновик или скопировать их.</p>
+              <h2 id="ai-suggestions-title">Готовые блоки</h2>
+              <p id="ai-suggestions-note">Добавьте подходящий блок одним нажатием.</p>
             </div>
           </div>
           <div class="ai-suggestion-list" id="ai-suggestion-list"></div>
@@ -392,8 +393,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <div class="section-heading">
             <span class="section-step">→</span>
             <div>
-              <h2 id="ai-next-best-actions-title">Что улучшить дальше</h2>
-              <p>Подсказки повышают полноту данных и доверие покупателей.</p>
+              <h2 id="ai-next-best-actions-title">Следующий лучший шаг</h2>
+              <p>Только действия, которые сейчас важны.</p>
             </div>
           </div>
           <div class="ai-next-actions-grid" data-ai-next-actions></div>
@@ -1595,7 +1596,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             aiConfirmButton.hidden = step !== "review";
           }
           if (aiDescriptionActionPanel instanceof HTMLElement) {
-            aiDescriptionActionPanel.hidden = step !== "confirmed";
+            aiDescriptionActionPanel.hidden = false;
           }
           if (aiQualityScoreButton instanceof HTMLButtonElement) {
             aiQualityScoreButton.hidden = step !== "confirmed";
@@ -1743,44 +1744,35 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               type: String(item.type || "text"),
               label: firstValue(item.label, item.title, "Вставить подсказку"),
               target: firstValue(item.target, item.field, "description"),
-              text: firstValue(item.text, item.value, item.content),
+              text: sanitizeGeneratedSalesCopy(firstValue(item.text, item.value, item.content), fields, "sales"),
             }))
-            .filter((item) => item.text);
+            .filter((item, index, items) => item.text && items.findIndex((candidate) => candidate.text === item.text) === index)
+            .slice(0, 3);
 
           if (suggestions.length) {
             return { suggestions, isFallback: false };
           }
 
-          const title = [fields.brand, fields.model, fields.year].filter(Boolean).join(" ");
           const fallbackSuggestions = [
             {
               type: "description_block",
-              label: "Вставить про состояние кузова",
+              label: "Коротко и по делу",
               target: "description",
-              text: `Кузов ${title || "автомобиля"} выглядит аккуратно. Перед покупкой рекомендуем проверить лакокрасочное покрытие и историю обслуживания.`,
+              text: buildLocalDescription(fields, "short"),
             },
             {
               type: "description_block",
-              label: "Вставить про салон",
+              label: "Продающий текст",
               target: "description",
-              text: "Салон стоит отдельно проверить при осмотре: состояние сидений, панели приборов, электроники и следы активной эксплуатации.",
+              text: buildLocalDescription(fields, "sales"),
             },
             {
               type: "description_block",
-              label: "Сделать описание для немецкого покупателя",
+              label: "Текст для Kleinanzeigen",
               target: "description",
-              text: `${title || "Автомобиль"} подготовлен к просмотру. Данные объявления следует подтвердить по документам, сервисной истории и состоянию автомобиля при личном осмотре.`,
+              text: buildLocalDescription(fields, "kleinanzeigen"),
             },
           ];
-
-          if (String(fields.fuel_type || "").toLowerCase().includes("диз")) {
-            fallbackSuggestions.splice(2, 0, {
-              type: "description_block",
-              label: "Вставить про экономичный дизель",
-              target: "description",
-              text: "Дизельный двигатель хорошо подходит для дальних поездок и экономичной эксплуатации при регулярном обслуживании.",
-            });
-          }
 
           return { suggestions: fallbackSuggestions, isFallback: true };
         }
@@ -1837,7 +1829,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
         function renderAiFillOverview(analysis: Record<string, any>) {
           if (aiFillOverview instanceof HTMLElement) {
-            aiFillOverview.hidden = false;
+            aiFillOverview.hidden = true;
           }
 
           const fields = analysis.detected_fields || {};
@@ -1929,8 +1921,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           setScoreCard(aiTrustScore, score);
           if (aiTrustLabel instanceof HTMLElement) {
             aiTrustLabel.textContent = score === null
-              ? "Оценка появится после проверки качества объявления."
-              : `${getScoreLabel(score)}. AI проверяет полноту данных, а не техническое состояние автомобиля.`;
+              ? "Оценка полноты данных."
+              : `${getScoreLabel(score)} · полнота данных`;
           }
         }
 
@@ -1980,8 +1972,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
           if (aiSuggestionsNote instanceof HTMLElement) {
             aiSuggestionsNote.textContent = analysis.suggestions_are_fallback
-              ? "Базовые подсказки по заполненным данным."
-              : "Можно вставить подсказки в черновик или скопировать их.";
+              ? "Создано только из заполненных полей."
+              : "Добавьте подходящий блок одним нажатием.";
           }
 
           aiSuggestionList.innerHTML = suggestions
@@ -1993,21 +1985,24 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
 
               return `
                 <article class="ai-suggestion-card" data-suggestion-index="${index}" data-suggestion-target="${escapeHtml(target)}" data-suggestion-text="${escapeHtml(text)}">
-                  <div>
+                  <div class="ai-suggestion-copy">
+                    <span class="ai-suggestion-icon" aria-hidden="true"><i data-lucide="sparkles"></i></span>
+                    <div>
                     <h3>${escapeHtml(label)}</h3>
                     <p>${escapeHtml(preview)}</p>
-                    <small>${escapeHtml(target === "description" ? "Описание" : target === "title" ? "Название" : "Скопировать")}</small>
+                    </div>
                   </div>
                   <div class="ai-suggestion-actions">
-                    <button class="button button-dark button-small" type="button" data-suggestion-insert="${index}">Вставить</button>
-                    <button class="button button-light button-small" type="button" data-suggestion-copy="${index}">Скопировать</button>
-                    <button class="button button-light button-small" type="button" data-suggestion-hide="${index}">Скрыть</button>
+                    <button class="button button-dark button-small" type="button" data-suggestion-insert="${index}"><i data-lucide="plus" aria-hidden="true"></i> Вставить</button>
+                    <button class="button button-light button-small icon-button" type="button" data-suggestion-copy="${index}" aria-label="Скопировать"><i data-lucide="copy" aria-hidden="true"></i></button>
+                    <button class="button button-light button-small icon-button" type="button" data-suggestion-hide="${index}" aria-label="Скрыть"><i data-lucide="x" aria-hidden="true"></i></button>
                   </div>
                   <span class="ai-suggestion-status" aria-live="polite"></span>
                 </article>
               `;
             })
             .join("");
+          refreshAppIcons(aiSuggestionList);
         }
 
         function renderAiDraftPreview(raw: Record<string, any>) {
@@ -2057,7 +2052,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             setAiReviewField("seller_phone", fields.seller_phone),
             setAiReviewField("seller_email", fields.seller_email),
             setAiReviewField("vin", fields.vin),
-            setAiReviewField("description", analysis.suggested_description),
+            setAiReviewField("description", sanitizeGeneratedSalesCopy(analysis.suggested_description, fields, "sales")),
           ].filter(Boolean);
           markAiDraftDirty();
           syncAiReviewVisibility(analysis);
@@ -2118,7 +2113,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           warnings.push(...validation.errors);
 
           if (!data.description || data.description.length < 80) {
-            recommendations.push("Добавьте описание: состояние, обслуживание, комплектацию и причину продажи.");
+            recommendations.push("Создайте краткое описание из заполненных данных.");
           }
           if ((selectedAiPhotos.length || selectedPhotos.length) < 3) {
             recommendations.push("Добавьте фото салона, приборной панели и кузова с разных сторон.");
@@ -2164,7 +2159,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               impact: "+8",
               action: "fill_description",
               field: "description",
-              explanation: "Добавьте состояние, обслуживание, комплектацию и причину продажи.",
+              explanation: "AI соберёт текст только из подтверждённых данных.",
             });
           }
           actions.push({ label: "Переведите описание на немецкий", impact: "+6", action: "translate_description", field: "description" });
@@ -2178,19 +2173,31 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
 
           const items = Array.isArray(actions) ? actions.map(asRecord).filter((item) => firstValue(item.label)) : [];
+          const actionIcons: Record<string, string> = {
+            upload_more_photos: "plus",
+            fill_mileage: "gauge",
+            fill_price: "euro",
+            fill_city: "map-pin",
+            fill_description: "sparkles",
+            translate_description: "languages",
+          };
           aiNextBestActions.hidden = items.length === 0;
           aiNextActionsGrid.innerHTML = items
-            .map((item, index) => `
+            .map((item, index) => {
+              const action = firstValue(item.action);
+              const icon = actionIcons[action] || "check";
+              return `
               <article class="ai-next-action-card" data-next-action-index="${index}" data-next-action="${escapeHtml(firstValue(item.action))}" data-next-field="${escapeHtml(firstValue(item.field))}">
-                <div>
+                <span class="ai-next-action-icon" aria-hidden="true"><i data-lucide="${icon}"></i></span>
+                <div class="ai-next-action-copy">
                   <h3>${escapeHtml(firstValue(item.label))}</h3>
-                  <p>${escapeHtml(firstValue(item.explanation, "Это поможет сделать объявление понятнее."))}</p>
+                  ${firstValue(item.impact) ? `<strong>${escapeHtml(firstValue(item.impact))}</strong>` : ""}
                 </div>
-                ${firstValue(item.impact) ? `<strong>${escapeHtml(firstValue(item.impact))}</strong>` : ""}
-                <button class="button button-light button-small" type="button" data-run-next-action>${firstValue(item.action) ? "Сделать" : "Понятно"}</button>
+                <button class="button button-light button-small" type="button" data-run-next-action>${action ? "Сделать" : "Понятно"}</button>
               </article>
-            `)
+            `;})
             .join("");
+          refreshAppIcons(aiNextActionsGrid);
         }
 
         function focusAiField(name: string) {
@@ -3494,37 +3501,63 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         function buildLocalDescription(data: Record<string, string>, mode = "sales") {
           const title = data.title || [data.brand, data.model, data.year].filter(Boolean).join(" ");
           const details = [
-            data.year ? `${data.year} год` : "",
+            data.year ? `${data.year} г.` : "",
             data.mileage ? `пробег ${data.mileage} км` : "",
-            data.fuel_type ? `топливо ${data.fuel_type}` : "",
-            data.transmission ? `коробка ${data.transmission}` : "",
-            data.body_type ? `кузов ${data.body_type}` : "",
-            data.color ? `цвет ${data.color}` : "",
+            data.fuel_type || "",
+            data.transmission || "",
+            data.body_type || "",
+            data.color ? `цвет: ${data.color}` : "",
           ].filter(Boolean);
-          const factLine = details.length ? details.join(", ") : "данные нужно уточнить у продавца";
+          const factLine = details.join(" · ");
           const name = title || "Автомобиль";
+          const locationLine = data.city ? `Автомобиль находится в ${data.city}.` : "";
+          const priceLine = data.price ? `Цена: ${Number(data.price).toLocaleString("ru-RU")} ${data.currency || "EUR"}.` : "";
+          const facts = [factLine ? `${factLine}.` : "", locationLine, priceLine].filter(Boolean).join(" ");
 
           if (mode === "short") {
-            return `${name} в продаже. ${factLine}. Проверьте состояние и документы при осмотре.`.replace(/\s+/g, " ").trim();
+            return `${name}. ${facts}`.replace(/\s+/g, " ").trim();
           }
 
           if (mode === "technical") {
-            return `${name}. ${factLine}. Описание носит информационный характер: пробег, комплектацию, TÜV/HU, сервисную историю и техническое состояние нужно проверить по документам и при осмотре.`.replace(/\s+/g, " ").trim();
+            const technicalFacts = [
+              data.brand ? `Марка: ${data.brand}.` : "",
+              data.model ? `Модель: ${data.model}.` : "",
+              data.year ? `Год: ${data.year}.` : "",
+              data.mileage ? `Пробег: ${data.mileage} км.` : "",
+              data.fuel_type ? `Топливо: ${data.fuel_type}.` : "",
+              data.transmission ? `Коробка: ${data.transmission}.` : "",
+              data.city ? `Город: ${data.city}.` : "",
+              priceLine,
+            ].filter(Boolean);
+            return technicalFacts.join(" ").replace(/\s+/g, " ").trim() || name;
           }
 
           if (mode === "de") {
-            return `${[data.brand, data.model].filter(Boolean).join(" ") || "Fahrzeug"}, Baujahr ${data.year || "nicht angegeben"}, Kraftstoff: ${data.fuel_type || "nicht angegeben"}, Getriebe: ${data.transmission || "nicht angegeben"}, Kilometerstand: ${data.mileage || "nicht angegeben"} km. Bitte Zustand, Ausstattung und Servicehistorie vor Ort prüfen.`.replace(/\s+/g, " ").trim();
+            const germanFacts = [
+              data.year ? `Baujahr ${data.year}` : "",
+              data.mileage ? `${data.mileage} km` : "",
+              data.fuel_type ? `Kraftstoff: ${data.fuel_type}` : "",
+              data.transmission ? `Getriebe: ${data.transmission}` : "",
+            ].filter(Boolean).join(" · ");
+            return `${[data.brand, data.model].filter(Boolean).join(" ") || "Fahrzeug"} zu verkaufen.${germanFacts ? ` ${germanFacts}.` : ""}${data.city ? ` Standort: ${data.city}.` : ""}${data.price ? ` Preis: ${Number(data.price).toLocaleString("de-DE")} ${data.currency || "EUR"}.` : ""} Bei Interesse gerne melden.`.replace(/\s+/g, " ").trim();
           }
 
           if (mode === "kleinanzeigen") {
-            return `${name} zu verkaufen. ${factLine}. Besichtigung nach Absprache möglich. Bei Interesse gerne melden.`.replace(/\s+/g, " ").trim();
+            return buildLocalDescription(data, "de");
           }
 
-          if (mode === "whatsapp") {
-            return `Здравствуйте! Актуально объявление: ${name}. ${factLine}. Можно договориться о просмотре и уточнить детали по состоянию автомобиля.`.replace(/\s+/g, " ").trim();
+          return `${name} в продаже. ${facts} Свяжитесь с продавцом через указанные в объявлении контакты.`.replace(/\s+/g, " ").trim();
+        }
+
+        function sanitizeGeneratedSalesCopy(text: unknown, data: Record<string, any>, mode = "sales") {
+          const candidate = String(text || "").replace(/\s+/g, " ").trim();
+          const unsupportedClaim = /на фото|на фотограф|видн(?:о|а|ы)|выгляд|похоже|вероятн|предполож|рекоменду|перед покуп|при осмотр|личн(?:ый|ом) осмотр|нужно проверить|следует подтверд|требу(?:ет|ют) уточнен|сервисн(?:ая|ую|ой)? истори|без влож|идеальн|отличн(?:ое|ом)? состоян|ухожен|аккуратн|besichtigung|vor ort pr(?:ü|u)fen|sichtbar|wahrscheinlich|empfehl/i.test(candidate);
+
+          if (!candidate || unsupportedClaim) {
+            return buildLocalDescription(data as Record<string, string>, mode);
           }
 
-          return `${name} в продаже. ${factLine}. Автомобиль подготовлен к просмотру, данные объявления подтверждаются продавцом перед модерацией. Рекомендуем уточнить сервисную историю, комплектацию и состояние при контакте.`.replace(/\s+/g, " ").trim();
+          return candidate;
         }
 
         function applyDescriptionPreview(action: "insert" | "replace") {
@@ -3605,8 +3638,14 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 throw new Error(getXanoErrorMessage(result, responseText) || "Не удалось выполнить AI-действие. Попробуйте позже.");
               }
 
-              description = firstValue(result.description, result.suggested_description, buildLocalDescription(data, mode));
+              description = sanitizeGeneratedSalesCopy(
+                firstValue(result.description, result.suggested_description),
+                data,
+                mode,
+              );
             }
+
+            description = sanitizeGeneratedSalesCopy(description, data, mode);
 
             showDescriptionPreview(description, String(result.mode || mode));
             renderList(aiWarnings, [...(currentAiAnalysis?.warnings || []), ...(result.warnings || [])], "Критичных предупреждений нет.");
