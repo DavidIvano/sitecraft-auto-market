@@ -34,7 +34,7 @@ const productPresentation = {
         </aside>
       </header>
 
-      <div class="promotion-page-message" id="promotion-page-message" role="status" aria-live="polite">Загружаю объявление и баланс...</div>
+      <div class="promotion-page-message" id="promotion-page-message" role="status" aria-live="polite" data-tone="neutral">Загружаю объявление и баланс...</div>
 
       <article class="promotion-listing-preview" id="promotion-listing-preview" aria-live="polite">
         <span class="promotion-listing-skeleton" aria-hidden="true"></span>
@@ -175,7 +175,7 @@ const productPresentation = {
         const slug = card?.dataset.productSlug as PromotionProductSlug | undefined;
         const product = slug ? PROMOTION_PRODUCTS[slug] : null;
         if (!product) return;
-        preview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="" width="168" height="106" loading="lazy" decoding="async" referrerpolicy="no-referrer"><div><span class="promotion-preview-label">${escapeHtml(product.shortName)}</span><strong>${escapeHtml(title)}</strong><b>${escapeHtml(price)}</b><small>${escapeHtml(status)}</small></div><i data-lucide="${slug === "homepage_premium_7_days" ? "crown" : slug === "featured_14_days" ? "bookmark" : "arrow-up"}" aria-hidden="true"></i>`;
+        preview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="" width="168" height="106" loading="lazy" decoding="async" referrerpolicy="no-referrer"><div><span class="promotion-preview-label">${escapeHtml(product.shortName)}</span><strong>${escapeHtml(title)}</strong><b>${escapeHtml(price)}</b><small>${escapeHtml(status)}</small></div><i data-lucide="${slug === "homepage_premium_7_days" ? "crown" : slug === "featured_14_days" ? "star" : "arrow-up"}" aria-hidden="true"></i>`;
       });
       refreshAppIcons(listingPreview);
       document.querySelectorAll<HTMLElement>("[data-promotion-preview]").forEach((preview) => refreshAppIcons(preview));
