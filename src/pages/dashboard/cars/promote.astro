@@ -4,14 +4,34 @@ import { PROMOTION_PRODUCTS } from "../../../lib/promotions/model";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const products = Object.values(PROMOTION_PRODUCTS);
+const productPresentation = {
+  boost_7_days: {
+    icon: "arrow-up",
+    badge: "Быстрый старт",
+    outcome: "Выше обычных объявлений",
+  },
+  featured_14_days: {
+    icon: "star",
+    badge: "Больше внимания",
+    outcome: "Заметнее в каталоге",
+  },
+  homepage_premium_7_days: {
+    icon: "crown",
+    badge: "Лучший результат",
+    outcome: "Максимальная видимость",
+  },
+} as const;
 ---
 
 <BaseLayout title="Продвижение объявления" description="Продвижение объявления за внутренние кредиты" variant="workspace" noindex>
   <section class="section promotion-page-section">
     <div class="container promotion-page" data-api-url={xanoApiUrl} aria-busy="true">
       <header class="promotion-page-heading">
-        <div><p class="eyebrow">Продвижение</p><h1>Усилить объявление</h1><p class="lead">Выберите услугу и подтвердите списание внутренних кредитов.</p></div>
-        <aside class="promotion-balance-card" aria-label="Текущий баланс"><span>Текущий баланс</span><strong id="promotion-balance">—</strong><small>Для AI и продвижения</small></aside>
+        <div><p class="eyebrow">Продвижение</p><h1>Усилить объявление</h1><p class="lead">Выберите вариант — результат, срок и стоимость легко сравнить.</p></div>
+        <aside class="promotion-balance-card" aria-label="Текущий баланс">
+          <span class="promotion-balance-icon" aria-hidden="true"><i data-lucide="coins"></i></span>
+          <span><small>Текущий баланс</small><strong id="promotion-balance">—</strong></span>
+        </aside>
       </header>
 
       <div class="promotion-page-message" id="promotion-page-message" role="status" aria-live="polite">Загружаю объявление и баланс...</div>
@@ -21,22 +41,49 @@ const products = Object.values(PROMOTION_PRODUCTS);
       </article>
 
       <section class="promotion-products-section" aria-labelledby="promotion-products-title">
-        <div class="section-heading"><div><p class="eyebrow">Варианты</p><h2 id="promotion-products-title">Выберите продвижение</h2></div></div>
+        <div class="promotion-products-heading">
+          <div><p class="eyebrow">Три уровня видимости</p><h2 id="promotion-products-title">Выберите продвижение</h2></div>
+          <p>Повторная покупка продлевает уже активный срок.</p>
+        </div>
         <div class="promotion-products-grid" id="promotion-products">
-          {products.map((product) => (
+          {products.map((product) => {
+            const presentation = productPresentation[product.slug];
+            return (
             <article class:list={["promotion-product-card", product.cardClass]} data-product-slug={product.slug}>
-              <div class="promotion-product-preview" aria-hidden="true"><span>{product.shortName}</span><strong>Ваш автомобиль</strong><small>Пример оформления</small></div>
+              {product.slug === "homepage_premium_7_days" && (
+                <span class="promotion-product-recommended"><i data-lucide="crown" aria-hidden="true"></i>Лучший результат</span>
+              )}
               <div class="promotion-product-copy">
-                <div><h3>{product.name}</h3><p>{product.description}</p></div>
-                <dl><div><dt>Срок</dt><dd>{product.durationDays} дней</dd></div><div><dt>Стоимость</dt><dd>{product.credits} кредитов</dd></div></dl>
-                <p class="promotion-current-state" data-product-current>Сейчас не активно</p>
-                <p class="promotion-future-state" data-product-future>Новая дата окончания появится после загрузки.</p>
-                <p class="promotion-affordability" data-product-affordability></p>
-                <button class="button promotion-product-action" type="button" data-product-action disabled>Загрузка...</button>
+                <header class="promotion-product-header">
+                  <span class="promotion-product-icon" aria-hidden="true"><i data-lucide={presentation.icon}></i></span>
+                  <span><small>{presentation.badge}</small><h3>{product.name}</h3></span>
+                </header>
+
+                <div class="promotion-product-preview" data-promotion-preview aria-hidden="true">
+                  <span class="promotion-preview-skeleton"></span>
+                </div>
+
+                <div class="promotion-product-benefit">
+                  <i data-lucide={product.slug === "homepage_premium_7_days" ? "badge-check" : presentation.icon} aria-hidden="true"></i>
+                  <p><strong>{presentation.outcome}</strong><span>{product.description}</span></p>
+                </div>
+
+                <dl class="promotion-product-metrics">
+                  <div><dt><i data-lucide="calendar-days" aria-hidden="true"></i>Срок</dt><dd>{product.durationDays} дней</dd></div>
+                  <div><dt><i data-lucide="coins" aria-hidden="true"></i>Стоимость</dt><dd>{product.credits} кредитов</dd></div>
+                  <div><dt><i data-lucide="calendar-check" aria-hidden="true"></i>После активации</dt><dd data-product-future>После загрузки</dd></div>
+                </dl>
+
+                <div class="promotion-product-state">
+                  <p class="promotion-current-state" data-product-current>Сейчас не активно</p>
+                  <p class="promotion-affordability" data-product-affordability></p>
+                </div>
+                <button class="button promotion-product-action" type="button" data-product-action disabled><span>Загрузка...</span></button>
               </div>
             </article>
-          ))}
+          )})}
         </div>
+        <p class="promotion-extension-note"><i data-lucide="shield-check" aria-hidden="true"></i><span>Продвижение включается сразу. Повторная покупка добавляет дни к текущему сроку.</span></p>
       </section>
 
       <nav class="promotion-return-links" aria-label="Навигация после продвижения">
@@ -65,6 +112,7 @@ const products = Object.values(PROMOTION_PRODUCTS);
   <script>
     import { getAuthToken, isSessionConfirmedExpired, redirectToLogin } from "../../../lib/authClient";
     import { API_ROUTES } from "../../../lib/apiRoutes";
+    import { refreshAppIcons } from "../../../lib/appIcons";
     import { getDashboardListingThumbnail, type DashboardListing } from "../../../lib/dashboardListings";
     import { normalizeListingStatus } from "../../../lib/listingStatus";
     import { PROMOTION_PRODUCTS, calculatePromotionEndDate, getActivePromotionProducts, getPromotionEligibilityMessage, parseApiDate, type DashboardSummary, type PromoteListingResponse, type PromotionApiError, type PromotionProductSlug } from "../../../lib/promotions/model";
@@ -118,7 +166,19 @@ const products = Object.values(PROMOTION_PRODUCTS);
       const title = String(listing.title || [listing.brand, listing.model].filter(Boolean).join(" ") || "Объявление");
       const thumbnail = getDashboardListingThumbnail(listing);
       const promotions = getActivePromotionProducts(listing);
-      listingPreview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(title)}" width="240" height="150" referrerpolicy="no-referrer"><div><div class="promotion-listing-title-row"><div><p class="eyebrow">Ваш автомобиль</p><h2>${escapeHtml(title)}</h2></div><span class="status-badge">${escapeHtml(normalizeListingStatus(listing.status))}</span></div><strong class="promotion-listing-price">${escapeHtml(formatPrice(listing))}</strong><div class="dashboard-promotion-badges">${promotions.length ? promotions.map((product) => `<span class="dashboard-promotion-badge ${product.cardClass}">${escapeHtml(product.shortName)} до ${escapeHtml(formatDate(listing?.[product.timestampField]))}</span>`).join("") : '<span class="dashboard-promotion-unavailable">Активных продвижений нет</span>'}</div></div>`;
+      const status = normalizeListingStatus(listing.status);
+      const price = formatPrice(listing);
+      listingPreview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="${escapeHtml(title)}" width="320" height="200" decoding="async" fetchpriority="high" referrerpolicy="no-referrer"><div class="promotion-listing-summary"><div class="promotion-listing-title-row"><div><p class="eyebrow">Ваш автомобиль</p><h2>${escapeHtml(title)}</h2></div><span class="status-badge">${escapeHtml(status)}</span></div><strong class="promotion-listing-price">${escapeHtml(price)}</strong><div class="dashboard-promotion-badges">${promotions.length ? promotions.map((product) => `<span class="dashboard-promotion-badge ${product.cardClass}">${escapeHtml(product.shortName)} до ${escapeHtml(formatDate(listing?.[product.timestampField]))}</span>`).join("") : '<span class="dashboard-promotion-unavailable">Активных продвижений нет</span>'}</div></div><div class="promotion-listing-guidance"><span class="promotion-listing-guidance-icon" aria-hidden="true"><i data-lucide="shield-check"></i></span><p><strong>Безопасная активация</strong><span>Кредиты списываются только после подтверждения. Повторная покупка продлевает срок.</span></p></div>`;
+
+      document.querySelectorAll<HTMLElement>("[data-promotion-preview]").forEach((preview) => {
+        const card = preview.closest<HTMLElement>("[data-product-slug]");
+        const slug = card?.dataset.productSlug as PromotionProductSlug | undefined;
+        const product = slug ? PROMOTION_PRODUCTS[slug] : null;
+        if (!product) return;
+        preview.innerHTML = `<img src="${escapeHtml(thumbnail.url)}" alt="" width="168" height="106" loading="lazy" decoding="async" referrerpolicy="no-referrer"><div><span class="promotion-preview-label">${escapeHtml(product.shortName)}</span><strong>${escapeHtml(title)}</strong><b>${escapeHtml(price)}</b><small>${escapeHtml(status)}</small></div><i data-lucide="${slug === "homepage_premium_7_days" ? "crown" : slug === "featured_14_days" ? "bookmark" : "arrow-up"}" aria-hidden="true"></i>`;
+      });
+      refreshAppIcons(listingPreview);
+      document.querySelectorAll<HTMLElement>("[data-promotion-preview]").forEach((preview) => refreshAppIcons(preview));
       if (listing.slug && publicLink) { publicLink.href = `/cars/${encodeURIComponent(listing.slug)}/`; publicLink.hidden = false; }
     }
 
@@ -136,11 +196,11 @@ const products = Object.values(PROMOTION_PRODUCTS);
         const eligibleMessage = getPromotionEligibilityMessage(listing.status);
         const missing = Math.max(0, product.credits - credits);
         if (current) current.textContent = parseApiDate(until)?.getTime() && parseApiDate(until)!.getTime() > Date.now() ? `Сейчас активно до ${formatDate(until)}` : "Сейчас не активно";
-        if (future) future.textContent = `После активации: до ${formatDate(calculatePromotionEndDate(until, product.durationDays))}`;
+        if (future) future.textContent = `до ${formatDate(calculatePromotionEndDate(until, product.durationDays))}`;
         if (affordability) affordability.textContent = eligibleMessage || (missing ? `Не хватает ${missing} кредитов` : `После активации останется ${credits - product.credits} кредитов`);
         if (button) {
           button.disabled = Boolean(eligibleMessage) || missing > 0 || busy;
-          button.textContent = eligibleMessage || (missing ? `Не хватает ${missing} кредитов` : `${product.name} за ${product.credits}`);
+          button.innerHTML = eligibleMessage || (missing ? `Не хватает ${missing} кредитов` : `<span>Активировать</span><strong>${product.credits} кредитов</strong>`);
         }
       });
     }

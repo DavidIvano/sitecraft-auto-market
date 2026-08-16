@@ -61,8 +61,13 @@ test("listing promotion availability explains every non-public state", () => {
 
 test("production frontend uses real credit endpoints and no checkout or test storage", () => {
   const promote = readFileSync(new URL("../src/pages/dashboard/cars/promote.astro", import.meta.url), "utf8");
+  const promotionStyles = readFileSync(new URL("../src/styles/components/promotion-page.css", import.meta.url), "utf8");
+  const workspaceStyles = readFileSync(new URL("../src/styles/entries/workspace.css", import.meta.url), "utf8");
   const listings = readFileSync(new URL("../src/pages/dashboard/listings.astro", import.meta.url), "utf8");
   for (const marker of ["dashboardListingPromote", "idempotency_key", "promotion-confirm-dialog", "INSUFFICIENT_CREDITS", "aria-live", "crypto.randomUUID"]) assert.match(promote, new RegExp(marker));
+  for (const marker of ["promotion-product-recommended", "data-promotion-preview", "promotion-extension-note", 'data-lucide="crown"', "refreshAppIcons"]) assert.match(promote, new RegExp(marker));
+  for (const marker of ["promotion-products-grid", "promotion-product-card.is-featured", "promotion-product-card.is-homepage-premium", "linear-gradient", "prefers-reduced-motion: reduce"]) assert.match(promotionStyles, new RegExp(marker.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.match(workspaceStyles, /components\/promotion-page\.css/);
   assert.doesNotMatch(promote, /purchaseCreate|checkout_url|alert\(|sessionStorage|PUBLIC_PROMOTION_TEST_MODE/);
   assert.doesNotMatch(listings, /PUBLIC_PROMOTION_TEST_MODE|PromotionTestStore/);
   assert.match(listings, /sitecraft-dashboard-listings-v1:\$\{getAuthUser\(\)\?\.id/);
