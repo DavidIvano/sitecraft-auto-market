@@ -595,6 +595,46 @@
   .public-car-card .car-card-location { max-width: 58%; }
   .public-car-card .car-card-location svg { color: var(--accent); }
 
+  /* Preserve a compact, scan-friendly row when the user selects list view. */
+  @media (min-width: 1024px) {
+    .catalog-grid-list .public-car-card {
+      --public-card-height: 240px;
+      height: var(--public-card-height);
+      min-height: var(--public-card-height);
+    }
+
+    .catalog-grid-list .public-car-card .car-card-link {
+      display: grid;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      grid-template-columns: minmax(260px, 38%) minmax(0, 1fr);
+      grid-template-rows: minmax(0, 1fr);
+    }
+
+    .catalog-grid-list .public-car-card .car-card-media {
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      aspect-ratio: auto;
+      border-right: 1px solid var(--border-subtle);
+      border-bottom: 0;
+    }
+
+    .catalog-grid-list .public-car-card .car-card-body {
+      height: 100%;
+      min-height: 0;
+      padding: 18px 20px;
+    }
+
+    .catalog-grid-list .public-car-card .favorite-button {
+      right: auto;
+      left: calc(max(260px, 38%) - 56px);
+    }
+
+    .catalog-grid-list .public-car-card .car-card-premium-marker { display: none; }
+  }
+
   .car-card-premium {
     border-color: color-mix(in srgb, var(--premium-bright) 58%, var(--border-default));
     background:

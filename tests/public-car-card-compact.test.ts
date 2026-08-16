@@ -71,6 +71,8 @@ test("premium card modifier uses the shared card and gold visual language", () =
   assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-premium-marker \{\s*display:\s*none/);
   assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-price-row \{[\s\S]*?flex-direction:\s*row[\s\S]*?justify-content:\s*space-between/);
   assert.match(systemCss, /\.public-car-card \{[\s\S]*?animation:\s*none/);
+  assert.match(systemCss, /@media \(min-width: 1024px\)[\s\S]*?\.catalog-grid-list \.public-car-card \{[\s\S]*?--public-card-height:\s*240px/);
+  assert.match(systemCss, /\.catalog-grid-list \.public-car-card \.car-card-link \{[\s\S]*?grid-template-columns:\s*minmax\(260px, 38%\) minmax\(0, 1fr\)/);
   assert.match(systemCss, /\.mac-main > :where\(\.detail-properties-section, \.detail-description-section\) \{[\s\S]*?content-visibility:\s*auto/);
   assert.doesNotMatch(systemCss, /\.mac-main > :where\([^)]*\.homepage-promotions[^)]*\) \{[\s\S]*?content-visibility:\s*auto/);
 });
