@@ -1,0 +1,302 @@
+@layer modifiers {
+  dialog.image-lightbox {
+    position: fixed;
+    inset: 0;
+    width: 100dvw;
+    max-width: none;
+    height: 100dvh;
+    max-height: none;
+    margin: 0;
+    overflow: hidden;
+    border: 0;
+    border-radius: 0;
+    background: #05070b;
+    color: #fff;
+    box-shadow: none;
+    padding: 0;
+  }
+
+  dialog.image-lightbox[open] {
+    display: block;
+  }
+
+  dialog.image-lightbox::backdrop {
+    background: rgba(3, 5, 9, .96);
+  }
+
+  dialog.image-lightbox .image-lightbox-shell {
+    position: relative;
+    display: block;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    margin: 0;
+    overflow: hidden;
+    background:
+      radial-gradient(circle at 50% 44%, rgba(25, 38, 58, .26), transparent 52%),
+      #05070b;
+  }
+
+  dialog.image-lightbox .image-lightbox-toolbar {
+    position: absolute;
+    z-index: 12;
+    inset: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) auto max(12px, env(safe-area-inset-left));
+    display: flex;
+    min-height: 0;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+    padding: 0;
+    pointer-events: none;
+  }
+
+  dialog.image-lightbox :where(.image-lightbox-count, .image-lightbox-close, .image-lightbox-nav) {
+    border: 1px solid rgba(255, 255, 255, .25);
+    background: rgba(13, 17, 24, .66);
+    box-shadow: 0 10px 28px rgba(0, 0, 0, .32), inset 0 1px rgba(255, 255, 255, .1);
+    color: #fff;
+    -webkit-backdrop-filter: blur(18px) saturate(145%);
+    backdrop-filter: blur(18px) saturate(145%);
+  }
+
+  dialog.image-lightbox .image-lightbox-count {
+    display: inline-grid;
+    min-width: 68px;
+    min-height: 44px;
+    place-items: center;
+    border-radius: var(--radius-pill);
+    padding: 0 14px;
+    font-size: .82rem;
+    font-weight: 780;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: .02em;
+    pointer-events: auto;
+  }
+
+  dialog.image-lightbox .image-lightbox-close {
+    display: grid;
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    place-items: center;
+    border-radius: 50%;
+    cursor: pointer;
+    pointer-events: auto;
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  dialog.image-lightbox .image-lightbox-close svg {
+    width: 22px;
+    height: 22px;
+  }
+
+  dialog.image-lightbox .image-lightbox-stage,
+  dialog.image-lightbox .image-lightbox-viewport {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    min-height: 0;
+    place-items: center;
+    overflow: hidden;
+  }
+
+  dialog.image-lightbox .image-lightbox-viewport {
+    cursor: default;
+    touch-action: none;
+  }
+
+  dialog.image-lightbox .image-lightbox-viewport.is-zoomed { cursor: grab; }
+  dialog.image-lightbox .image-lightbox-viewport.is-zoomed:active { cursor: grabbing; }
+
+  dialog.image-lightbox .image-lightbox-viewport img {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    object-position: center;
+    transform-origin: center;
+    user-select: none;
+    will-change: auto;
+  }
+
+  dialog.image-lightbox .image-lightbox-viewport.is-zoomed img { will-change: transform; }
+
+  dialog.image-lightbox .image-lightbox-nav {
+    position: absolute;
+    z-index: 10;
+    top: 50%;
+    display: grid;
+    width: 52px;
+    min-width: 52px;
+    height: 52px;
+    min-height: 52px;
+    place-items: center;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translateY(-50%);
+    transition: border-color var(--transition-fast), background var(--transition-fast), transform var(--transition-fast);
+  }
+
+  dialog.image-lightbox .image-lightbox-nav svg {
+    width: 24px;
+    height: 24px;
+  }
+
+  dialog.image-lightbox .image-lightbox-prev { left: max(14px, env(safe-area-inset-left)); }
+  dialog.image-lightbox .image-lightbox-next { right: max(14px, env(safe-area-inset-right)); }
+  dialog.image-lightbox .image-lightbox-nav[hidden] { display: none; }
+
+  dialog.image-lightbox .image-lightbox-footer {
+    position: absolute;
+    z-index: 11;
+    right: max(12px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+    left: max(12px, env(safe-area-inset-left));
+    display: flex;
+    min-width: 0;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  dialog.image-lightbox .image-lightbox-thumbnails {
+    display: flex;
+    width: fit-content;
+    max-width: min(760px, 100%);
+    min-width: 0;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 8px;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 18px;
+    background: rgba(13, 17, 24, .68);
+    box-shadow: 0 14px 36px rgba(0, 0, 0, .34), inset 0 1px rgba(255, 255, 255, .08);
+    padding: 7px;
+    scrollbar-width: none;
+    -webkit-backdrop-filter: blur(20px) saturate(145%);
+    backdrop-filter: blur(20px) saturate(145%);
+    pointer-events: auto;
+    scroll-snap-type: inline proximity;
+  }
+
+  dialog.image-lightbox .image-lightbox-thumbnails::-webkit-scrollbar { display: none; }
+
+  dialog.image-lightbox .image-lightbox-thumbnail {
+    display: grid;
+    width: 70px;
+    min-width: 70px;
+    height: 52px;
+    min-height: 52px;
+    flex: 0 0 70px;
+    place-items: center;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, .24);
+    border-radius: 12px;
+    background: rgba(255, 255, 255, .08);
+    cursor: pointer;
+    padding: 2px;
+    scroll-snap-align: center;
+    transition: border-color var(--transition-fast), box-shadow var(--transition-fast), opacity var(--transition-fast), transform var(--transition-fast);
+  }
+
+  dialog.image-lightbox .image-lightbox-thumbnail:not([aria-pressed="true"]) { opacity: .7; }
+
+  dialog.image-lightbox .image-lightbox-thumbnail[aria-pressed="true"] {
+    border-color: #63adff;
+    box-shadow: 0 0 0 2px rgba(78, 159, 255, .36), 0 8px 18px rgba(0, 0, 0, .24);
+    opacity: 1;
+  }
+
+  dialog.image-lightbox .image-lightbox-thumbnail img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    border-radius: 9px;
+    object-fit: cover;
+  }
+
+  dialog.image-lightbox :where(button, .image-lightbox-thumbnail):focus-visible {
+    outline: 3px solid rgba(99, 173, 255, .78);
+    outline-offset: 3px;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    dialog.image-lightbox :where(.image-lightbox-close, .image-lightbox-nav):hover {
+      border-color: rgba(255, 255, 255, .48);
+      background: rgba(25, 32, 44, .8);
+    }
+
+    dialog.image-lightbox .image-lightbox-close:hover { transform: scale(1.04); }
+    dialog.image-lightbox .image-lightbox-nav:hover { transform: translateY(-50%) scale(1.04); }
+    dialog.image-lightbox .image-lightbox-thumbnail:hover { opacity: 1; transform: translateY(-1px); }
+  }
+
+  @media (max-width: 640px) {
+    dialog.image-lightbox .image-lightbox-toolbar {
+      inset-block-start: max(8px, env(safe-area-inset-top));
+      inset-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+    }
+
+    dialog.image-lightbox .image-lightbox-close {
+      width: 46px;
+      min-width: 46px;
+      height: 46px;
+      min-height: 46px;
+    }
+
+    dialog.image-lightbox .image-lightbox-nav {
+      width: 46px;
+      min-width: 46px;
+      height: 46px;
+      min-height: 46px;
+    }
+
+    dialog.image-lightbox .image-lightbox-prev { left: max(6px, env(safe-area-inset-left)); }
+    dialog.image-lightbox .image-lightbox-next { right: max(6px, env(safe-area-inset-right)); }
+
+    dialog.image-lightbox .image-lightbox-footer {
+      right: max(8px, env(safe-area-inset-right));
+      bottom: max(8px, env(safe-area-inset-bottom));
+      left: max(8px, env(safe-area-inset-left));
+    }
+
+    dialog.image-lightbox .image-lightbox-thumbnails {
+      max-width: 100%;
+      gap: 6px;
+      border-radius: 16px;
+      padding: 6px;
+    }
+
+    dialog.image-lightbox .image-lightbox-thumbnail {
+      width: 60px;
+      min-width: 60px;
+      height: 46px;
+      min-height: 46px;
+      flex-basis: 60px;
+      border-radius: 10px;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    dialog.image-lightbox *,
+    dialog.image-lightbox *::before,
+    dialog.image-lightbox *::after {
+      scroll-behavior: auto;
+      transition-duration: .01ms;
+      animation-duration: .01ms;
+    }
+  }
+}

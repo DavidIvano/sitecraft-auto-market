@@ -1,13 +1,11 @@
 <dialog class="image-lightbox" id="site-image-lightbox" aria-label="Просмотр фотографий автомобиля" aria-modal="true">
   <div class="image-lightbox-shell">
     <header class="image-lightbox-toolbar">
-      <div class="image-lightbox-zoom-controls" aria-label="Масштаб фотографии">
-        <button type="button" data-lightbox-zoom-out aria-label="Уменьшить фотографию"><i data-lucide="zoom-out" aria-hidden="true"></i></button>
-        <output data-lightbox-zoom-value aria-live="polite">100%</output>
-        <button type="button" data-lightbox-zoom-in aria-label="Увеличить фотографию"><i data-lucide="zoom-in" aria-hidden="true"></i></button>
-      </div>
+      <output class="image-lightbox-count" data-lightbox-count aria-live="polite">1 / 1</output>
       <button class="image-lightbox-close" type="button" data-lightbox-close aria-label="Закрыть просмотр"><i data-lucide="x" aria-hidden="true"></i></button>
     </header>
+
+    <output class="sr-only" data-lightbox-zoom-value aria-live="polite">100%</output>
 
     <div class="image-lightbox-stage">
       <button class="image-lightbox-nav image-lightbox-prev" type="button" data-lightbox-prev aria-label="Предыдущая фотография"><i data-lucide="chevron-left" aria-hidden="true"></i></button>
@@ -19,7 +17,6 @@
 
     <footer class="image-lightbox-footer">
       <div class="image-lightbox-thumbnails" data-lightbox-thumbnails aria-label="Фотографии автомобиля"></div>
-      <output class="image-lightbox-count" data-lightbox-count aria-live="polite">1 / 1</output>
     </footer>
   </div>
 </dialog>

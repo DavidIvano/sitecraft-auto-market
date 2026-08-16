@@ -16,7 +16,7 @@ test("lightbox accepts HTTPS raster sources and the local placeholder only", () 
   assert.equal(isSafeLightboxImageUrl("http://images.example.com/car.jpg"), false);
 });
 
-test("one global native dialog owns close, navigation, zoom and focus restoration", () => {
+test("one global native dialog owns close, navigation, pinch zoom and focus restoration", () => {
   const component = readProjectFile("src/components/media/ImageLightbox.astro");
   const module = readProjectFile("src/lib/media/lightbox.ts");
   const layout = readProjectFile("src/layouts/BaseLayout.astro");
@@ -33,6 +33,9 @@ test("one global native dialog owns close, navigation, zoom and focus restoratio
   assert.match(module, /event\.key === "ArrowLeft"/);
   assert.match(module, /Math\.abs\(deltaX\) > 48/);
   assert.match(module, /MAX_SCALE = 3/);
+  assert.doesNotMatch(component, /data-lightbox-zoom-in|data-lightbox-zoom-out/);
+  assert.match(component, /class="sr-only" data-lightbox-zoom-value/);
+  assert.match(component, /image-lightbox-toolbar[\s\S]*data-lightbox-count[\s\S]*data-lightbox-close/);
   assert.doesNotMatch(module, /viewport\.addEventListener\("dblclick"/);
   assert.doesNotMatch(module, /lastTapAt|now - lastTapAt/);
   assert.match(module, /pointers\.size === 2/);
@@ -67,19 +70,15 @@ test("vehicle galleries use the shared trigger while logos and icons do not", ()
 });
 
 test("lightbox viewport owns the full stage and navigation overlays it", () => {
-  const css = readProjectFile("src/styles/global.css");
-  const stage = css.match(/\.image-lightbox-stage\s*\{[^}]+\}/)?.[0] || "";
-  const viewport = css.match(/\.image-lightbox-viewport\s*\{[^}]+\}/)?.[0] || "";
-  const navigation = css.match(/\.image-lightbox-nav\s*\{[^}]+\}/g)?.find((rule) => /position:\s*absolute/.test(rule)) || "";
-  assert.match(stage, /grid-template-columns:\s*minmax\(0, 1fr\)/);
-  assert.doesNotMatch(stage, /52px/);
-  assert.match(viewport, /width:\s*100%/);
-  assert.match(viewport, /position:\s*relative/);
-  assert.match(viewport, /grid-column:\s*1/);
-  assert.match(navigation, /position:\s*absolute/);
+  const css = readProjectFile("src/styles/components/image-lightbox.css");
+  assert.match(css, /dialog\.image-lightbox\s*\{[\s\S]*?width:\s*100dvw[\s\S]*?height:\s*100dvh[\s\S]*?border-radius:\s*0/);
+  assert.match(css, /\.image-lightbox-stage,[\s\S]*?\.image-lightbox-viewport\s*\{[\s\S]*?position:\s*absolute[\s\S]*?inset:\s*0/);
+  assert.match(css, /\.image-lightbox-nav\s*\{[\s\S]*?position:\s*absolute/);
+  assert.match(css, /\.image-lightbox-footer\s*\{[\s\S]*?position:\s*absolute/);
   assert.match(css, /\.image-lightbox-nav\[hidden\]\s*\{\s*display:\s*none/);
-  assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*object-fit:\s*contain[^}]*object-position:\s*center/s);
-  assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*width:\s*100%[^}]*height:\s*100%/s);
-  assert.match(css, /\.image-lightbox-viewport img\s*\{[^}]*position:\s*absolute[^}]*inset:\s*0/s);
-  assert.doesNotMatch(css, /grid-template-columns:\s*52px\s+minmax\(0, 1fr\)\s+52px/);
+  assert.match(css, /\.image-lightbox-viewport img\s*\{[\s\S]*?width:\s*100%[\s\S]*?height:\s*100%[\s\S]*?object-fit:\s*contain/);
+  assert.match(css, /env\(safe-area-inset-top\)/);
+  assert.match(css, /\.image-lightbox-close\s*\{[\s\S]*?min-width:\s*48px[\s\S]*?min-height:\s*48px/);
+  assert.match(css, /\.image-lightbox-thumbnails\s*\{[\s\S]*?overflow-x:\s*auto/);
+  assert.doesNotMatch(css, /grid-template-rows:\s*auto\s+minmax\(0, 1fr\)\s+auto/);
 });

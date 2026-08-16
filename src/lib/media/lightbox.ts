@@ -132,7 +132,11 @@ export function installImageLightbox() {
     thumbnails.querySelectorAll<HTMLElement>("[data-lightbox-index]").forEach((button) => {
       const selected = Number(button.dataset.lightboxIndex) === activeIndex;
       button.setAttribute("aria-pressed", String(selected));
-      if (selected) button.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      if (selected) button.scrollIntoView({
+        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+        block: "nearest",
+        inline: "center",
+      });
     });
     preloadNeighbors();
   };

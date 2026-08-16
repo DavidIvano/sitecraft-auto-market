@@ -59,11 +59,16 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
     : promotion?.slug === "featured_14_days"
       ? messages.promotionFeatured
       : messages.promotionPremium;
+  const promotionIcon = promotion?.slug === "boost_7_days"
+    ? "arrow-up"
+    : promotion?.slug === "featured_14_days"
+      ? "star"
+      : "crown";
   const promotionBadge = promotion
-    ? `${isHomepagePremium ? "" : `<span class="promotion-badge promotion-badge-${escapeHtml(promotion.slug)}"><i data-lucide="${promotion.slug === "boost_7_days" ? "arrow-up" : "badge-check"}" aria-hidden="true"></i>${escapeHtml(promotionLabel)}</span>`}<span class="promotion-disclosure">${escapeHtml(messages.promoted)}</span>`
+    ? `<span class="promotion-disclosure">${escapeHtml(messages.promoted)}</span>`
     : "";
-  const premiumDecoration = isHomepagePremium
-    ? `<div class="car-card-premium-banner" aria-label="${escapeHtml(promotionLabel)}"><i data-lucide="crown" aria-hidden="true"></i><span>${escapeHtml(promotionLabel)}</span></div><span class="car-card-premium-marker" aria-hidden="true"><i data-lucide="gem"></i></span>`
+  const promotionDecoration = promotion
+    ? `<div class="car-card-promotion-banner${isHomepagePremium ? " car-card-premium-banner" : ""} car-card-promotion-banner-${escapeHtml(promotion.slug)}" aria-label="${escapeHtml(promotionLabel)}"><span class="car-card-promotion-icon"><i data-lucide="${promotionIcon}" aria-hidden="true"></i></span><span>${escapeHtml(promotionLabel)}</span></div>${isHomepagePremium ? '<span class="car-card-premium-marker" aria-hidden="true"><i data-lucide="gem"></i></span>' : ""}`
     : "";
   const imageAlt = [title, car.year, car.city].filter(Boolean).join(" — ");
   const responsiveAttributes = image.srcset
@@ -88,7 +93,7 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
   const dateLabel = options.source === "dashboard_favorites" ? interpolate(messages.savedOn, { value: formattedDate }) : formattedDate;
   const dateTime = formatDateTime(dateValue);
   return `<article class="${cardClass}" data-car-id="${escapeHtml(car.id)}" data-favorite-card>
-    ${premiumDecoration}
+    ${promotionDecoration}
     ${detailPath ? `<a class="car-card-link" href="${escapeHtml(detailPath)}" aria-label="${escapeHtml(interpolate(messages.openListing, { value: title }))}" data-car-card-link data-card-source="${source}">` : '<span class="car-card-link car-card-link-disabled" aria-disabled="true">'}
     <div class="car-card-media">${media}
       <div class="car-card-overlay-badges">${promotionBadge}${isSold ? `<span class="sold-ribbon">${escapeHtml(messages.sold)}</span>` : ""}</div>

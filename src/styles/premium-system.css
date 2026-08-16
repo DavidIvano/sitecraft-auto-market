@@ -637,7 +637,7 @@
   }
 
   .public-car-card .car-card-premium-banner::after { display: none; }
-  .public-car-card .car-card-premium-banner span {
+  .public-car-card .car-card-premium-banner > span:last-child {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

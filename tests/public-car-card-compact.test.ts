@@ -31,11 +31,20 @@ test("premium is disclosed and unsafe card images are rejected", () => {
   const premium = renderPublicCarCardMarkup(car({ promotion: { status: "active", promotion_type: "premium", placement: "catalog_and_homepage", priority: 100, starts_at: "2026-07-20", ends_at: "2099-07-27" } }));
   assert.match(premium, /Премиум/);
   assert.match(premium, /Продвигается/);
-  assert.match(premium, /car-card-premium-banner[\s\S]*data-lucide="crown"/);
+  assert.match(premium, /car-card-promotion-banner[\s\S]*car-card-premium-banner[\s\S]*data-lucide="crown"/);
   assert.match(premium, /car-card-premium-marker[\s\S]*data-lucide="gem"/);
   const unsafe = renderPublicCarCardMarkup(car({ main_image_url: "javascript:alert(1)", image_urls: [] }));
   assert.doesNotMatch(unsafe, /javascript:/);
   assert.match(unsafe, /Фото пока не добавлено/);
+});
+
+test("every active promotion gets the matching plan-card color tier and icon", () => {
+  const boosted = renderPublicCarCardMarkup(car({ promotion: { status: "active", promotion_type: "boost", placement: "catalog", priority: 20, starts_at: "2026-07-20", ends_at: "2099-07-27" } }));
+  const featured = renderPublicCarCardMarkup(car({ promotion: { status: "active", promotion_type: "featured", placement: "catalog", priority: 50, starts_at: "2026-07-20", ends_at: "2099-07-27" } }));
+  assert.match(boosted, /is-boosted/);
+  assert.match(boosted, /car-card-promotion-banner-boost_7_days[\s\S]*data-lucide="arrow-up"[\s\S]*Поднято/);
+  assert.match(featured, /is-featured/);
+  assert.match(featured, /car-card-promotion-banner-featured_14_days[\s\S]*data-lucide="star"[\s\S]*Выделено/);
 });
 
 test("homepage premium section is rendered before all regular cars", () => {
@@ -51,9 +60,11 @@ test("homepage premium section is rendered before all regular cars", () => {
 test("premium card modifier uses the shared card and gold visual language", () => {
   const css = readProjectFile("src/styles/promotions.css");
   const systemCss = readProjectFile("src/styles/premium-system.css");
-  for (const marker of ["#e9b949", "#ffd978", "car-card-premium-banner", "car-card-premium-marker", "--premium-gold"]) {
+  for (const marker of ["#4e9fff", "#716dff", "#e9b949", "#ffd978", "car-card-promotion-banner", "car-card-premium-marker", "--premium-gold"]) {
     assert.match(css, new RegExp(marker));
   }
+  assert.match(css, /\.public-car-card:is\(\.is-featured, \.car-card-featured\)[\s\S]*?--promotion-card-accent:\s*#716dff/);
+  assert.match(css, /\.public-car-card \.car-card-promotion-banner\s*\{[\s\S]*?border-radius:\s*var\(--radius-pill\)/);
   assert.doesNotMatch(css, /#9a72e8|#8058d6/);
   assert.match(systemCss, /\.public-car-card:is\(\.car-card-premium, \.is-homepage-premium\) \.car-card-premium-marker[\s\S]*?bottom:\s*auto/);
   assert.match(systemCss, /\.public-car-card \.car-card-premium-banner \{[\s\S]*?left:\s*12px[\s\S]*?border-radius:\s*var\(--radius-pill\)/);
