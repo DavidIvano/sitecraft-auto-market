@@ -6,11 +6,13 @@ import { toPublicListingForLocale } from "../../../i18n/publicListing";
 import { getPublicPageMessages, getRouteAlternates } from "../../../i18n/publicRoutes";
 import { isPublicLocaleRouteEnabled } from "../../../i18n/release4";
 import { getVehicleTaxonomyLabel } from "../../../domain/vehicleTaxonomy";
+import { normalizeBackendValue } from "../../../i18n/backendValues";
 import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/config";
 import { isValidPublicCarSlug } from "../../../lib/publicCar";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
 import { buildLocalizedVehicleSeo } from "../../../lib/seo/vehicleSeo";
 import { getCarBySlug, getLocalizedCarBySlug } from "../../../lib/xano";
+import { getCarDetailImagePresentations } from "../../../lib/imageUrls";
 
 export const prerender = false;
 
@@ -71,13 +73,23 @@ const specs = [
   [messages.price, formatCurrency(car.price, car.currency, locale)],
   [messages.mileage, formatMileage(car.mileage, locale)],
   [messages.firstRegistration, car.year ? String(car.year) : ""],
-  [messages.fuel, getVehicleTaxonomyLabel("fuel_type", car.fuel_type, locale) || car.fuel_type],
-  [messages.transmission, getVehicleTaxonomyLabel("transmission", car.transmission, locale) || car.transmission],
-  [messages.bodyType, getVehicleTaxonomyLabel("body_type", car.body_type, locale) || car.body_type],
+  [messages.fuel, getVehicleTaxonomyLabel("fuel_type", normalizeBackendValue("fuel_type", car.fuel_type), locale) || car.fuel_type],
+  [messages.transmission, getVehicleTaxonomyLabel("transmission", normalizeBackendValue("transmission", car.transmission), locale) || car.transmission],
+  [messages.bodyType, getVehicleTaxonomyLabel("body_type", normalizeBackendValue("body_type", car.body_type), locale) || car.body_type],
   [messages.location, car.city],
   [messages.updated, formatDate(car.translation_updated_at || car.updated_at, locale)],
 ].filter(([, value]) => Boolean(value));
 const readyLocales = car.available_locales.includes(locale) ? car.available_locales : [locale];
+const brandPath = car.brand ? `/${locale}/cars/brand/${encodeURIComponent(car.brand)}/` : "";
+const modelPath = car.brand && car.model ? `${brandPath}${encodeURIComponent(car.model)}/` : "";
+const cityPath = car.city ? `/${locale}/cars/city/${encodeURIComponent(car.city)}/` : "";
+const mainImage = getCarDetailImagePresentations(car)[0] || {
+  src: car.image_urls[0] || "/deal-finder-placeholder.svg",
+  srcset: "",
+  sizes: "100vw",
+  width: 1200,
+  height: 800,
+};
 ---
 
 <BaseLayout
@@ -103,14 +115,18 @@ const readyLocales = car.available_locales.includes(locale) ? car.available_loca
       <article class="detail-grid car-detail-grid">
         <div class="gallery car-slider">
           <div class="gallery-stage">
-            <img src={car.image_urls[0] || "/deal-finder-placeholder.svg"} alt={seo.imageAlt} width="1200" height="800" fetchpriority="high" decoding="async" />
+            <img src={mainImage.src} srcset={mainImage.srcset || undefined} sizes={mainImage.sizes} alt={seo.imageAlt} width={mainImage.width} height={mainImage.height} fetchpriority="high" decoding="async" />
           </div>
         </div>
         <div class="detail-panel compact-detail-panel">
           <span class="status-badge status-approved">{messages.verifiedListing}</span>
           <h1>{seo.heading}</h1>
           <p class="detail-price">{formatCurrency(car.price, car.currency, locale)}</p>
-          <p>{car.city || messages.locationMissing}</p>
+          <nav class="vehicle-context-links" aria-label={messages.similarVehicles}>
+            {brandPath && <a href={brandPath}><span>{messages.brand}</span><strong>{car.brand}</strong></a>}
+            {modelPath && <a href={modelPath}><span>{messages.model}</span><strong>{car.model}</strong></a>}
+            {cityPath && <a href={cityPath}><span>{messages.location}</span><strong>{car.city}</strong></a>}
+          </nav>
         </div>
       </article>
     </div>

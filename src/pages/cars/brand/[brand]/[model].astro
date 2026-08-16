@@ -90,7 +90,7 @@ const seo = buildVehicleTaxonomySeo({ brand, model, siteUrl: SITE_URL });
         </div>
       </div>
       <div class="cards-grid catalog-grid taxonomy-cars-grid">
-        {model.cars.map((car, index) => <CarCard car={car} priority={index < 4} source="model_page" />)}
+        {model.cars.map((car, index) => <CarCard car={car} priority={index === 0} source="model_page" />)}
       </div>
     </div>
   </section>

@@ -61,9 +61,11 @@ query "public/locale/cars/{slug}" verb=GET {
       if (($source_locale == $input.lang) && (($car.title|first_notnull:""|trim) != "") && (($car.description|first_notnull:""|trim) != "")) {
         var.update $localized_title { value = $car.title|trim }
         var.update $localized_description { value = $car.description|trim }
-        var.update $localized_seo_title { value = $car.seo_title|first_notnull:"" }
-        var.update $localized_seo_description { value = $car.seo_description|first_notnull:"" }
-        var.update $localized_image_alt_texts { value = $car.image_alt_texts|first_notnull:[] }
+        // car_listings has no optional SEO columns; translated rows do.
+        // The frontend derives safe metadata for source-language records.
+        var.update $localized_seo_title { value = "" }
+        var.update $localized_seo_description { value = "" }
+        var.update $localized_image_alt_texts { value = [] }
         var.update $translation {
           value = {
             locale                : $input.lang

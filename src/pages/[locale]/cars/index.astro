@@ -90,7 +90,7 @@ const collectionSchema = {
       </div>
       {cars.length > 0 ? (
         <div class="cards-grid catalog-grid">
-          {cars.map((car, index) => <CarCard car={car} priority={index < 4} source="localized_catalog" locale={locale} />)}
+          {cars.map((car, index) => <CarCard car={car} priority={index === 0} source="localized_catalog" locale={locale} />)}
         </div>
       ) : (
         <div class="empty-state" role="status">

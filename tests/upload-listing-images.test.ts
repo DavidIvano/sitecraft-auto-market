@@ -53,7 +53,16 @@ function uploadRequest(files: File[], token = "valid") {
 }
 
 function image(name = "car.webp", size = 10, type = "image/webp") {
-  return new File([new Uint8Array(size)], name, { type });
+  if (size === 0) return new File([], name, { type });
+  const bytes = new Uint8Array(Math.max(30, size));
+  bytes.set([0x52, 0x49, 0x46, 0x46], 0); // RIFF
+  bytes.set([0x57, 0x45, 0x42, 0x50], 8); // WEBP
+  bytes.set([0x56, 0x50, 0x38, 0x58], 12); // VP8X
+  const widthMinusOne = 799;
+  const heightMinusOne = 499;
+  bytes.set([widthMinusOne & 0xff, (widthMinusOne >> 8) & 0xff, (widthMinusOne >> 16) & 0xff], 24);
+  bytes.set([heightMinusOne & 0xff, (heightMinusOne >> 8) & 0xff, (heightMinusOne >> 16) & 0xff], 27);
+  return new File([bytes], name, { type });
 }
 
 async function body(response: Response) { return response.json() as Promise<Record<string, unknown>>; }
@@ -137,7 +146,7 @@ test("server rejects empty, unsupported, oversized, and too many files", async (
     [[image("empty.webp", 0)], 400, "EMPTY_FILE"],
     [[image("bad.svg", 10, "image/svg+xml")], 400, "UNSUPPORTED_FILE_TYPE"],
     [[image("text.txt", 10, "text/plain")], 400, "UNSUPPORTED_FILE_TYPE"],
-    [[image("large.webp", 1024 * 1024 + 1)], 413, "FILE_TOO_LARGE"],
+    [[image("large.webp", 10 * 1024 * 1024 + 1)], 413, "FILE_TOO_LARGE"],
     [Array.from({ length: 9 }, (_, index) => image(`${index}.webp`)), 400, "TOO_MANY_FILES"],
   ];
   for (const [files, status, code] of cases) {
@@ -147,6 +156,16 @@ test("server rejects empty, unsupported, oversized, and too many files", async (
     assert.equal((await body(response)).code, code);
     assert.equal(r2.puts.length, 0);
   }
+});
+
+test("server verifies magic bytes instead of trusting a WebP MIME label", async () => {
+  globalThis.fetch = async () => Response.json({ id: 42 });
+  const { value, r2 } = env();
+  const fake = new File([new TextEncoder().encode("not a webp")], "fake.webp", { type: "image/webp" });
+  const response = await onRequestPost({ request: uploadRequest([fake]), env: value as never });
+  assert.equal(response.status, 400);
+  assert.equal((await body(response)).code, "INVALID_IMAGE_SIGNATURE");
+  assert.equal(r2.puts.length, 0);
 });
 
 test("valid authenticated upload uses verified user id and returns HTTPS URL", async () => {

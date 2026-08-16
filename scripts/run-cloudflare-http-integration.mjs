@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { once } from "node:events";
 import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
@@ -8,6 +8,19 @@ const root = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const port = process.env.HTTP_TEST_PORT || "4349";
 const baseUrl = `http://127.0.0.1:${port}`;
 const wrangler = join(root, "node_modules", ".bin", "wrangler");
+const integrationEnv = {
+  ...process.env,
+  I18N_ENABLED: "true",
+  I18N_API_READ_ENABLED: "true",
+  I18N_PUBLIC_ROUTES_ENABLED: "true",
+};
+
+const build = spawnSync(process.platform === "win32" ? "npm.cmd" : "npm", ["run", "build"], {
+  cwd: root,
+  env: integrationEnv,
+  stdio: "inherit",
+});
+if (build.status !== 0) throw new Error(`Cloudflare integration build failed with exit code ${build.status}`);
 
 if (!existsSync(join(root, "dist", "client", "_worker.js", "index.js"))) {
   throw new Error("Cloudflare Pages bundle is missing. Run npm run build first.");
@@ -15,7 +28,7 @@ if (!existsSync(join(root, "dist", "client", "_worker.js", "index.js"))) {
 
 const runtime = spawn(wrangler, ["pages", "dev", "dist/client", "--port", port, "--ip", "127.0.0.1"], {
   cwd: root,
-  env: process.env,
+  env: integrationEnv,
   detached: true,
   stdio: ["ignore", "pipe", "pipe"],
 });
@@ -54,15 +67,22 @@ try {
   }
   if (!ready) throw new Error(`Cloudflare runtime did not become ready.\n${runtimeLog}`);
 
-  const testArguments = ["scripts/http-public-seo-integration.mjs", "--base-url", baseUrl];
-  if (process.env.HTTP_TEST_LOCALE) testArguments.push("--locale", process.env.HTTP_TEST_LOCALE);
-  const testProcess = spawn(process.execPath, testArguments, {
-    cwd: root,
-    env: process.env,
-    stdio: "inherit",
-  });
-  const [exitCode] = await once(testProcess, "exit");
-  if (exitCode !== 0) throw new Error(`HTTP integration test failed with exit code ${exitCode}`);
+  const requestedLocales = String(process.env.HTTP_TEST_LOCALES || process.env.HTTP_TEST_LOCALE || "")
+    .split(",")
+    .map((locale) => locale.trim())
+    .filter(Boolean);
+  const locales = requestedLocales.length ? [...new Set(requestedLocales)] : [""];
+  for (const locale of locales) {
+    const testArguments = ["scripts/http-public-seo-integration.mjs", "--base-url", baseUrl];
+    if (locale) testArguments.push("--locale", locale);
+    const testProcess = spawn(process.execPath, testArguments, {
+      cwd: root,
+      env: integrationEnv,
+      stdio: "inherit",
+    });
+    const [exitCode] = await once(testProcess, "exit");
+    if (exitCode !== 0) throw new Error(`HTTP integration test failed${locale ? ` for ${locale}` : ""} with exit code ${exitCode}`);
+  }
 } finally {
   await stopRuntime();
 }

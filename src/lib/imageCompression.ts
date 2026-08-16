@@ -1,10 +1,10 @@
-const DEFAULT_MAX_WIDTH = 1600;
-const DEFAULT_MAX_HEIGHT = 1200;
-const DEFAULT_WEBP_QUALITY = 0.84;
-const RETRY_WEBP_QUALITY = 0.72;
-const MAX_OPTIMIZED_SIZE = 1024 * 1024;
+export const IMAGE_MASTER_MAX_WIDTH = 1600;
+export const IMAGE_MASTER_MAX_HEIGHT = 1600;
+export const IMAGE_MASTER_MAX_BYTES = 150 * 1024;
+const DEFAULT_WEBP_QUALITY = 0.82;
+const RETRY_WEBP_QUALITY = 0.68;
 
-const SUPPORTED_IMAGE_TYPES = new Set(["image/avif", "image/jpeg", "image/png", "image/webp"]);
+const SUPPORTED_IMAGE_TYPES = new Set(["image/avif", "image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const HEIC_TYPES = new Set(["image/heic", "image/heif"]);
 
 export type CompressImageOptions = {
@@ -47,24 +47,18 @@ export function formatBytes(bytes: number) {
   return `${value.toFixed(precision)} ${units[unitIndex]}`;
 }
 
-function isHeicImage(file: File) {
+export function isHeicImage(file: File) {
   const extension = file.name.split(".").pop()?.toLowerCase();
   return HEIC_TYPES.has(file.type) || extension === "heic" || extension === "heif";
 }
 
 function assertSupportedImage(file: File) {
-  if (!(file instanceof File) || !file.type.startsWith("image/")) {
+  if (!(file instanceof File) || (!file.type.startsWith("image/") && !isHeicImage(file))) {
     throw new Error("Выберите файл изображения.");
   }
 
-  if (isHeicImage(file)) {
-    throw new Error(
-      "Формат HEIC не поддерживается в браузере. Пожалуйста, выберите JPG/PNG или включите совместимый формат фото на iPhone.",
-    );
-  }
-
-  if (!SUPPORTED_IMAGE_TYPES.has(file.type)) {
-    throw new Error("Поддерживаются только изображения AVIF, JPG, PNG или WebP.");
+  if (file.type && !SUPPORTED_IMAGE_TYPES.has(file.type) && !isHeicImage(file)) {
+    throw new Error("Поддерживаются изображения HEIC, AVIF, JPG, PNG или WebP.");
   }
 }
 
@@ -132,7 +126,7 @@ async function canvasToWebP(canvas: HTMLCanvasElement, quality: number) {
 }
 
 function buildQualitySteps(primaryQuality: number, retryQuality: number) {
-  return [primaryQuality, retryQuality, 0.68, 0.62, 0.56]
+  return [primaryQuality, 0.76, retryQuality, 0.6, 0.52, 0.45, 0.38]
     .filter((value) => Number.isFinite(value) && value > 0 && value <= 1)
     .filter((value, index, values) => values.indexOf(value) === index)
     .sort((left, right) => right - left);
@@ -144,11 +138,11 @@ export async function compressImageToWebP(
 ): Promise<CompressedImageResult> {
   assertSupportedImage(file);
 
-  const maxWidth = options.maxWidth ?? DEFAULT_MAX_WIDTH;
-  const maxHeight = options.maxHeight ?? DEFAULT_MAX_HEIGHT;
+  const maxWidth = options.maxWidth ?? IMAGE_MASTER_MAX_WIDTH;
+  const maxHeight = options.maxHeight ?? IMAGE_MASTER_MAX_HEIGHT;
   const quality = options.quality ?? DEFAULT_WEBP_QUALITY;
   const retryQuality = options.retryQuality ?? RETRY_WEBP_QUALITY;
-  const maxOutputSize = options.maxOutputSize ?? MAX_OPTIMIZED_SIZE;
+  const maxOutputSize = options.maxOutputSize ?? IMAGE_MASTER_MAX_BYTES;
   const suffix = options.suffix ?? "-optimized.webp";
 
   let image: LoadedImage;
@@ -156,7 +150,10 @@ export async function compressImageToWebP(
   try {
     image = await loadImage(file);
   } catch {
-    throw new Error("Не удалось сжать изображение. Попробуйте другое фото или формат JPG/PNG.");
+    if (isHeicImage(file)) {
+      throw new Error("HEIC_REQUIRES_SERVER_CONVERSION");
+    }
+    throw new Error("Не удалось прочитать фотографию. Выберите другое изображение.");
   }
 
   const canvas = document.createElement("canvas");
@@ -174,10 +171,17 @@ export async function compressImageToWebP(
   let bestBlob: Blob | null = null;
   let bestSize = size;
 
-  for (let attempt = 0; attempt < 7; attempt += 1) {
+  context.imageSmoothingEnabled = true;
+  context.imageSmoothingQuality = "high";
+
+  // First reduce encoding quality, then dimensions. The browser never uploads
+  // the multi-megabyte camera original when it can decode the source itself.
+  for (let attempt = 0; attempt < 10; attempt += 1) {
     size = calculateSize(image.width, image.height, Math.round(maxWidth * scale), Math.round(maxHeight * scale));
     canvas.width = size.width;
     canvas.height = size.height;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
     context.clearRect(0, 0, size.width, size.height);
     context.drawImage(image.source, 0, 0, size.width, size.height);
 

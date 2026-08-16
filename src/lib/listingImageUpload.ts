@@ -1,4 +1,10 @@
-import { compressImageToWebP, formatBytes, type CompressedImageResult } from "./imageCompression";
+import {
+  IMAGE_MASTER_MAX_BYTES,
+  compressImageToWebP,
+  formatBytes,
+  isHeicImage,
+  type CompressedImageResult,
+} from "./imageCompression";
 import { getAuthToken } from "./authClient";
 
 export type UploadedListingImage = {
@@ -26,6 +32,7 @@ export type ListingImageUploadOptions = {
 };
 
 const DEFAULT_UPLOAD_URL = import.meta.env.PUBLIC_IMAGE_UPLOAD_URL || "/api/upload-listing-images";
+const MAX_SERVER_CONVERSION_BYTES = 10 * 1024 * 1024;
 
 export function buildUploadRequestHeaders(authToken: string) {
   return new Headers({ Authorization: `Bearer ${authToken}` });
@@ -53,7 +60,7 @@ function buildMetadata(result: CompressedImageResult, imageUrl = "") {
       },
       card: {
         url: imageUrl,
-        width: Math.min(960, result.width),
+        width: Math.min(800, result.width),
         height: Math.min(720, result.height),
       },
       detail: {
@@ -110,16 +117,43 @@ export async function uploadListingImages(
 
   for (const [index, file] of files.entries()) {
     options.onProgress?.(`Сжимаем фото ${index + 1}...`);
-    const result = await compressImageToWebP(file, {
-      maxWidth: options.maxWidth,
-      maxHeight: options.maxHeight,
-      quality: options.quality,
-      maxOutputSize: options.maxOutputSize,
-      suffix: "-detail.webp",
-    });
+    let result: CompressedImageResult;
+
+    try {
+      result = await compressImageToWebP(file, {
+        maxWidth: options.maxWidth,
+        maxHeight: options.maxHeight,
+        quality: options.quality,
+        maxOutputSize: options.maxOutputSize ?? IMAGE_MASTER_MAX_BYTES,
+        suffix: "-master.webp",
+      });
+      formData.append("files", result.file);
+    } catch (error) {
+      const needsServerConversion = isHeicImage(file) && error instanceof Error && error.message === "HEIC_REQUIRES_SERVER_CONVERSION";
+      if (!needsServerConversion) throw error;
+      if (file.size > MAX_SERVER_CONVERSION_BYTES) {
+        throw new Error("Фото HEIC больше 10 МБ. Уменьшите его или выберите совместимый формат камеры iPhone.");
+      }
+
+      // HEIC is the only source that may reach the server uncompressed. The
+      // upload Function must convert it with Cloudflare Images before R2.put.
+      result = {
+        file,
+        originalName: file.name || "iphone-photo.heic",
+        originalSize: file.size,
+        originalType: file.type || "image/heic",
+        compressedSize: file.size,
+        outputType: "image/webp",
+        width: 0,
+        height: 0,
+        compressionRatio: 1,
+      };
+      formData.append("files", file);
+      formData.append(`server_conversion_${index}`, "heic");
+      options.onProgress?.(`Фото ${index + 1}: конвертируем HEIC на защищённом сервере...`);
+    }
 
     compressedImages.push(result);
-    formData.append("files", result.file);
     formData.append(`metadata_${index}`, JSON.stringify(buildMetadata(result)));
     formData.append(`original_filename_${index}`, result.originalName);
     formData.append(`original_size_${index}`, String(result.originalSize));
@@ -151,8 +185,14 @@ export async function uploadListingImages(
         ? "Сессия истекла. Войдите снова."
         : code === "ORIGIN_NOT_ALLOWED"
           ? "Загрузка изображений недоступна с этого адреса сайта."
-          : code === "FILE_TOO_LARGE" || code === "BATCH_TOO_LARGE"
-            ? "Одно или несколько изображений слишком большие. Попробуйте загрузить фотографии меньшего размера."
+            : code === "FILE_TOO_LARGE" || code === "BATCH_TOO_LARGE"
+              ? "Одно или несколько изображений слишком большие. Попробуйте загрузить фотографии меньшего размера."
+            : code === "INVALID_IMAGE_SIGNATURE" || code === "IMAGE_TYPE_MISMATCH" || code === "INVALID_IMAGE_DIMENSIONS"
+              ? "Файл не является корректной фотографией или имеет повреждённый формат."
+            : code === "IMAGE_OPTIMIZER_MISSING"
+              ? "HEIC пока не может быть преобразован на сервере. Подключите Cloudflare Images или выберите JPG/WebP."
+            : code === "IMAGE_OPTIMIZATION_FAILED"
+              ? "Фото не удалось уменьшить до безопасного размера. Выберите другое изображение."
             : code === "AUTH_CONFIGURATION_MISSING"
               ? "Авторизация загрузки временно недоступна."
               : code === "AUTH_SERVICE_UNAVAILABLE"
@@ -181,6 +221,10 @@ export async function uploadListingImages(
     }
 
     const metadata = buildMetadata(result, imageUrl);
+    const serverMetadata = upload.image_metadata || {};
+    const serverOptimized = serverMetadata.optimized && typeof serverMetadata.optimized === "object"
+      ? serverMetadata.optimized
+      : metadata.optimized;
 
     return {
       ...upload,
@@ -197,8 +241,9 @@ export async function uploadListingImages(
       is_primary: upload.is_primary ?? index === 0,
       image_metadata: {
         ...metadata,
-        ...(upload.image_metadata || {}),
-        optimized: true,
+        ...serverMetadata,
+        optimized: serverOptimized,
+        is_optimized: true,
         format: "webp",
       },
     };

@@ -9,8 +9,13 @@ const readArg = (name, fallback) => {
 const baseUrl = new URL(readArg("--base-url", "http://127.0.0.1:4349"));
 const canonicalOrigin = new URL(readArg("--canonical-origin", DEFAULT_CANONICAL_ORIGIN));
 const requestedLocale = readArg("--locale", "de");
-const strictSeoReleaseLocales = ["en", "fr"];
-const strictSeoRelease = strictSeoReleaseLocales.includes(requestedLocale);
+const strictSeoCandidateLocales = [
+  "de", "en", "fr", "tr", "ar", "ru", "uk",
+  "nl", "da", "sv", "fi", "es", "pt", "it",
+  "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el", "et", "lv", "lt", "mt", "ga",
+];
+const strictSeoRelease = strictSeoCandidateLocales.includes(requestedLocale);
+const expectedDirection = requestedLocale === "ar" ? "rtl" : "ltr";
 const requireEdgeCache = args.includes("--require-edge-cache");
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
@@ -25,13 +30,26 @@ const stripTags = (value) => value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ")
 async function request(path, expectedStatus = 200) {
   const url = new URL(path, baseUrl);
   let response;
+  let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    response = await fetch(url, { headers: { Accept: "text/html,application/xml;q=0.9" }, redirect: "follow" });
+    try {
+      response = await fetch(url, {
+        headers: { Accept: "text/html,application/xml;q=0.9" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(45_000),
+      });
+      lastError = undefined;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) throw error;
+      await sleep(1_400 * (attempt + 1));
+      continue;
+    }
     if (![429, 502, 503, 504].includes(response.status) || attempt === 2) break;
     await response.arrayBuffer();
     await sleep(700 * (attempt + 1));
   }
-  assert.ok(response, `No response for ${url}`);
+  assert.ok(response, `No response for ${url}${lastError ? `: ${String(lastError)}` : ""}`);
   const body = await response.text();
   assert.equal(response.status, expectedStatus, `${url.pathname} returned ${response.status}: ${body.slice(0, 180)}`);
   await sleep(450);
@@ -49,7 +67,7 @@ async function assertDeviceLocalePage(acceptLanguage, expectedLocale) {
   assert.equal(response.headers.has("location"), false, `Device locale ${acceptLanguage} unexpectedly redirected`);
   assert.match(body, new RegExp(`<html[^>]+lang=["']${expectedLocale}["']`, "i"));
   assert.match(body, /data-locale-switcher/);
-  assert.match(body, /<option value="(?:de|en|ru|uk|ar|tr|fr)"/);
+  assert.match(body, /<option value="(?:de|en|ru|uk|ar|tr|fr|nl|da|sv|fi|es|pt|it|pl|cs|sk|sl|bg|hr|ro|hu|el|et|lv|lt|mt|ga)"/);
 }
 
 async function assertLegacyInventoryPreserved(path) {
@@ -91,7 +109,7 @@ function assertIndexableHtml(result, canonicalPath, type = "CollectionPage") {
   const heading = result.body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   assert.ok(stripTags(heading?.[1] || ""), `Missing H1 on ${canonicalPath}`);
   assert.ok(result.body.includes(`"@type":"${type}"`), `Missing ${type} JSON-LD on ${canonicalPath}`);
-  assert.match(result.body, new RegExp(`<html[^>]+lang=["']${requestedLocale}["'][^>]+dir=["']ltr["']`, "i"));
+  assert.match(result.body, new RegExp(`<html[^>]+lang=["']${requestedLocale}["'][^>]+dir=["']${expectedDirection}["']`, "i"));
   assertPublicCacheHeaders(result);
 }
 
@@ -133,6 +151,11 @@ const sitemapIndex = await request("/sitemap.xml");
 assert.match(sitemapIndex.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapIndex.body, /<sitemapindex/);
 const sitemapLocations = [...sitemapIndex.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
+const publicSitemapLocales = new Set(sitemapLocations.flatMap((value) => {
+  const match = new URL(value).pathname.match(/^\/sitemaps\/([^/]+)\.xml$/u);
+  return match ? [match[1]] : [];
+}));
+const strictSeoReleaseLocales = strictSeoCandidateLocales.filter((locale) => publicSitemapLocales.has(locale));
 const localeSitemapLocation = sitemapLocations.find((value) => new URL(value).pathname === `/sitemaps/${requestedLocale}.xml`);
 assert.ok(localeSitemapLocation, `Sitemap index has no ${requestedLocale} sitemap`);
 
@@ -160,7 +183,7 @@ else assertInclusiveCatalogHtml(catalog, catalogPath);
 
 if (strictSeoRelease) {
   for (const result of [home, catalog]) {
-    for (const locale of ["de", ...strictSeoReleaseLocales]) {
+    for (const locale of strictSeoReleaseLocales) {
       assert.ok(result.body.includes(`hreflang="${locale}"`), `${result.url.pathname} has no ${locale} hreflang`);
     }
     assert.ok(result.body.includes('hreflang="x-default"'), `${result.url.pathname} has no x-default hreflang`);
@@ -192,7 +215,7 @@ if (strictSeoRelease) {
     const result = await request(path);
     const type = new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path)
       ? "Vehicle"
-      : path === `/${requestedLocale}/` || /^\/(?:en|fr)\/(?:sell|pricing|support|privacy|impressum)\/$/.test(path)
+      : path === `/${requestedLocale}/` || new RegExp(`^/${requestedLocale}/(?:sell|pricing|support|privacy|impressum)/$`).test(path)
         ? "WebPage"
         : "CollectionPage";
     assertIndexableHtml(result, path, type);
@@ -206,7 +229,7 @@ if (strictSeoRelease) {
   assert.equal(paths.every((path) => checked.includes(path)), true, "Not every sitemap URL passed the HTML readiness smoke test");
 }
 
-const unpublishedLocaleCode = "tr";
+const unpublishedLocaleCode = "zh-Hans";
 const unpublishedLocale = await request(`/${unpublishedLocaleCode}/`, 404);
 assert.match(unpublishedLocale.response.headers.get("x-robots-tag") || "", /noindex/i);
 assert.match(unpublishedLocale.response.headers.get("cache-control") || "", /no-store/i);

@@ -1,6 +1,8 @@
 import { getIntlLocale } from "../../i18n/locale.ts";
 import { getPublicPageMessages } from "../../i18n/publicRoutes.ts";
 import type { PublicListingDto } from "../../i18n/publicListing.ts";
+import { normalizeBackendValue } from "../../i18n/backendValues.ts";
+import { getVehicleTaxonomyLabel, type VehicleTaxonomyName } from "../../domain/vehicleTaxonomy.ts";
 import { getCarDetailImageUrls } from "../imageUrls.ts";
 import { sanitizePublicDescription } from "../listingFields.ts";
 import type { CarListing } from "../types.ts";
@@ -9,6 +11,20 @@ const DEFAULT_SITE_URL = "https://automarket.sitecraft.agency";
 const DEFAULT_IMAGE = "/deal-finder-placeholder.svg";
 const clean = (value: unknown) => String(value ?? "").replace(/\s+/g, " ").trim();
 const VIN_PATTERN = /\b[A-HJ-NPR-Z0-9]{17}\b/gi;
+
+const localizedTaxonomyValue = (taxonomy: VehicleTaxonomyName, value: unknown, locale: string) => {
+  const normalized = normalizeBackendValue(taxonomy, value);
+  return normalized ? getVehicleTaxonomyLabel(taxonomy, normalized, locale) : "";
+};
+
+const safePublicImageUrl = (value: unknown, origin: URL) => {
+  try {
+    const candidate = new URL(clean(value) || DEFAULT_IMAGE, origin);
+    return candidate.protocol === "https:" ? candidate.toString() : new URL(DEFAULT_IMAGE, origin).toString();
+  } catch {
+    return new URL(DEFAULT_IMAGE, origin).toString();
+  }
+};
 
 export function sanitizeVehicleSeoText(value: unknown) {
   return sanitizePublicDescription(String(value ?? "").replace(VIN_PATTERN, ""))
@@ -106,9 +122,18 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
     maximumFractionDigits: 0,
   }).format(car.price);
   const mileage = new Intl.NumberFormat(intlLocale).format(car.mileage);
-  const description = `${heading}. ${price}, ${mileage} km${car.city ? `, ${clean(car.city)}` : ""}. ${clean(car.description)}`.slice(0, 260).trim();
-  const imageUrl = new URL(car.image_urls[0] || DEFAULT_IMAGE, origin).toString();
+  const publicDescription = sanitizeVehicleSeoText(car.description);
+  const description = `${heading}. ${price}, ${mileage} km${car.city ? `, ${clean(car.city)}` : ""}.${publicDescription ? ` ${publicDescription}` : ""}`.slice(0, 300).trim();
+  const imageUrl = safePublicImageUrl(car.image_urls[0], origin);
   const offerId = `${canonicalUrl}#offer`;
+  const vehicleId = `${canonicalUrl}#vehicle`;
+  const fuelType = localizedTaxonomyValue("fuel_type", car.fuel_type, locale);
+  const transmission = localizedTaxonomyValue("transmission", car.transmission, locale);
+  const bodyType = localizedTaxonomyValue("body_type", car.body_type, locale);
+  const color = localizedTaxonomyValue("color", car.color, locale);
+  const brandUrl = car.brand
+    ? new URL(`/${locale}/cars/brand/${encodeURIComponent(car.brand)}/`, origin).toString()
+    : undefined;
 
   const offer = {
     "@context": "https://schema.org",
@@ -118,24 +143,36 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
     price: car.price,
     priceCurrency: car.currency || "EUR",
     availability: "https://schema.org/InStock",
+    itemOffered: { "@id": vehicleId },
+    ...(car.city || car.country ? {
+      availableAtOrFrom: {
+        "@type": "Place",
+        address: {
+          "@type": "PostalAddress",
+          ...(car.city ? { addressLocality: clean(car.city) } : {}),
+          ...(car.country ? { addressCountry: clean(car.country) } : {}),
+        },
+      },
+    } : {}),
   };
   const vehicle = {
     "@context": "https://schema.org",
     "@type": "Vehicle",
-    "@id": `${canonicalUrl}#vehicle`,
+    "@id": vehicleId,
     url: canonicalUrl,
+    mainEntityOfPage: canonicalUrl,
     name: heading,
     description,
     inLanguage: locale,
     image: [imageUrl],
-    brand: car.brand ? { "@type": "Brand", name: car.brand } : undefined,
+    brand: car.brand ? { "@type": "Brand", name: car.brand, ...(brandUrl ? { url: brandUrl } : {}) } : undefined,
     model: car.model || undefined,
     vehicleModelDate: car.year ? String(car.year) : undefined,
     mileageFromOdometer: car.mileage > 0 ? { "@type": "QuantitativeValue", value: car.mileage, unitCode: "KMT" } : undefined,
-    fuelType: car.fuel_type || undefined,
-    vehicleTransmission: car.transmission || undefined,
-    bodyType: car.body_type || undefined,
-    color: car.color || undefined,
+    fuelType: fuelType || undefined,
+    vehicleTransmission: transmission || undefined,
+    bodyType: bodyType || undefined,
+    color: color || undefined,
     offers: { "@id": offerId },
   };
   const breadcrumb = {

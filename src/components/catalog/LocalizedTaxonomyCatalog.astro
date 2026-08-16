@@ -62,7 +62,7 @@ const schema = {
       <div class="catalog-results-toolbar"><div><span>{messages.results}</span><strong>{cars.length} {messages.vehicles}</strong></div></div>
       {cars.length > 0 ? (
         <div class="cards-grid catalog-grid">
-          {cars.map((car, index) => <CarCard car={car} priority={index < 4} source="localized_taxonomy" locale={locale} />)}
+          {cars.map((car, index) => <CarCard car={car} priority={index === 0} source="localized_taxonomy" locale={locale} />)}
         </div>
       ) : (
         <div class="empty-state" role="status"><h2>{messages.emptyTitle}</h2><p>{messages.emptyText}</p></div>

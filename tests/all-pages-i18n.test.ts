@@ -46,13 +46,15 @@ test("client i18n waits for the body and preserves locale in internal links", ()
   assert.match(layout, /hreflang="x-default"/);
 });
 
-test("language switching is edge-cacheable and defers duplicate public inventory refreshes", () => {
+test("language switching is edge-cacheable and public inventory is rendered once on the server", () => {
   const homepage = readProjectFile("src/pages/index.astro");
   const catalog = readProjectFile("src/pages/cars/index.astro");
   const xano = readProjectFile("src/lib/xano.ts");
   const switcher = readProjectFile("src/components/LocaleSwitcher.astro");
-  assert.match(homepage, /requestIdleCallback/);
-  assert.match(catalog, /requestIdleCallback/);
+  assert.match(homepage, /data-initial-cars=\{JSON\.stringify\(latestCars\)\}/);
+  assert.match(catalog, /data-initial-cars=\{JSON\.stringify\(catalogSourceCars\)\}/);
+  assert.doesNotMatch(homepage, /requestIdleCallback/);
+  assert.doesNotMatch(catalog, /requestIdleCallback/);
   assert.match(xano, /PUBLIC_CATALOG_FRESH_MS/);
   assert.match(xano, /cacheEverything: true/);
   assert.match(switcher, /Langues européennes · contenu en anglais/);

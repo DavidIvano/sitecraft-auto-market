@@ -10,7 +10,8 @@ test("gallery thumbnails render real images instead of cropped CSS backgrounds",
   const liveDetail = readProjectFile("src/pages/cars/detail.astro");
   const styles = readProjectFile("src/styles/global.css");
 
-  assert.match(staticDetail, /data-slide-src=\{imageUrl\}/);
+  assert.match(staticDetail, /data-slide-src=\{image\.src\}/);
+  assert.match(staticDetail, /getCarThumbnailImagePresentations/);
   assert.match(staticDetail, /aria-pressed=\{index === 0 \? "true" : "false"\}/);
   assert.match(staticDetail, /loading="lazy"/);
   assert.match(staticDetail, /decoding="async"/);

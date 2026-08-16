@@ -147,6 +147,58 @@ const normalizeLimitedPublicCards = (payload: unknown, locale: Locale): CarListi
 
 type ApprovedCarsOptions = { requireConfigured?: boolean; locale?: Locale };
 
+export type PublicCatalogPageOptions = {
+  locale?: Locale;
+  page?: number;
+  limit?: number;
+  sort?: "newest" | "price_asc" | "price_desc" | "mileage_asc";
+  filters?: Record<string, string | number | undefined>;
+  localized?: boolean;
+};
+
+export type PublicCatalogPage = {
+  items: CarListing[];
+  page: number;
+  limit: number;
+  total: number;
+  hasNext: boolean;
+  paginationSource: "xano" | "compatibility_slice";
+};
+
+function readPaginationTotal(payload: unknown) {
+  if (!payload || typeof payload !== "object") return null;
+  const source = payload as Record<string, unknown>;
+  const meta = source.meta && typeof source.meta === "object" ? source.meta as Record<string, unknown> : {};
+  const candidate = Number(source.total ?? source.itemsTotal ?? meta.total);
+  return Number.isInteger(candidate) && candidate >= 0 ? candidate : null;
+}
+
+export async function getApprovedCarsPage(options: PublicCatalogPageOptions = {}): Promise<PublicCatalogPage> {
+  if (!isXanoConfigured(API_URL)) throw new XanoPublicApiError("Xano public API is not configured", 503);
+  const locale = options.locale || DEFAULT_LOCALE;
+  const contentLocale = options.localized ? locale : resolveBackendLocale(locale);
+  const page = Math.max(1, Math.floor(Number(options.page) || 1));
+  const limit = Math.min(24, Math.max(1, Math.floor(Number(options.limit) || 24)));
+  const params = new URLSearchParams({ lang: contentLocale, page: String(page), limit: String(limit), sort: options.sort || "newest" });
+  Object.entries(options.filters || {}).forEach(([key, value]) => {
+    if (value !== undefined && value !== "") params.set(key, String(value));
+  });
+  const route = options.localized ? API_ROUTES.localizedCars : API_ROUTES.cars;
+  const payload = await fetchPublicJson(`${route}?${params.toString()}`);
+  const normalized = sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), contentLocale));
+  const explicitTotal = readPaginationTotal(payload);
+  const items = explicitTotal === null ? normalized.slice((page - 1) * limit, page * limit) : normalized.slice(0, limit);
+  const total = explicitTotal ?? normalized.length;
+  return {
+    items,
+    page,
+    limit,
+    total,
+    hasNext: page * limit < total,
+    paginationSource: explicitTotal === null ? "compatibility_slice" : "xano",
+  };
+}
+
 export async function getApprovedCars(locale?: Locale, options?: ApprovedCarsOptions): Promise<CarListing[]>;
 export async function getApprovedCars(options?: ApprovedCarsOptions): Promise<CarListing[]>;
 export async function getApprovedCars(

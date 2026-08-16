@@ -1,6 +1,11 @@
 import type { TranslationLocale, TranslationWorkerEnv } from "./types.ts";
 
-const SUPPORTED_LOCALES = new Set<TranslationLocale>(["en", "fr", "tr", "ar"]);
+const SUPPORTED_LOCALES = new Set<TranslationLocale>([
+  "de", "en", "fr", "tr", "ar", "uk",
+  "nl", "da", "sv", "fi", "es", "pt", "it",
+  "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el",
+  "et", "lv", "lt", "mt", "ga",
+]);
 
 const boundedInteger = (value: unknown, fallback: number, maximum: number) => {
   const parsed = Number(value);
@@ -8,7 +13,7 @@ const boundedInteger = (value: unknown, fallback: number, maximum: number) => {
 };
 
 export function allowedLocales(env: TranslationWorkerEnv): TranslationLocale[] {
-  const requested = String(env.TRANSLATION_ALLOWED_LOCALES || "en,fr,tr,ar")
+  const requested = String(env.TRANSLATION_ALLOWED_LOCALES || "de,en,fr,tr,ar,uk,nl,da,sv,fi,es,pt,it,pl,cs,sk,sl,bg,hr,ro,hu,el,et,lv,lt,mt,ga")
     .split(",")
     .map((value) => value.trim().toLowerCase())
     .filter((value): value is TranslationLocale => SUPPORTED_LOCALES.has(value as TranslationLocale));

@@ -1,0 +1,20 @@
+{
+  "webVitals": {
+    "lcpMs": 2500,
+    "cls": 0.1,
+    "inpMs": 200
+  },
+  "lighthouse": {
+    "performance": 0.9,
+    "accessibility": 0.95,
+    "bestPractices": 0.95,
+    "seo": 0.95
+  },
+  "assets": {
+    "imageMasterBytes": 153600,
+    "sharedCssGzipBytes": 40000,
+    "publicCssGzipBytes": 20000,
+    "workspaceCssGzipBytes": 10000,
+    "largestJavaScriptGzipBytes": 105000
+  }
+}

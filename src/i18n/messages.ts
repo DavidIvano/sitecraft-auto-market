@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrRecord } from "./arTrTranslations.ts";
+import { EU_WAVE_LOCALES, translateEuWaveRecord } from "./euWaveCoreTranslations.ts";
 import { translateFrCoreRecord } from "./frCoreTranslations.ts";
 
 const ruMessages = {
@@ -148,6 +149,7 @@ export const UI_MESSAGES: Record<Locale, UiMessages> = {
   ar: translateArTrRecord(ruMessages, "ar"),
   tr: translateArTrRecord(ruMessages, "tr"),
   fr: translateFrCoreRecord(enMessages),
+  ...Object.fromEntries(EU_WAVE_LOCALES.map((locale) => [locale, translateEuWaveRecord(enMessages, locale)])),
 };
 
 export function hasUiDictionary(locale: string): boolean {

@@ -1,10 +1,18 @@
 import type { R2Env } from "../../src/lib/server/r2";
+import {
+  IMAGE_SOURCE_MAX_BYTES,
+  ImagePipelineError,
+  buildVariantUrl,
+  processUploadedImage,
+  type ImagesBinding,
+} from "../lib/imagePipeline.ts";
 
 type UploadEnv = R2Env & {
   XANO_API_URL?: string;
   PUBLIC_XANO_API_URL?: string;
   ALLOWED_UPLOAD_ORIGINS?: string;
   ENVIRONMENT?: string;
+  IMAGES?: ImagesBinding;
 };
 
 type PagesContext = {
@@ -22,10 +30,9 @@ type XanoAuthPayload = {
 };
 
 const MAX_IMAGES = 8;
-const MAX_IMAGE_SIZE = 1024 * 1024;
-const MAX_BATCH_SIZE = 8 * 1024 * 1024;
+const MAX_BATCH_SIZE = 32 * 1024 * 1024;
 const AUTH_TIMEOUT_MS = 9000;
-const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif"]);
+const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/avif", "image/heic", "image/heif", ""]);
 const DEVELOPMENT_ORIGINS = [
   "http://localhost:4321",
   "http://127.0.0.1:4321",
@@ -87,19 +94,10 @@ function sanitizeFilename(value: string) {
     .slice(0, 96) || "listing-photo";
 }
 
-function extensionFor(contentType: string) {
-  return ({ "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/avif": "avif" } as Record<string, string>)[contentType] || "bin";
-}
-
-function buildKey(userId: number, contentType: string, now = new Date()) {
+function buildKey(userId: number, _contentType = "image/webp", now = new Date()) {
   const year = String(now.getUTCFullYear());
   const month = String(now.getUTCMonth() + 1).padStart(2, "0");
-  return `listing-images/${userId}/${year}/${month}/${crypto.randomUUID()}.${extensionFor(contentType)}`;
-}
-
-function readNumber(formData: FormData, key: string, fallback = 0) {
-  const value = Number(formData.get(key));
-  return Number.isFinite(value) && value >= 0 ? value : fallback;
+  return `listing-images/${userId}/${year}/${month}/${crypto.randomUUID()}.webp`;
 }
 
 function positiveInteger(value: unknown) {
@@ -208,13 +206,13 @@ function validateFiles(files: File[]) {
     return { status: 400, code: "EMPTY_FILE", message: "Empty image files are not allowed." };
   }
   if (files.some((file) => !ALLOWED_IMAGE_TYPES.has(file.type.toLowerCase()))) {
-    return { status: 400, code: "UNSUPPORTED_FILE_TYPE", message: "Only JPEG, PNG, WebP, or AVIF images are allowed." };
+    return { status: 400, code: "UNSUPPORTED_FILE_TYPE", message: "Only HEIC, JPEG, PNG, WebP, or AVIF images are allowed." };
   }
-  if (files.some((file) => file.size > MAX_IMAGE_SIZE)) {
-    return { status: 413, code: "FILE_TOO_LARGE", message: "Each image must be no larger than 1 MB." };
+  if (files.some((file) => file.size > IMAGE_SOURCE_MAX_BYTES)) {
+    return { status: 413, code: "FILE_TOO_LARGE", message: "Each source image must be no larger than 10 MB." };
   }
   if (files.reduce((total, file) => total + file.size, 0) > MAX_BATCH_SIZE) {
-    return { status: 413, code: "BATCH_TOO_LARGE", message: "The image batch must be no larger than 8 MB." };
+    return { status: 413, code: "BATCH_TOO_LARGE", message: "The image batch must be no larger than 32 MB." };
   }
   return null;
 }
@@ -266,31 +264,44 @@ export async function onRequestPost({ request, env }: PagesContext) {
 
   try {
     for (const [index, file] of files.entries()) {
-      const contentType = file.type.toLowerCase();
+      const processed = await processUploadedImage(file, env.IMAGES);
+      const contentType = processed.contentType;
       const key = buildKey(auth.userId, contentType);
       const originalFilename = sanitizeFilename(file.name || `listing-photo-${index + 1}`);
-      const width = readNumber(formData, `width_${index}`);
-      const height = readNumber(formData, `height_${index}`);
+      const width = processed.width;
+      const height = processed.height;
 
-      await env.R2_BUCKET.put(key, file.stream(), {
+      await env.R2_BUCKET.put(key, processed.bytes, {
         httpMetadata: { contentType, cacheControl: "public, max-age=31536000, immutable" },
         customMetadata: {
           user_id: String(auth.userId),
           content_type: contentType,
+          source_content_type: processed.sourceType,
           original_filename: originalFilename,
           uploaded_at: new Date().toISOString(),
-          ...(width ? { width: String(width) } : {}),
-          ...(height ? { height: String(height) } : {}),
+          width: String(width),
+          height: String(height),
         },
       });
       createdKeys.push(key);
 
       const url = `${publicBaseUrl}/${key}`;
+      const aspectRatio = width / height;
+      const variant = (variantWidth: number, quality: number) => ({
+        url: buildVariantUrl(url, variantWidth, quality),
+        width: Math.min(variantWidth, width),
+        height: Math.max(1, Math.round(Math.min(variantWidth, width) / aspectRatio)),
+      });
+      const variants = {
+        thumb: variant(480, 68),
+        card: variant(800, 72),
+        detail: variant(1600, 78),
+      };
       uploads.push({
         url,
         key,
         contentType,
-        size: file.size,
+        size: processed.bytes.byteLength,
         width,
         height,
         sort_order: index,
@@ -298,8 +309,22 @@ export async function onRequestPost({ request, env }: PagesContext) {
         image_url: url,
         mime_type: contentType,
         original_filename: originalFilename,
-        size_bytes: file.size,
-        image_metadata: { provider: "cloudflare_r2", key, url, contentType, size: file.size, width, height },
+        size_bytes: processed.bytes.byteLength,
+        image_metadata: {
+          provider: "cloudflare_r2",
+          key,
+          url,
+          contentType,
+          size: processed.bytes.byteLength,
+          width,
+          height,
+          source_content_type: processed.sourceType,
+          compressed_size: processed.bytes.byteLength,
+          format: "webp",
+          is_optimized: true,
+          optimized: { url, width, height, size: processed.bytes.byteLength, type: contentType },
+          variants,
+        },
       });
     }
 
@@ -309,6 +334,9 @@ export async function onRequestPost({ request, env }: PagesContext) {
       await Promise.all(createdKeys.map((key) => env.R2_BUCKET!.delete(key)));
     } catch (cleanupError) {
       console.warn("R2 partial upload cleanup failed", { keys: createdKeys, error: String(cleanupError) });
+    }
+    if (error instanceof ImagePipelineError) {
+      return errorResponse(request, env, error.status, error.code, error.message);
     }
     console.error("R2 image upload failed", { createdKeys, error: String(error) });
     return errorResponse(request, env, 500, "UPLOAD_FAILED", "The images could not be uploaded. Please try again.");

@@ -1,4 +1,7 @@
-export type TranslationLocale = "en" | "fr" | "tr" | "ar";
+export type TranslationLocale = "de" | "en" | "fr" | "tr" | "ar" | "uk"
+  | "nl" | "da" | "sv" | "fi" | "es" | "pt" | "it"
+  | "pl" | "cs" | "sk" | "sl" | "bg" | "hr" | "ro" | "hu" | "el"
+  | "et" | "lv" | "lt" | "mt" | "ga";
 
 export type TranslationWorkerEnv = {
   XANO_API_BASE_URL?: string;

@@ -17,6 +17,9 @@ ENVIRONMENT = "production"
 binding = "R2_BUCKET"
 bucket_name = "car-images"
 
+[env.production.images]
+binding = "IMAGES"
+
 [env.preview]
 compatibility_date = "2026-06-30"
 
@@ -30,3 +33,6 @@ ENVIRONMENT = "preview"
 [[env.preview.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "car-images"
+
+[env.preview.images]
+binding = "IMAGES"

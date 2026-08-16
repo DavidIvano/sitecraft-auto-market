@@ -1,4 +1,6 @@
 import { getLocaleFallbackChain } from "../i18n/locale.ts";
+import { translateArTrPhrase } from "../i18n/arTrTranslations.ts";
+import { EU_WAVE_LOCALES, translateEuWavePhrase } from "../i18n/euWaveCoreTranslations.ts";
 
 export const vehicleTypeCodes = [
   "passenger_car",
@@ -141,6 +143,17 @@ export const vehicleTaxonomyLabels: Record<VehicleTaxonomyName, TaxonomyLabels> 
   },
 };
 
+// Turkish and Arabic UI translations already cover every canonical Russian
+// taxonomy label. Reuse that reviewed glossary here so forms, cards, filters,
+// JSON-LD and SEO pages cannot drift to different terms for the same code.
+for (const taxonomy of Object.keys(vehicleTaxonomyCodes) as VehicleTaxonomyName[]) {
+  for (const code of vehicleTaxonomyCodes[taxonomy] as readonly string[]) {
+    const labels = vehicleTaxonomyLabels[taxonomy][code]!;
+    labels.tr = translateArTrPhrase(labels.ru!, "tr");
+    labels.ar = translateArTrPhrase(labels.ru!, "ar");
+  }
+}
+
 const frenchVehicleTaxonomyLabels: Record<VehicleTaxonomyName, Record<string, string>> = {
   vehicle_type: {
     passenger_car: "Voiture particulière",
@@ -215,6 +228,13 @@ const frenchVehicleTaxonomyLabels: Record<VehicleTaxonomyName, Record<string, st
 for (const taxonomy of Object.keys(frenchVehicleTaxonomyLabels) as VehicleTaxonomyName[]) {
   for (const [code, label] of Object.entries(frenchVehicleTaxonomyLabels[taxonomy])) {
     vehicleTaxonomyLabels[taxonomy][code]!.fr = label;
+  }
+}
+
+for (const taxonomy of Object.keys(vehicleTaxonomyCodes) as VehicleTaxonomyName[]) {
+  for (const code of vehicleTaxonomyCodes[taxonomy] as readonly string[]) {
+    const labels = vehicleTaxonomyLabels[taxonomy][code]!;
+    for (const locale of EU_WAVE_LOCALES) labels[locale] = translateEuWavePhrase(labels.en!, locale);
   }
 }
 

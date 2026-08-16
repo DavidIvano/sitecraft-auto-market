@@ -1,5 +1,6 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrRecord } from "./arTrTranslations.ts";
+import { EU_WAVE_LOCALES, translateEuWaveRecord } from "./euWaveCoreTranslations.ts";
 import { translateFrCoreRecord } from "./frCoreTranslations.ts";
 
 const ru = {
@@ -44,5 +45,6 @@ const dictionaries: Record<Locale, CatalogMessages> = {
   ar: translateArTrRecord(ru, "ar"),
   tr: translateArTrRecord(ru, "tr"),
   fr: translateFrCoreRecord(en),
+  ...Object.fromEntries(EU_WAVE_LOCALES.map((locale) => [locale, translateEuWaveRecord(en, locale)])),
 };
 export const getCatalogMessages = (locale: Locale) => dictionaries[locale] || dictionaries.en;

@@ -23,9 +23,15 @@ test("tokens expose the canonical compact geometry and semantic palette", async 
 test("active design system is modular and legacy CSS is isolated", async () => {
   const layout = await read("../src/layouts/BaseLayout.astro");
   const legacy = await read("../src/styles/global.css");
+  const shared = await read("../src/styles/entries/shared.css");
+  const publicEntry = await read("../src/styles/entries/public.css");
+  const workspaceEntry = await read("../src/styles/entries/workspace.css");
   for (const file of ["tokens.css", "base.css", "layout.css", "components/header.css", "components/car-card.css", "components/catalog.css", "components/dashboard.css"]) {
-    assert.match(layout, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+    assert.match(`${shared}\n${publicEntry}\n${workspaceEntry}`, new RegExp(file.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
   }
+  assert.match(layout, /sharedStylesUrl/);
+  assert.match(layout, /publicStylesUrl/);
+  assert.match(layout, /workspaceStylesUrl/);
   assert.match(legacy, /^@layer legacy \{/);
   assert.doesNotMatch(layout, /design-system\.css/);
 });

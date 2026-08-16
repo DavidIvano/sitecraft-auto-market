@@ -12,6 +12,9 @@ import {
 import { AR_TR_TRANSLATIONS } from "../src/i18n/arTrTranslations.ts";
 import { FR_TRANSLATIONS } from "../src/i18n/frTranslations.ts";
 import { FR_CORE_TRANSLATIONS } from "../src/i18n/frCoreTranslations.ts";
+import { EU_WAVE_LOCALES, EU_WAVE_TRANSLATIONS } from "../src/i18n/euWaveTranslations.ts";
+import type { EuWaveLocale } from "../src/i18n/euWaveTranslations.ts";
+import { EU_WAVE_CORE_TRANSLATIONS } from "../src/i18n/euWaveCoreTranslations.ts";
 import { getCatalogMessages } from "../src/i18n/catalogMessages.ts";
 import { getDetailMessages } from "../src/i18n/detailMessages.ts";
 import { getMessages, interpolate, UI_MESSAGES } from "../src/i18n/messages.ts";
@@ -30,28 +33,36 @@ import { applyListingTranslation, normalizeListingTranslation } from "../src/lib
 import { renderPublicCarCardMarkup } from "../src/lib/publicCarCard.ts";
 import type { CarListing } from "../src/lib/types.ts";
 
-test("the migration supports all seven translated locales and Arabic RTL", () => {
-  assert.deepEqual(SUPPORTED_LOCALES, ["de", "ru", "uk", "en", "ar", "tr", "fr"]);
+test("the migration supports every released translated locale and Arabic RTL", () => {
+  assert.deepEqual(SUPPORTED_LOCALES, [
+    "de", "ru", "uk", "en", "ar", "tr", "fr",
+    "nl", "da", "sv", "fi", "es", "pt", "it",
+    "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el",
+    "et", "lv", "lt", "mt", "ga",
+  ]);
   assert.equal(resolveLocale("de-DE"), "de");
   assert.equal(resolveLocale("uk-UA"), "uk");
   assert.equal(resolveLocale("ar-SA"), "ar");
   assert.equal(resolveLocale("tr-TR"), "tr");
   assert.equal(resolveLocale("fr-FR"), "fr");
+  assert.equal(resolveLocale("nl-NL"), "nl");
+  assert.equal(resolveLocale("es-ES"), "es");
   assert.equal(LOCALE_DIRECTIONS.ar, "rtl");
   assert.equal(LOCALE_DIRECTIONS.tr, "ltr");
   assert.equal(resolveLocale("unsupported"), "ru");
 });
 
-test("the language menu exposes every official EU language with a safe content fallback", () => {
+test("the language menu exposes every official EU language with complete dictionaries", () => {
   assert.equal(EU_OFFICIAL_LOCALES.length, 24);
   assert.equal(SELECTABLE_LOCALES.length, 28);
   for (const locale of EU_OFFICIAL_LOCALES) assert.ok(SELECTABLE_LOCALES.includes(locale));
   assert.equal(resolveContentLocale("fr"), "fr");
   assert.equal(resolveBackendLocale("fr"), "en");
-  assert.equal(resolveContentLocale("pl"), "en");
+  assert.equal(resolveContentLocale("pl"), "pl");
+  assert.notEqual(getMessages("pl"), getMessages("en"));
   assert.notEqual(getMessages("fr"), getMessages("en"));
-  assert.equal(getCatalogMessages("es"), getCatalogMessages("en"));
-  assert.equal(getDetailMessages("it"), getDetailMessages("en"));
+  assert.notEqual(getCatalogMessages("es"), getCatalogMessages("en"));
+  assert.notEqual(getDetailMessages("it"), getDetailMessages("en"));
 });
 
 test("live Russian Xano values normalize to stable language-neutral codes", () => {
@@ -139,6 +150,32 @@ test("French generated UI dictionary is complete and contains no Russian fallbac
   }
   assert.equal(getMessages("fr").navHome, "Accueil");
   assert.equal(translateBackendValue("fuel_type", "petrol", "fr"), "Essence");
+});
+
+test("EU wave dictionaries are complete, preserve placeholders and contain no Russian fallback", () => {
+  const placeholderPattern = /\{\{[A-Z0-9_]+\}\}|\{[a-zA-Z0-9_]+\}/g;
+  const locales: readonly EuWaveLocale[] = EU_WAVE_LOCALES;
+  assert.deepEqual(EU_WAVE_LOCALES, [
+    "nl", "da", "sv", "fi", "es", "pt", "it",
+    "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el",
+    "et", "lv", "lt", "mt", "ga",
+  ]);
+  const allTranslations = { ...EU_WAVE_CORE_TRANSLATIONS, ...EU_WAVE_TRANSLATIONS };
+  assert.ok(Object.keys(allTranslations).length > 1_500);
+
+  for (const [source, translations] of Object.entries(allTranslations)) {
+    const sourcePlaceholders = source.match(placeholderPattern)?.sort() || [];
+    for (const locale of locales) {
+      const translation: string = translations[locale];
+      assert.ok(translation.length > 0, `${locale} is empty for ${source}`);
+      if (locale !== "bg") assert.doesNotMatch(translation, /[А-Яа-яЁё]/u);
+      assert.deepEqual(
+        translation.match(placeholderPattern)?.sort() || [],
+        sourcePlaceholders,
+        `${locale} changed placeholders for ${source}`,
+      );
+    }
+  }
 });
 
 test("the shared layout declares language direction for every page", () => {

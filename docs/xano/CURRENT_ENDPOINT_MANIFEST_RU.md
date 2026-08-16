@@ -1,6 +1,6 @@
 # Актуальный реестр Xano endpoints
 
-Обновлено: 11 августа 2026 года
+Обновлено: 16 августа 2026 года
 
 Workspace: `sitecraft.agency` (`115940`)
 
@@ -18,7 +18,7 @@ API group: `sitecraft-auto-market` (`421515`)
 - `MISSING` — frontend-идея или маршрут есть, но production backend не зафиксирован. Такая кнопка не должна показываться пользователю.
 - `UNKNOWN` — числовой ID не был сохранён в репозитории; выдумывать его нельзя.
 
-Числовые ID взяты из production-аудитов и журналов выпуска. 11 августа 2026 года безопасные публичные GET-запросы повторно проверены без авторизации. Защищённые endpoints очереди вызывались только в ограниченных сценариях английской и французской волн; секреты в Git не записывались.
+Числовые ID взяты из production-аудитов и журналов выпуска. 16 августа 2026 года безопасные публичные GET-запросы и strict contract повторно проверены для всех 28 пользовательских локалей: 24 языков ЕС плюс `ru/uk/ar/tr`. Защищённые endpoints очереди вызывались только в ограниченных языковых волнах; секреты в Git не записывались.
 
 ## Авторизация
 
@@ -40,8 +40,8 @@ API group: `sitecraft-auto-market` (`421515`)
 | 3999920 | GET | `/cars/{slug}/related` | WORKING | 11.08.2026: HTTP 200. |
 | 4005564 | GET | `/locales` | PARTIAL | Legacy-контракт по-прежнему возвращает только `de,en,ru,uk,ar,tr`; французский опубликован через strict Stage 3 registry, но ещё не добавлен в этот старый список. |
 | 4005565 | GET | `/taxonomies` | WORKING | 11.08.2026: HTTP 200. |
-| 4009274 | GET | `/public/locale/cars?lang={locale}` | WORKING | 11.08.2026: `lang=en` и `lang=fr` возвращают по 10/10 актуальных переводов; устаревший общий `translations_ready` не блокирует поязычную готовность. Немецкие strict-данные пока неполные. |
-| 4009273 | GET | `/public/locale/cars/{slug}?lang={locale}` | WORKING | 11.08.2026: английский и французский detail возвращают HTTP 200, актуальный source hash и `available_locales=[en,fr]`. |
+| 4009274 | GET | `/public/locale/cars?lang={locale}` | WORKING | 16.08.2026: все 28 пользовательских локалей возвращают по 10/10. Source-ветка исправлена: отсутствующие `car_listings.seo_*` больше не читаются. |
+| 4009273 | GET | `/public/locale/cars/{slug}?lang={locale}` | WORKING | Все 28 пользовательских локалей используют актуальный source hash без fallback; русский detail возвращает source, остальные языки — готовый перевод. |
 | 3981281 | POST | `/analytics/listing-view` | WORKING | Публичная аналитика просмотра; повторно не вызывалась, чтобы не менять счётчики. |
 | 3981451 | POST | `/ai/search/intent` | PARTIAL | Работает, но не закрыты rate limit и бюджет провайдера. |
 | 3981320 | POST | `/saved-searches` | WORKING | Создание сохранённого поиска с авторизацией. |
@@ -101,15 +101,15 @@ API group: `sitecraft-auto-market` (`421515`)
 
 | ID | Метод | Путь | Статус | Назначение |
 | ---: | --- | --- | --- | --- |
-| 4011152 | POST | `/translations/internal/prepare` | WORKING | Идемпотентная подготовка source hash, original row и заданий одной локали. |
-| 4011153 | POST | `/translations/internal/jobs/pending` | WORKING | Не более трёх pending/queued/failed jobs. |
+| 4011152 | POST | `/translations/internal/prepare` | WORKING | Идемпотентная подготовка source hash, original row и заданий одной локали; allowlist включает все 27 целевых языков кроме исходного `ru`. Placeholder-secret получает 403. |
+| 4011153 | POST | `/translations/internal/jobs/pending` | WORKING | Не более трёх pending/queued/failed jobs; allowlist включает все 27 целевых языков кроме исходного `ru`. Placeholder-secret получает 403. |
 | 4011154 | POST | `/translations/internal/jobs/{id}/claim` | WORKING | Атомарный claim; stale и непубличные задания закрываются без provider. |
 | 4011155 | POST | `/translations/internal/jobs/{id}/translate` | WORKING | Server-side OpenAI Responses API со strict JSON schema. |
 | 4011156 | POST | `/translations/internal/jobs/{id}/complete` | WORKING | Идемпотентный upsert перевода и завершение job. |
 | 4011157 | POST | `/translations/internal/jobs/{id}/fail` | WORKING | Безопасный error code и возврат job в retryable failed. |
 | 4011158 | POST | `/translations/internal/sources/{id}` | WORKING | Read-only сверка канонического и сохранённого source hash. |
-| 4011167 | POST | `/translations/internal/locales/prepare` | WORKING | Идемпотентная подготовка registry для `fr/tr/ar`; локаль не публикуется автоматически. |
-| 4011207 | POST | `/translations/internal/locales/release` | WORKING | Dry-run-first release-gate: публикует локаль только при 100% готовности переводов всех публичных объявлений. `en` и `fr` выпущены отдельными волнами после проверки 10/10. |
+| 4011167 | POST | `/translations/internal/locales/prepare` | WORKING | Идемпотентная подготовка registry для всех 28 пользовательских локалей; локаль не публикуется автоматически. |
+| 4011207 | POST | `/translations/internal/locales/release` | WORKING | Dry-run-first release-gate: публикует локаль только при 100% готовности. Все 28 пользовательских локалей выпущены отдельными волнами после проверки 10/10. |
 
 ## Deal Finder: Worker API
 

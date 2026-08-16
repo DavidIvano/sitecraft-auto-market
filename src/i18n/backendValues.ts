@@ -1,5 +1,9 @@
 import type { Locale } from "./locales.ts";
 import { translateArTrPhrase } from "./arTrTranslations.ts";
+import {
+  BACKEND_VALUE_EU_LOCALES,
+  translateEuWaveBackendPhrase,
+} from "./backendValueTranslations.generated.ts";
 import { translateFrPhrase } from "./frTranslations.ts";
 
 export type BackendValueField =
@@ -36,6 +40,7 @@ const value = (
     ar: translateArTrPhrase(ru, "ar"),
     tr: translateArTrPhrase(ru, "tr"),
     fr: translateFrPhrase(ru),
+    ...Object.fromEntries(BACKEND_VALUE_EU_LOCALES.map((locale) => [locale, translateEuWaveBackendPhrase(en, locale)])),
   },
   legacy,
 });

@@ -3,6 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 
 import { handleRequest, runTranslationBatch } from "../workers/translation-queue/src/index.ts";
+import { normalizeTargetLocale } from "../workers/translation-queue/src/env.ts";
 import type { TranslationWorkerEnv } from "../workers/translation-queue/src/types.ts";
 
 const baseEnv = (overrides: Partial<TranslationWorkerEnv> = {}): TranslationWorkerEnv => ({
@@ -13,7 +14,7 @@ const baseEnv = (overrides: Partial<TranslationWorkerEnv> = {}): TranslationWork
   TRANSLATION_QUEUE_DRY_RUN: "true",
   TRANSLATION_QUEUE_SCHEDULED_ENABLED: "false",
   TRANSLATION_TARGET_LOCALE: "en",
-  TRANSLATION_ALLOWED_LOCALES: "en,fr,tr,ar",
+  TRANSLATION_ALLOWED_LOCALES: "de,en,fr,tr,ar,uk,nl,da,sv,fi,es,pt,it,pl,cs,sk,sl,bg,hr,ro,hu,el,et,lv,lt,mt,ga",
   TRANSLATION_MAX_JOBS_PER_RUN: "2",
   TRANSLATION_HTTP_TIMEOUT_MS: "1000",
   ...overrides,
@@ -43,6 +44,20 @@ test("translation Xano endpoints are protected, bounded and use canonical source
   assert.match(prepare, /"\/\\\\r\\\\n\?\/"\|regex_replace:"\\n":\$car\.title/);
   assert.match(pending, /filters=min:1\|max:3/);
   assert.match(pending, /attempt_count < \$db\.translation_jobs\.max_attempts/);
+  assert.match(prepare, /\$input\.target_locale == "de"/);
+  assert.match(pending, /\$input\.target_locale == "de"/);
+});
+
+test("German is an explicit translation Worker target", () => {
+  assert.equal(normalizeTargetLocale("de", baseEnv()), "de");
+  assert.equal(normalizeTargetLocale("uk", baseEnv()), "uk");
+  for (const locale of [
+    "nl", "da", "sv", "fi", "es", "pt", "it",
+    "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el",
+    "et", "lv", "lt", "mt", "ga",
+  ] as const) {
+    assert.equal(normalizeTargetLocale(locale, baseEnv()), locale);
+  }
 });
 
 test("translation Worker health exposes flags but no secrets", async () => {
@@ -98,6 +113,27 @@ test("dry-run prepares safely and previews a bounded batch without claiming", as
       "/api:translation/translations/internal/prepare",
       "/api:translation/translations/internal/jobs/pending",
     ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("idempotent queue control retries an explicit Xano rate limit", async () => {
+  const originalFetch = globalThis.fetch;
+  let prepareCalls = 0;
+  globalThis.fetch = async (input) => {
+    const path = new URL(String(input)).pathname;
+    if (path.endsWith("/prepare")) {
+      prepareCalls += 1;
+      if (prepareCalls === 1) return jsonResponse({ code: "ERROR_CODE_TOO_MANY_REQUESTS" }, 429);
+      return jsonResponse({ created: 0 });
+    }
+    return jsonResponse({ jobs: [] });
+  };
+  try {
+    const result = await runTranslationBatch(baseEnv(), { targetLocale: "de", limit: 1, dryRun: true, source: "manual" });
+    assert.equal(result.ok, true);
+    assert.equal(prepareCalls, 2);
   } finally {
     globalThis.fetch = originalFetch;
   }

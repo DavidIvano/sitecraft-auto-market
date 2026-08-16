@@ -50,6 +50,11 @@
   .detail-price { margin: 0; color: var(--text-primary); font-size: clamp(2rem, 4vw, 3rem); font-weight: 850; }
   .detail-public-meta { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); margin: 0; font-size: .86rem; }
   .detail-public-views { display: inline-flex; align-items: center; gap: var(--space-1); }
+  .vehicle-context-links { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+  .vehicle-context-links a { display: grid; min-width: 0; gap: 2px; border: 1px solid var(--border-subtle); border-radius: var(--radius-control); background: var(--surface-muted); color: var(--text-primary); padding: var(--space-3); text-decoration: none; }
+  .vehicle-context-links a:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .vehicle-context-links span { color: var(--text-secondary); font-size: .75rem; }
+  .vehicle-context-links strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .detail-properties-panel, .detail-description-panel, .ai-highlights-panel, .ai-analysis-panel, .seller-summary-card { padding: var(--space-5); }
 
   .auth-panel { width: min(100%, 520px); margin-inline: auto; border: 1px solid var(--border-default); border-radius: var(--radius-panel); background: var(--surface); padding: var(--space-6); box-shadow: var(--shadow-card); }
@@ -94,6 +99,7 @@
     .detail-panel, .detail-properties-panel, .detail-description-panel, .ai-highlights-panel, .ai-analysis-panel, .seller-summary-card { padding: var(--space-4); }
     .gallery-thumb { width: 76px; height: 52px; flex-basis: 76px; }
     .gallery-stage { height: clamp(250px, 72vw, 420px); }
+    .vehicle-context-links { grid-template-columns: minmax(0, 1fr); }
     .auth-panel { padding: var(--space-5); }
     .support-contact { align-items: stretch; flex-direction: column; }
     .support-contact .button { width: 100%; }

@@ -17,7 +17,10 @@ export const STAGE3_EU_RELEASE_BATCHES = [
 // These locales use only translation-ready Xano records on indexable SEO pages.
 // A locale is added here during release preparation, but it still remains
 // unreachable until config.ts explicitly sets isPublic=true.
-export const STRICT_SEO_RELEASE_LOCALES = new Set<string>(["en", "fr"]);
+export const STRICT_SEO_RELEASE_LOCALES = new Set<string>([
+  "de", "en", "fr", "tr", "ar", "ru", "uk",
+  ...STAGE3_EU_RELEASE_BATCHES.flat(),
+]);
 
 export type LocaleReleaseEvidence = {
   publicListingCount: number;

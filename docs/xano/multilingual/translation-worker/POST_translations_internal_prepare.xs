@@ -10,7 +10,7 @@ query "translations/internal/prepare" verb=POST {
       error_type = "accessdenied"
       error = "Unauthorized"
     }
-    precondition (($input.target_locale == "en") || ($input.target_locale == "fr") || ($input.target_locale == "tr") || ($input.target_locale == "ar")) {
+    precondition (($input.target_locale == "de") || ($input.target_locale == "en") || ($input.target_locale == "fr") || ($input.target_locale == "tr") || ($input.target_locale == "ar") || ($input.target_locale == "uk") || ($input.target_locale == "nl") || ($input.target_locale == "da") || ($input.target_locale == "sv") || ($input.target_locale == "fi") || ($input.target_locale == "es") || ($input.target_locale == "pt") || ($input.target_locale == "it") || ($input.target_locale == "pl") || ($input.target_locale == "cs") || ($input.target_locale == "sk") || ($input.target_locale == "sl") || ($input.target_locale == "bg") || ($input.target_locale == "hr") || ($input.target_locale == "ro") || ($input.target_locale == "hu") || ($input.target_locale == "el") || ($input.target_locale == "et") || ($input.target_locale == "lv") || ($input.target_locale == "lt") || ($input.target_locale == "mt") || ($input.target_locale == "ga")) {
       error_type = "inputerror"
       error = "Unsupported target locale"
     }

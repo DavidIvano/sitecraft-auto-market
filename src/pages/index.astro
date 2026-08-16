@@ -11,6 +11,7 @@ import type { CarListing } from "../lib/types";
 import { LOCALE_COOKIE, isSelectableLocale, resolveBackendLocale, resolveRequestLocale } from "../i18n/locales";
 import { getBackendValueOptions } from "../i18n/backendValues";
 import { getMessages } from "../i18n/messages";
+import { getCarDetailImagePresentations } from "../lib/imageUrls";
 
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"), Astro.request.headers.get("cf-ipcountry"));
@@ -31,6 +32,13 @@ try {
   homepagePromotedCars = [];
 }
 const explicitLocale = Astro.url.searchParams.get("lang") || Astro.url.searchParams.get("locale");
+const heroImage = getCarDetailImagePresentations(homepagePromotedCars[0] || latestCars[0] || {})[0] || {
+  src: "",
+  srcset: "",
+  sizes: "100vw",
+  width: 1600,
+  height: 1000,
+};
 if (isSelectableLocale(explicitLocale)) {
   Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=120, stale-while-revalidate=3600");
 } else {
@@ -46,7 +54,7 @@ if (isSelectableLocale(explicitLocale)) {
 >
   <section class="market-hero">
     <div class="market-hero-media" aria-hidden="true">
-      <img id="home-hero-image" alt="" hidden />
+      {heroImage.src && <img src={heroImage.src} srcset={heroImage.srcset || undefined} sizes="100vw" alt="" width={heroImage.width} height={heroImage.height} loading="eager" decoding="async" fetchpriority="high" />}
     </div>
     <div class="container market-hero-inner">
       <div class="market-hero-copy">
@@ -69,6 +77,7 @@ if (isSelectableLocale(explicitLocale)) {
         data-messages={JSON.stringify(messages)}
         data-body-options={JSON.stringify(bodyOptions)}
         data-vehicle-options={JSON.stringify(vehicleOptions)}
+        data-initial-cars={JSON.stringify(latestCars)}
       >
         <div class="search-tabs" aria-label={messages.categoryVehicle}>
           <button class="search-tab is-active" type="button">{messages.tabCars}</button>
@@ -206,7 +215,7 @@ if (isSelectableLocale(explicitLocale)) {
         <a class="button button-light" href="/cars">{messages.viewCatalog}</a>
       </div>
       <div class="cards-grid public-car-grid" data-homepage-promotions-grid>
-        {homepagePromotedCars.map((car, index) => <CarCard car={car} priority={index < 2} source="homepage_premium" locale={locale} />)}
+        {homepagePromotedCars.map((car) => <CarCard car={car} source="homepage_premium" locale={locale} />)}
       </div>
     </div>
   </section>
@@ -223,7 +232,7 @@ if (isSelectableLocale(explicitLocale)) {
         id="home-live-cars-grid"
         hidden={latestCars.length === 0}
       >
-        {latestCars.map((car, index) => <CarCard car={car} priority={index < 4} source="homepage_latest" locale={locale} />)}
+        {latestCars.map((car) => <CarCard car={car} source="homepage_latest" locale={locale} />)}
       </div>
       <div id="home-loading-state" hidden={latestCars.length > 0}><LoadingState title={messages.loadingCars} text={messages.loadingCarsText} /></div>
       <p class="form-message" id="home-live-cars-message"></p>
@@ -235,16 +244,13 @@ if (isSelectableLocale(explicitLocale)) {
 
   <script>
     import { getBrandLogoSvg } from "../lib/brandLogos";
-    import { isPublicListing } from "../lib/listingStatus";
     import { renderPublicCarCardMarkup } from "../lib/publicCarCard";
-    import { normalizePublicCarList } from "../lib/publicCar";
-    import { applyListingTranslations } from "../lib/listingTranslation";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../lib/publicCarCardsClient";
-    import { fetchWithRetry } from "../lib/http/fetchWithRetry";
     import { getHomepagePromotedCars, sortCarsByActivePromotion } from "../lib/promotions/model";
     import type { CarListing } from "../lib/types";
     import { normalizeBackendValue } from "../i18n/backendValues";
     import { resolveLocale } from "../i18n/locales";
+    import { getCarCardImagePresentation } from "../lib/imageUrls";
 
     const liveGrid = document.querySelector("#home-live-cars-grid");
     const loadingState = document.querySelector("#home-loading-state");
@@ -253,7 +259,6 @@ if (isSelectableLocale(explicitLocale)) {
     const searchForm = document.querySelector("#home-search-form");
     const resetButton = document.querySelector("#home-reset-button");
     const searchButton = document.querySelector("#home-search-button");
-    const heroImage = document.querySelector("#home-hero-image");
     const categoryTrack = document.querySelector("#home-category-track");
     const categoryPrev = document.querySelector("#category-prev");
     const categoryNext = document.querySelector("#category-next");
@@ -263,7 +268,6 @@ if (isSelectableLocale(explicitLocale)) {
     const homepagePromotions = document.querySelector("#homepage-promotions");
     const homepagePromotionsGrid = document.querySelector("[data-homepage-promotions-grid]");
     const locale = resolveLocale(searchPanel instanceof HTMLElement ? searchPanel.dataset.locale : "ru");
-    const contentLocale = resolveLocale(searchPanel instanceof HTMLElement ? searchPanel.dataset.contentLocale : "en");
     const parseData = <T,>(value: string | undefined, fallback: T): T => {
       try {
         return value ? JSON.parse(value) as T : fallback;
@@ -289,7 +293,10 @@ if (isSelectableLocale(explicitLocale)) {
         messages[key] || key,
       );
     const popularBrandOptions = ["Audi", "BMW", "Mercedes-Benz", "Volkswagen", "Toyota", "Ford", "Hyundai", "Kia", "Skoda", "Mazda", "Opel", "Tesla"];
-    let allCars: Array<Record<string, unknown>> = [];
+    let allCars: Array<Record<string, unknown>> = parseData(
+      searchPanel instanceof HTMLElement ? searchPanel.dataset.initialCars : undefined,
+      [],
+    );
 
     const formatPrice = (price: unknown, currency: string) =>
       new Intl.NumberFormat(locale, {
@@ -384,8 +391,8 @@ if (isSelectableLocale(explicitLocale)) {
         return rightTime - leftTime;
       });
 
-    const renderCarCard = (car: Record<string, unknown>, index = 0) =>
-      renderPublicCarCardMarkup(car as CarListing, { priority: index < 4, locale });
+    const renderCarCard = (car: Record<string, unknown>) =>
+      renderPublicCarCardMarkup(car as CarListing, { locale });
 
     const getFieldFromDescription = (car: Record<string, unknown>, label: string) => {
       const expression = new RegExp(`^${label}:\\\\s*(.+)$`, "im");
@@ -447,7 +454,7 @@ if (isSelectableLocale(explicitLocale)) {
       categoryTrack.innerHTML = categoryDefinitions
         .map((category) => {
           const car = pickCategoryCar(cars, category.match);
-          const imageUrl = getCarCoverImageUrl(car);
+          const image = getCarCardImagePresentation(car as CarListing);
           const slug = category.href || (car?.slug ? `/cars/${encodeURIComponent(String(car.slug))}` : "/cars");
           const meta = car
             ? `${escapeHtml(car.brand)} ${escapeHtml(car.model)} · ${formatPrice(car.price, String(car.currency || "EUR"))}`
@@ -456,8 +463,8 @@ if (isSelectableLocale(explicitLocale)) {
           return `
             <a class="category-slide" href="${slug}" aria-label="${escapeHtml(category.title)}">
               ${
-                imageUrl
-                  ? `<img src="${escapeHtml(imageUrl)}" alt="" loading="lazy" />`
+                image.src
+                  ? `<img src="${escapeHtml(image.src)}"${image.srcset ? ` srcset="${escapeHtml(image.srcset)}" sizes="${escapeHtml(image.sizes)}"` : ""} alt="${escapeHtml(`${category.title}${car?.title ? ` — ${String(car.title)}` : ""}`)}" width="${image.width}" height="${image.height}" loading="lazy" decoding="async" />`
                   : `<div class="category-slide-empty">${escapeHtml(text("photoMissing"))}</div>`
               }
               <div class="category-slide-body">
@@ -521,16 +528,6 @@ if (isSelectableLocale(explicitLocale)) {
     brandPrev?.addEventListener("click", () => scrollBrands(-1));
     brandNext?.addEventListener("click", () => scrollBrands(1));
 
-    const applyHeroImage = (cars: Array<Record<string, unknown>>) => {
-      const firstCarWithImage = cars.find((car) => Boolean(getCarCoverImageUrl(car)));
-      const imageUrl = getCarCoverImageUrl(firstCarWithImage);
-
-      if (heroImage instanceof HTMLImageElement && imageUrl) {
-        heroImage.src = imageUrl;
-        heroImage.hidden = false;
-      }
-    };
-
     const matchesFilters = (car: Record<string, unknown>, formData: FormData) => {
       const brand = String(formData.get("brand") || "").toLowerCase();
       const model = String(formData.get("model") || "").toLowerCase();
@@ -586,7 +583,7 @@ if (isSelectableLocale(explicitLocale)) {
       if (homepagePromotions instanceof HTMLElement && homepagePromotionsGrid instanceof HTMLElement) {
         const promoted = getHomepagePromotedCars(cars as CarListing[]);
         homepagePromotions.hidden = promoted.length === 0;
-        homepagePromotionsGrid.innerHTML = promoted.map((car, index) => renderPublicCarCardMarkup(car, { priority: index < 2, locale })).join("");
+        homepagePromotionsGrid.innerHTML = promoted.map((car) => renderPublicCarCardMarkup(car, { locale })).join("");
         refreshPublicCarCardIcons(homepagePromotionsGrid);
       }
 
@@ -607,57 +604,11 @@ if (isSelectableLocale(explicitLocale)) {
     };
 
     if (searchPanel instanceof HTMLElement && message instanceof HTMLElement) {
-      const apiUrl = searchPanel.dataset.apiUrl;
-      if (apiUrl) {
-        const loadFreshCars = () => fetchWithRetry(`${apiUrl}/cars?lang=${encodeURIComponent(contentLocale)}`, {}, { dedupeKey: `home-fresh-cars:${contentLocale}` })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("latest cars load failed");
-            }
-
-            return response.json();
-          })
-          .then((cars) => {
-            if (!Array.isArray(cars) || cars.length === 0) {
-              if (loadingState instanceof HTMLElement) {
-                loadingState.hidden = true;
-              }
-              message.textContent = text("noCars");
-              return;
-            }
-
-            allCars = newestFirst(applyListingTranslations(normalizePublicCarList(cars), contentLocale).filter(isPublicListing));
-            applyHeroImage(allCars);
-            renderCategories(allCars);
-            renderBrands(allCars);
-            renderCars(allCars);
-          })
-          .catch(() => {
-            if (loadingState instanceof HTMLElement) {
-              loadingState.hidden = true;
-            }
-            message.textContent = liveGrid instanceof HTMLElement && liveGrid.children.length > 0
-              ? text("loadCarsFailed")
-              : text("loadCarsFailed");
-          });
-        if (loadingState instanceof HTMLElement && liveGrid instanceof HTMLElement && liveGrid.children.length > 0) {
-          loadingState.hidden = true;
-        }
-        const scheduleFreshCars = () => void loadFreshCars();
-        if ("requestIdleCallback" in window) {
-          window.requestIdleCallback(scheduleFreshCars, { timeout: 2_500 });
-        } else {
-          globalThis.setTimeout(scheduleFreshCars, 1_200);
-        }
-        window.addEventListener("online", () => {
-          if (message.textContent.includes("Не удалось")) void loadFreshCars();
-        });
-      } else {
-        if (loadingState instanceof HTMLElement) {
-          loadingState.hidden = true;
-        }
-        message.textContent = text("serviceUnavailable");
-      }
+      allCars = newestFirst(allCars);
+      renderCategories(allCars);
+      renderBrands(allCars);
+      if (loadingState instanceof HTMLElement) loadingState.hidden = true;
+      message.textContent = allCars.length > 0 ? "" : text("noCars");
     }
 
     searchForm?.addEventListener("submit", (event) => {

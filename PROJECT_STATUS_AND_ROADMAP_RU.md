@@ -1,6 +1,6 @@
 # SiteCraft Auto Market: правдивое состояние и roadmap
 
-Обновлено: 11 августа 2026 года
+Обновлено: 16 августа 2026 года
 
 Production: <https://automarket.sitecraft.agency>
 
@@ -104,15 +104,14 @@ flowchart LR
 
 ### Языковые уровни нельзя смешивать
 
-- В frontend настроено 29 локалей.
-- Полностью вручную проверяемый UI-пакет сейчас есть для `de`, `ru`, `uk`, `en`, `ar`, `tr`, `fr`.
-- Остальные европейские локали присутствуют в selector/URL, но значительная часть UI использует английский fallback. Их нельзя называть полностью переведёнными.
-- Legacy Xano-данные поддерживают шесть локалей: `de`, `ru`, `uk`, `en`, `ar`, `tr`; strict SEO contract публично выпущен отдельно для `en` и `fr`.
+- В selector настроено 28 локалей: 24 официальных языка ЕС плюс `ru`, `uk`, `ar`, `tr`.
+- Полный структурно проверенный UI/public/static/taxonomy пакет подготовлен для всех 28 пользовательских локалей: 24 официальных языков ЕС плюс `ru`, `uk`, `ar`, `tr`. Словари 21 новой EU-локали машинные, проходят автоматические проверки полноты и placeholders, но требуют последующей лингвистической вычитки.
+- Legacy Xano-данные поддерживают шесть локалей: `de`, `ru`, `uk`, `en`, `ar`, `tr`; отдельный strict SEO contract публично выпущен для всех 28 пользовательских локалей.
 - `GET /cars?lang=` отвечает 200 для этих шести языков и 400 для `fr`.
-- Strict Release 4 endpoint для `en` и `fr` 11 августа вернул по 10/10 объявлений, strict detail — HTTP 200. Немецкая strict-волна остаётся неполной и не переведена в Stage 3.
-- Полный indexable Stage 3 комплект подготовлен для `/en/` и `/fr/`; немецкие маршруты сохраняют legacy-режим до завершения немецких данных.
+- Strict Release 4 endpoint 16 августа вернул 10/10 объявлений для каждой из 28 выпущенных локалей; каждый Xano release-gate подтвердил `ready_listing_count=10`, `data_ready=true`.
+- Полный indexable Stage 3 комплект подготовлен для всех 28 locale-prefix: catalog/detail, brand/model/city, canonical, sitemap, reciprocal `hreflang` и JSON-LD. Арабский smoke отдельно подтвердил `lang="ar"`, `dir="rtl"`.
 
-Итог: язык оболочки определяется и переключается, но «29 полностью переведённых языков с переведёнными данными» ещё не готово.
+Итог: полный технический контур 28 пользовательских языков готов локально и в Xano. До заявления о финальном production-релизе остаются deploy frontend из `main`, production parity smoke и редакторская вычитка машинных переводов.
 
 ## UI-прототипы и скрытые действия
 
@@ -133,13 +132,19 @@ flowchart LR
 
 - Английский Stage 3 выпущен первым: полный UI и public/static словари, полная taxonomy, 10/10 актуальных переводов объявлений, strict catalog/detail, indexable sitemap, canonical, reciprocal `hreflang` и smoke-тест.
 - Французская волна `31–40` завершена отдельно малыми идемпотентными пакетами: 10/10 актуальных переводов, полный UI/public/static пакет и taxonomy, strict catalog/detail и полный локальный sitemap smoke без fallback.
+- Немецкая strict-волна `82–91` завершена малыми идемпотентными пакетами: 10/10 актуальных переводов; canary, strict resolver и release-gate проверены. При rate limit обработка останавливалась и продолжалась безопасно.
+- Турецкая волна `41–50` и арабская волна `51–60` завершены 10/10 малыми пакетами; явные rate limit не привели к повторному provider-вызову.
+- Русский strict-релиз использует 10/10 исходных записей без платного перевода. Исправлены list/detail resolver endpoints `4009274/4009273`: source-ветка больше не обращается к отсутствующим колонкам `car_listings.seo_*`.
+- Украинская актуальная волна `92–101` завершена 10/10. Исторический job №1 закрыт как непубличный без provider; старые jobs не использовались вместо актуального source hash.
+- Волны `nl/da/sv/fi` и `es/pt/it` завершены 16 августа: создано и обработано 70 заданий `102–171`, по 10 на язык, малыми идемпотентными пакетами по два. Один временный сетевой сбой и Xano rate limit были безопасно продолжены без дублирования provider-вызова.
+- Для всех семи новых локалей dry-run подтвердил `10/10`, затем release-gate включил `is_public=true`; живые strict catalog/detail вернули полный локализованный контент без fallback.
+- Остальные EU-волны `pl/cs/sk/sl`, `bg/hr/ro/hu/el`, `et/lv/lt/mt/ga` завершены 16 августа: обработано 140 заданий `172–311`, по 10 на язык, идемпотентными пакетами максимум по три. Два Xano 429 были безопасно повторены на уровне queue-control.
+- Для всех 14 локалей финальной волны dry-run подтвердил `10/10`, затем release-gate включил `is_public=true`; живые strict catalog/detail вернули полный локализованный контент без fallback.
 - Xano release-gate `POST /translations/internal/locales/release` (ID `4011207`) сначала выполняет dry-run и включает `is_public` только при 100% готовности переводов публичного каталога.
-- Управляемый Cloudflare Worker выпущен с пакетами 1–2 задания, hard limit 3, идемпотентным claim/complete, dry-run и раздельными kill switches для manual и cron.
-- Для `tr` и `ar` остаётся по 10 pending jobs публичных объявлений. Provider для этих волн ещё не запускался.
-- В первом историческом batch остаются немецкое задание №6 и украинские №4/7; №1 относится к удалённому объявлению. Старые английские №2/5/8 закрыты как outdated и заменены актуальной завершённой волной.
-- Не завершён массовый перевод справочников и остальных языков ЕС.
-- Нет полного strict Xano data contract для `tr`, `ar` и остальных следующих языков.
-- Для следующих языков ещё нет полного комплекта locale-prefixed SEO routes, canonical/hreflang и sitemap.
+- Управляемый Cloudflare Worker поддерживает все 27 целевых языков перевода (все пользовательские локали кроме исходного `ru`), пакеты до трёх заданий, идемпотентный claim/complete, dry-run и раздельные kill switches для manual и cron. Queue-control запросы безопасно повторяют явный Xano 429; provider-вызов автоматически не дублируется.
+- Защита Xano Worker endpoints `4011152/4011153` повторно проверена: публичная строка-заглушка получает 403, рабочий secret не хранится в репозитории.
+- Техническая миграция языков ЕС завершена; остаётся редакторская вычитка машинных UI/taxonomy и текстов объявлений носителями языков.
+- Frontend-конфигурация 28 публичных локалей пока не считается production до push/deploy и повторного production parity smoke.
 
 ### Backend-продукты
 
@@ -152,7 +157,7 @@ flowchart LR
 
 - Нужны rate limits и бюджеты для публичных/provider-backed AI endpoints.
 - Нужен единый ledger и политика списаний AI-кредитов.
-- Нужен автоматический contract test, сравнивающий frontend routes с экспортом Xano.
+- `DONE`: добавлена автоматическая сверка `Xano public → Xano localized → sitemap → canonical page` командой `npm run seo:audit:de`; она проверяет Vehicle, Offer, BreadcrumbList, изображения и связи brand/model/city.
 - Защищённые endpoints из реестра нужно периодически проверять отдельным staging/integration suite, а не только статическими тестами frontend.
 
 ## Следующий план
@@ -161,11 +166,17 @@ flowchart LR
 
 1. `DONE`: свежий export Xano endpoints/таблиц сверён с реестром; Worker endpoints записаны с production IDs.
 2. `DONE`: английский canary и вся волна 10/10 завершены, публичное отображение проверено.
-3. `DONE`: `fr`, `tr`, `ar` подготовлены отдельными очередями по 10 заданий без запуска provider.
+3. `DONE`: `fr`, `tr`, `ar` подготовлены отдельными очередями по 10 заданий.
 4. `DONE fr`: canary и задания `31–40` обработаны малыми пакетами; release-gate и публичный strict resolver подтвердили 10/10.
-5. `NEXT`: выполнить canary и малые пакеты отдельно для `tr`, затем `ar`; после каждой волны проверить запись и публичный resolver.
-6. `NEXT`: закрыть оставшиеся актуальные `de/uk` задания первого batch и непубличные legacy jobs без provider.
-7. `NEXT`: инвентаризировать справочники и только затем добавлять остальные языки ЕС волнами, не открывая locale до полноты UI + data + SEO.
+5. `DONE de`: актуальная немецкая волна обработана 10/10, release-gate применён после dry-run.
+6. `DONE tr/ar`: canary, малые пакеты, quality-check, release-gate и strict resolver подтвердили 10/10.
+7. `DONE ru/uk`: русский выпущен как source locale 10/10; украинские jobs `92–101` завершены 10/10, непубличный legacy job закрыт без provider.
+8. `DONE nl/da/sv/fi`: 40 заданий обработаны, UI/taxonomy/data/SEO readiness закрыты, release-gate применён после dry-run 10/10.
+9. `DONE es/pt/it`: 30 заданий обработаны, UI/taxonomy/data/SEO readiness закрыты, release-gate применён после dry-run 10/10.
+10. `DONE pl/cs/sk/sl`: 40 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
+11. `DONE bg/hr/ro/hu/el`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
+12. `DONE et/lv/lt/mt/ga`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
+13. `NEXT`: deploy frontend из `main`, production parity smoke всех 28 локалей и редакторская вычитка машинных переводов.
 
 ### Этап 3 — SEO локалей
 
@@ -173,7 +184,14 @@ flowchart LR
 2. `DONE en`: `/en/`, `/en/cars/`, brand/model/detail и public static routes получили canonical и indexable sitemap.
 3. `DONE en`: карточки ведут на locale-prefixed detail, `x-default` указывает на эквивалентный legacy route, `de`/`en` имеют взаимные `hreflang` на общих страницах.
 4. `DONE fr`: полный французский sitemap проверен URL за URL; canonical, JSON-LD, взаимные `en/fr` `hreflang`, `x-default` и 10 detail-страниц прошли smoke.
-5. `NEXT`: отдельно `tr`, затем `ar`, затем `ru` и `uk`; остальные языки ЕС выпускать пакетами из `src/i18n/releaseStage3.ts`.
+5. `DONE de`: немецкие 10/10 добавлены в strict sitemap; detail schema локализует legacy taxonomy, Offer связан с Vehicle и местом, добавлены crawlable brand/model/city связи и R2 `HEAD`.
+6. `NEXT`: после deploy выполнить production parity smoke и отправить обновлённый `/sitemap.xml` в подключённую Search Console.
+7. `DONE tr/ar/ru/uk`: все четыре локали имеют 10/10 strict data, отдельный sitemap и успешный локальный smoke; `ar` проверен в RTL.
+8. `DONE nl/da/sv/fi`: полный локальный HTTP/SEO smoke проверил sitemap, static/catalog/detail, brand/model/city, canonical, reciprocal `hreflang`, JSON-LD и 10 detail-страниц каждого языка.
+9. `DONE es/pt/it`: тот же полный HTTP/SEO smoke пройден; временный headers timeout при длинном общем прогоне воспроизвёлся как сеть и отдельный повтор `it` завершился без функциональных ошибок.
+10. `DONE`: frontend, taxonomy, strict routes и sitemap подготовлены для оставшихся 14 языков ЕС; Xano catalog/detail подтверждены 10/10 без fallback.
+11. `DONE`: полный локальный HTTP/SEO smoke пройден для `pl/cs/sk/sl/bg/hr/ro/hu/el/et/lv/lt/mt/ga`; ирландский повторён отдельно после сетевого headers timeout длинного общего прогона и завершился без функциональных ошибок.
+12. `NEXT`: выполнить deploy frontend из `main`, затем production parity smoke всех 28 локалей и отправить обновлённый sitemap в Search Console.
 
 ### Этап 4 — server-backed функции
 

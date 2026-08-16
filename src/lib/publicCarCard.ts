@@ -1,4 +1,4 @@
-import { getCarCardImageUrl } from "./imageUrls.ts";
+import { getCarCardImagePresentation } from "./imageUrls.ts";
 import { getHighestActivePromotion, parseApiDate } from "./promotions/model.ts";
 import type { CarListing } from "./types.ts";
 import { renderFavoriteButtonMarkup } from "./favorites.ts";
@@ -6,14 +6,19 @@ import {
   normalizePublicViewCount,
 } from "./listingViews.ts";
 import { DEFAULT_LOCALE, LOCALE_TAGS, type Locale } from "../i18n/locales.ts";
-import { getMessages, interpolate } from "../i18n/messages.ts";
-import { getDetailMessages } from "../i18n/detailMessages.ts";
-import { translateBackendValue } from "../i18n/backendValues.ts";
+import {
+  getPublicCardMessages,
+  translatePublicCardBackendValue,
+} from "../i18n/publicCardMessages.generated.ts";
 
 const escapeHtml = (value: unknown) => String(value ?? "").replace(/[&<>'"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[character] || character));
+const interpolate = (message: string, values: Record<string, string | number>) => Object.entries(values).reduce(
+  (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+  message,
+);
 
 const formatDate = (value: unknown, locale: Locale) => {
-  const messages = getMessages(locale);
+  const messages = getPublicCardMessages(locale);
   if (!value) return messages.dateMissing;
   const date = parseApiDate(value);
   return date ? new Intl.DateTimeFormat(LOCALE_TAGS[locale], { day: "numeric", month: "short" }).format(date) : messages.dateMissing;
@@ -39,10 +44,9 @@ const safeSlugPath = (slug: unknown, locale: Locale, localizedRoute: boolean) =>
 
 export function renderPublicCarCardMarkup(car: CarListing, options: { priority?: boolean; source?: string; locale?: Locale } = {}) {
   const locale = options.locale || DEFAULT_LOCALE;
-  const messages = getMessages(locale);
-  const detailMessages = getDetailMessages(locale);
+  const messages = getPublicCardMessages(locale);
   const detailPath = safeSlugPath(car.slug, locale, String(options.source || "").startsWith("localized_"));
-  const image = getCarCardImageUrl(car);
+  const image = getCarCardImagePresentation(car);
   const promotion = getHighestActivePromotion(car);
   const isHomepagePremium = promotion?.slug === "homepage_premium_7_days";
   const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
@@ -61,19 +65,23 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
   const premiumDecoration = isHomepagePremium
     ? `<div class="car-card-premium-banner" aria-label="${escapeHtml(promotionLabel)}"><i data-lucide="crown" aria-hidden="true"></i><span>${escapeHtml(promotionLabel)}</span></div><span class="car-card-premium-marker" aria-hidden="true"><i data-lucide="gem"></i></span>`
     : "";
-  const media = image
-    ? `<img src="${escapeHtml(image)}" alt="${escapeHtml(title)}" class="car-image" loading="${loading}" decoding="async" width="800" height="500" referrerpolicy="no-referrer"${priority}>`
+  const imageAlt = [title, car.year, car.city].filter(Boolean).join(" — ");
+  const responsiveAttributes = image.srcset
+    ? ` srcset="${escapeHtml(image.srcset)}" sizes="${escapeHtml(image.sizes)}"`
+    : "";
+  const media = image.src
+    ? `<img src="${escapeHtml(image.src)}"${responsiveAttributes} alt="${escapeHtml(imageAlt)}" class="car-image" loading="${loading}" decoding="async" width="${image.width}" height="${image.height}" referrerpolicy="no-referrer"${priority}>`
     : `<div class="car-image car-image-empty" aria-label="${escapeHtml(messages.photoMissing)}">${escapeHtml(messages.photoMissing)}</div>`;
 
   const source = escapeHtml(options.source || "public_car_card");
   const publicViewsTotal = normalizePublicViewCount(car.views_total);
-  const publicViewLabel = interpolate(detailMessages.viewsCount, { count: publicViewsTotal.toLocaleString(LOCALE_TAGS[locale]) });
+  const publicViewLabel = interpolate(messages.viewsCount, { count: publicViewsTotal.toLocaleString(LOCALE_TAGS[locale]) });
   const publicViews = `<span class="car-card-views" aria-label="${escapeHtml(publicViewLabel)}" title="${escapeHtml(publicViewLabel)}"><i data-lucide="eye" aria-hidden="true"></i><span>${escapeHtml(publicViewsTotal.toLocaleString(LOCALE_TAGS[locale]))}</span></span>`;
   const city = String(car.city || "").trim();
   const cityBadge = city
     ? `<span class="car-card-location"><i data-lucide="map-pin" aria-hidden="true"></i><span>${escapeHtml(city)}</span></span>`
     : "";
-  const statusBadge = `<span class="listing-status-badge ${isSold ? "is-sold" : "is-active"}">${escapeHtml(isSold ? messages.sold : detailMessages.forSale)}</span>`;
+  const statusBadge = `<span class="listing-status-badge ${isSold ? "is-sold" : "is-active"}">${escapeHtml(isSold ? messages.sold : messages.forSale)}</span>`;
   const saved = Boolean(car.is_saved);
   const dateValue = options.source === "dashboard_favorites" && car.saved_at ? car.saved_at : car.published_at || car.created_at;
   const formattedDate = formatDate(dateValue, locale);
@@ -92,8 +100,8 @@ export function renderPublicCarCardMarkup(car: CarListing, options: { priority?:
       <dl class="car-card-specs">
         <div><dt class="sr-only">${escapeHtml(messages.specYear)}</dt><dd aria-label="${escapeHtml(messages.specYear)}: ${escapeHtml(car.year || "—")}"><i data-lucide="calendar" aria-hidden="true"></i><span>${escapeHtml(car.year || "—")}</span></dd></div>
         <div><dt class="sr-only">${escapeHtml(messages.specMileage)}</dt><dd aria-label="${escapeHtml(messages.specMileage)}: ${Number(car.mileage || 0) ? `${Number(car.mileage).toLocaleString(LOCALE_TAGS[locale])} ${escapeHtml(messages.kilometre)}` : "—"}"><i data-lucide="gauge" aria-hidden="true"></i><span>${Number(car.mileage || 0) ? `${Number(car.mileage).toLocaleString(LOCALE_TAGS[locale])} ${escapeHtml(messages.kilometre)}` : "—"}</span></dd></div>
-        <div><dt class="sr-only">${escapeHtml(messages.specFuel)}</dt><dd aria-label="${escapeHtml(messages.specFuel)}: ${escapeHtml(car.fuel_type ? translateBackendValue("fuel_type", car.fuel_type, locale) : "—")}"><i data-lucide="fuel" aria-hidden="true"></i><span>${escapeHtml(car.fuel_type ? translateBackendValue("fuel_type", car.fuel_type, locale) : "—")}</span></dd></div>
-        <div><dt class="sr-only">${escapeHtml(messages.specTransmission)}</dt><dd aria-label="${escapeHtml(messages.specTransmission)}: ${escapeHtml(car.transmission ? translateBackendValue("transmission", car.transmission, locale) : "—")}"><i data-lucide="settings-2" aria-hidden="true"></i><span>${escapeHtml(car.transmission ? translateBackendValue("transmission", car.transmission, locale) : "—")}</span></dd></div>
+        <div><dt class="sr-only">${escapeHtml(messages.specFuel)}</dt><dd aria-label="${escapeHtml(messages.specFuel)}: ${escapeHtml(car.fuel_type ? translatePublicCardBackendValue("fuel_type", car.fuel_type, locale) : "—")}"><i data-lucide="fuel" aria-hidden="true"></i><span>${escapeHtml(car.fuel_type ? translatePublicCardBackendValue("fuel_type", car.fuel_type, locale) : "—")}</span></dd></div>
+        <div><dt class="sr-only">${escapeHtml(messages.specTransmission)}</dt><dd aria-label="${escapeHtml(messages.specTransmission)}: ${escapeHtml(car.transmission ? translatePublicCardBackendValue("transmission", car.transmission, locale) : "—")}"><i data-lucide="settings-2" aria-hidden="true"></i><span>${escapeHtml(car.transmission ? translatePublicCardBackendValue("transmission", car.transmission, locale) : "—")}</span></dd></div>
       </dl>
       <div class="car-card-footer"><time${dateTime ? ` datetime="${escapeHtml(dateTime)}"` : ""}>${escapeHtml(dateLabel)}</time>${cityBadge}</div>
     </div>

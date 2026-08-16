@@ -8,16 +8,19 @@ import {
 } from "./config.ts";
 import { getLocaleFromAcceptLanguage } from "./locale.ts";
 
-// Compatibility list for dictionaries already shipped in the current UI. New
-// locales are configured in config.ts and are not public until their dictionary
-// and backend readiness checks pass.
-export const SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr", "fr"] as const;
+// Complete UI dictionary set for the 24 official EU languages plus ru/uk/ar/tr.
+export const SUPPORTED_LOCALES = [
+  "de", "ru", "uk", "en", "ar", "tr", "fr",
+  "nl", "da", "sv", "fi", "es", "pt", "it",
+  "pl", "cs", "sk", "sl", "bg", "hr", "ro", "hu", "el",
+  "et", "lv", "lt", "mt", "ga",
+] as const;
 export type LegacyUiLocale = typeof SUPPORTED_LOCALES[number];
 export type Locale = LocaleCode;
 
-// Xano's current public endpoint contract accepts these six values. UI locales
-// can ship independently and safely reuse English listing payloads until the
-// corresponding Xano locale is enabled.
+// Compatibility list for the legacy query-based Xano endpoint. Strict
+// locale-prefixed SEO routes use the Release 4 resolver and never reuse an
+// English listing payload for another public language.
 export const XANO_SUPPORTED_LOCALES = ["de", "ru", "uk", "en", "ar", "tr"] as const;
 export type XanoLocale = typeof XANO_SUPPORTED_LOCALES[number];
 
@@ -26,9 +29,8 @@ export const EU_OFFICIAL_LOCALES = [
   "ga", "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv",
 ] as const;
 
-// The six reviewed dictionaries stay the authoritative translated set. The
-// remaining official EU languages are selectable with an explicit English
-// fallback until their reviewed dictionaries and Xano translations are ready.
+// Keep the selector derived from the complete UI set and the official EU list;
+// this remains additive if another configured non-EU locale is introduced.
 export const SELECTABLE_LOCALES = Object.freeze([
   ...SUPPORTED_LOCALES,
   ...EU_OFFICIAL_LOCALES.filter((code) => !SUPPORTED_LOCALES.includes(code as LegacyUiLocale)),

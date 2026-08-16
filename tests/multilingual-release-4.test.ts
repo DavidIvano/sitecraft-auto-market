@@ -20,7 +20,11 @@ test("Release 4 configures every official EU language plus existing additional l
   assert.equal(localeDefinitions.length, 29);
   assert.equal(DEFAULT_LOCALE, "de");
   assert.deepEqual(validateLocaleDefinitions(localeDefinitions), []);
-  assert.deepEqual(publicLocaleDefinitions.map((locale) => locale.code), ["de", "en", "fr"]);
+  assert.deepEqual(publicLocaleDefinitions.map((locale) => locale.code), [
+    "de", "en", "ru", "uk", "tr", "ar",
+    "bg", "hr", "cs", "da", "nl", "et", "fi", "fr", "el", "hu", "ga",
+    "it", "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv",
+  ]);
 });
 
 test("public route rollout uses global gates plus registry and complete dictionaries", () => {
@@ -28,6 +32,16 @@ test("public route rollout uses global gates plus registry and complete dictiona
   assert.equal(isPublicLocaleRouteEnabled("de", enabledFlags), true);
   assert.equal(isPublicLocaleRouteEnabled("en", enabledFlags), true);
   assert.equal(isPublicLocaleRouteEnabled("fr", enabledFlags), true);
+  assert.equal(isPublicLocaleRouteEnabled("tr", enabledFlags), true);
+  assert.equal(isPublicLocaleRouteEnabled("ar", enabledFlags), true);
+  assert.equal(isPublicLocaleRouteEnabled("ru", enabledFlags), true);
+  assert.equal(isPublicLocaleRouteEnabled("uk", enabledFlags), true);
+  for (const locale of [
+    "nl", "da", "sv", "fi", "es", "pt", "it", "pl", "cs", "sk", "sl",
+    "bg", "hr", "ro", "hu", "el", "et", "lv", "lt", "mt", "ga",
+  ]) {
+    assert.equal(isPublicLocaleRouteEnabled(locale, enabledFlags), true);
+  }
   assert.equal(isPublicLocaleRouteEnabled("unknown", enabledFlags), false);
 });
 
@@ -107,7 +121,28 @@ test("published Xano completed translation contract normalizes into a ready loca
   const seo = buildLocalizedVehicleSeo(projected, "de");
   assert.equal(seo.heading, "Audi 80 Baujahr 2026");
   assert.equal(seo.vehicle.name, "Audi 80 Baujahr 2026");
+  assert.equal(seo.vehicle.fuelType, "Benzin");
+  assert.equal(seo.offer.itemOffered["@id"], seo.vehicle["@id"]);
+  assert.equal(seo.offer.availableAtOrFrom?.address.addressLocality, "Berlin");
   assert.deepEqual(projected.available_locales, ["de"]);
+});
+
+test("localized Vehicle schema translates legacy Russian taxonomy instead of leaking it", () => {
+  const source: CarListing = {
+    id: 2, slug: "legacy-taxonomy-2", title: "English vehicle title", description: "Clean public description",
+    brand: "BMW", model: "320", year: 2020, mileage: 50000, price: 19000, currency: "EUR",
+    city: "Berlin", country: "DE", fuel_type: "Бензин", transmission: "Автомат", body_type: "Седан", color: "Серебристый",
+    status: "approved", source_locale: "ru", translation_version: 1, translations_ready: true,
+    translation: { requested_locale: "en", resolved_locale: "en", source_locale: "ru", is_fallback: false, status: "reviewed", translation_version: 1 },
+  };
+  const projected = toPublicListingForLocale(source, "en");
+  assert.ok(projected);
+  const seo = buildLocalizedVehicleSeo(projected, "en");
+  assert.equal(seo.vehicle.fuelType, "Petrol");
+  assert.equal(seo.vehicle.vehicleTransmission, "Automatic");
+  assert.equal(seo.vehicle.bodyType, "Sedan");
+  assert.equal(seo.vehicle.color, "Silver");
+  assert.doesNotMatch(JSON.stringify(seo.vehicle), /Бензин|Автомат|Седан|Серебристый/);
 });
 
 test("sitemap is an index and each locale sitemap performs one bounded Xano read", () => {

@@ -8,23 +8,10 @@ import { LOCALE_COOKIE, resolveContentLocale, resolveRequestLocale, type Locale 
 import { getLocaleDefinition as getConfiguredLocale } from "../i18n/config";
 import { getLocaleFromPath } from "../i18n/locale";
 import { getMessages } from "../i18n/messages";
-import { getUiPhraseMap, translateUiData } from "../i18n/uiTranslator";
-import "../styles/global.css";
-import "../styles/tokens.css";
-import "../styles/base.css";
-import "../styles/layout.css";
-import "../styles/components/buttons.css";
-import "../styles/components/forms.css";
-import "../styles/components/header.css";
-import "../styles/components/car-card.css";
-import "../styles/components/catalog.css";
-import "../styles/components/public-pages.css";
-import "../styles/components/dialogs.css";
-import "../styles/components/states.css";
-import "../styles/components/dashboard.css";
-import "../styles/promotions.css";
-import "../styles/workspace-overrides.css";
-import "../styles/premium-system.css";
+import { getUiPhraseMap, translateUiData, translateUiValue } from "../i18n/uiTranslator";
+import sharedStylesUrl from "../styles/entries/shared.css?url";
+import publicStylesUrl from "../styles/entries/public.css?url";
+import workspaceStylesUrl from "../styles/entries/workspace.css?url";
 
 type LayoutVariant = "public" | "workspace" | "legal" | "auth";
 
@@ -68,6 +55,15 @@ const documentLocale = resolveContentLocale(locale);
 const isLocalePrefixedRoute = Boolean(getLocaleFromPath(Astro.url.pathname));
 const legacyRuntimeTranslation = !isLocalePrefixedRoute && locale !== "ru";
 const uiPhraseMap = legacyRuntimeTranslation ? getUiPhraseMap(locale) : {};
+const dynamicMarker = "987654";
+const uiDynamicTemplates = legacyRuntimeTranslation ? {
+  days: translateUiValue(`${dynamicMarker} дней`, locale).replaceAll(dynamicMarker, "{value}"),
+  credits: translateUiValue(`${dynamicMarker} кредитов`, locale).replaceAll(dynamicMarker, "{value}"),
+  activeListings: translateUiValue(`До ${dynamicMarker} активных объявлений`, locale).replaceAll(dynamicMarker, "{value}"),
+  monthlyAiCredits: translateUiValue(`${dynamicMarker} AI-кредитов каждый месяц`, locale).replaceAll(dynamicMarker, "{value}"),
+  dealerPriority: translateUiValue(`Приоритет дилера: ${dynamicMarker}`, locale).replaceAll(dynamicMarker, "{value}"),
+  monthlyPrice: translateUiValue(`${dynamicMarker} € / мес.`, locale).replaceAll(dynamicMarker, "{value}"),
+} : {};
 const pageLocale = locale;
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
@@ -208,6 +204,9 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
     <meta http-equiv="Content-Language" content={documentLocale} />
     {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
     <meta name="color-scheme" content="light dark" />
+    <link rel="stylesheet" href={sharedStylesUrl} />
+    {layoutVariant === "public" && <link rel="stylesheet" href={publicStylesUrl} />}
+    {layoutVariant === "workspace" && <link rel="stylesheet" href={workspaceStylesUrl} />}
     <link rel="canonical" href={canonicalUrl} />
     {pageAlternates.map((alternate) => <link rel="alternate" hreflang={alternate.locale} href={alternate.href} />)}
     {xDefaultUrl && <link rel="alternate" hreflang="x-default" href={xDefaultUrl} />}
@@ -234,7 +233,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
         document.documentElement.dataset.theme = savedTheme || systemTheme;
       })();
     </script>
-    {legacyRuntimeTranslation && <script is:inline define:vars={{ uiPhraseMap }}>
+    {legacyRuntimeTranslation && <script is:inline define:vars={{ uiPhraseMap, uiDynamicTemplates }}>
       (() => {
         const initializeI18n = () => {
         const translations = uiPhraseMap || {};
@@ -245,17 +244,16 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
           if (!value || !/[А-Яа-яЁё]/u.test(value)) return value;
           const normalized = value.replace(/\s+/gu, " ").trim();
           const dynamicPatterns = [
-            [/^(\d+) (?:день|дня|дней)$/u, { de: (n) => `${n} Tage`, en: (n) => `${n} days`, uk: (n) => `${n} днів`, ar: (n) => `${n} أيام`, tr: (n) => `${n} gün`, fr: (n) => `${n} jours` }],
-            [/^(\d+) кредит(?:ов|а)?$/u, { de: (n) => `${n} Credits`, en: (n) => `${n} credits`, uk: (n) => `${n} кредитів`, ar: (n) => `${n} رصيد`, tr: (n) => `${n} kredi`, fr: (n) => `${n} crédits` }],
-            [/^До (\d+) активных объявлений$/u, { de: (n) => `Bis zu ${n} aktive Anzeigen`, en: (n) => `Up to ${n} active listings`, uk: (n) => `До ${n} активних оголошень`, ar: (n) => `حتى ${n} إعلانات نشطة`, tr: (n) => `${n} adede kadar aktif ilan`, fr: (n) => `Jusqu’à ${n} annonces actives` }],
-            [/^(\d+) AI-кредитов каждый месяц$/u, { de: (n) => `${n} AI-Credits pro Monat`, en: (n) => `${n} AI credits every month`, uk: (n) => `${n} AI-кредитів щомісяця`, ar: (n) => `${n} رصيد AI كل شهر`, tr: (n) => `Her ay ${n} AI kredisi`, fr: (n) => `${n} crédits IA par mois` }],
-            [/^Приоритет дилера: (\d+)$/u, { de: (n) => `Händlerpriorität: ${n}`, en: (n) => `Dealer priority: ${n}`, uk: (n) => `Пріоритет дилера: ${n}`, ar: (n) => `أولوية التاجر: ${n}`, tr: (n) => `Bayi önceliği: ${n}`, fr: (n) => `Priorité du concessionnaire : ${n}` }],
-            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, { de: (n) => `${n} / Monat`, en: (n) => `${n} / month`, uk: (n) => `${n} / міс.`, ar: (n) => `${n} / شهر`, tr: (n) => `${n} / ay`, fr: (n) => `${n} / mois` }],
+            [/^(\d+) (?:день|дня|дней)$/u, uiDynamicTemplates.days],
+            [/^(\d+) кредит(?:ов|а)?$/u, uiDynamicTemplates.credits],
+            [/^До (\d+) активных объявлений$/u, uiDynamicTemplates.activeListings],
+            [/^(\d+) AI-кредитов каждый месяц$/u, uiDynamicTemplates.monthlyAiCredits],
+            [/^Приоритет дилера: (\d+)$/u, uiDynamicTemplates.dealerPriority],
+            [/^(\d+(?:[.,]\d+)? €) \/ мес\.$/u, uiDynamicTemplates.monthlyPrice],
           ];
-          for (const [pattern, handlers] of dynamicPatterns) {
+          for (const [pattern, template] of dynamicPatterns) {
             const match = normalized.match(pattern);
-            const handler = handlers[activeLocale];
-            if (match && handler) return `${value.match(/^\s*/u)?.[0] || ""}${handler(...match.slice(1))}${value.match(/\s*$/u)?.[0] || ""}`;
+            if (match && template) return `${value.match(/^\s*/u)?.[0] || ""}${template.replaceAll("{value}", match[1])}${value.match(/\s*$/u)?.[0] || ""}`;
           }
           const suffix = " | SiteCraft Auto Market";
           const source = normalized.endsWith(suffix) ? normalized.slice(0, -suffix.length) : normalized;

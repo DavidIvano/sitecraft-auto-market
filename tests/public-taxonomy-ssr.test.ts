@@ -24,15 +24,19 @@ test("brand and model routes are on-demand SSR with canonical metadata and fail-
 test("Stage 3 taxonomy routes become indexable only for strict translated releases", () => {
   const brandRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand].astro");
   const modelRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand]/[model].astro");
+  const cityRoute = readProjectFile("src/pages/[locale]/cars/city/[city].astro");
   const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
   assert.match(brandRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
   assert.match(modelRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
   assert.match(brandRoute, /getLocalizedApprovedCars\(locale\)/);
   assert.match(modelRoute, /getLocalizedApprovedCars\(locale\)/);
+  assert.match(cityRoute, /getLocalizedApprovedCars\(locale\)/);
   assert.match(brandRoute, /noindex=\{!strictSeoRelease\}/);
   assert.match(modelRoute, /noindex=\{!strictSeoRelease\}/);
+  assert.match(cityRoute, /noindex=\{!strictSeoRelease\}/);
   assert.match(sitemap, /\/cars\/brand\/\$\{encodeURIComponent\(brand\)\}/);
   assert.match(sitemap, /cars\.map\(\(car\)/);
+  assert.match(sitemap, /cityPaths/);
   assert.match(sitemap, /indexablePagePaths/);
   assert.doesNotMatch(sitemap, /\/cars\?brand=/);
 });

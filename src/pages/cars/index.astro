@@ -47,6 +47,7 @@ try {
 }
 
 const vehicleTaxonomy = buildVehicleTaxonomy(cars);
+const catalogSourceCars = [...cars];
 
 const getFieldFromDescription = (car: CarListing, label: string) => {
   const expression = new RegExp(`^${label}:\\s*(.+)$`, "im");
@@ -250,8 +251,8 @@ const collectionSchema = {
             <a class="button button-secondary compact-button catalog-toolbar-sell" href="/sell"><i data-lucide="plus" aria-hidden="true"></i><span>Продать авто</span></a>
           </div>
         </div>
-        <div class="cards-grid catalog-grid" id="live-cars-grid" data-api-url={xanoApiUrl}>
-          {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index < 4} locale={locale} />)}
+        <div class="cards-grid catalog-grid" id="live-cars-grid" data-api-url={xanoApiUrl} data-initial-cars={JSON.stringify(catalogSourceCars)}>
+          {cars.map((car, index) => <CarCard car={car} matchReasons={getBuyerSearchMatchReasons(car, initialCriteria)} priority={index === 0} locale={locale} />)}
         </div>
         <div class="form-message live-cars-message" id="live-cars-message" hidden>
           <span id="live-cars-message-text">{cars.length > 0 ? "" : messages.loading}</span>
@@ -302,12 +303,8 @@ const collectionSchema = {
       normalizeBuyerSearchCriteria,
       type BuyerSearchCriteria,
     } from "../../lib/buyer-search/model";
-    import { isPublicListing } from "../../lib/listingStatus";
     import { renderPublicCarCardMarkup } from "../../lib/publicCarCard";
-    import { normalizePublicCarList } from "../../lib/publicCar";
-    import { applyListingTranslations } from "../../lib/listingTranslation";
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
-    import { fetchWithRetry } from "../../lib/http/fetchWithRetry";
     import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
     import type { CarListing } from "../../lib/types";
     import { normalizeBackendValue } from "../../i18n/backendValues";
@@ -326,7 +323,6 @@ const collectionSchema = {
     const filterCloseButton = document.querySelector<HTMLButtonElement>(".catalog-filter-close");
     const filterBackdrop = document.querySelector<HTMLButtonElement>(".catalog-filter-backdrop");
     const locale = resolveLocale(filterPanel instanceof HTMLElement ? filterPanel.dataset.locale : "ru");
-    const contentLocale = resolveLocale(filterPanel instanceof HTMLElement ? filterPanel.dataset.contentLocale : "en");
     const catalogMessages = (() => {
       try {
         return JSON.parse(filterPanel instanceof HTMLElement ? filterPanel.dataset.messages || "{}" : "{}") as Record<string, string>;
@@ -358,7 +354,14 @@ const collectionSchema = {
     const aiRecommendedGrid = document.querySelector("[data-ai-recommended-grid]");
     const LAST_AI_SEARCH_KEY = "sitecraft_last_ai_search";
     const RECENT_VIEWS_KEY = "sitecraft_recent_listing_views";
-    let latestCatalogCars: Array<Record<string, unknown>> = [];
+    let latestCatalogCars: Array<Record<string, unknown>> = (() => {
+      try {
+        const parsed = JSON.parse(grid instanceof HTMLElement ? grid.dataset.initialCars || "[]" : "[]");
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })();
     let pendingAiSearch: { query: string; idempotencyKey: string } | null = null;
     let aiSearchBusy = false;
     let activeRelaxations = getBuyerSearchRelaxations(getBuyerSearchCriteriaFromParams(new URLSearchParams(window.location.search)));
@@ -669,7 +672,7 @@ const collectionSchema = {
       }
 
       grid.innerHTML = filteredCars
-        .map((car, index) => renderPublicCarCardMarkup(car as CarListing, { priority: index < 4, locale }))
+        .map((car, index) => renderPublicCarCardMarkup(car as CarListing, { priority: index === 0, locale }))
         .join("");
       refreshPublicCarCardIcons(grid);
 
@@ -944,76 +947,17 @@ const collectionSchema = {
 
     if (grid instanceof HTMLElement && message instanceof HTMLElement) {
       syncSearchFormFromUrl();
-      const apiUrl = grid.dataset.apiUrl;
-      if (apiUrl) {
-        const loadCars = () => fetchWithRetry(`${apiUrl}/cars?lang=${encodeURIComponent(contentLocale)}`, {}, { dedupeKey: `catalog-cars:${contentLocale}:${window.location.search}` })
-          .then((response) => {
-            if (!response.ok) {
-              throw new Error("cars load failed");
-            }
-
-            return response.json();
-          })
-          .then((cars) => {
-            if (!Array.isArray(cars) || cars.length === 0) {
-              latestCatalogCars = [];
-              grid.innerHTML = "";
-              setCatalogMessage(text("noPublished"));
-              return;
-            }
-
-            latestCatalogCars = applyListingTranslations(normalizePublicCarList(cars), contentLocale).filter(isPublicListing);
-            const filteredCars = sortCars(latestCatalogCars.filter(matchesActiveFilters));
-
-            renderCatalogCars(filteredCars);
-          });
-
-        const handleCatalogLoadError = () => {
-          const hasStaticCars = grid.children.length > 0;
-          setCatalogMessage(
-            hasStaticCars
-              ? text("cachedCatalog")
-              : text("catalogFailed"),
-            { showRetry: true },
-          );
-        };
-
-        retryButton?.addEventListener("click", () => {
-          if (retryButton instanceof HTMLButtonElement) {
-            retryButton.disabled = true;
-          }
-          setCatalogMessage(text("refreshing"));
-          loadCars()
-            .catch(handleCatalogLoadError)
-            .finally(() => {
-              if (retryButton instanceof HTMLButtonElement) {
-                retryButton.disabled = false;
-              }
-            });
-        });
-
-        const scheduleCatalogRefresh = () => loadCars().catch(handleCatalogLoadError);
-        if ("requestIdleCallback" in window) {
-          window.requestIdleCallback(scheduleCatalogRefresh, { timeout: 2_500 });
-        } else {
-          globalThis.setTimeout(scheduleCatalogRefresh, 1_200);
+      renderAppliedCriteria();
+      retryButton?.setAttribute("hidden", "");
+      sortSelect?.addEventListener("change", () => {
+        if (sortSelect instanceof HTMLSelectElement) {
+          const params = new URLSearchParams(window.location.search);
+          params.set("sort", sortSelect.value);
+          window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
+          trackProductEvent("buyer_search_filter_changed", { action: "sort", sort: sortSelect.value, source: "manual" });
         }
-
-        window.addEventListener("online", () => {
-          if (retryButton instanceof HTMLButtonElement && !retryButton.hidden) loadCars().catch(handleCatalogLoadError);
-        });
-
-        sortSelect?.addEventListener("change", () => {
-          if (sortSelect instanceof HTMLSelectElement) {
-            const params = new URLSearchParams(window.location.search);
-            params.set("sort", sortSelect.value);
-            window.history.replaceState({}, "", `${window.location.pathname}?${params.toString()}`);
-            trackProductEvent("buyer_search_filter_changed", { action: "sort", sort: sortSelect.value, source: "manual" });
-          }
-
-          loadCars().catch(handleCatalogLoadError);
-        });
-      }
+        refreshCatalogFromCurrentFilters();
+      });
     }
 
     searchForm?.addEventListener("submit", (event) => {

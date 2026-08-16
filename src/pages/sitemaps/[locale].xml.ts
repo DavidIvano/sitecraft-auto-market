@@ -56,8 +56,10 @@ export const GET: APIRoute = async ({ params }) => {
       const [brand, model] = value.split("\u0000");
       return `/cars/brand/${encodeURIComponent(brand)}/${encodeURIComponent(model)}/`;
     });
+  const cityPaths = [...new Set(cars.map((car) => car.city).filter(Boolean))]
+    .map((city) => `/cars/city/${encodeURIComponent(city)}/`);
   const indexablePagePaths = strictSeoRelease
-    ? ["/", "/cars/", ...staticPaths, ...brandPaths, ...modelPaths]
+    ? ["/", "/cars/", ...staticPaths, ...brandPaths, ...modelPaths, ...cityPaths]
     : staticPaths;
 
   const urls = [

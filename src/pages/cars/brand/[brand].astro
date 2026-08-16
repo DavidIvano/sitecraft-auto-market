@@ -104,7 +104,7 @@ const seo = buildVehicleTaxonomySeo({ brand, siteUrl: SITE_URL });
         <a class="button button-light compact-button" href="/cars">Все автомобили</a>
       </div>
       <div class="cards-grid catalog-grid taxonomy-cars-grid">
-        {brand.cars.map((car, index) => <CarCard car={car} priority={index < 4} source="brand_page" />)}
+        {brand.cars.map((car, index) => <CarCard car={car} priority={index === 0} source="brand_page" />)}
       </div>
     </div>
   </section>

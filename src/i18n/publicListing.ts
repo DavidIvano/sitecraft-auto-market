@@ -1,6 +1,7 @@
 import { getCarDetailImageUrls } from "../lib/imageUrls.ts";
 import { sanitizePublicDescription } from "../lib/listingFields.ts";
 import type { CarListing } from "../lib/types.ts";
+import { getCanonicalSeoCity } from "../lib/seo/locationSeo.ts";
 
 export type PublicTranslationStatus = "source" | "translated" | "unavailable" | "stale" | "pending" | "failed";
 
@@ -135,7 +136,7 @@ export function toPublicListingForLocale(listing: CarListing, requestedLocale: s
     mileage: Number(listing.mileage) || 0,
     price: Number(listing.price) || 0,
     currency: /^[A-Z]{3}$/.test(text(listing.currency).toUpperCase()) ? text(listing.currency).toUpperCase() : "EUR",
-    city: text(listing.city),
+    city: getCanonicalSeoCity(listing.city),
     country: text(listing.country),
     fuel_type: text(listing.fuel_type),
     transmission: text(listing.transmission),

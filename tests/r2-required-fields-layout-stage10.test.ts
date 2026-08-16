@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { onRequestGet } from "../functions/api/r2-images/[[key]].ts";
+import { onRequestGet, onRequestHead } from "../functions/api/r2-images/[[key]].ts";
 
 const read = (path: string) => readFile(new URL(path, import.meta.url), "utf8");
 
@@ -27,8 +27,67 @@ test("R2 image function returns image bytes with immutable metadata", async () =
 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get("content-type"), "image/webp");
-  assert.equal(response.headers.get("cache-control"), "public, max-age=2592000, immutable");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.deepEqual(new Uint8Array(await response.arrayBuffer()), bytes);
+});
+
+test("R2 image function supports crawler HEAD checks without downloading bytes", async () => {
+  const response = await onRequestHead({
+    env: {
+      R2_BUCKET: {
+        async get(key: string) {
+          assert.equal(key, "listing-images/15/photo.webp");
+          return {
+            body: new Uint8Array([1]),
+            httpEtag: '"photo-etag"',
+            writeHttpMetadata(headers: Headers) {
+              headers.set("content-type", "image/webp");
+            },
+          };
+        },
+      },
+    },
+    params: { key: ["listing-images", "15", "photo.webp"] },
+  } as never);
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("content-type"), "image/webp");
+  assert.equal(response.headers.get("etag"), '"photo-etag"');
+  assert.equal(await response.text(), "");
+});
+
+test("R2 image function creates a bounded responsive variant through Images binding", async () => {
+  const transformedBytes = new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]);
+  const transformer = {
+    transform(options: Record<string, unknown>) {
+      assert.deepEqual(options, { width: 480, fit: "scale-down" });
+      return this;
+    },
+    async output(options: Record<string, unknown>) {
+      assert.deepEqual(options, { format: "image/webp", quality: 68, anim: false });
+      return { response: () => new Response(transformedBytes, { headers: { "content-type": "image/webp" } }) };
+    },
+  };
+  const response = await onRequestGet({
+    request: new Request("https://automarket.sitecraft.agency/api/r2-images/photo.webp?width=480&quality=68"),
+    env: {
+      R2_BUCKET: {
+        async get() {
+          return {
+            body: new Uint8Array([1, 2, 3]),
+            httpEtag: '"master"',
+            writeHttpMetadata() {},
+          };
+        },
+      },
+      IMAGES: { input: () => transformer },
+    },
+    params: { key: ["photo.webp"] },
+  } as never);
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("x-sitecraft-image-variant"), "480w-q68");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), transformedBytes);
 });
 
 test("R2 image function rejects missing and traversal keys", async () => {

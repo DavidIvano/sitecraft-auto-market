@@ -6,7 +6,7 @@ import VehicleSpecsGrid from "../../components/VehicleSpecsGrid.astro";
 import FavoriteButton from "../../components/cars/FavoriteButton.astro";
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import { SITE_URL } from "../../lib/config";
-import { getCarDetailImageUrls } from "../../lib/imageUrls";
+import { getCarDetailImagePresentations, getCarThumbnailImagePresentations } from "../../lib/imageUrls";
 import { isDisplayValue, maskVin, sanitizePublicDescription } from "../../lib/listingFields";
 import { getStoredAiScores, hasStoredAiAnalysis, parseAiPayload } from "../../lib/aiScores";
 import { formatCount, formatFirstRegistration, formatImportantDetail, formatOwnersCount, formatSellerType, formatTuvDetail } from "../../lib/listingDisplay";
@@ -151,11 +151,13 @@ const publicViewText = shouldShowPublicViewCount(car.views_total)
   ? interpolate(messages.viewsCount, { count: publicViewCount })
   : messages.newListing;
 
-const listingGalleryImages = getCarDetailImageUrls(car).slice(0, 8);
-const galleryImages = listingGalleryImages.length > 0
+const listingGalleryImages = getCarDetailImagePresentations(car).slice(0, 8);
+const galleryPresentations = listingGalleryImages.length > 0
   ? listingGalleryImages
-  : ["/deal-finder-placeholder.svg"];
-const galleryImage = galleryImages[0] ?? "";
+  : [{ src: "/deal-finder-placeholder.svg", srcset: "", sizes: "100vw", width: 1200, height: 800 }];
+const thumbnailPresentations = getCarThumbnailImagePresentations(car);
+const galleryImages = galleryPresentations.map((image) => image.src);
+const galleryImage = galleryPresentations[0];
 const isSold = car.status === "sold" || car.moderation_status === "sold" || Boolean(car.sold_at);
 const vehicleSeo = buildVehicleSeo(car, siteUrl);
 const sellerTypeLabel = formatSellerType(car.seller_type, locale) || messages.privateSeller;
@@ -448,17 +450,19 @@ const siteMessages = getMessages(locale);
               class="gallery-main-button vehicle-image-trigger"
               type="button"
               data-lightbox-trigger
-              data-lightbox-src={galleryImage}
+              data-lightbox-src={galleryImage.src}
               data-lightbox-sources={JSON.stringify(galleryImages)}
               data-lightbox-alt={car.title}
               aria-label={messages.fullscreenPhoto}
             >
               {
                 <img
-                  src={galleryImage}
+                  src={galleryImage.src}
+                  srcset={galleryImage.srcset || undefined}
+                  sizes={galleryImage.sizes}
                   alt={imageAltTexts[0] || vehicleSeo.imageAlt}
-                  width="1200"
-                  height="800"
+                  width={galleryImage.width}
+                  height={galleryImage.height}
                   fetchpriority="high"
                   decoding="async"
                 />
@@ -473,23 +477,31 @@ const siteMessages = getMessages(locale);
           </div>
           <div class="gallery-strip">
             {
-              galleryImages.map((imageUrl, index) => (
+              galleryPresentations.map((image, index) => {
+                const thumbnail = thumbnailPresentations[index] || image;
+                return (
                   <button
                     class={`gallery-thumb${index === 0 ? " is-active" : ""}`}
                     type="button"
                     data-slide-index={index}
-                    data-slide-src={imageUrl}
+                    data-slide-src={image.src}
+                    data-slide-srcset={image.srcset}
                     aria-label={interpolate(messages.photoNumber, { count: index + 1 })}
                     aria-pressed={index === 0 ? "true" : "false"}
                   >
                     <img
-                      src={imageUrl}
+                      src={thumbnail.src}
+                      srcset={thumbnail.srcset || undefined}
+                      sizes={thumbnail.sizes}
                       alt={imageAltTexts[index] || `${car.title}, ${interpolate(messages.photoNumber, { count: index + 1 }).toLocaleLowerCase(localeTag)}`}
+                      width={thumbnail.width}
+                      height={thumbnail.height}
                       loading="lazy"
                       decoding="async"
                     />
                   </button>
-                ))
+                );
+              })
             }
           </div>
         </div>
@@ -630,8 +642,6 @@ const siteMessages = getMessages(locale);
       <section
         class="seller-summary-card"
         data-seller-summary
-        data-api-url={xanoApiUrl}
-        data-detail-path={API_ROUTES.carBySlug(car.slug)}
         data-label-dealer={messages.dealer}
         data-label-private={messages.privateSeller}
         data-label-active-listings={messages.activeListings}
@@ -699,95 +709,9 @@ const siteMessages = getMessages(locale);
   <script>
     import { getOrCreateSessionId } from "../../lib/analytics/session";
     import { getAuthToken } from "../../lib/authClient";
-    import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
+    import { installPublicCarCardInteractions } from "../../lib/publicCarCardsClient";
 
     installPublicCarCardInteractions();
-
-    const sellerSummary = document.querySelector("[data-seller-summary]");
-    const loadSellerSummary = async () => {
-      if (!(sellerSummary instanceof HTMLElement)) return;
-
-      const apiUrl = sellerSummary.dataset.apiUrl || "";
-      const detailPath = sellerSummary.dataset.detailPath || "";
-      if (!apiUrl || !detailPath) return;
-
-      try {
-        const response = await fetch(`${apiUrl}${detailPath}`, { cache: "no-store" });
-        if (!response.ok) return;
-        const payload = await response.json();
-        const seller = payload && typeof payload === "object" ? payload.seller : null;
-        if (!seller || typeof seller !== "object") return;
-
-        const name = sellerSummary.querySelector("[data-seller-name]");
-        const type = sellerSummary.querySelector("[data-seller-type]");
-        const city = sellerSummary.querySelector("[data-seller-city]");
-        const count = sellerSummary.querySelector("[data-seller-count]");
-        const note = sellerSummary.querySelector("[data-seller-contact-note]");
-
-        if (name instanceof HTMLElement && typeof seller.name === "string" && seller.name.trim()) {
-          name.textContent = seller.name.trim();
-        }
-        if (type instanceof HTMLElement && typeof seller.type === "string") {
-          type.textContent = seller.type === "dealer" ? sellerSummary.dataset.labelDealer || "Dealer" : sellerSummary.dataset.labelPrivate || "Private seller";
-        }
-        if (city instanceof HTMLElement && typeof seller.city === "string" && seller.city.trim()) {
-          city.textContent = seller.city.trim();
-        }
-        const activeCount = Number(seller.active_listings_count);
-        if (count instanceof HTMLElement && Number.isInteger(activeCount) && activeCount > 0) {
-          count.textContent = (sellerSummary.dataset.labelActiveListings || "{count} active listings").replace("{count}", String(activeCount));
-          count.hidden = false;
-        }
-
-        const legacyHref = typeof seller.contact?.href === "string" ? seller.contact.href.trim() : "";
-        const rawPhoneValue = typeof seller.contact?.phone === "string" ? seller.contact.phone.trim() : "";
-        const rawEmailValue = typeof seller.contact?.email === "string" ? seller.contact.email.trim().toLowerCase() : "";
-        const phoneValue = /^\+[1-9]\d{7,14}$/.test(rawPhoneValue) ? rawPhoneValue : "";
-        const emailValue = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmailValue) && !/[\r\n]/.test(rawEmailValue)
-          ? rawEmailValue
-          : "";
-        const phoneHref = phoneValue
-          ? `tel:${phoneValue}`
-          : /^tel:\+[1-9]\d{7,14}$/i.test(legacyHref) ? legacyHref : "";
-        const emailHref = emailValue
-          ? `mailto:${emailValue}`
-          : /^mailto:[^\s?@]+@[^\s?@]+\.[^\s?@]+$/i.test(legacyHref) ? legacyHref : "";
-        const preferredMethod = seller.contact?.preferred_method === "phone" || seller.contact?.preferred_method === "email"
-          ? seller.contact.preferred_method
-          : "";
-        const triggers = sellerSummary.querySelectorAll<HTMLElement>("[data-seller-contact-trigger]");
-        if (phoneHref || emailHref) {
-          triggers.forEach((trigger) => {
-            trigger.dataset.phoneHref = phoneHref;
-            trigger.dataset.emailHref = emailHref;
-            trigger.dataset.contactPhoneValue = phoneValue;
-            trigger.dataset.contactEmailValue = emailValue;
-            trigger.dataset.preferredMethod = preferredMethod;
-            trigger.dataset.sellerName = typeof seller.name === "string" ? seller.name.trim() : sellerSummary.dataset.labelSeller || "Seller";
-            trigger.hidden = false;
-          });
-          if (note instanceof HTMLElement) note.hidden = true;
-        } else {
-          triggers.forEach((trigger) => {
-            trigger.dataset.phoneHref = "";
-            trigger.dataset.emailHref = "";
-            trigger.dataset.contactPhoneValue = "";
-            trigger.dataset.contactEmailValue = "";
-            trigger.dataset.preferredMethod = "";
-            trigger.hidden = true;
-          });
-          if (note instanceof HTMLElement) {
-            note.textContent = sellerSummary.dataset.labelNoContact || "No public contact method.";
-            note.hidden = false;
-          }
-        }
-        refreshPublicCarCardIcons(sellerSummary);
-      } catch {
-        // Карточка остаётся полезной даже при временной недоступности контакта.
-      }
-    };
-
-    loadSellerSummary();
 
     const RECENT_VIEWS_KEY = "sitecraft_recent_listing_views";
     const listingViewDataNode = document.querySelector("#listing-view-data");
@@ -915,8 +839,11 @@ const siteMessages = getMessages(locale);
     scheduleListingView();
 
     const galleryImages = Array.from(document.querySelectorAll(".gallery-thumb"))
-      .map((thumb) => thumb instanceof HTMLElement ? thumb.dataset.slideSrc || thumb.querySelector("img")?.currentSrc || "" : "")
-      .filter(Boolean);
+      .map((thumb) => thumb instanceof HTMLElement ? {
+        src: thumb.dataset.slideSrc || thumb.querySelector("img")?.currentSrc || "",
+        srcset: thumb.dataset.slideSrcset || "",
+      } : { src: "", srcset: "" })
+      .filter((image) => Boolean(image.src));
     const openButton = document.querySelector<HTMLElement>("[data-lightbox-trigger]");
     const mainImage = document.querySelector(".gallery-main-button img");
     const galleryCount = document.querySelector(".gallery-count");
@@ -930,14 +857,16 @@ const siteMessages = getMessages(locale);
       }
 
       activeSlideIndex = (nextIndex + galleryImages.length) % galleryImages.length;
-      const imageUrl = galleryImages[activeSlideIndex];
+      const image = galleryImages[activeSlideIndex];
 
       if (mainImage instanceof HTMLImageElement) {
-        mainImage.src = imageUrl;
+        mainImage.src = image.src;
+        if (image.srcset) mainImage.srcset = image.srcset;
+        else mainImage.removeAttribute("srcset");
       }
 
       if (openButton) {
-        openButton.dataset.lightboxSrc = imageUrl;
+        openButton.dataset.lightboxSrc = image.src;
       }
 
       if (galleryCount instanceof HTMLElement) {

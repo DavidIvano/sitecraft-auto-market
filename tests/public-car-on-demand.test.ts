@@ -165,7 +165,7 @@ test("catalog is on-demand SSR with crawlable server-rendered cards", () => {
 test("homepage renders crawlable latest-car links before client enhancement", () => {
   const homepage = readProjectFile("src/pages/index.astro");
   assert.match(homepage, /await getApprovedCars\(locale\)/);
-  assert.match(homepage, /latestCars\.map\(\(car, index\) => <CarCard/);
+  assert.match(homepage, /latestCars\.map\(\(car\) => <CarCard/);
   assert.doesNotMatch(homepage, /your-xano-api-url\.com/);
 });
 
