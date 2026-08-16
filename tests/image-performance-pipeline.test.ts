@@ -69,6 +69,17 @@ test("Safari PNG fallback is rejected and encoded with a lazy WebP codec", () =>
   assert.ok(budgets.assets.webpFallbackWasmBytes <= 360_000);
 });
 
+test("public search pages keep full locale tables out of browser bundles", () => {
+  const homepage = readProjectFile("src/pages/index.astro");
+  const catalog = readProjectFile("src/pages/cars/index.astro");
+  const budgets = JSON.parse(readProjectFile("performance-budgets.json"));
+
+  assert.match(homepage, /import \{ normalizeSearchValue \} from "\.\.\/i18n\/searchValueNormalization"/);
+  assert.match(catalog, /import \{ normalizeSearchValue \} from "\.\.\/\.\.\/i18n\/searchValueNormalization"/);
+  assert.ok(budgets.assets.largestJavaScriptGzipBytes <= 40_000);
+  assert.ok(budgets.assets.uiLogoBytes <= 5_000);
+});
+
 test("responsive R2 presentations expose bounded card and detail srcsets", () => {
   const url = "https://automarket.sitecraft.agency/api/r2-images/listing-images/1/car.webp";
   const car = {

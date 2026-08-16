@@ -73,3 +73,12 @@
     *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
   }
 }
+/* Skip layout and paint work for sections that are still far below the
+   viewport. The intrinsic size keeps the scroll range stable until rendered. */
+@supports (content-visibility: auto) {
+  #main-content > :where(.section, .vehicle-detail-page):not(:first-child),
+  .vehicle-detail-page > .section:not(:first-child) {
+    content-visibility: auto;
+    contain-intrinsic-block-size: auto 720px;
+  }
+}

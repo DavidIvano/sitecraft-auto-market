@@ -1,7 +1,7 @@
 import type { CarListing, CarListingImage } from "./types.ts";
 import { isPublicListing, normalizeListingStatus } from "./listingStatus.ts";
 
-export const DASHBOARD_LISTING_PLACEHOLDER = "/sitecraft-logo.png";
+export const DASHBOARD_LISTING_PLACEHOLDER = "/sitecraft-logo-ui.webp";
 
 export type DashboardListing = Partial<CarListing> & {
   id: number;

@@ -490,8 +490,10 @@ const siteMessages = getMessages(locale);
                     aria-pressed={index === 0 ? "true" : "false"}
                   >
                     <img
-                      src={thumbnail.src}
-                      srcset={thumbnail.srcset || undefined}
+                      src={index === 0 ? thumbnail.src : "/deal-finder-placeholder.svg"}
+                      srcset={index === 0 ? thumbnail.srcset || undefined : undefined}
+                      data-thumbnail-src={index === 0 ? undefined : thumbnail.src}
+                      data-thumbnail-srcset={index === 0 ? undefined : thumbnail.srcset}
                       sizes={thumbnail.sizes}
                       alt={imageAltTexts[index] || `${car.title}, ${interpolate(messages.photoNumber, { count: index + 1 }).toLocaleLowerCase(localeTag)}`}
                       width={thumbnail.width}
@@ -849,7 +851,17 @@ const siteMessages = getMessages(locale);
     const galleryCount = document.querySelector(".gallery-count");
     const prevButton = document.querySelector(".gallery-prev");
     const nextButton = document.querySelector(".gallery-next");
+    const galleryStrip = document.querySelector(".gallery-strip");
     let activeSlideIndex = 0;
+
+    const loadThumbnail = (button: Element) => {
+      const image = button.querySelector<HTMLImageElement>("img[data-thumbnail-src]");
+      if (!image) return;
+      image.src = image.dataset.thumbnailSrc || image.src;
+      if (image.dataset.thumbnailSrcset) image.srcset = image.dataset.thumbnailSrcset;
+      delete image.dataset.thumbnailSrc;
+      delete image.dataset.thumbnailSrcset;
+    };
 
     const updateSlide = (nextIndex: number) => {
       if (galleryImages.length === 0) {
@@ -858,6 +870,8 @@ const siteMessages = getMessages(locale);
 
       activeSlideIndex = (nextIndex + galleryImages.length) % galleryImages.length;
       const image = galleryImages[activeSlideIndex];
+      const activeThumbnail = document.querySelector(`.gallery-thumb[data-slide-index="${activeSlideIndex}"]`);
+      if (activeThumbnail) loadThumbnail(activeThumbnail);
 
       if (mainImage instanceof HTMLImageElement) {
         mainImage.src = image.src;
@@ -886,12 +900,25 @@ const siteMessages = getMessages(locale);
     nextButton?.addEventListener("click", () => updateSlide(activeSlideIndex + 1));
 
     document.querySelectorAll(".gallery-thumb").forEach((button) => {
+      button.addEventListener("pointerenter", () => loadThumbnail(button), { once: true });
+      button.addEventListener("focus", () => loadThumbnail(button), { once: true });
       button.addEventListener("click", () => {
         if (button instanceof HTMLElement) {
           updateSlide(Number(button.dataset.slideIndex || 0));
         }
       });
     });
+
+    if (galleryStrip instanceof HTMLElement && "IntersectionObserver" in window) {
+      const thumbnailObserver = new IntersectionObserver((entries, observer) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          loadThumbnail(entry.target);
+          observer.unobserve(entry.target);
+        });
+      }, { root: galleryStrip, rootMargin: "0px 48px" });
+      document.querySelectorAll(".gallery-thumb").forEach((button) => thumbnailObserver.observe(button));
+    }
 
   </script>
 </BaseLayout>

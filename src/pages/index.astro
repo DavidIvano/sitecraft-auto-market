@@ -25,8 +25,9 @@ let latestCars: CarListing[] = [];
 let homepagePromotedCars: CarListing[] = [];
 try {
   const approvedCars = (await getApprovedCars(locale)).filter(isPublicListing);
-  latestCars = approvedCars.slice(0, 8);
   homepagePromotedCars = getHomepagePromotedCars(approvedCars);
+  const promotedIds = new Set(homepagePromotedCars.map((car) => car.id));
+  latestCars = approvedCars.filter((car) => !promotedIds.has(car.id)).slice(0, 6);
 } catch {
   latestCars = [];
   homepagePromotedCars = [];
@@ -248,7 +249,7 @@ if (isSelectableLocale(explicitLocale)) {
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../lib/publicCarCardsClient";
     import { getHomepagePromotedCars, sortCarsByActivePromotion } from "../lib/promotions/model";
     import type { CarListing } from "../lib/types";
-    import { normalizeBackendValue } from "../i18n/backendValues";
+    import { normalizeSearchValue } from "../i18n/searchValueNormalization";
     import { resolveLocale } from "../i18n/locales";
     import { getCarCardImagePresentation } from "../lib/imageUrls";
 
@@ -401,16 +402,16 @@ if (isSelectableLocale(explicitLocale)) {
     };
 
     const getCarBodyType = (car: Record<string, unknown>) =>
-      normalizeBackendValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов") || "");
+      normalizeSearchValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов") || "");
 
     const getCarVehicleType = (car: Record<string, unknown>) => {
-      const explicit = normalizeBackendValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
+      const explicit = normalizeSearchValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
 
       if (explicit && explicit !== "не указан") {
         return explicit;
       }
 
-      if (normalizeBackendValue("fuel_type", car.fuel_type) === "electric") {
+      if (normalizeSearchValue("fuel_type", car.fuel_type) === "electric") {
         return "electric_vehicle";
       }
 
@@ -542,8 +543,8 @@ if (isSelectableLocale(explicitLocale)) {
       return (
         (!brand || String(car.brand || "").toLowerCase() === brand) &&
         (!model || String(car.model || "").toLowerCase().includes(model)) &&
-        (!fuel || normalizeBackendValue("fuel_type", car.fuel_type) === fuel) &&
-        (!transmission || normalizeBackendValue("transmission", car.transmission) === transmission) &&
+        (!fuel || normalizeSearchValue("fuel_type", car.fuel_type) === fuel) &&
+        (!transmission || normalizeSearchValue("transmission", car.transmission) === transmission) &&
         (!city || String(car.city || "").toLowerCase().includes(city)) &&
         (!minPrice || Number(car.price || 0) >= minPrice) &&
         (!maxPrice || Number(car.price || 0) <= maxPrice) &&

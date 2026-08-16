@@ -53,7 +53,7 @@ function renderDraftPage(draftId: string, env: Env) {
     <header class="site-header" data-api-url="${escapeHtml(apiUrl)}">
       <div class="container header-inner">
         <a class="brand" href="/" aria-label="${SITE_NAME}">
-          <img class="brand-logo" src="/sitecraft-logo.png" alt="" width="44" height="44" decoding="async">
+          <img class="brand-logo" src="/sitecraft-logo-ui.webp" alt="" width="44" height="44" decoding="async">
           <span>${SITE_NAME}</span>
         </a>
         <div class="header-menu">

@@ -72,7 +72,8 @@ test("R2 image function creates a bounded responsive variant through Images bind
     request: new Request("https://automarket.sitecraft.agency/api/r2-images/photo.webp?width=480&quality=68"),
     env: {
       R2_BUCKET: {
-        async get() {
+        async get(key: string) {
+          if (key.startsWith("responsive/")) return null;
           return {
             body: new Uint8Array([1, 2, 3]),
             httpEtag: '"master"',
@@ -88,6 +89,35 @@ test("R2 image function creates a bounded responsive variant through Images bind
   assert.equal(response.headers.get("x-sitecraft-image-variant"), "480w-q68");
   assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
   assert.deepEqual(new Uint8Array(await response.arrayBuffer()), transformedBytes);
+});
+
+test("R2 image function serves a prebuilt responsive variant before the large master", async () => {
+  const variantBytes = new Uint8Array([82, 73, 70, 70, 0, 0, 0, 0, 87, 69, 66, 80]);
+  const requestedKeys: string[] = [];
+  const response = await onRequestGet({
+    request: new Request("https://automarket.sitecraft.agency/api/r2-images/listing-images/15/photo.webp?width=480&quality=68"),
+    env: {
+      R2_BUCKET: {
+        async get(key: string) {
+          requestedKeys.push(key);
+          if (key !== "responsive/480w-q68/listing-images/15/photo.webp") throw new Error("master must not be read");
+          return {
+            body: variantBytes,
+            httpEtag: '"variant"',
+            writeHttpMetadata(headers: Headers) {
+              headers.set("content-type", "image/webp");
+            },
+          };
+        },
+      },
+    },
+    params: { key: ["listing-images", "15", "photo.webp"] },
+  } as never);
+
+  assert.deepEqual(requestedKeys, ["responsive/480w-q68/listing-images/15/photo.webp"]);
+  assert.equal(response.headers.get("x-sitecraft-image-variant"), "480w-q68-prebuilt");
+  assert.equal(response.headers.get("cache-control"), "public, max-age=31536000, immutable");
+  assert.deepEqual(new Uint8Array(await response.arrayBuffer()), variantBytes);
 });
 
 test("R2 image function rejects missing and traversal keys", async () => {

@@ -307,7 +307,7 @@ const collectionSchema = {
     import { installPublicCarCardInteractions, refreshPublicCarCardIcons } from "../../lib/publicCarCardsClient";
     import { parseApiDate, sortCarsByActivePromotion } from "../../lib/promotions/model";
     import type { CarListing } from "../../lib/types";
-    import { normalizeBackendValue } from "../../i18n/backendValues";
+    import { normalizeSearchValue } from "../../i18n/searchValueNormalization";
     import { resolveLocale } from "../../i18n/locales";
 
     const grid = document.querySelector("#live-cars-grid");
@@ -472,16 +472,16 @@ const collectionSchema = {
     };
 
     const getBodyType = (car: Record<string, unknown>) =>
-      normalizeBackendValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов") || "");
+      normalizeSearchValue("body_type", car.body_type || getFieldFromDescription(car, "Кузов") || "");
 
     const getVehicleType = (car: Record<string, unknown>) => {
-      const explicit = normalizeBackendValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
+      const explicit = normalizeSearchValue("vehicle_type", car.vehicle_type || getFieldFromDescription(car, "Тип транспорта") || "");
 
       if (explicit && explicit !== "не указан") {
         return explicit;
       }
 
-      if (normalizeBackendValue("fuel_type", car.fuel_type) === "electric") {
+      if (normalizeSearchValue("fuel_type", car.fuel_type) === "electric") {
         return "electric_vehicle";
       }
 
@@ -497,13 +497,13 @@ const collectionSchema = {
     const getActiveFilters = () => {
       const criteria = getActiveCriteria();
       return {
-        vehicleType: normalizeBackendValue("vehicle_type", criteria.vehicle_type),
-        bodyType: normalizeBackendValue("body_type", criteria.body_type),
+        vehicleType: normalizeSearchValue("vehicle_type", criteria.vehicle_type),
+        bodyType: normalizeSearchValue("body_type", criteria.body_type),
         brand: String(criteria.brand || "").toLowerCase(),
         model: String(criteria.model || "").toLowerCase(),
         city: String(criteria.city || "").toLowerCase(),
-        fuelType: normalizeBackendValue("fuel_type", criteria.fuel_type),
-        transmission: normalizeBackendValue("transmission", criteria.transmission),
+        fuelType: normalizeSearchValue("fuel_type", criteria.fuel_type),
+        transmission: normalizeSearchValue("transmission", criteria.transmission),
         priceMin: Number(criteria.price_min || 0),
         priceMax: Number(criteria.price_max || 0),
         yearMin: Number(criteria.year_min || 0),
@@ -585,8 +585,8 @@ const collectionSchema = {
         (!filters.brand || String(car.brand || "").toLowerCase() === filters.brand) &&
         (!filters.model || String(car.model || "").toLowerCase().includes(filters.model)) &&
         (!filters.city || String(car.city || "").toLowerCase().includes(filters.city)) &&
-        (!filters.fuelType || normalizeBackendValue("fuel_type", car.fuel_type) === filters.fuelType) &&
-        (!filters.transmission || normalizeBackendValue("transmission", car.transmission) === filters.transmission) &&
+        (!filters.fuelType || normalizeSearchValue("fuel_type", car.fuel_type) === filters.fuelType) &&
+        (!filters.transmission || normalizeSearchValue("transmission", car.transmission) === filters.transmission) &&
         (!filters.priceMin || Number(car.price || 0) >= filters.priceMin) &&
         (!filters.priceMax || Number(car.price || 0) <= filters.priceMax) &&
         (!filters.yearMin || Number(car.year || 0) >= filters.yearMin) &&

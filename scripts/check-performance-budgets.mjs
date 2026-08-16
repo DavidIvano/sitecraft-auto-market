@@ -41,6 +41,9 @@ const regularJavaScript = jsGzipSizes.filter(({ filename }) => !filename.startsW
 const largestJavaScript = regularJavaScript.sort((left, right) => right.bytes - left.bytes)[0];
 check(`largest JavaScript gzip (${largestJavaScript.filename})`, largestJavaScript.bytes, config.assets.largestJavaScriptGzipBytes);
 
+const uiLogo = await readFile(new URL("public/sitecraft-logo-ui.webp", root));
+check("UI logo", uiLogo.byteLength, config.assets.uiLogoBytes);
+
 const compressionSource = await readFile(new URL("src/lib/imageCompression.ts", root), "utf8");
 const declaredImageBudget = Number(compressionSource.match(/IMAGE_MASTER_MAX_BYTES\s*=\s*(\d+)\s*\*\s*1024/)?.[1] || 0) * 1024;
 check("browser image master", declaredImageBudget, config.assets.imageMasterBytes);

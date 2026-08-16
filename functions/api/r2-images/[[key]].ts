@@ -28,6 +28,18 @@ function imageHeaders(object: R2ImageMetadata) {
   return headers;
 }
 
+function buildVariantKey(key: string, width: number, quality: number) {
+  return `responsive/${width}w-q${quality}/${key}`;
+}
+
+function variantHeaders(object: R2ImageMetadata, label: string) {
+  const headers = imageHeaders(object);
+  headers.set("content-type", "image/webp");
+  headers.set("vary", "Accept-Encoding");
+  headers.set("x-sitecraft-image-variant", label);
+  return headers;
+}
+
 function readVariant(request?: Request) {
   if (!request) return null;
   const url = new URL(request.url);
@@ -64,14 +76,25 @@ export const onRequestGet: PagesFunction<Env> = async ({ env, params, request, w
   const cached = await readEdgeCache(request);
   if (cached) return cached;
 
+  const variant = readVariant(request);
+  if (variant && "error" in variant) return new Response(variant.error, { status: 400 });
+  if (variant) {
+    const prebuilt = await env.R2_BUCKET.get(buildVariantKey(key, variant.width, variant.quality));
+    if (prebuilt) {
+      const response = new Response(prebuilt.body, {
+        headers: variantHeaders(prebuilt, `${variant.width}w-q${variant.quality}-prebuilt`),
+      });
+      writeEdgeCache(request, response, waitUntil);
+      return response;
+    }
+  }
+
   const object = await env.R2_BUCKET.get(key);
 
   if (!object) {
     return new Response("Image not found", { status: 404 });
   }
 
-  const variant = readVariant(request);
-  if (variant && "error" in variant) return new Response(variant.error, { status: 400 });
   if (variant && env.IMAGES) {
     const masterBytes = await new Response(object.body).arrayBuffer();
     try {
@@ -132,4 +155,4 @@ export const onRequestOptions: PagesFunction<Env> = async () =>
     },
   });
 
-export const __test = { getKey, readVariant, readEdgeCache, writeEdgeCache };
+export const __test = { getKey, readVariant, buildVariantKey, readEdgeCache, writeEdgeCache };

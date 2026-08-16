@@ -17,6 +17,7 @@
     "workspaceCssGzipBytes": 10000,
     "heicDecoderGzipBytes": 800000,
     "webpFallbackWasmBytes": 360000,
-    "largestJavaScriptGzipBytes": 105000
+    "uiLogoBytes": 5000,
+    "largestJavaScriptGzipBytes": 40000
   }
 }
