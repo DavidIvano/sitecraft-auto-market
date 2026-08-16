@@ -725,7 +725,12 @@
       grid-template-rows: auto;
     }
 
-    .app-shell-workspace .promotion-product-card.is-homepage-premium :where(.promotion-product-header, .promotion-product-preview, .promotion-product-benefit, .promotion-product-metrics, .promotion-product-state, .promotion-product-action) {
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-header,
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-preview,
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-benefit,
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-metrics,
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-state,
+    .app-shell-workspace .promotion-product-card.is-homepage-premium .promotion-product-action {
       grid-column: auto;
       grid-row: auto;
     }
