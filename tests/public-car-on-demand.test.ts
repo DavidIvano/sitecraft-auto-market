@@ -189,6 +189,7 @@ test("Cloudflare workflow fails fast and deploys the advanced-mode bundle", () =
   const workflow = readProjectFile(".github/workflows/cloudflare-pages.yml");
   const packager = readProjectFile("scripts/prepare-cloudflare-pages.mjs");
   const routes = readProjectFile("public/_routes.json");
+  const wrangler = readProjectFile("wrangler.toml");
   assert.match(workflow, /Validate deployment configuration/);
   assert.match(workflow, /Missing required GitHub Actions setting/);
   assert.doesNotMatch(workflow, /Skip deploy without Cloudflare token/);
@@ -198,4 +199,5 @@ test("Cloudflare workflow fails fast and deploys the advanced-mode bundle", () =
   assert.match(packager, /rmSync\(generatedWranglerDeployDir/);
   assert.match(routes, /"\/\*"/);
   assert.doesNotMatch(routes, /"include"\s*:\s*\[[\s\S]*?"\/cars\/\*"/);
+  assert.doesNotMatch(wrangler, /\[(?:env\.[^.]+\.)?images\]/);
 });

@@ -17,8 +17,9 @@ ENVIRONMENT = "production"
 binding = "R2_BUCKET"
 bucket_name = "car-images"
 
-[env.production.images]
-binding = "IMAGES"
+# Cloudflare Pages rejects the Workers-only `images` configuration key.
+# Pages Functions therefore use the optional runtime fallback implemented by
+# the image endpoints when the IMAGES binding is unavailable.
 
 [env.preview]
 compatibility_date = "2026-06-30"
@@ -33,6 +34,3 @@ ENVIRONMENT = "preview"
 [[env.preview.r2_buckets]]
 binding = "R2_BUCKET"
 bucket_name = "car-images"
-
-[env.preview.images]
-binding = "IMAGES"
