@@ -56,6 +56,19 @@ test("HEIC is decoded in the browser before the upload request is built", () => 
   assert.ok(budgets.assets.heicDecoderGzipBytes <= 800_000);
 });
 
+test("Safari PNG fallback is rejected and encoded with a lazy WebP codec", () => {
+  const compression = readProjectFile("src/lib/imageCompression.ts");
+  const budgetScript = readProjectFile("scripts/check-performance-budgets.mjs");
+  const budgets = JSON.parse(readProjectFile("performance-budgets.json"));
+
+  assert.match(compression, /blob\?\.type\.toLowerCase\(\) === "image\/webp"/);
+  assert.match(compression, /await import\("@jsquash\/webp\/encode\.js"\)/);
+  assert.match(compression, /target_size: targetSize/);
+  assert.match(compression, /new Blob\(\[encoded\], \{ type: "image\/webp" \}\)/);
+  assert.match(budgetScript, /filename\.startsWith\("webp_enc"\)/);
+  assert.ok(budgets.assets.webpFallbackWasmBytes <= 360_000);
+});
+
 test("responsive R2 presentations expose bounded card and detail srcsets", () => {
   const url = "https://automarket.sitecraft.agency/api/r2-images/listing-images/1/car.webp";
   const car = {

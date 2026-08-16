@@ -151,10 +151,38 @@ function calculateSize(width: number, height: number, maxWidth: number, maxHeigh
   };
 }
 
-async function canvasToWebP(canvas: HTMLCanvasElement, quality: number) {
-  return new Promise<Blob | null>((resolve) => {
+let nativeWebPEncodingSupported: boolean | undefined;
+
+async function canvasToNativeWebP(canvas: HTMLCanvasElement, quality: number) {
+  if (nativeWebPEncodingSupported === false) return null;
+
+  const blob = await new Promise<Blob | null>((resolve) => {
     canvas.toBlob(resolve, "image/webp", quality);
   });
+
+  // Some Safari/iOS versions silently fall back to PNG when WebP encoding is
+  // unavailable. Treating that PNG as WebP makes the quality loop ineffective
+  // and eventually produces the generic conversion error.
+  nativeWebPEncodingSupported = blob?.type.toLowerCase() === "image/webp";
+  return nativeWebPEncodingSupported ? blob : null;
+}
+
+async function canvasToWasmWebP(canvas: HTMLCanvasElement, quality: number, targetSize: number) {
+  const context = canvas.getContext("2d", { alpha: false, willReadFrequently: true });
+  if (!context) return null;
+
+  // This fallback is downloaded only when the browser cannot encode WebP
+  // natively. libwebp's target_size avoids repeatedly encoding the same large
+  // iPhone photo at many quality levels on a mobile CPU.
+  const { default: encode } = await import("@jsquash/webp/encode.js");
+  const encoded = await encode(context.getImageData(0, 0, canvas.width, canvas.height), {
+    quality: Math.round(quality * 100),
+    target_size: targetSize,
+    method: 4,
+    pass: 2,
+  });
+
+  return new Blob([encoded], { type: "image/webp" });
 }
 
 function buildQualitySteps(primaryQuality: number, retryQuality: number) {
@@ -216,9 +244,10 @@ export async function compressImageToWebP(
     context.drawImage(image.source, 0, 0, size.width, size.height);
 
     for (const qualityStep of qualitySteps) {
-      const candidate = await canvasToWebP(canvas, qualityStep);
+      const candidate = await canvasToNativeWebP(canvas, qualityStep);
 
       if (!candidate) {
+        if (nativeWebPEncodingSupported === false) break;
         continue;
       }
 
@@ -230,6 +259,19 @@ export async function compressImageToWebP(
       if (candidate.size <= maxOutputSize) {
         blob = candidate;
         break;
+      }
+    }
+
+    if (!blob && nativeWebPEncodingSupported === false) {
+      const candidate = await canvasToWasmWebP(canvas, retryQuality, maxOutputSize);
+
+      if (candidate && (!bestBlob || candidate.size < bestBlob.size)) {
+        bestBlob = candidate;
+        bestSize = size;
+      }
+
+      if (candidate && candidate.size <= maxOutputSize) {
+        blob = candidate;
       }
     }
 

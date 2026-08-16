@@ -28,6 +28,15 @@ const heicDecoderChunks = jsGzipSizes.filter(({ filename }) => filename.startsWi
 if (heicDecoderChunks.length !== 1) throw new Error(`Expected one lazy HEIC decoder chunk, found ${heicDecoderChunks.length}.`);
 check("lazy HEIC decoder gzip", heicDecoderChunks[0].bytes, config.assets.heicDecoderGzipBytes);
 
+const webpFallbackWasm = await Promise.all(files.filter((filename) => filename.startsWith("webp_enc") && filename.endsWith(".wasm")).map(async (filename) => ({
+  filename,
+  bytes: (await readFile(new URL(filename, assetDirectory))).byteLength,
+})));
+if (webpFallbackWasm.length !== 2) throw new Error(`Expected baseline and SIMD WebP fallback codecs, found ${webpFallbackWasm.length}.`);
+for (const codec of webpFallbackWasm) {
+  check(`lazy WebP fallback (${codec.filename})`, codec.bytes, config.assets.webpFallbackWasmBytes);
+}
+
 const regularJavaScript = jsGzipSizes.filter(({ filename }) => !filename.startsWith("heic-to."));
 const largestJavaScript = regularJavaScript.sort((left, right) => right.bytes - left.bytes)[0];
 check(`largest JavaScript gzip (${largestJavaScript.filename})`, largestJavaScript.bytes, config.assets.largestJavaScriptGzipBytes);
