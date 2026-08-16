@@ -2,7 +2,6 @@ import {
   IMAGE_MASTER_MAX_BYTES,
   compressImageToWebP,
   formatBytes,
-  isHeicImage,
   type CompressedImageResult,
 } from "./imageCompression";
 import { getAuthToken } from "./authClient";
@@ -32,7 +31,6 @@ export type ListingImageUploadOptions = {
 };
 
 const DEFAULT_UPLOAD_URL = import.meta.env.PUBLIC_IMAGE_UPLOAD_URL || "/api/upload-listing-images";
-const MAX_SERVER_CONVERSION_BYTES = 10 * 1024 * 1024;
 
 export function buildUploadRequestHeaders(authToken: string) {
   return new Headers({ Authorization: `Bearer ${authToken}` });
@@ -117,41 +115,14 @@ export async function uploadListingImages(
 
   for (const [index, file] of files.entries()) {
     options.onProgress?.(`Сжимаем фото ${index + 1}...`);
-    let result: CompressedImageResult;
-
-    try {
-      result = await compressImageToWebP(file, {
-        maxWidth: options.maxWidth,
-        maxHeight: options.maxHeight,
-        quality: options.quality,
-        maxOutputSize: options.maxOutputSize ?? IMAGE_MASTER_MAX_BYTES,
-        suffix: "-master.webp",
-      });
-      formData.append("files", result.file);
-    } catch (error) {
-      const needsServerConversion = isHeicImage(file) && error instanceof Error && error.message === "HEIC_REQUIRES_SERVER_CONVERSION";
-      if (!needsServerConversion) throw error;
-      if (file.size > MAX_SERVER_CONVERSION_BYTES) {
-        throw new Error("Фото HEIC больше 10 МБ. Уменьшите его или выберите совместимый формат камеры iPhone.");
-      }
-
-      // HEIC is the only source that may reach the server uncompressed. The
-      // upload Function must convert it with Cloudflare Images before R2.put.
-      result = {
-        file,
-        originalName: file.name || "iphone-photo.heic",
-        originalSize: file.size,
-        originalType: file.type || "image/heic",
-        compressedSize: file.size,
-        outputType: "image/webp",
-        width: 0,
-        height: 0,
-        compressionRatio: 1,
-      };
-      formData.append("files", file);
-      formData.append(`server_conversion_${index}`, "heic");
-      options.onProgress?.(`Фото ${index + 1}: конвертируем HEIC на защищённом сервере...`);
-    }
+    const result = await compressImageToWebP(file, {
+      maxWidth: options.maxWidth,
+      maxHeight: options.maxHeight,
+      quality: options.quality,
+      maxOutputSize: options.maxOutputSize ?? IMAGE_MASTER_MAX_BYTES,
+      suffix: "-master.webp",
+    });
+    formData.append("files", result.file);
 
     compressedImages.push(result);
     formData.append(`metadata_${index}`, JSON.stringify(buildMetadata(result)));

@@ -81,7 +81,39 @@ type LoadedImage = {
   close: () => void;
 };
 
+async function loadHeicImage(file: File): Promise<LoadedImage> {
+  try {
+    // Keep the ~3 MB decoder out of ordinary page bundles. It is downloaded
+    // only when a user selects an HEIC/HEIF file, and the CSP build avoids
+    // eval-based WebAssembly initialization.
+    const { heicTo } = await import("heic-to/csp");
+    const bitmap = await heicTo({
+      blob: file,
+      type: "bitmap",
+      options: { imageOrientation: "from-image" },
+    });
+
+    if (!bitmap.width || !bitmap.height) {
+      bitmap.close();
+      throw new Error("Decoded HEIC image has invalid dimensions.");
+    }
+
+    return {
+      source: bitmap,
+      width: bitmap.width,
+      height: bitmap.height,
+      close: () => bitmap.close(),
+    };
+  } catch {
+    throw new Error("Не удалось прочитать HEIC-фотографию. Возможно, файл повреждён или использует неподдерживаемый вариант HEIF.");
+  }
+}
+
 async function loadImage(file: File): Promise<LoadedImage> {
+  if (isHeicImage(file)) {
+    return loadHeicImage(file);
+  }
+
   if ("createImageBitmap" in window) {
     const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" });
 
@@ -150,9 +182,7 @@ export async function compressImageToWebP(
   try {
     image = await loadImage(file);
   } catch {
-    if (isHeicImage(file)) {
-      throw new Error("HEIC_REQUIRES_SERVER_CONVERSION");
-    }
+    if (isHeicImage(file)) throw new Error("Не удалось конвертировать HEIC в WebP. Выберите другую фотографию.");
     throw new Error("Не удалось прочитать фотографию. Выберите другое изображение.");
   }
 

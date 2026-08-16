@@ -24,7 +24,12 @@ const jsGzipSizes = await Promise.all(files.filter((file) => file.endsWith(".js"
   filename,
   bytes: gzipSync(await readFile(new URL(filename, assetDirectory))).byteLength,
 })));
-const largestJavaScript = jsGzipSizes.sort((left, right) => right.bytes - left.bytes)[0];
+const heicDecoderChunks = jsGzipSizes.filter(({ filename }) => filename.startsWith("heic-to."));
+if (heicDecoderChunks.length !== 1) throw new Error(`Expected one lazy HEIC decoder chunk, found ${heicDecoderChunks.length}.`);
+check("lazy HEIC decoder gzip", heicDecoderChunks[0].bytes, config.assets.heicDecoderGzipBytes);
+
+const regularJavaScript = jsGzipSizes.filter(({ filename }) => !filename.startsWith("heic-to."));
+const largestJavaScript = regularJavaScript.sort((left, right) => right.bytes - left.bytes)[0];
 check(`largest JavaScript gzip (${largestJavaScript.filename})`, largestJavaScript.bytes, config.assets.largestJavaScriptGzipBytes);
 
 const compressionSource = await readFile(new URL("src/lib/imageCompression.ts", root), "utf8");

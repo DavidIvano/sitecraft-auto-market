@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   IMAGE_MASTER_MAX_BYTES,
@@ -9,6 +10,9 @@ import {
 } from "../functions/lib/imagePipeline.ts";
 import { getCarCardImagePresentation, getCarDetailImagePresentations, getCarThumbnailImagePresentations } from "../src/lib/imageUrls.ts";
 import type { CarListing } from "../src/lib/types.ts";
+
+const root = new URL("..", import.meta.url);
+const readProjectFile = (path: string) => readFileSync(new URL(path, root), "utf8");
 
 function webp(width = 800, height = 500, size = 30) {
   const bytes = new Uint8Array(Math.max(30, size));
@@ -36,6 +40,20 @@ test("oversized masters fail closed when the image optimizer is unavailable", as
     () => processUploadedImage(new File([bytes], "large.webp", { type: "image/webp" })),
     (error) => error instanceof ImagePipelineError && error.code === "IMAGE_OPTIMIZER_MISSING",
   );
+});
+
+test("HEIC is decoded in the browser before the upload request is built", () => {
+  const compression = readProjectFile("src/lib/imageCompression.ts");
+  const upload = readProjectFile("src/lib/listingImageUpload.ts");
+  const budgetScript = readProjectFile("scripts/check-performance-budgets.mjs");
+  const budgets = JSON.parse(readProjectFile("performance-budgets.json"));
+
+  assert.match(compression, /await import\("heic-to\/csp"\)/);
+  assert.match(compression, /type: "bitmap"/);
+  assert.doesNotMatch(upload, /HEIC_REQUIRES_SERVER_CONVERSION|server_conversion_/);
+  assert.doesNotMatch(upload, /formData\.append\("files", file\)/);
+  assert.match(budgetScript, /filename\.startsWith\("heic-to\."\)/);
+  assert.ok(budgets.assets.heicDecoderGzipBytes <= 800_000);
 });
 
 test("responsive R2 presentations expose bounded card and detail srcsets", () => {
