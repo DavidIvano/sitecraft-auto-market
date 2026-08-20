@@ -9,6 +9,7 @@ const readArg = (name, fallback) => {
 const baseUrl = new URL(readArg("--base-url", "http://127.0.0.1:4349"));
 const canonicalOrigin = new URL(readArg("--canonical-origin", DEFAULT_CANONICAL_ORIGIN));
 const requestedLocale = readArg("--locale", "de");
+const deploymentCacheBust = readArg("--deployment-cache-bust", "");
 const strictSeoCandidateLocales = [
   "de", "en", "fr", "tr", "ar", "ru", "uk",
   "nl", "da", "sv", "fi", "es", "pt", "it",
@@ -26,6 +27,12 @@ const decodeXml = (value) => value
   .replaceAll("&quot;", "\"")
   .replaceAll("&apos;", "'");
 const stripTags = (value) => value.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+const withDeploymentCacheBust = (path) => {
+  if (!deploymentCacheBust) return path;
+  const url = new URL(path, baseUrl);
+  url.searchParams.set("__sitecraft_deployment", deploymentCacheBust);
+  return `${url.pathname}${url.search}`;
+};
 
 async function request(path, expectedStatus = 200) {
   const url = new URL(path, baseUrl);
@@ -147,7 +154,10 @@ await assertDeviceLocalePage("ar-SA,ar;q=0.9", "ar");
 await assertDeviceLocalePage("hi-IN,hi;q=0.9", "en");
 await assertLegacyInventoryPreserved("/cars/");
 
-const sitemapIndex = await request("/sitemap.xml");
+// A new deployment can be active before an older sitemap cache entry expires.
+// CI reads the current Worker through a deployment-specific cache key, while
+// assertEdgeCacheHit below still verifies the ordinary public cache path.
+const sitemapIndex = await request(withDeploymentCacheBust("/sitemap.xml"));
 assert.match(sitemapIndex.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapIndex.body, /<sitemapindex/);
 const sitemapLocations = [...sitemapIndex.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
@@ -159,7 +169,7 @@ const strictSeoReleaseLocales = strictSeoCandidateLocales.filter((locale) => pub
 const localeSitemapLocation = sitemapLocations.find((value) => new URL(value).pathname === `/sitemaps/${requestedLocale}.xml`);
 assert.ok(localeSitemapLocation, `Sitemap index has no ${requestedLocale} sitemap`);
 
-const sitemapResult = await request(new URL(localeSitemapLocation).pathname);
+const sitemapResult = await request(withDeploymentCacheBust(new URL(localeSitemapLocation).pathname));
 assert.match(sitemapResult.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapResult.body, /<urlset/);
 const sitemapUrls = [...sitemapResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));

@@ -49,13 +49,18 @@ test("localized taxonomy routes share one gate and one route resolver", () => {
 test("HTTP integration harness is public-only and covers local runtime plus production smoke", () => {
   const harness = readProjectFile("scripts/http-public-seo-integration.mjs");
   const runner = readProjectFile("scripts/run-cloudflare-http-integration.mjs");
+  const workflow = readProjectFile(".github/workflows/cloudflare-pages.yml");
   const packageJson = readProjectFile("package.json");
   assert.doesNotMatch(harness, /Authorization|Cookie|authToken|localStorage/);
   assert.match(harness, /\/sitemap\.xml/);
+  assert.match(harness, /--deployment-cache-bust/);
+  assert.match(harness, /withDeploymentCacheBust/);
   assert.match(harness, /assertInclusiveCatalogHtml/);
   assert.match(harness, /deviceLocalePagesChecked/);
   assert.match(runner, /wrangler/);
   assert.match(runner, /pages", "dev"/);
+  assert.match(workflow, /--deployment-cache-bust/);
+  assert.match(workflow, /GITHUB_SHA/);
   assert.match(packageJson, /"test:http:local"/);
   assert.match(packageJson, /"test:http:production"/);
 });
