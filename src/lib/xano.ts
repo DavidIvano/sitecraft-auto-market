@@ -15,6 +15,8 @@ const PUBLIC_CATALOG_STALE_MS = 10 * 60_000;
 let sellerListingsQueue: Promise<void> = Promise.resolve();
 const catalogCache = new Map<XanoLocale, { cars: CarListing[]; freshUntil: number; staleUntil: number }>();
 const catalogRequests = new Map<XanoLocale, Promise<CarListing[]>>();
+const localizedCatalogCache = new Map<Locale, { cars: CarListing[]; freshUntil: number; staleUntil: number }>();
+const localizedCatalogRequests = new Map<Locale, Promise<CarListing[]>>();
 
 const withLocale = (path: string, locale: Locale) =>
   `${path}${path.includes("?") ? "&" : "?"}lang=${encodeURIComponent(locale)}`;
@@ -91,6 +93,29 @@ const loadApprovedCatalog = (locale: XanoLocale) => {
   catalogRequests.set(locale, request);
   void request.finally(() => {
     if (catalogRequests.get(locale) === request) catalogRequests.delete(locale);
+  }).catch(() => {});
+  return request;
+};
+
+const loadLocalizedApprovedCatalog = (locale: Locale) => {
+  const existing = localizedCatalogRequests.get(locale);
+  if (existing) return existing;
+
+  const request = (async () => {
+    const payload = await fetchPublicJson(withLocale(API_ROUTES.localizedCars, locale));
+    const cars = sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
+    const now = Date.now();
+    localizedCatalogCache.set(locale, {
+      cars,
+      freshUntil: now + PUBLIC_CATALOG_FRESH_MS,
+      staleUntil: now + PUBLIC_CATALOG_STALE_MS,
+    });
+    return cars;
+  })();
+
+  localizedCatalogRequests.set(locale, request);
+  void request.finally(() => {
+    if (localizedCatalogRequests.get(locale) === request) localizedCatalogRequests.delete(locale);
   }).catch(() => {});
   return request;
 };
@@ -244,8 +269,14 @@ export async function getLocalizedApprovedCars(locale: Locale): Promise<CarListi
     throw new XanoPublicApiError("Xano public API is not configured", 503);
   }
 
-  const payload = await fetchPublicJson(withLocale(API_ROUTES.localizedCars, locale));
-  return sortPromotedCars(applyListingTranslations(normalizePublicCarList(payload), locale));
+  const cached = localizedCatalogCache.get(locale);
+  const now = Date.now();
+  if (cached?.freshUntil && cached.freshUntil > now) return [...cached.cars];
+  if (cached?.staleUntil && cached.staleUntil > now) {
+    void loadLocalizedApprovedCatalog(locale).catch(() => {});
+    return [...cached.cars];
+  }
+  return [...await loadLocalizedApprovedCatalog(locale)];
 }
 
 export async function getLocalizedCarBySlug(slug: string, locale: Locale): Promise<CarListing | null> {

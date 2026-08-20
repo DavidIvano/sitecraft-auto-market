@@ -84,19 +84,29 @@ test("strict SEO releases use translated inventory and index every canonical rou
   for (const path of [
     "../src/pages/[locale]/index.astro",
     "../src/pages/[locale]/cars/index.astro",
-    "../src/pages/[locale]/cars/brand/[brand].astro",
-    "../src/pages/[locale]/cars/brand/[brand]/[model].astro",
-    "../src/pages/[locale]/cars/city/[city].astro",
   ]) {
     const source = read(path);
     assert.match(source, /isStrictSeoReleaseLocale/);
     assert.match(source, /getLocalizedApprovedCars/);
   }
+  for (const path of [
+    "../src/pages/[locale]/cars/brand/[brand].astro",
+    "../src/pages/[locale]/cars/brand/[brand]/[model].astro",
+    "../src/pages/[locale]/cars/city/[city].astro",
+    "../src/pages/[locale]/cars/[taxonomy]/[slug].astro",
+  ]) {
+    const source = read(path);
+    assert.match(source, /loadLocalizedSeoTaxonomyCatalog/);
+    assert.match(source, /resolveSeoTaxonomyPage/);
+  }
+  const taxonomyLoader = read("../src/lib/seo/taxonomyRoute.ts");
+  assert.match(taxonomyLoader, /isStrictSeoReleaseLocale/);
+  assert.match(taxonomyLoader, /getLocalizedApprovedCars/);
   const sitemap = read("../src/pages/sitemaps/[locale].xml.ts");
   assert.match(sitemap, /indexablePagePaths/);
-  assert.match(sitemap, /brandPaths/);
-  assert.match(sitemap, /modelPaths/);
-  assert.match(sitemap, /cityPaths/);
+  assert.match(sitemap, /buildSeoTaxonomyGraph/);
+  assert.match(sitemap, /getIndexableSeoTaxonomyFacets/);
+  assert.match(sitemap, /getTaxonomyBasePath/);
   assert.match(sitemap, /isStrictSeoReleaseLocale/);
 });
 

@@ -9,6 +9,11 @@ import { RELEASE4_FLAGS, SITE_URL } from "../../lib/config.ts";
 import { isValidPublicCarSlug } from "../../lib/publicCar.ts";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache.ts";
 import { getLocalizedApprovedCars } from "../../lib/xano.ts";
+import {
+  buildSeoTaxonomyGraph,
+  getIndexableSeoTaxonomyFacets,
+  getTaxonomyBasePath,
+} from "../../lib/seo/taxonomies.ts";
 
 export const prerender = false;
 
@@ -46,24 +51,25 @@ export const GET: APIRoute = async ({ params }) => {
   getPublicPageMessages(locale);
   const cars = projectCatalogForLocale(sourceListings, locale)
     .filter((car, index, list) => isValidPublicCarSlug(car.slug) && list.findIndex((candidate) => candidate.slug === car.slug) === index);
+  const localizedSlugs = new Set(cars.map((car) => car.slug));
+  const taxonomyCars = sourceListings.filter((car) => localizedSlugs.has(car.slug));
   const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
   const staticPaths = PUBLIC_STATIC_PAGE_CODES.map((page) => `/${page}/`);
   const strictSeoRelease = isStrictSeoReleaseLocale(locale);
-  const brandPaths = [...new Set(cars.map((car) => car.brand).filter(Boolean))]
-    .map((brand) => `/cars/brand/${encodeURIComponent(brand)}/`);
-  const modelPaths = [...new Set(cars.map((car) => `${car.brand}\u0000${car.model}`).filter((value) => !value.endsWith("\u0000")))]
-    .map((value) => {
-      const [brand, model] = value.split("\u0000");
-      return `/cars/brand/${encodeURIComponent(brand)}/${encodeURIComponent(model)}/`;
-    });
-  const cityPaths = [...new Set(cars.map((car) => car.city).filter(Boolean))]
-    .map((city) => `/cars/city/${encodeURIComponent(city)}/`);
+  const taxonomyGraph = buildSeoTaxonomyGraph(taxonomyCars);
+  const taxonomyEntries = getIndexableSeoTaxonomyFacets(taxonomyGraph, locale)
+    .map((facet) => ({ path: getTaxonomyBasePath(facet), lastmod: facet.lastmod }));
   const indexablePagePaths = strictSeoRelease
-    ? ["/", "/cars/", ...staticPaths, ...brandPaths, ...modelPaths, ...cityPaths]
-    : staticPaths;
+    ? [
+        { path: "/", lastmod: null },
+        { path: "/cars/", lastmod: null },
+        ...staticPaths.map((path) => ({ path, lastmod: null })),
+        ...taxonomyEntries,
+      ]
+    : staticPaths.map((path) => ({ path, lastmod: null }));
 
   const urls = [
-    ...indexablePagePaths.map((path) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod: null })),
+    ...indexablePagePaths.map(({ path, lastmod }) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod })),
     ...cars.map((car) => ({
       loc: new URL(`/${locale}/cars/${encodeURIComponent(car.slug)}/`, siteUrl).toString(),
       lastmod: toIsoDate(car.translation_updated_at || car.updated_at || car.created_at),

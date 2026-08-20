@@ -1,0 +1,35 @@
+---
+import type { SeoRelatedTaxonomyGroup } from "../../lib/seo/taxonomies.ts";
+
+type Props = {
+  groups: SeoRelatedTaxonomyGroup[];
+  heading: string;
+  locale: string;
+};
+
+const { groups, heading, locale } = Astro.props;
+const numberFormatter = new Intl.NumberFormat(locale);
+---
+
+{groups.length > 0 && (
+  <section class="section taxonomy-navigation-section" aria-labelledby="related-taxonomies-title">
+    <div class="container">
+      <div class="section-heading"><div><h2 id="related-taxonomies-title">{heading}</h2></div></div>
+      <div class="taxonomy-related-groups">
+        {groups.map((group) => (
+          <section class="taxonomy-related-group" aria-labelledby={`taxonomy-group-${group.type}`}>
+            <h3 id={`taxonomy-group-${group.type}`}>{group.label}</h3>
+            <nav class="taxonomy-link-grid" aria-label={group.label}>
+              {group.links.map((link) => (
+                <a class="taxonomy-link" href={link.href}>
+                  <strong>{link.label}</strong>
+                  {typeof link.count === "number" && <span>{numberFormatter.format(link.count)}</span>}
+                </a>
+              ))}
+            </nav>
+          </section>
+        ))}
+      </div>
+    </div>
+  </section>
+)}

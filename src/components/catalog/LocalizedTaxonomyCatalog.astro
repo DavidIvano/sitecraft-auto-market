@@ -1,37 +1,68 @@
 ---
 import BaseLayout from "../../layouts/BaseLayout.astro";
 import CarCard from "../CarCard.astro";
+import SeoTaxonomyLinks from "./SeoTaxonomyLinks.astro";
 import type { CarListing } from "../../lib/types";
 import type { PublicPageMessages } from "../../i18n/publicRoutes";
+import { DEFAULT_LOCALE } from "../../i18n/config.ts";
+import { SITE_URL } from "../../lib/config.ts";
+import { TAXONOMY_PAGE_SIZE, type SeoBreadcrumb, type SeoRelatedTaxonomyGroup } from "../../lib/seo/taxonomies.ts";
 
 type Props = {
   locale: string;
   title: string;
+  heading: string;
   description: string;
   canonicalPath: string;
   cars: CarListing[];
+  total: number;
+  page: number;
+  totalPages: number;
   messages: PublicPageMessages;
   noindex: boolean;
+  breadcrumbs: SeoBreadcrumb[];
+  relatedGroups: SeoRelatedTaxonomyGroup[];
+  previousPath: string | null;
+  nextPath: string | null;
   alternateLocales: Array<{ locale: string; path: string; label?: string }>;
 };
 
-const { locale, title, description, canonicalPath, cars, messages, noindex, alternateLocales } = Astro.props;
+const {
+  locale, title, heading, description, canonicalPath, cars, total, page, totalPages,
+  messages, noindex, breadcrumbs, relatedGroups, previousPath, nextPath, alternateLocales,
+} = Astro.props;
+const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
+const canonicalUrl = new URL(canonicalPath, siteUrl).toString();
 const schema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
   name: title,
   description,
   inLanguage: locale,
+  url: canonicalUrl,
   mainEntity: {
     "@type": "ItemList",
+    numberOfItems: total,
     itemListElement: cars.map((car, index) => ({
       "@type": "ListItem",
-      position: index + 1,
-      url: new URL(`/${locale}/cars/${car.slug}/`, Astro.site || Astro.url.origin).toString(),
+      position: ((page - 1) * TAXONOMY_PAGE_SIZE) + index + 1,
+      url: new URL(`/${locale}/cars/${car.slug}/`, siteUrl).toString(),
       name: car.title,
     })),
   },
 };
+const breadcrumbSchema = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  inLanguage: locale,
+  itemListElement: breadcrumbs.map((item, index) => ({
+    "@type": "ListItem",
+    position: index + 1,
+    name: item.label,
+    item: new URL(item.href || canonicalPath, siteUrl).toString(),
+  })),
+};
+const xDefaultPath = `/${DEFAULT_LOCALE}${canonicalPath.replace(new RegExp(`^/${locale}`), "") || "/"}`;
 ---
 
 <BaseLayout
@@ -41,25 +72,22 @@ const schema = {
   description={description}
   canonicalPath={canonicalPath}
   noindex={noindex}
-  jsonLd={schema}
-  breadcrumbs={[
-    { href: `/${locale}/`, label: messages.homeTitle },
-    { href: `/${locale}/cars/`, label: messages.catalogTitle },
-    { label: title },
-  ]}
+  robots={noindex ? "noindex, follow" : undefined}
+  jsonLd={[schema, breadcrumbSchema]}
+  breadcrumbs={breadcrumbs}
   alternateLocales={alternateLocales}
-  xDefaultPath={canonicalPath.replace(new RegExp(`^/${locale}`), "") || "/"}
+  xDefaultPath={noindex ? undefined : xDefaultPath}
 >
   <section class="section page-hero catalog-hero">
     <div class="container">
       <p class="eyebrow">{messages.catalogTitle}</p>
-      <h1>{title}</h1>
+      <h1>{heading}</h1>
       <p class="lead">{description}</p>
     </div>
   </section>
   <section class="section catalog-results-section">
     <div class="container">
-      <div class="catalog-results-toolbar"><div><span>{messages.results}</span><strong>{cars.length} {messages.vehicles}</strong></div></div>
+      <div class="catalog-results-toolbar"><div><span>{messages.results}</span><strong>{total} {messages.vehicles}</strong></div></div>
       {cars.length > 0 ? (
         <div class="cards-grid catalog-grid">
           {cars.map((car, index) => <CarCard car={car} priority={index === 0} source="localized_taxonomy" locale={locale} />)}
@@ -67,6 +95,14 @@ const schema = {
       ) : (
         <div class="empty-state" role="status"><h2>{messages.emptyTitle}</h2><p>{messages.emptyText}</p></div>
       )}
+      {totalPages > 1 && (
+        <nav class="taxonomy-pagination" aria-label={`${messages.results} ${page}/${totalPages}`}>
+          {previousPath ? <a href={previousPath} aria-label={`${messages.results} ${page - 1}`}>←</a> : <span aria-hidden="true">←</span>}
+          <span aria-current="page">{page} / {totalPages}</span>
+          {nextPath ? <a href={nextPath} aria-label={`${messages.results} ${page + 1}`}>→</a> : <span aria-hidden="true">→</span>}
+        </nav>
+      )}
     </div>
   </section>
+  <SeoTaxonomyLinks groups={relatedGroups} heading={messages.similarVehicles} locale={locale} />
 </BaseLayout>

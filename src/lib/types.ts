@@ -132,7 +132,11 @@ export type CarListing = {
   translations_ready?: boolean;
   available_locales?: string[];
   translation?: TranslationResolution | CarListingTranslation | null;
+  brand_id?: number | string;
+  brand_slug?: string;
   brand: string;
+  model_id?: number | string;
+  model_slug?: string;
   model: string;
   vehicle_type?: string;
   body_type?: string;
@@ -160,7 +164,13 @@ export type CarListing = {
   vin_masked?: string;
   price: number;
   currency: string;
+  city_id?: number | string;
+  city_slug?: string;
   city: string;
+  region_id?: number | string;
+  region_slug?: string;
+  region?: string;
+  postal_code?: string;
   country: string;
   seller_name?: string;
   seller_phone?: string;

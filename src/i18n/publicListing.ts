@@ -21,13 +21,23 @@ export type PublicListingDto = {
   slug: string;
   title: string;
   description: string;
+  brand_id?: number | string;
+  brand_slug?: string;
   brand: string;
+  model_id?: number | string;
+  model_slug?: string;
   model: string;
   year: number;
   mileage: number;
   price: number;
   currency: string;
+  city_id?: number | string;
+  city_slug?: string;
   city: string;
+  region_id?: number | string;
+  region_slug?: string;
+  region?: string;
+  postal_code?: string;
   country: string;
   fuel_type: string;
   transmission: string;
@@ -130,13 +140,23 @@ export function toPublicListingForLocale(listing: CarListing, requestedLocale: s
     slug: text(listing.slug),
     title,
     description,
+    brand_id: listing.brand_id,
+    brand_slug: text(listing.brand_slug) || undefined,
     brand: text(listing.brand),
+    model_id: listing.model_id,
+    model_slug: text(listing.model_slug) || undefined,
     model: text(listing.model),
     year: Number(listing.year) || 0,
     mileage: Number(listing.mileage) || 0,
     price: Number(listing.price) || 0,
     currency: /^[A-Z]{3}$/.test(text(listing.currency).toUpperCase()) ? text(listing.currency).toUpperCase() : "EUR",
+    city_id: listing.city_id,
+    city_slug: text(listing.city_slug) || undefined,
     city: getCanonicalSeoCity(listing.city),
+    region_id: listing.region_id,
+    region_slug: text(listing.region_slug) || undefined,
+    region: text(listing.region) || undefined,
+    postal_code: text(listing.postal_code) || undefined,
     country: text(listing.country),
     fuel_type: text(listing.fuel_type),
     transmission: text(listing.transmission),

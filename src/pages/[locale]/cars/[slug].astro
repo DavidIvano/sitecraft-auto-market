@@ -13,6 +13,7 @@ import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publi
 import { buildLocalizedVehicleSeo } from "../../../lib/seo/vehicleSeo";
 import { getCarBySlug, getLocalizedCarBySlug } from "../../../lib/xano";
 import { getCarDetailImagePresentations } from "../../../lib/imageUrls";
+import { buildListingSeoTaxonomyLinks, getTaxonomyGroupLabel } from "../../../lib/seo/taxonomies.ts";
 
 export const prerender = false;
 
@@ -80,9 +81,7 @@ const specs = [
   [messages.updated, formatDate(car.translation_updated_at || car.updated_at, locale)],
 ].filter(([, value]) => Boolean(value));
 const readyLocales = car.available_locales.includes(locale) ? car.available_locales : [locale];
-const brandPath = car.brand ? `/${locale}/cars/brand/${encodeURIComponent(car.brand)}/` : "";
-const modelPath = car.brand && car.model ? `${brandPath}${encodeURIComponent(car.model)}/` : "";
-const cityPath = car.city ? `/${locale}/cars/city/${encodeURIComponent(car.city)}/` : "";
+const taxonomyLinks = buildListingSeoTaxonomyLinks(car, locale);
 const mainImage = getCarDetailImagePresentations(car)[0] || {
   src: car.image_urls[0] || "/deal-finder-placeholder.svg",
   srcset: "",
@@ -102,11 +101,7 @@ const mainImage = getCarDetailImagePresentations(car)[0] || {
   noindex={I18N_PREVIEW_NOINDEX}
   ogType="product"
   jsonLd={[seo.vehicle, seo.offer, seo.breadcrumb]}
-  breadcrumbs={[
-    { href: `/${locale}/`, label: messages.homeTitle },
-    { href: `/${locale}/cars/`, label: messages.catalogTitle },
-    { label: seo.heading },
-  ]}
+  breadcrumbs={seo.breadcrumbs}
   alternateLocales={getRouteAlternates(`/cars/${car.slug}/`, readyLocales)}
   xDefaultPath={`/cars/${car.slug}/`}
 >
@@ -123,9 +118,9 @@ const mainImage = getCarDetailImagePresentations(car)[0] || {
           <h1>{seo.heading}</h1>
           <p class="detail-price">{formatCurrency(car.price, car.currency, locale)}</p>
           <nav class="vehicle-context-links" aria-label={messages.similarVehicles}>
-            {brandPath && <a href={brandPath}><span>{messages.brand}</span><strong>{car.brand}</strong></a>}
-            {modelPath && <a href={modelPath}><span>{messages.model}</span><strong>{car.model}</strong></a>}
-            {cityPath && <a href={cityPath}><span>{messages.location}</span><strong>{car.city}</strong></a>}
+            {taxonomyLinks.map((link) => (
+              <a href={link.href}><span>{getTaxonomyGroupLabel(link.type, locale)}</span><strong>{link.label}</strong></a>
+            ))}
           </nav>
         </div>
       </article>

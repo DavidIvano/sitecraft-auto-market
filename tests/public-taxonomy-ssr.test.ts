@@ -21,22 +21,27 @@ test("brand and model routes are on-demand SSR with canonical metadata and fail-
   }
 });
 
-test("Stage 3 taxonomy routes become indexable only for strict translated releases", () => {
+test("localized taxonomy routes share one gate and one route resolver", () => {
   const brandRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand].astro");
   const modelRoute = readProjectFile("src/pages/[locale]/cars/brand/[brand]/[model].astro");
   const cityRoute = readProjectFile("src/pages/[locale]/cars/city/[city].astro");
+  const genericRoute = readProjectFile("src/pages/[locale]/cars/[taxonomy]/[slug].astro");
+  const resolver = readProjectFile("src/lib/seo/taxonomyRoute.ts");
+  const pageResolver = readProjectFile("src/lib/seo/taxonomyPage.ts");
   const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
-  assert.match(brandRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
-  assert.match(modelRoute, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
-  assert.match(brandRoute, /getLocalizedApprovedCars\(locale\)/);
-  assert.match(modelRoute, /getLocalizedApprovedCars\(locale\)/);
-  assert.match(cityRoute, /getLocalizedApprovedCars\(locale\)/);
-  assert.match(brandRoute, /noindex=\{!strictSeoRelease\}/);
-  assert.match(modelRoute, /noindex=\{!strictSeoRelease\}/);
-  assert.match(cityRoute, /noindex=\{!strictSeoRelease\}/);
-  assert.match(sitemap, /\/cars\/brand\/\$\{encodeURIComponent\(brand\)\}/);
-  assert.match(sitemap, /cars\.map\(\(car\)/);
-  assert.match(sitemap, /cityPaths/);
+  for (const route of [brandRoute, modelRoute, cityRoute, genericRoute]) {
+    assert.match(route, /loadLocalizedSeoTaxonomyCatalog/);
+    assert.match(route, /resolveSeoTaxonomyPage/);
+    assert.match(route, /"noindex, follow"/);
+    assert.match(route, /Astro\.response\.status = 404/);
+    assert.match(route, /Astro\.response\.status = 503/);
+  }
+  assert.match(genericRoute, /isNewSeoTaxonomyType/);
+  assert.match(pageResolver, /isSeoTaxonomyFacetIndexable/);
+  assert.match(resolver, /getLocalizedApprovedCars\(locale\)/);
+  assert.match(resolver, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
+  assert.match(sitemap, /getIndexableSeoTaxonomyFacets/);
+  assert.match(sitemap, /getTaxonomyBasePath/);
   assert.match(sitemap, /indexablePagePaths/);
   assert.doesNotMatch(sitemap, /\/cars\?brand=/);
 });

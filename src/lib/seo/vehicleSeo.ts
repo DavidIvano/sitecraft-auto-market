@@ -6,6 +6,7 @@ import { getVehicleTaxonomyLabel, type VehicleTaxonomyName } from "../../domain/
 import { getCarDetailImageUrls } from "../imageUrls.ts";
 import { sanitizePublicDescription } from "../listingFields.ts";
 import type { CarListing } from "../types.ts";
+import { buildListingSeoTaxonomyLinks } from "./taxonomies.ts";
 
 const DEFAULT_SITE_URL = "https://automarket.sitecraft.agency";
 const DEFAULT_IMAGE = "/deal-finder-placeholder.svg";
@@ -131,9 +132,10 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
   const transmission = localizedTaxonomyValue("transmission", car.transmission, locale);
   const bodyType = localizedTaxonomyValue("body_type", car.body_type, locale);
   const color = localizedTaxonomyValue("color", car.color, locale);
-  const brandUrl = car.brand
-    ? new URL(`/${locale}/cars/brand/${encodeURIComponent(car.brand)}/`, origin).toString()
-    : undefined;
+  const taxonomyLinks = buildListingSeoTaxonomyLinks(car, locale);
+  const brandLink = taxonomyLinks.find((link) => link.type === "brand");
+  const modelLink = taxonomyLinks.find((link) => link.type === "model");
+  const brandUrl = brandLink ? new URL(brandLink.href, origin).toString() : undefined;
 
   const offer = {
     "@context": "https://schema.org",
@@ -175,15 +177,23 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
     color: color || undefined,
     offers: { "@id": offerId },
   };
+  const breadcrumbs = [
+    { href: `/${locale}/`, label: messages.homeTitle },
+    { href: `/${locale}/cars/`, label: messages.catalogTitle },
+    ...(brandLink ? [{ href: brandLink.href, label: brandLink.label }] : []),
+    ...(modelLink ? [{ href: modelLink.href, label: modelLink.label }] : []),
+    { label: heading },
+  ];
   const breadcrumb = {
     "@context": "https://schema.org",
     "@type": "BreadcrumbList",
     inLanguage: locale,
-    itemListElement: [
-      { "@type": "ListItem", position: 1, name: messages.homeTitle, item: new URL(`/${locale}/`, origin).toString() },
-      { "@type": "ListItem", position: 2, name: messages.catalogTitle, item: new URL(`/${locale}/cars/`, origin).toString() },
-      { "@type": "ListItem", position: 3, name: heading, item: canonicalUrl },
-    ],
+    itemListElement: breadcrumbs.map((item, index) => ({
+      "@type": "ListItem",
+      position: index + 1,
+      name: item.label,
+      item: new URL(item.href || canonicalUrl, origin).toString(),
+    })),
   };
 
   return {
@@ -196,5 +206,6 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
     offer,
     vehicle,
     breadcrumb,
+    breadcrumbs,
   };
 }

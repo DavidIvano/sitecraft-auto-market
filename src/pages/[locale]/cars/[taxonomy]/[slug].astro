@@ -1,16 +1,18 @@
 ---
-import LocalizedTaxonomyCatalog from "../../../../../components/catalog/LocalizedTaxonomyCatalog.astro";
-import { normalizeLocale } from "../../../../../i18n/locale.ts";
-import { getPublicPageMessages } from "../../../../../i18n/publicRoutes.ts";
-import { isPublicLocaleRouteEnabled } from "../../../../../i18n/release4.ts";
-import { RELEASE4_FLAGS } from "../../../../../lib/config.ts";
-import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../../lib/publicCache.ts";
-import { loadLocalizedSeoTaxonomyCatalog, resolveSeoTaxonomyPage } from "../../../../../lib/seo/taxonomyRoute.ts";
+import LocalizedTaxonomyCatalog from "../../../../components/catalog/LocalizedTaxonomyCatalog.astro";
+import { normalizeLocale } from "../../../../i18n/locale.ts";
+import { getPublicPageMessages } from "../../../../i18n/publicRoutes.ts";
+import { isPublicLocaleRouteEnabled } from "../../../../i18n/release4.ts";
+import { RELEASE4_FLAGS } from "../../../../lib/config.ts";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../lib/publicCache.ts";
+import { isNewSeoTaxonomyType } from "../../../../lib/seo/taxonomies.ts";
+import { loadLocalizedSeoTaxonomyCatalog, resolveSeoTaxonomyPage } from "../../../../lib/seo/taxonomyRoute.ts";
 
 export const prerender = false;
 
 const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
-if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
+const taxonomy = Astro.params.taxonomy;
+if (!locale || !isNewSeoTaxonomyType(taxonomy) || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
   Astro.response.status = 404;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/404");
@@ -24,14 +26,7 @@ try {
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/service-unavailable");
 }
-const resolution = resolveSeoTaxonomyPage({
-  locale,
-  type: "model",
-  slug: Astro.params.model,
-  parentSlug: Astro.params.brand,
-  url: Astro.url,
-  catalog,
-});
+const resolution = resolveSeoTaxonomyPage({ locale, type: taxonomy, slug: Astro.params.slug, url: Astro.url, catalog });
 if (resolution.status === "redirect") return Astro.redirect(resolution.location, 301);
 if (resolution.status === "not_found") {
   Astro.response.status = 404;

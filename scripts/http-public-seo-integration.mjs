@@ -171,6 +171,9 @@ assert.equal(sitemapUrls.every((value) => new URL(value).origin === canonicalOri
 const paths = sitemapUrls.map((value) => new URL(value).pathname);
 const localePrefix = `/${requestedLocale}`;
 const vehiclePath = paths.find((path) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path));
+const isTaxonomyPath = (path) => new RegExp(
+  `^/${requestedLocale}/cars/(?:brand/[^/]+(?:/[^/]+)?|city/[^/]+|region/[^/]+|fuel/[^/]+|body/[^/]+|price/[^/]+)/$`,
+).test(path);
 
 const homePath = `${localePrefix}/`;
 const catalogPath = `${localePrefix}/cars/`;
@@ -220,8 +223,13 @@ if (strictSeoRelease) {
         : "CollectionPage";
     assertIndexableHtml(result, path, type);
     assert.ok(result.body.includes(`hreflang="${requestedLocale}"`), `${path} has no self hreflang`);
-    for (const locale of strictSeoReleaseLocales) {
-      assert.ok(result.body.includes(`hreflang="${locale}"`), `${path} has no reciprocal ${locale} hreflang`);
+    // Taxonomy alternates are intentionally limited to locales where the same
+    // normalized entity passes the indexability gate. Static pages remain
+    // reciprocal across every strict release locale.
+    if (!isTaxonomyPath(path)) {
+      for (const locale of strictSeoReleaseLocales) {
+        assert.ok(result.body.includes(`hreflang="${locale}"`), `${path} has no reciprocal ${locale} hreflang`);
+      }
     }
     assert.ok(result.body.includes('hreflang="x-default"'), `${path} has no x-default hreflang`);
     checked.push(path);

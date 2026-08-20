@@ -1,67 +1,56 @@
 ---
-import type { CarListing } from "../../../../lib/types";
 import LocalizedTaxonomyCatalog from "../../../../components/catalog/LocalizedTaxonomyCatalog.astro";
-import { normalizeLocale } from "../../../../i18n/locale";
-import { getPublicPageMessages, getRouteAlternates } from "../../../../i18n/publicRoutes";
-import { isPublicLocaleRouteEnabled } from "../../../../i18n/release4";
-import { isStrictSeoReleaseLocale } from "../../../../i18n/releaseStage3";
-import { RELEASE4_FLAGS } from "../../../../lib/config";
-import { isPublicListing } from "../../../../lib/listingStatus";
-import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../lib/publicCache";
-import { getApprovedCars, getLocalizedApprovedCars } from "../../../../lib/xano";
-import { getCanonicalSeoCity } from "../../../../lib/seo/locationSeo";
+import { normalizeLocale } from "../../../../i18n/locale.ts";
+import { getPublicPageMessages } from "../../../../i18n/publicRoutes.ts";
+import { isPublicLocaleRouteEnabled } from "../../../../i18n/release4.ts";
+import { RELEASE4_FLAGS } from "../../../../lib/config.ts";
+import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../lib/publicCache.ts";
+import { loadLocalizedSeoTaxonomyCatalog, resolveSeoTaxonomyPage } from "../../../../lib/seo/taxonomyRoute.ts";
 
 export const prerender = false;
 
 const locale = normalizeLocale(Astro.params.locale, { activeOnly: true });
-let city = "";
-try { city = decodeURIComponent(Astro.params.city || "").trim(); } catch { city = ""; }
-if (!locale || !city || city.length > 100 || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
+if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
   Astro.response.status = 404;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/404");
 }
 
-let listings: CarListing[] = [];
-const strictSeoRelease = isStrictSeoReleaseLocale(locale);
+let catalog;
 try {
-  listings = strictSeoRelease
-    ? await getLocalizedApprovedCars(locale)
-    : await getApprovedCars(locale, { requireConfigured: true });
+  catalog = await loadLocalizedSeoTaxonomyCatalog(locale);
 } catch {
   Astro.response.status = 503;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/service-unavailable");
 }
-
-const canonicalCity = getCanonicalSeoCity(city);
-const cars = listings.filter(isPublicListing).filter((car) => getCanonicalSeoCity(car.city) === canonicalCity);
-if (cars.length === 0) {
+const resolution = resolveSeoTaxonomyPage({ locale, type: "city", slug: Astro.params.city, url: Astro.url, catalog });
+if (resolution.status === "redirect") return Astro.redirect(resolution.location, 301);
+if (resolution.status === "not_found") {
   Astro.response.status = 404;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/404");
 }
-
-if (city !== canonicalCity) {
-  return Astro.redirect(`/${locale}/cars/city/${encodeURIComponent(canonicalCity)}/`, 301);
-}
-
-const messages = getPublicPageMessages(locale);
-const encodedCity = encodeURIComponent(canonicalCity);
-const canonicalPath = `/${locale}/cars/city/${encodedCity}/`;
-const title = `${messages.vehicles} · ${canonicalCity}`;
-const description = `${messages.catalogDescription} ${messages.location}: ${canonicalCity}.`;
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
-setPublicCacheHeaders(Astro.response.headers, "catalog", !strictSeoRelease);
+setPublicCacheHeaders(Astro.response.headers, "catalog", resolution.noindex, "noindex, follow");
+const messages = getPublicPageMessages(locale);
 ---
 
 <LocalizedTaxonomyCatalog
   locale={locale}
-  title={title}
-  description={description}
-  canonicalPath={canonicalPath}
-  cars={cars}
+  title={resolution.title}
+  heading={resolution.heading}
+  description={resolution.description}
+  canonicalPath={resolution.canonicalPath}
+  cars={resolution.cars}
+  total={resolution.total}
+  page={resolution.page}
+  totalPages={resolution.totalPages}
   messages={messages}
-  noindex={!strictSeoRelease}
-  alternateLocales={getRouteAlternates(`/cars/city/${encodedCity}/`)}
+  noindex={resolution.noindex}
+  breadcrumbs={resolution.breadcrumbs}
+  relatedGroups={resolution.relatedGroups}
+  previousPath={resolution.previousPath}
+  nextPath={resolution.nextPath}
+  alternateLocales={resolution.alternateLocales}
 />

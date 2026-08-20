@@ -7,11 +7,16 @@ const EDGE_TTL: Record<PublicCacheProfile, { maxAge: number; stale: number }> = 
   sitemap: { maxAge: 900, stale: 3600 },
 };
 
-export function setPublicCacheHeaders(headers: Headers, profile: PublicCacheProfile, noindex = false) {
+export function setPublicCacheHeaders(
+  headers: Headers,
+  profile: PublicCacheProfile,
+  noindex = false,
+  robots: "noindex, follow" | "noindex, nofollow" = "noindex, nofollow",
+) {
   if (noindex) {
     headers.set("Cache-Control", "private, no-store");
     headers.set("Cloudflare-CDN-Cache-Control", "no-store");
-    headers.set("X-Robots-Tag", "noindex, nofollow");
+    headers.set("X-Robots-Tag", robots);
     return;
   }
 

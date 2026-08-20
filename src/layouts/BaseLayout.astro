@@ -23,6 +23,7 @@ type Props = {
   jsonLd?: Record<string, unknown> | Record<string, unknown>[];
   breadcrumbs?: Array<{ href?: string; label: string }>;
   noindex?: boolean;
+  robots?: "noindex, follow" | "noindex, nofollow";
   ogType?: "website" | "product";
   variant?: LayoutVariant;
   locale?: Locale;
@@ -38,6 +39,7 @@ const {
   jsonLd,
   breadcrumbs,
   noindex = false,
+  robots,
   ogType = "website",
   variant: requestedVariant,
   locale: localeProp,
@@ -65,6 +67,12 @@ const uiDynamicTemplates = legacyRuntimeTranslation ? {
   monthlyPrice: translateUiValue(`${dynamicMarker} € / мес.`, locale).replaceAll(dynamicMarker, "{value}"),
 } : {};
 const pageLocale = locale;
+const robotsContent = robots || (noindex ? "noindex, nofollow" : "");
+const robotsMetaContent = robotsContent === "noindex, follow"
+  ? "noindex, follow, noarchive"
+  : robotsContent
+    ? "noindex, nofollow, noarchive"
+    : "";
 const pageTitle = title === SITE_NAME ? title : `${title} | ${SITE_NAME}`;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalPathname = canonicalPath ?? Astro.url.pathname;
@@ -202,7 +210,7 @@ const localizedSchemaItems = isLocalePrefixedRoute ? schemaItems : translateUiDa
     <meta name="sitecraft-build-environment" content={buildEnvironment} />
     <meta name="description" content={description} />
     <meta http-equiv="Content-Language" content={documentLocale} />
-    {noindex && <meta name="robots" content="noindex, nofollow, noarchive" />}
+    {robotsMetaContent && <meta name="robots" content={robotsMetaContent} />}
     <meta name="color-scheme" content="light dark" />
     <link rel="stylesheet" href={sharedStylesUrl} />
     {layoutVariant === "public" && <link rel="stylesheet" href={publicStylesUrl} />}

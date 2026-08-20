@@ -10,6 +10,8 @@ import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS, SITE_URL } from "../../../lib/con
 import { isPublicListing } from "../../../lib/listingStatus";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
 import { getApprovedCars, getLocalizedApprovedCars } from "../../../lib/xano";
+import SeoTaxonomyLinks from "../../../components/catalog/SeoTaxonomyLinks.astro";
+import { buildRelatedSeoTaxonomyGroups, buildSeoTaxonomyGraph, hasSeoFilterQuery } from "../../../lib/seo/taxonomies.ts";
 
 export const prerender = false;
 
@@ -40,11 +42,13 @@ Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
 // Until every listing has a reviewed locale payload, this inclusive catalog is
 // user-facing but not indexed. Strict translation-ready detail URLs and the
 // sitemap continue to use the localized Xano endpoint.
-const catalogNoindex = !strictSeoRelease;
-setPublicCacheHeaders(Astro.response.headers, "catalog", catalogNoindex);
+const filteredQuery = hasSeoFilterQuery(Astro.url.searchParams);
+const catalogNoindex = !strictSeoRelease || filteredQuery;
+setPublicCacheHeaders(Astro.response.headers, "catalog", catalogNoindex, "noindex, follow");
 
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const canonicalPath = `/${locale}/cars/`;
+const relatedGroups = buildRelatedSeoTaxonomyGroups(buildSeoTaxonomyGraph(cars), null, locale);
 const collectionSchema = {
   "@context": "https://schema.org",
   "@type": "CollectionPage",
@@ -70,6 +74,7 @@ const collectionSchema = {
   description={messages.catalogDescription}
   canonicalPath={canonicalPath}
   noindex={catalogNoindex || I18N_PREVIEW_NOINDEX}
+  robots={catalogNoindex || I18N_PREVIEW_NOINDEX ? "noindex, follow" : undefined}
   jsonLd={collectionSchema}
   breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: messages.catalogTitle }]}
   alternateLocales={getRouteAlternates("/cars/")}
@@ -100,4 +105,5 @@ const collectionSchema = {
       )}
     </div>
   </section>
+  <SeoTaxonomyLinks groups={relatedGroups} heading={messages.similarVehicles} locale={locale} />
 </BaseLayout>

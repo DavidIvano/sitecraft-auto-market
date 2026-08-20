@@ -58,6 +58,12 @@
   .taxonomy-link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-3); }
   .taxonomy-link { display: grid; gap: 2px; border: 1px solid var(--border-default); border-radius: var(--radius-card); background: var(--surface); padding: var(--space-4); }
   .taxonomy-link span { color: var(--text-tertiary); font-size: .78rem; }
+  .taxonomy-related-groups { display: grid; gap: var(--space-6); }
+  .taxonomy-related-group { display: grid; gap: var(--space-3); }
+  .taxonomy-related-group h3 { margin: 0; font-size: 1rem; }
+  .taxonomy-pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-3); margin-top: var(--space-6); }
+  .taxonomy-pagination a, .taxonomy-pagination span { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--border-default); border-radius: var(--radius-control); padding: 0 var(--space-3); }
+  .taxonomy-pagination span { background: var(--surface-muted); color: var(--text-secondary); }
   @keyframes catalog-button-spin { to { transform: rotate(360deg); } }
 
   @media (max-width: 1320px) { .catalog-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

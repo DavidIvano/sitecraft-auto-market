@@ -18,6 +18,7 @@ import { normalizeBackendValue } from "../../i18n/backendValues";
 import { getCatalogMessages } from "../../i18n/catalogMessages";
 import { LOCALE_COOKIE, resolveBackendLocale, resolveRequestLocale } from "../../i18n/locales";
 import { interpolate } from "../../i18n/messages";
+import { hasSeoFilterQuery } from "../../lib/seo/taxonomies.ts";
 
 const locale = resolveRequestLocale(Astro.url, Astro.cookies.get(LOCALE_COOKIE)?.value, Astro.request.headers.get("accept-language"), Astro.request.headers.get("cf-ipcountry"));
 const contentLocale = resolveBackendLocale(locale);
@@ -26,12 +27,13 @@ const messages = getCatalogMessages(locale);
 export const prerender = false;
 
 Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=120, stale-while-revalidate=3600");
-Astro.response.headers.set("X-Robots-Tag", "index, follow");
 
 let cars: CarListing[] = [];
 const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const searchParams = Astro.url.searchParams;
+const filterNoindex = hasSeoFilterQuery(searchParams);
+Astro.response.headers.set("X-Robots-Tag", filterNoindex ? "noindex, follow" : "index, follow");
 const initialCriteria = getBuyerSearchCriteriaFromParams(searchParams);
 const aiSearchPolicy = getCreditActionPolicy("ai_search_intent");
 
@@ -147,6 +149,8 @@ const collectionSchema = {
   title={messages.title}
   description={messages.description}
   canonicalPath="/cars"
+  noindex={filterNoindex}
+  robots={filterNoindex ? "noindex, follow" : undefined}
   jsonLd={collectionSchema}
   locale={locale}
 >
