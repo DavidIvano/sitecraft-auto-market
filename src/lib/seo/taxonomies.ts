@@ -61,6 +61,13 @@ export type SeoTaxonomyFacet = {
   slug: string;
   label: string;
   cars: CarListing[];
+  /**
+   * Total matching listings when the facet came from the bounded Xano API.
+   * Full-catalog compatibility graphs omit it and derive the total from cars.
+   */
+  count?: number;
+  /** Locales whose translated inventory passes the same taxonomy gate. */
+  readyLocales?: string[];
   parentSlug?: string;
   regionSlug?: string;
   code?: string;
@@ -158,10 +165,16 @@ const addFacetCar = (
 };
 
 const facetSort = (left: SeoTaxonomyFacet, right: SeoTaxonomyFacet) => (
-  right.cars.length - left.cars.length
+  getSeoTaxonomyFacetCount(right) - getSeoTaxonomyFacetCount(left)
   || left.label.localeCompare(right.label, "de", { sensitivity: "base" })
   || left.slug.localeCompare(right.slug)
 );
+
+export function getSeoTaxonomyFacetCount(facet: SeoTaxonomyFacet) {
+  return Number.isInteger(facet.count) && Number(facet.count) >= 0
+    ? Number(facet.count)
+    : facet.cars.length;
+}
 
 export function buildSeoTaxonomyGraph(cars: CarListing[]): SeoTaxonomyGraph {
   const brandGroups = new Map<string, MutableFacet>();
@@ -270,7 +283,7 @@ export function isSeoTaxonomyFacetIndexable(
   const strictSeoRelease = options.strictSeoRelease ?? isStrictSeoReleaseLocale(locale);
   return strictSeoRelease
     && !options.previewNoindex
-    && facet.cars.length >= getTaxonomyMinimum(facet.type)
+    && getSeoTaxonomyFacetCount(facet) >= getTaxonomyMinimum(facet.type)
     && Boolean(getTaxonomyDisplayLabel(facet, locale));
 }
 
@@ -325,7 +338,7 @@ export function getTaxonomyGroupLabel(type: SeoTaxonomyType, locale: string) {
 
 export function buildSeoTaxonomyMetadata(facet: SeoTaxonomyFacet, locale: string, page = 1) {
   const label = getTaxonomyDisplayLabel(facet, locale);
-  const count = facet.cars.length;
+  const count = getSeoTaxonomyFacetCount(facet);
   const messages = getPublicPageMessages(locale);
   let heading = `${label} · ${messages.catalogTitle}`;
   if (locale === "de") {
@@ -365,6 +378,10 @@ export function buildSeoTaxonomyMetadata(facet: SeoTaxonomyFacet, locale: string
 }
 
 export function getFacetReadyLocales(facet: SeoTaxonomyFacet, currentLocale: string) {
+  if (Array.isArray(facet.readyLocales)) {
+    return [...new Set(facet.readyLocales)]
+      .filter((locale) => isStrictSeoReleaseLocale(locale));
+  }
   const counts = new Map<string, number>();
   for (const car of facet.cars) {
     const locales = new Set([currentLocale, ...(Array.isArray(car.available_locales) ? car.available_locales : [])]);
@@ -423,7 +440,7 @@ export function buildRelatedSeoTaxonomyGroups(
     const links = graph.byType[type]
       .filter((candidate) => (!facet || candidate.key !== facet.key || candidate.type !== facet.type))
       .filter((candidate) => isSeoTaxonomyFacetIndexable(candidate, locale))
-      .map((candidate) => ({ candidate, overlap: facet ? facetsOverlap(facet, candidate) : candidate.cars.length }))
+      .map((candidate) => ({ candidate, overlap: facet ? facetsOverlap(facet, candidate) : getSeoTaxonomyFacetCount(candidate) }))
       .filter(({ overlap }) => overlap > 0)
       .sort((left, right) => right.overlap - left.overlap || facetSort(left.candidate, right.candidate))
       .slice(0, limitPerGroup)
@@ -431,7 +448,7 @@ export function buildRelatedSeoTaxonomyGroups(
         type: candidate.type,
         href: `/${locale}${getTaxonomyBasePath(candidate)}`,
         label: getTaxonomyDisplayLabel(candidate, locale),
-        count: candidate.cars.length,
+        count: getSeoTaxonomyFacetCount(candidate),
       }));
     return links.length ? [{ type, label: getTaxonomyGroupLabel(type, locale), links }] : [];
   });

@@ -27,8 +27,9 @@ export type LoadedSeoTaxonomyCatalog = {
 
 export type ResolvedSeoTaxonomyPage = {
   status: "ok";
+  dataSource: "xano_bounded" | "compatibility_catalog";
   facet: SeoTaxonomyFacet;
-  graph: SeoTaxonomyGraph;
+  graph?: SeoTaxonomyGraph;
   cars: CarListing[];
   total: number;
   page: number;
@@ -51,7 +52,7 @@ export type SeoTaxonomyResolution =
   | { status: "not_found" }
   | { status: "redirect"; location: string };
 
-const safeDecode = (value: unknown) => {
+export const safeDecodeSeoTaxonomyParam = (value: unknown) => {
   try {
     return decodeURIComponent(String(value ?? "")).trim();
   } catch {
@@ -59,7 +60,7 @@ const safeDecode = (value: unknown) => {
   }
 };
 
-const parsePage = (searchParams: URLSearchParams) => {
+export const readSeoTaxonomyPageNumber = (searchParams: URLSearchParams) => {
   const raw = searchParams.get("page");
   if (raw === null || raw === "") return 1;
   if (!/^\d+$/u.test(raw)) return null;
@@ -67,7 +68,7 @@ const parsePage = (searchParams: URLSearchParams) => {
   return Number.isSafeInteger(page) && page >= 1 && page <= 100_000 ? page : null;
 };
 
-const appendNonPageQuery = (path: string, searchParams: URLSearchParams) => {
+export const appendNonPageQueryToPath = (path: string, searchParams: URLSearchParams) => {
   const url = new URL(path, "https://local.invalid");
   for (const [key, value] of searchParams) {
     if (key !== "page") url.searchParams.append(key, value);
@@ -84,15 +85,15 @@ export function resolveSeoTaxonomyPage(input: {
   catalog: LoadedSeoTaxonomyCatalog;
   previewNoindex?: boolean;
 }): SeoTaxonomyResolution {
-  const rawSlug = safeDecode(input.slug);
-  const rawParent = safeDecode(input.parentSlug);
+  const rawSlug = safeDecodeSeoTaxonomyParam(input.slug);
+  const rawParent = safeDecodeSeoTaxonomyParam(input.parentSlug);
   if (!rawSlug || rawSlug.length > 100 || (input.type === "model" && (!rawParent || rawParent.length > 100))) {
     return { status: "not_found" };
   }
   const facet = findSeoTaxonomyFacet(input.catalog.graph, input.type, rawSlug, rawParent);
   if (!facet) return { status: "not_found" };
 
-  const page = parsePage(input.url.searchParams);
+  const page = readSeoTaxonomyPageNumber(input.url.searchParams);
   if (!page) return { status: "not_found" };
   const totalPages = Math.max(1, Math.ceil(facet.cars.length / TAXONOMY_PAGE_SIZE));
   if (page > totalPages) return { status: "not_found" };
@@ -104,7 +105,7 @@ export function resolveSeoTaxonomyPage(input: {
     && input.url.searchParams.has("page")
     && !hasSeoFilterQuery(input.url.searchParams);
   if (routeNeedsCanonicalRedirect || pageOneDuplicate) {
-    return { status: "redirect", location: appendNonPageQuery(canonicalPath, input.url.searchParams) };
+    return { status: "redirect", location: appendNonPageQueryToPath(canonicalPath, input.url.searchParams) };
   }
 
   const start = (page - 1) * TAXONOMY_PAGE_SIZE;
@@ -120,6 +121,7 @@ export function resolveSeoTaxonomyPage(input: {
 
   return {
     status: "ok",
+    dataSource: "compatibility_catalog",
     facet,
     graph: input.catalog.graph,
     cars,

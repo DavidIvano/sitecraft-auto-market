@@ -81,14 +81,15 @@ test("a locale cannot pass without full listing, sitemap, canonical, hreflang an
 });
 
 test("strict SEO releases use translated inventory and index every canonical route", () => {
-  for (const path of [
-    "../src/pages/[locale]/index.astro",
-    "../src/pages/[locale]/cars/index.astro",
-  ]) {
-    const source = read(path);
-    assert.match(source, /isStrictSeoReleaseLocale/);
-    assert.match(source, /getLocalizedApprovedCars/);
-  }
+  const home = read("../src/pages/[locale]/index.astro");
+  assert.match(home, /isStrictSeoReleaseLocale/);
+  assert.match(home, /getLocalizedApprovedCars/);
+  const catalog = read("../src/pages/[locale]/cars/index.astro");
+  const catalogLoader = read("../src/lib/seo/catalogRoute.ts");
+  assert.match(catalog, /loadLocalizedCatalogPage/);
+  assert.match(catalogLoader, /isStrictSeoReleaseLocale/);
+  assert.match(catalogLoader, /getLocalizedApprovedCars/);
+  assert.match(catalogLoader, /getLocalizedSeoCatalogPagePayload/);
   for (const path of [
     "../src/pages/[locale]/cars/brand/[brand].astro",
     "../src/pages/[locale]/cars/brand/[brand]/[model].astro",
@@ -96,12 +97,12 @@ test("strict SEO releases use translated inventory and index every canonical rou
     "../src/pages/[locale]/cars/[taxonomy]/[slug].astro",
   ]) {
     const source = read(path);
-    assert.match(source, /loadLocalizedSeoTaxonomyCatalog/);
-    assert.match(source, /resolveSeoTaxonomyPage/);
+    assert.match(source, /loadLocalizedSeoTaxonomyPage/);
   }
   const taxonomyLoader = read("../src/lib/seo/taxonomyRoute.ts");
   assert.match(taxonomyLoader, /isStrictSeoReleaseLocale/);
   assert.match(taxonomyLoader, /getLocalizedApprovedCars/);
+  assert.match(taxonomyLoader, /getLocalizedSeoTaxonomyPagePayload/);
   const sitemap = read("../src/pages/sitemaps/[locale].xml.ts");
   assert.match(sitemap, /indexablePagePaths/);
   assert.match(sitemap, /buildSeoTaxonomyGraph/);
@@ -117,7 +118,7 @@ test("localized cards and x-default links point to their equivalent canonical ro
   assert.match(cards, /startsWith\("localized_"\)/);
   assert.match(cards, /\`\/\$\{encodeURIComponent\(locale\)\}\/cars\/\$\{encodeURIComponent\(value\)\}\/\`/);
   assert.match(detail, /xDefaultPath=\{\`\/cars\/\$\{car\.slug\}\/\`\}/);
-  assert.match(catalog, /xDefaultPath="\/cars\/"/);
+  assert.match(catalog, /xDefaultPath=\{resolution\.page === 1[^\n]+"\/cars\/"/);
 });
 
 test("Xano locale release is dry-run first and counts current per-locale translations", () => {

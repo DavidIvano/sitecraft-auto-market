@@ -161,6 +161,8 @@ const sitemapIndex = await request(withDeploymentCacheBust("/sitemap.xml"));
 assert.match(sitemapIndex.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapIndex.body, /<sitemapindex/);
 const sitemapLocations = [...sitemapIndex.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
+assert.equal(new Set(sitemapLocations).size, sitemapLocations.length, "Sitemap index contains duplicate child sitemaps");
+assert.equal(sitemapLocations.every((value) => new URL(value).origin === canonicalOrigin.origin), true, "Sitemap index contains a non-canonical origin");
 const publicSitemapLocales = new Set(sitemapLocations.flatMap((value) => {
   const match = new URL(value).pathname.match(/^\/sitemaps\/([^/]+)\.xml$/u);
   return match ? [match[1]] : [];
@@ -168,6 +170,9 @@ const publicSitemapLocales = new Set(sitemapLocations.flatMap((value) => {
 const strictSeoReleaseLocales = strictSeoCandidateLocales.filter((locale) => publicSitemapLocales.has(locale));
 const localeSitemapLocation = sitemapLocations.find((value) => new URL(value).pathname === `/sitemaps/${requestedLocale}.xml`);
 assert.ok(localeSitemapLocation, `Sitemap index has no ${requestedLocale} sitemap`);
+const listingShardLocation = sitemapLocations.find((value) => new RegExp(
+  `^/sitemaps/${requestedLocale}/listings/[A-Za-z0-9][A-Za-z0-9_-]{0,79}/[1-9]\\d*\\.xml$`,
+).test(new URL(value).pathname));
 
 const sitemapResult = await request(withDeploymentCacheBust(new URL(localeSitemapLocation).pathname));
 assert.match(sitemapResult.response.headers.get("content-type") || "", /application\/xml/i);
@@ -180,7 +185,23 @@ assert.equal(sitemapUrls.every((value) => new URL(value).origin === canonicalOri
 
 const paths = sitemapUrls.map((value) => new URL(value).pathname);
 const localePrefix = `/${requestedLocale}`;
-const vehiclePath = paths.find((path) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path));
+let vehiclePath = paths.find((path) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path));
+let listingShardPath = null;
+if (listingShardLocation) {
+  listingShardPath = new URL(listingShardLocation).pathname;
+  const shardResult = await request(withDeploymentCacheBust(listingShardPath));
+  assert.match(shardResult.response.headers.get("content-type") || "", /application\/xml/i);
+  assert.match(shardResult.body, /<urlset/);
+  assert.doesNotMatch(shardResult.body, /<sitemapindex/);
+  const shardUrls = [...shardResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
+  assert.ok(shardUrls.length > 0, "Listing sitemap shard has no URLs");
+  assert.equal(new Set(shardUrls).size, shardUrls.length, "Listing sitemap shard contains duplicate URLs");
+  assert.equal(shardUrls.some((value) => new URL(value).search), false, "Listing sitemap shard contains query URLs");
+  assert.equal(shardUrls.every((value) => new URL(value).origin === canonicalOrigin.origin), true, "Listing sitemap shard contains a non-canonical origin");
+  assert.equal(shardUrls.every((value) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(new URL(value).pathname)), true, "Listing sitemap shard contains a non-listing URL");
+  vehiclePath ||= new URL(shardUrls[0]).pathname;
+  assert.equal(paths.some((path) => new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path)), false, "Sharded locale sitemap duplicated listing detail URLs");
+}
 const isTaxonomyPath = (path) => new RegExp(
   `^/${requestedLocale}/cars/(?:brand/[^/]+(?:/[^/]+)?|city/[^/]+|region/[^/]+|fuel/[^/]+|body/[^/]+|price/[^/]+)/$`,
 ).test(path);
@@ -209,7 +230,7 @@ if (strictSeoRelease) {
   assert.ok(reciprocalStrictHome.body.includes(`hreflang="${requestedLocale}"`), "Strict locale homes are not reciprocal");
 }
 
-const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, homePath, catalogPath];
+const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, ...(listingShardPath ? [listingShardPath] : []), homePath, catalogPath];
 
 if (vehiclePath) {
   const vehicle = await request(vehiclePath);
@@ -261,6 +282,7 @@ console.log(JSON.stringify({
   locale: requestedLocale,
   checked,
   inventoryRoutesChecked: { inclusiveHome: !strictSeoRelease, inclusiveCatalog: !strictSeoRelease, strictSeoRelease, vehicle: Boolean(vehiclePath) },
+  listingSitemapShardChecked: Boolean(listingShardPath),
   deviceLocalePagesChecked: ["de-DE", "fr-FR", "ar-SA", "hi-IN"],
   edgeCacheChecked: requireEdgeCache,
   legacyInventoryPreserved: true,

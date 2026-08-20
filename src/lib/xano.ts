@@ -190,6 +190,28 @@ export type PublicCatalogPage = {
   paginationSource: "xano" | "compatibility_slice";
 };
 
+export type LocalizedSeoTaxonomyPageRequest = {
+  locale: Locale;
+  type: string;
+  slug: string;
+  parentSlug?: string;
+  page?: number;
+  limit?: number;
+};
+
+export type LocalizedSeoCatalogPageRequest = {
+  locale: Locale;
+  page?: number;
+  limit?: number;
+};
+
+export type LocalizedSeoListingSitemapShardRequest = {
+  locale: Locale;
+  page: number;
+  limit: number;
+  generation?: string;
+};
+
 function readPaginationTotal(payload: unknown) {
   if (!payload || typeof payload !== "object") return null;
   const source = payload as Record<string, unknown>;
@@ -222,6 +244,79 @@ export async function getApprovedCarsPage(options: PublicCatalogPageOptions = {}
     hasNext: page * limit < total,
     paginationSource: explicitTotal === null ? "compatibility_slice" : "xano",
   };
+}
+
+/**
+ * Additive bounded SEO contract. The response is deliberately returned as
+ * unknown and validated by src/lib/seo/taxonomyApi.ts before it can affect
+ * canonical, robots or sitemap decisions.
+ */
+export async function getLocalizedSeoTaxonomyPagePayload(
+  options: LocalizedSeoTaxonomyPageRequest,
+): Promise<unknown> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+  const page = Math.max(1, Math.floor(Number(options.page) || 1));
+  const limit = Math.min(24, Math.max(1, Math.floor(Number(options.limit) || 24)));
+  const params = new URLSearchParams({
+    lang: options.locale,
+    page: String(page),
+    limit: String(limit),
+  });
+  if (options.parentSlug) params.set("parent_slug", options.parentSlug);
+  return fetchPublicJson(
+    `${API_ROUTES.localizedTaxonomyPage(options.type, options.slug)}?${params.toString()}`,
+  );
+}
+
+export async function getLocalizedSeoTaxonomyCountsPayload(
+  locale: Locale,
+  options: { page?: number; limit?: number } = {},
+): Promise<unknown> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+  const page = Math.max(1, Math.floor(Number(options.page) || 1));
+  const limit = Math.min(500, Math.max(1, Math.floor(Number(options.limit) || 500)));
+  const params = new URLSearchParams({ lang: locale, page: String(page), limit: String(limit) });
+  return fetchPublicJson(`${API_ROUTES.localizedTaxonomyCounts}?${params.toString()}`);
+}
+
+export async function getLocalizedSeoCatalogPagePayload(
+  options: LocalizedSeoCatalogPageRequest,
+): Promise<unknown> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+  const page = Math.max(1, Math.floor(Number(options.page) || 1));
+  const limit = Math.min(24, Math.max(1, Math.floor(Number(options.limit) || 24)));
+  const params = new URLSearchParams({ lang: options.locale, page: String(page), limit: String(limit) });
+  return fetchPublicJson(`${API_ROUTES.localizedCatalogPage}?${params.toString()}`);
+}
+
+export async function getSeoSitemapManifestPayload(): Promise<unknown> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+  return fetchPublicJson(API_ROUTES.seoSitemapManifest);
+}
+
+export async function getLocalizedSeoListingSitemapShardPayload(
+  options: LocalizedSeoListingSitemapShardRequest,
+): Promise<unknown> {
+  if (!isXanoConfigured(API_URL)) {
+    throw new XanoPublicApiError("Xano public API is not configured", 503);
+  }
+  const page = Math.max(1, Math.floor(Number(options.page) || 1));
+  const limit = Math.min(10_000, Math.max(1, Math.floor(Number(options.limit) || 10_000)));
+  const params = new URLSearchParams({
+    lang: options.locale,
+    page: String(page),
+    limit: String(limit),
+  });
+  if (options.generation) params.set("generation", options.generation);
+  return fetchPublicJson(`${API_ROUTES.localizedListingSitemapShard}?${params.toString()}`);
 }
 
 export async function getApprovedCars(locale?: Locale, options?: ApprovedCarsOptions): Promise<CarListing[]>;

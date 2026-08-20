@@ -9,6 +9,14 @@ export const API_ROUTES = {
   carBySlug: (slug: string) => `/cars/${encodeURIComponent(slug)}`,
   localizedCars: "/public/locale/cars",
   localizedCarBySlug: (slug: string) => `/public/locale/cars/${encodeURIComponent(slug)}`,
+  localizedCatalogPage: "/public/locale/catalog",
+  localizedTaxonomyPage: (type: string, slug: string) =>
+    `/public/locale/taxonomy/${encodeURIComponent(type)}/${encodeURIComponent(slug)}`,
+  localizedTaxonomyRelated: (type: string, slug: string) =>
+    `/public/locale/taxonomy/${encodeURIComponent(type)}/${encodeURIComponent(slug)}/related`,
+  localizedTaxonomyCounts: "/public/locale/taxonomies/counts",
+  seoSitemapManifest: "/public/seo/sitemap/manifest",
+  localizedListingSitemapShard: "/public/locale/sitemap/listings",
   carRelatedListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,
   carSellerListings: (slug: string) => `/cars/${encodeURIComponent(slug)}/seller-listings`,
   carRelated: (slug: string) => `/cars/${encodeURIComponent(slug)}/related`,

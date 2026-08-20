@@ -145,11 +145,15 @@ test("localized Vehicle schema translates legacy Russian taxonomy instead of lea
   assert.doesNotMatch(JSON.stringify(seo.vehicle), /Бензин|Автомат|Седан|Серебристый/);
 });
 
-test("sitemap is an index and each locale sitemap performs one bounded Xano read", () => {
+test("sitemap is an index and can consume bounded taxonomy aggregates", () => {
   const index = read("../src/pages/sitemap.xml.ts");
   const localized = read("../src/pages/sitemaps/[locale].xml.ts");
-  assert.match(index, /<sitemapindex/);
-  assert.equal((localized.match(/getLocalizedApprovedCars\(/g) || []).length, 1);
+  assert.match(index, /renderSitemapIndex/);
+  assert.ok((localized.match(/getLocalizedApprovedCars\(/g) || []).length >= 1);
+  assert.match(localized, /if \(SEO_SITEMAP_SHARDS_ENABLED\)/);
+  assert.match(localized, /loadLocalizedSeoTaxonomySitemapFacets/);
+  assert.match(index, /loadSeoSitemapManifest/);
+  assert.match(index, /listings\/\$\{localeManifest\.generation\}/);
   assert.match(localized, /projectCatalogForLocale/);
   assert.match(localized, /translation_updated_at/);
 });

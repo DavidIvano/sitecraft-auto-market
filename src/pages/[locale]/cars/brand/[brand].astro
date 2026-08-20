@@ -5,7 +5,7 @@ import { getPublicPageMessages } from "../../../../i18n/publicRoutes.ts";
 import { isPublicLocaleRouteEnabled } from "../../../../i18n/release4.ts";
 import { RELEASE4_FLAGS } from "../../../../lib/config.ts";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../../lib/publicCache.ts";
-import { loadLocalizedSeoTaxonomyCatalog, resolveSeoTaxonomyPage } from "../../../../lib/seo/taxonomyRoute.ts";
+import { loadLocalizedSeoTaxonomyPage } from "../../../../lib/seo/taxonomyRoute.ts";
 
 export const prerender = false;
 
@@ -16,15 +16,14 @@ if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
   return Astro.rewrite("/404");
 }
 
-let catalog;
+let resolution;
 try {
-  catalog = await loadLocalizedSeoTaxonomyCatalog(locale);
+  resolution = await loadLocalizedSeoTaxonomyPage({ locale, type: "brand", slug: Astro.params.brand, url: Astro.url });
 } catch {
   Astro.response.status = 503;
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/service-unavailable");
 }
-const resolution = resolveSeoTaxonomyPage({ locale, type: "brand", slug: Astro.params.brand, url: Astro.url, catalog });
 if (resolution.status === "redirect") return Astro.redirect(resolution.location, 301);
 if (resolution.status === "not_found") {
   Astro.response.status = 404;
@@ -32,6 +31,7 @@ if (resolution.status === "not_found") {
   return Astro.rewrite("/404");
 }
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
+Astro.response.headers.set("X-SiteCraft-Taxonomy-Source", resolution.dataSource);
 setPublicCacheHeaders(Astro.response.headers, "catalog", resolution.noindex, "noindex, follow");
 const messages = getPublicPageMessages(locale);
 ---

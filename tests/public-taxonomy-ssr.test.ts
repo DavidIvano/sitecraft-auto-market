@@ -30,14 +30,17 @@ test("localized taxonomy routes share one gate and one route resolver", () => {
   const pageResolver = readProjectFile("src/lib/seo/taxonomyPage.ts");
   const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
   for (const route of [brandRoute, modelRoute, cityRoute, genericRoute]) {
-    assert.match(route, /loadLocalizedSeoTaxonomyCatalog/);
-    assert.match(route, /resolveSeoTaxonomyPage/);
+    assert.match(route, /loadLocalizedSeoTaxonomyPage/);
+    assert.match(route, /X-SiteCraft-Taxonomy-Source/);
     assert.match(route, /"noindex, follow"/);
     assert.match(route, /Astro\.response\.status = 404/);
     assert.match(route, /Astro\.response\.status = 503/);
   }
   assert.match(genericRoute, /isNewSeoTaxonomyType/);
   assert.match(pageResolver, /isSeoTaxonomyFacetIndexable/);
+  assert.match(resolver, /getLocalizedSeoTaxonomyPagePayload/);
+  assert.match(resolver, /normalizeBoundedSeoTaxonomyPage/);
+  assert.match(resolver, /SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED/);
   assert.match(resolver, /getLocalizedApprovedCars\(locale\)/);
   assert.match(resolver, /getApprovedCars\(locale, \{ requireConfigured: true \}\)/);
   assert.match(sitemap, /getIndexableSeoTaxonomyFacets/);

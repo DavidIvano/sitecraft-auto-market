@@ -4,6 +4,17 @@ export const XANO_API_URL = import.meta.env.PUBLIC_XANO_API_URL;
 export const SITE_URL = import.meta.env.PUBLIC_SITE_URL || "https://automarket.sitecraft.agency";
 export const DEAL_FINDER_ENABLED = import.meta.env.PUBLIC_DEAL_FINDER_ENABLED === "true";
 export const DEAL_FINDER_USE_MOCK_DATA = import.meta.env.PUBLIC_DEAL_FINDER_USE_MOCK_DATA === "true";
+// Contract-first rollout for bounded programmatic SEO reads. Both flags are
+// intentionally off by default until the additive Xano endpoints are released.
+export const SEO_TAXONOMY_API_ENABLED = import.meta.env.PUBLIC_SEO_TAXONOMY_API_ENABLED === "true";
+export const SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED =
+  import.meta.env.PUBLIC_SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED === "true";
+export const SEO_CATALOG_API_ENABLED = import.meta.env.PUBLIC_SEO_CATALOG_API_ENABLED === "true";
+export const SEO_CATALOG_COMPATIBILITY_FALLBACK_ENABLED =
+  import.meta.env.PUBLIC_SEO_CATALOG_COMPATIBILITY_FALLBACK_ENABLED === "true";
+export const SEO_SITEMAP_SHARDS_ENABLED = import.meta.env.PUBLIC_SEO_SITEMAP_SHARDS_ENABLED === "true";
+export const SEO_SITEMAP_COMPATIBILITY_FALLBACK_ENABLED =
+  import.meta.env.PUBLIC_SEO_SITEMAP_COMPATIBILITY_FALLBACK_ENABLED === "true";
 
 import { isPreviewEnvironment } from "../i18n/release3";
 import { isPublicLocaleRouteEnabled, readRelease4Flags } from "../i18n/release4";

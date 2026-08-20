@@ -17,6 +17,12 @@ import {
   isSeoTaxonomyFacetIndexable,
 } from "../src/lib/seo/taxonomies.ts";
 import { resolveSeoTaxonomyPage } from "../src/lib/seo/taxonomyPage.ts";
+import {
+  SeoTaxonomyContractError,
+  normalizeBoundedSeoTaxonomyPage,
+  normalizeBoundedSeoTaxonomyCountsPage,
+  resolveBoundedSeoTaxonomyPage,
+} from "../src/lib/seo/taxonomyApi.ts";
 import type { CarListing } from "../src/lib/types.ts";
 
 const projectRoot = new URL("..", import.meta.url);
@@ -127,6 +133,84 @@ test("route resolution returns canonical redirects, noindex thin/filter pages an
   assert.deepEqual(missing, { status: "not_found" });
 });
 
+test("bounded taxonomy contract resolves SSR cards without loading the full catalog", () => {
+  const payload = normalizeBoundedSeoTaxonomyPage({
+    facet: {
+      type: "city",
+      slug: "peine",
+      label: "Peine",
+      region_slug: "niedersachsen",
+      region_label: "Niedersachsen",
+      total: 3,
+      ready_locales: ["de", "en", "ru"],
+      lastmod: "2026-08-20T12:00:00.000Z",
+    },
+    items: [car(1), car(2), car(3)],
+    pagination: { page: 1, limit: 24, total: 3, total_pages: 1 },
+    related_groups: [{
+      type: "fuel",
+      items: [{ type: "fuel", slug: "petrol", code: "petrol", label: "petrol", count: 3 }],
+    }],
+  }, { locale: "de", type: "city", requestedPage: 1 });
+  assert.ok(payload);
+  assert.equal(payload.items.length, 3);
+  assert.equal(payload.facet.cars.length, 3);
+  assert.equal(payload.facet.count, 3);
+
+  const resolution = resolveBoundedSeoTaxonomyPage({
+    locale: "de",
+    type: "city",
+    slug: "peine",
+    url: new URL("https://example.test/de/cars/city/peine/"),
+    payload,
+    previewNoindex: false,
+  });
+  assert.equal(resolution.status, "ok");
+  if (resolution.status === "ok") {
+    assert.equal(resolution.dataSource, "xano_bounded");
+    assert.equal(resolution.noindex, false);
+    assert.equal(resolution.total, 3);
+    assert.equal(resolution.cars.length, 3);
+    assert.deepEqual(resolution.breadcrumbs.map((item) => item.label), [
+      "Fahrzeuge sicher finden und verkaufen",
+      "Fahrzeuge",
+      "Niedersachsen",
+      "Peine",
+    ]);
+    assert.ok(resolution.relatedGroups[0]?.links.some((link) => link.href === "/de/cars/fuel/petrol/"));
+  }
+});
+
+test("bounded taxonomy contract fails closed for unbounded or inconsistent responses", () => {
+  assert.throws(() => normalizeBoundedSeoTaxonomyPage({
+    facet: { type: "fuel", slug: "petrol", label: "petrol", total: 100 },
+    items: [car(1)],
+    pagination: { page: 1, limit: 100, total: 100 },
+  }, { locale: "de", type: "fuel", requestedPage: 1 }), SeoTaxonomyContractError);
+
+  const empty = normalizeBoundedSeoTaxonomyPage({
+    facet: { type: "fuel", slug: "hydrogen", label: "hydrogen", total: 0 },
+    items: [],
+    pagination: { page: 1, limit: 24, total: 0 },
+  }, { locale: "de", type: "fuel", requestedPage: 1 });
+  assert.equal(empty, null);
+});
+
+test("bounded counts contract supplies sitemap facets without listing rows", () => {
+  const result = normalizeBoundedSeoTaxonomyCountsPage({
+    locale: "de",
+    items: [
+      { type: "region", slug: "niedersachsen", label: "Niedersachsen", count: 3, indexable: true, lastmod: "2026-08-20T12:00:00.000Z" },
+      { type: "city", slug: "ilsede", label: "Ilsede", count: 2, indexable: false },
+    ],
+    pagination: { page: 1, limit: 500, total: 2, total_pages: 1 },
+  }, { locale: "de", requestedPage: 1 });
+  assert.equal(result.facets.length, 1);
+  assert.equal(result.facets[0]?.slug, "niedersachsen");
+  assert.equal(result.facets[0]?.cars.length, 0);
+  assert.equal(result.facets[0]?.count, 3);
+});
+
 test("listing and related links are SSR-ready and only target real indexable facets", () => {
   const cars = [car(1), car(2), car(3)];
   const links = buildListingSeoTaxonomyLinks(cars[0]!, "de");
@@ -160,11 +244,13 @@ test("route, component, detail and sitemap contracts contain the new SEO invaria
   const detail = readProjectFile("src/pages/[locale]/cars/[slug].astro");
   const sitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
   assert.match(route, /isNewSeoTaxonomyType/);
+  assert.match(route, /loadLocalizedSeoTaxonomyPage/);
   assert.match(route, /"noindex, follow"/);
   assert.match(component, /BreadcrumbList/);
   assert.match(component, /taxonomy-pagination/);
   assert.match(component, /SeoTaxonomyLinks/);
   assert.match(detail, /buildListingSeoTaxonomyLinks/);
   assert.match(sitemap, /getIndexableSeoTaxonomyFacets/);
+  assert.match(sitemap, /loadLocalizedSeoTaxonomySitemapFacets/);
   assert.doesNotMatch(sitemap, /searchParams|price_max|transmission/);
 });

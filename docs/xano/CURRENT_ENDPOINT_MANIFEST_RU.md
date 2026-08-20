@@ -1,6 +1,6 @@
 # Актуальный реестр Xano endpoints
 
-Обновлено: 16 августа 2026 года
+Обновлено: 20 августа 2026 года
 
 Workspace: `sitecraft.agency` (`115940`)
 
@@ -42,6 +42,9 @@ API group: `sitecraft-auto-market` (`421515`)
 | 4005565 | GET | `/taxonomies` | WORKING | 11.08.2026: HTTP 200. |
 | 4009274 | GET | `/public/locale/cars?lang={locale}` | WORKING | 16.08.2026: все 28 пользовательских локалей возвращают по 10/10. Source-ветка исправлена: отсутствующие `car_listings.seo_*` больше не читаются. |
 | 4009273 | GET | `/public/locale/cars/{slug}?lang={locale}` | WORKING | Все 28 пользовательских локалей используют актуальный source hash без fallback; русский detail возвращает source, остальные языки — готовый перевод. |
+| 4020327 | GET | `/public/locale/catalog?lang={locale}&page={page}&limit=24` | WORKING | 20.08.2026: bounded-каталог выпущен и принят strict frontend-нормализатором. Canary: `de=10`, `ru=11`, `ar=10`; 28 ready locales. Production-флаг остаётся выключенным до Astro canary. |
+| 4020328 | GET | `/public/locale/sitemap/listings?lang={locale}&generation={generation}&page={page}&limit=10000` | WORKING | 20.08.2026: slug/lastmod-only shard. Slug-наборы совпали с каталогом, приватные поля отсутствуют; invalid generation/page дают 404. |
+| 4020329 | GET | `/public/seo/sitemap/manifest` | WORKING | 20.08.2026: активное поколение `g20260820canary1`, 28 локалей, 281 locale/listing row, по одному shard на локаль. Sitemap-флаг выключен: Stage 2 counts endpoint ещё отсутствует. |
 | 3981281 | POST | `/analytics/listing-view` | WORKING | Публичная аналитика просмотра; повторно не вызывалась, чтобы не менять счётчики. |
 | 3981451 | POST | `/ai/search/intent` | PARTIAL | Работает, но не закрыты rate limit и бюджет провайдера. |
 | 3981320 | POST | `/saved-searches` | WORKING | Создание сохранённого поиска с авторизацией. |
@@ -153,6 +156,7 @@ API group: `sitecraft-auto-market` (`421515`)
 | Модерация | archive/restore объявления; add/delete/primary изображения |
 | Deal Finder searches | `POST /deal-finder/searches`, `PATCH/DELETE /deal-finder/searches/{id}` |
 | Deal Finder workspace | server workspace, comparison storage, notification preferences/deliveries, sync logs, inbox/email |
+| Programmatic SEO Stage 2 | `GET /public/locale/taxonomy/{type}/{slug}`, `GET /public/locale/taxonomies/counts`, `GET /public/locale/taxonomy/{type}/{slug}/related`; локальные bounded-контракты подготовлены 20.08.2026, Xano ID ещё не назначены, production-флаг выключен |
 
 ## Источник правды
 

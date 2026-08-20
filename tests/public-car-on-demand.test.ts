@@ -174,7 +174,9 @@ test("sitemap is dynamic, edge cached and fails closed", () => {
   const localizedSitemap = readProjectFile("src/pages/sitemaps/[locale].xml.ts");
   const config = readProjectFile("src/lib/config.ts");
   assert.match(sitemap, /export const prerender = false/);
-  assert.match(sitemap, /<sitemapindex/);
+  assert.match(sitemap, /renderSitemapIndex/);
+  assert.match(sitemap, /loadSeoSitemapManifest/);
+  assert.match(sitemap, /listings\/\$\{localeManifest\.generation\}/);
   assert.match(localizedSitemap, /getLocalizedApprovedCars\(locale\)/);
   assert.match(localizedSitemap, /projectCatalogForLocale/);
   assert.match(localizedSitemap, /status: 503/);

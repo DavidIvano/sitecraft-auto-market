@@ -232,7 +232,7 @@ test("German SEO uses a German canonical and complete structured data", () => {
   assert.match(layout, /hreflang="x-default"/);
   const sitemap = read("../src/pages/sitemap.xml.ts");
   const localizedSitemap = read("../src/pages/sitemaps/[locale].xml.ts");
-  assert.match(sitemap, /<sitemapindex/);
+  assert.match(sitemap, /renderSitemapIndex/);
   assert.match(localizedSitemap, /projectCatalogForLocale/);
 });
 
@@ -255,14 +255,18 @@ test("cache keys isolate locale, version, flags, and actor scope", () => {
 
 test("legacy German and strict Stage 3 catalog reads are bounded and never call a translation provider", () => {
   const catalog = read("../src/pages/[locale]/cars/index.astro");
+  const catalogLoader = read("../src/lib/seo/catalogRoute.ts");
   const detail = read("../src/pages/[locale]/cars/[slug].astro");
-  assert.equal((catalog.match(/getApprovedCars\(/g) || []).length, 1);
-  assert.equal((catalog.match(/getLocalizedApprovedCars\(/g) || []).length, 1);
+  assert.equal((catalog.match(/loadLocalizedCatalogPage\(/g) || []).length, 1);
+  assert.equal((catalogLoader.match(/getApprovedCars\(/g) || []).length, 1);
+  assert.equal((catalogLoader.match(/getLocalizedApprovedCars\(/g) || []).length, 1);
+  assert.match(catalogLoader, /getLocalizedSeoCatalogPagePayload/);
+  assert.match(catalogLoader, /TAXONOMY_PAGE_SIZE/);
   assert.equal((detail.match(/getLocalizedCarBySlug\(/g) || []).length, 1);
   assert.match(catalog, /X-SiteCraft-Query-Count", "1"/);
   assert.match(detail, /X-SiteCraft-Query-Count", "1"/);
-  assert.match(catalog, /catalogNoindex = !strictSeoRelease/);
-  assert.doesNotMatch(`${catalog}\n${detail}`, /OpenAI|generateTranslation|translation provider/i);
+  assert.match(catalog, /resolution\.noindex/);
+  assert.doesNotMatch(`${catalog}\n${catalogLoader}\n${detail}`, /OpenAI|generateTranslation|translation provider/i);
 });
 
 test("candidate Xano locale reads are additive, bounded, fail-closed, and privacy-minimized", () => {
