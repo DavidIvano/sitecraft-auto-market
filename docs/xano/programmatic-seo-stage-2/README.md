@@ -1,11 +1,26 @@
 # Programmatic SEO Stage 2: bounded Xano reads
 
-Status: **contract implemented in the Astro client; Xano release pending**.
+Status: **released in Xano production and direct canary passed on 20 August 2026**.
 
-The production locale taxonomy pages currently use the compatibility catalog
-because `PUBLIC_SEO_TAXONOMY_API_ENABLED` defaults to `false`. Do not enable the
-flag until the additive schema, materializer and three public endpoints below
-have been released and canary-tested in Xano.
+The production locale taxonomy pages still use the compatibility catalog while
+`PUBLIC_SEO_TAXONOMY_API_ENABLED` is `false`. The additive schema, materialized
+generation and all three public endpoints are now live and have passed the
+repository's strict frontend normalizers. The remaining rollout is an Astro /
+Cloudflare canary with compatibility fallback, followed by authoritative mode.
+
+## Production release
+
+- Active generation: `t20260820canary1`.
+- Tables: `880531` facets, `880532` listing edges, `880533` locale stats,
+  `880534` related overlaps.
+- Endpoints: `4020380` counts, `4020381` related, `4020382` taxonomy page.
+- Active records: 31 facets, 2,333 edges, 841 locale stats and 8,192 related
+  rows across 28 public locales.
+- Direct canary: all seven taxonomy types passed; German counts were 30 total /
+  24 indexable; thin positive-count facets remained `noindex`; invalid locale,
+  slug, type, page and model parent returned `404`.
+
+See `XANO_RELEASE_CANARY_2026-08-20.md` for the full release evidence.
 
 ## Why this stage exists
 
@@ -72,15 +87,15 @@ PUBLIC_SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED=false
 Every successful route emits `X-SiteCraft-Taxonomy-Source` with either
 `xano_bounded` or `compatibility_catalog` for smoke-test observability.
 
-## Required release order
+## Release and rollout order
 
-1. Apply additive tables and indexes after checking live schema names.
-2. Deploy an idempotent materializer and run it in dry-run mode.
-3. Materialize one locale generation and compare every facet/count to the
-   existing Astro graph.
-4. Release the three GET endpoints with new numeric IDs; record them in
-   `docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md`.
-5. Canary with both flags `true`; verify payload bounds, canonical, robots,
+1. **Complete:** additive tables and indexes applied after live-schema audit.
+2. **Complete:** idempotent materialization planned, imported inactive and
+   verified before activation.
+3. **Complete:** 28-locale generation compared to the existing Astro graph.
+4. **Complete:** three GET endpoints released with numeric IDs recorded in the
+   production manifest.
+5. Canary Astro with both flags `true`; verify payload bounds, canonical, robots,
    breadcrumbs, pagination, related links and locale readiness.
 6. Set compatibility fallback to `false` while keeping the bounded API on.
 7. Only then enable production traffic for all public locales.
@@ -94,10 +109,9 @@ revalidate). Noindex/filter pages remain `no-store`. Materializer completion
 should purge the affected locale/facet URLs or allow the short TTL to expire;
 never cache a partial generation.
 
-## Not included in this release
+## Not included in the Xano release
 
-- live Xano mutation or production flag activation;
-- unbounded listing sitemap replacement (it needs a paged listing-index
-  contract before inventories approach sitemap limits);
+- Cloudflare/Astro production flag activation;
+- arbitrary mutation of legacy Xano listing or translation data;
 - arbitrary filter-combination landings;
 - removal of the compatibility reader.

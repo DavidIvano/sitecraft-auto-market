@@ -1,8 +1,9 @@
 # Programmatic SEO — Stage 2 scaling report
 
 Date: 20 August 2026
-Repository state: combined Stage 2–3 implementation validated for publication
-Production bounded Xano endpoints: not released; feature flags remain disabled
+Repository state: combined Stage 2–3 implementation plus Xano release validated
+Production bounded Xano endpoints: released and direct canary passed; Astro
+feature flags remain disabled pending the Cloudflare canary
 
 ## 1. State before this stage
 
@@ -78,7 +79,7 @@ problem and could hide a broken canonical contract.
 
 ## 5. Additive Xano design
 
-Prepared in `docs/xano/programmatic-seo-stage-2/`:
+Released from and documented in `docs/xano/programmatic-seo-stage-2/`:
 
 - JSON response contract;
 - additive tables and indexes;
@@ -93,10 +94,12 @@ New materialized tables:
 3. `seo_taxonomy_locale_stats`
 4. `seo_taxonomy_related`
 
-No legacy production field is deleted or renamed. A complete inactive
-generation is built and validated first; activation swaps generations only
-after counts, edges, canonical identities and readiness agree. The manifest
-records all three endpoints as unreleased and without invented numeric IDs.
+No legacy production field was deleted or renamed. The complete inactive
+generation was built and validated first; activation happened only after
+counts, edges, canonical identities and readiness agreed. Active generation
+`t20260820canary1` contains 31 canonical facets, 2,333 locale/listing edges,
+841 locale stats and 8,192 bounded related rows. The production manifest
+records endpoint IDs `4020380`, `4020381` and `4020382`.
 
 ## 6. Canonical, noindex and internal links
 
@@ -136,9 +139,10 @@ taxonomy optimization.
 ## 8. Automated verification
 
 - `npm run check`: passed, 0 errors (20 pre-existing hints).
-- `npm test`: passed, 497/497.
-- `npm run build`: passed; Cloudflare Advanced Mode Worker compiled and 55
-  built asset references across 91 SSR Worker files were verified.
+- `npm test`: passed, 506/506.
+- `npm run build`: passed in the six-flag canary configuration; Cloudflare
+  Advanced Mode Worker compiled and 55 built asset references across 97 SSR
+  Worker files were verified.
 - Existing Vite warning remains: one or more chunks exceed 500 kB. It predates
   this server-only taxonomy data layer and should be handled as a separate
   client-bundle optimization task.
@@ -150,7 +154,7 @@ New tests cover:
 - canonical/noindex/related/breadcrumb output;
 - invalid/unbounded/inconsistent response rejection;
 - explicit rollout flags and compatibility path;
-- additive schema, limits, privacy boundary and unreleased manifest state.
+- additive schema, limits, privacy boundary and released manifest state.
 
 ## 9. Local SSR smoke results
 
@@ -176,17 +180,22 @@ Bounded mode against a local Xano contract fixture:
 
 The dev server and mock server were stopped after verification.
 
-## 10. Remaining production release work
+## 10. Xano release result and remaining rollout
 
-1. Compare the additive table definitions to the live Xano schema.
-2. Implement/review the materializer on the actual Xano branch and run dry-run.
-3. Compare materialized results against the current Astro graph for every
-   public locale.
-4. Complete related-group projection in the Xano endpoint drafts.
-5. Release the three GET endpoints and record their real numeric IDs.
-6. Canary with both flags enabled and verify real response bounds/parity.
-7. Disable compatibility fallback while leaving the bounded API enabled.
-8. Run production smoke and only then publish/activate broadly.
+The additive Xano release is complete. A fresh backup was taken, exact dry-run
+plans showed four table additions with no legacy updates/deletes, the full
+generation was inserted inactive, validated, then activated. Direct canary
+passed all seven types, German/Russian/Arabic locales, strict response bounds,
+privacy checks, related parity, thin-facet `noindex` and negative `404` cases.
+
+Remaining production rollout:
+
+1. Pass all six Stage 2–3 flags through the Cloudflare build workflow.
+2. Deploy with each API flag and its compatibility fallback enabled.
+3. Verify production source headers, canonical/robots/SSR output and sitemap
+   shard parity.
+4. Disable compatibility fallbacks after a green observation window while
+   keeping the bounded APIs authoritative.
 
 No GitHub push, Cloudflare deployment, Xano mutation or production flag change
 was performed in this stage without a separate release confirmation.

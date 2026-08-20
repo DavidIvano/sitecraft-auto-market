@@ -42,19 +42,22 @@ test("additive Xano design materializes canonical facets, locale counts and rela
     assert.match(schema, new RegExp(`table ${table}`));
   }
   assert.match(page, /int\? limit\?=24 filters=min:1\|max:24/);
-  assert.match(page, /paging: \{page: \$input\.page, per_page: \$input\.limit\}/);
+  assert.match(page, /paging: \{page: \$input\.page, per_page: \$input\.limit, totals: true\}/);
   assert.match(counts, /int\? limit\?=500 filters=min:1\|max:500/);
   assert.match(related, /int\? limit_per_group\?=8 filters=min:1\|max:8/);
+  assert.match(related, /function\.run "seo_taxonomy\/related_groups"/);
   assert.match(materializer, /dry_run=true/);
   assert.match(materializer, /generation/);
   assert.doesNotMatch(`${page}\n${counts}\n${related}`, /seller_phone|seller_email|OpenAI|provider key/i);
 });
 
-test("production manifest keeps unreleased Xano contracts visibly missing", () => {
+test("production manifest records released Xano contracts while rollout defaults stay off", () => {
   const manifest = read("docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md");
   const env = read(".env.example");
-  assert.match(manifest, /Programmatic SEO Stage 2/);
-  assert.match(manifest, /Xano ID ещё не назначены/);
+  assert.match(manifest, /4020380[\s\S]*public\/locale\/taxonomies\/counts/);
+  assert.match(manifest, /4020381[\s\S]*public\/locale\/taxonomy\/\{type\}\/\{slug\}\/related/);
+  assert.match(manifest, /4020382[\s\S]*public\/locale\/taxonomy\/\{type\}\/\{slug\}/);
+  assert.doesNotMatch(manifest, /Programmatic SEO Stage 2[^\n]*Xano ID ещё не назначены/);
   assert.match(env, /PUBLIC_SEO_TAXONOMY_API_ENABLED=false/);
   assert.match(env, /PUBLIC_SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED=false/);
 });

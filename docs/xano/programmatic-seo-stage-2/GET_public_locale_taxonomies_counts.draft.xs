@@ -1,46 +1,65 @@
-// Paged aggregate feed for sitemap/navigation. Never returns listing rows.
 query "public/locale/taxonomies/counts" verb=GET {
   api_group = "sitecraft-auto-market"
+
   input {
     text lang?=de filters=trim|lower|max:35
     int? page?=1 filters=min:1|max:100000
     int? limit?=500 filters=min:1|max:500
   }
+
   stack {
-    db.query locales {
-      where = (($db.locales.code == $input.lang) && ($db.locales.is_active == true) && ($db.locales.is_public == true))
-      return = {type: "single"}
+    db.get locales {
+      field_name = "code"
+      field_value = $input.lang
     } as $requested_locale
-    precondition ($requested_locale != null) {
+    precondition (($requested_locale != null) && ($requested_locale.is_active == true) && ($requested_locale.is_public == true)) {
       error_type = "notfound"
       error = "Locale not available"
     }
+
     db.query seo_taxonomy_locale_stats {
       where = (($db.seo_taxonomy_locale_stats.is_active == true) && ($db.seo_taxonomy_locale_stats.locale_code == $input.lang) && ($db.seo_taxonomy_locale_stats.ready_listing_count > 0))
       sort = {seo_taxonomy_locale_stats.facet_id: "asc"}
-      return = {type: "list", paging: {page: $input.page, per_page: $input.limit}}
+      return = {type: "list", paging: {page: $input.page, per_page: $input.limit, totals: true}}
     } as $stats_page
+
     var $facet_ids { value = [] }
     foreach ($stats_page.items) {
-      each as $stat
-      array.push $facet_ids { value = $stat.facet_id }
+      each as $stat {
+        array.push $facet_ids { value = $stat.facet_id }
+      }
     }
+
     db.query seo_taxonomy_facets {
       where = (($db.seo_taxonomy_facets.is_active == true) && ($db.seo_taxonomy_facets.id in $facet_ids))
       return = {type: "list"}
     } as $facets
+
     var $items { value = [] }
     foreach ($stats_page.items) {
-      each as $stat
-      array.filter ($facets) if (($this.id == $stat.facet_id) && ($this.generation == $stat.generation)) as $matching_facets
-      foreach ($matching_facets) {
-        each as $facet
-        array.push $items {
-          value = {type: $facet.taxonomy_type, slug: $facet.slug, parent_slug: $facet.parent_slug, label: $facet.label, region_slug: $facet.region_slug, code: $facet.code, count: $stat.ready_listing_count, indexable: $stat.is_indexable, lastmod: $stat.last_listing_updated_at}
+      each as $stat {
+        array.filter ($facets) if (($this.id == $stat.facet_id) && ($this.generation == $stat.generation)) as $matching_facets
+        foreach ($matching_facets) {
+          each as $facet {
+            array.push $items {
+              value = {
+                type: $facet.taxonomy_type, slug: $facet.slug, parent_slug: $facet.parent_slug,
+                label: $facet.label, region_slug: $facet.region_slug, code: $facet.code,
+                count: $stat.ready_listing_count, indexable: $stat.is_indexable,
+                lastmod: $stat.last_listing_updated_at
+              }
+            }
+          }
         }
       }
     }
   }
-  response = {locale: $input.lang, items: $items, pagination: {page: $stats_page.curPage, limit: $stats_page.perPage, total: $stats_page.itemsTotal, total_pages: $stats_page.pageTotal}}
+
+  response = {
+    locale: $input.lang,
+    items: $items,
+    pagination: {page: $stats_page.curPage, limit: $stats_page.perPage, total: $stats_page.itemsTotal, total_pages: $stats_page.pageTotal}
+  }
   tags = ["sitecraft-auto-market", "public", "locale-aware", "seo-taxonomy", "counts", "bounded", "no-ai"]
+  guid = "9HvZPhIMSj46q_qRwHmm2HnO5YU"
 }
