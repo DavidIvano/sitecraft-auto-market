@@ -2,11 +2,11 @@
 
 Status: **released in Xano production and direct canary passed on 20 August 2026**.
 
-The production locale taxonomy pages still use the compatibility catalog while
-`PUBLIC_SEO_TAXONOMY_API_ENABLED` is `false`. The additive schema, materialized
-generation and all three public endpoints are now live and have passed the
-repository's strict frontend normalizers. The remaining rollout is an Astro /
-Cloudflare canary with compatibility fallback, followed by authoritative mode.
+The additive schema, materialized generation and all three public endpoints are
+live and have passed the repository's strict frontend normalizers. Cloudflare
+production canary is active: bounded taxonomy, catalogue and sitemap paths are
+enabled, with their explicit compatibility fallbacks temporarily retained for
+the observation window. Repository/.env defaults remain fail-safe `false`.
 
 ## Production release
 
@@ -95,9 +95,10 @@ Every successful route emits `X-SiteCraft-Taxonomy-Source` with either
 3. **Complete:** 28-locale generation compared to the existing Astro graph.
 4. **Complete:** three GET endpoints released with numeric IDs recorded in the
    production manifest.
-5. Canary Astro with both flags `true`; verify payload bounds, canonical, robots,
+5. **Complete:** canary Astro with both flags `true`; payload bounds, canonical, robots,
    breadcrumbs, pagination, related links and locale readiness.
-6. Set compatibility fallback to `false` while keeping the bounded API on.
+6. After the observation window, set compatibility fallback to `false` while
+   keeping the bounded API on.
 7. Only then enable production traffic for all public locales.
 
 ## Cache contract

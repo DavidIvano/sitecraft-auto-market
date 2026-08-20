@@ -60,9 +60,28 @@ paced requests and `429` backoff. Cloudflare caching and bounded single-request
 taxonomy SSR are therefore required; future high traffic should include Xano
 capacity planning and rate-limit monitoring.
 
-## Rollout state
+## Cloudflare production canary
 
-The Xano data and endpoints are active, but Astro rollout flags remain off at
-the time of this report. The next safe step is a Cloudflare deployment with API
-and compatibility fallback flags enabled, production smoke verification, then
-a separate switch to authoritative mode without fallbacks.
+Commit `732d92bb5496f433b630649bcdb2a42c5d680357` was published to `main`.
+GitHub Actions run `32419141813` passed check, 506 tests, build, Cloudflare
+deploy and its complete production smoke test.
+
+The six Stage 2–3 build variables are active. Bounded taxonomy, catalogue and
+sitemap APIs are enabled; compatibility fallbacks remain enabled during the
+observation window.
+
+Production evidence:
+
+- catalogue and all sampled taxonomy pages: `xano_bounded`;
+- root sitemap: `xano_sharded`, 56 unique children (28 locale maps + 28 listing
+  shards);
+- German locale sitemap: `xano_pages_only`, 31 static/taxonomy URLs and no
+  listing duplicates;
+- German listing shard: `xano_slug_shard`, 10 canonical listing URLs;
+- wrong-case brand redirects to the lowercase canonical URL;
+- thin and arbitrary-filter pages return `noindex, follow, noarchive` and are
+  absent from sitemap;
+- unknown taxonomy returns `404` with `X-Robots-Tag: noindex`;
+- `robots.txt` references the canonical production sitemap.
+
+Result: **PASS — canary active with rollback fallback**.

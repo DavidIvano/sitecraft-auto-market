@@ -2,8 +2,8 @@
 
 Date: 20 August 2026
 Repository state: combined Stage 2–3 implementation plus Xano release validated
-Production bounded Xano endpoints: released and direct canary passed; Astro
-feature flags remain disabled pending the Cloudflare canary
+Production bounded Xano endpoints: released; direct and Cloudflare canaries
+passed; compatibility fallbacks remain enabled for the observation window
 
 ## 1. State before this stage
 
@@ -188,14 +188,16 @@ generation was inserted inactive, validated, then activated. Direct canary
 passed all seven types, German/Russian/Arabic locales, strict response bounds,
 privacy checks, related parity, thin-facet `noindex` and negative `404` cases.
 
-Remaining production rollout:
+Production rollout steps 1–3 are complete: all six variables are passed through
+the workflow, the canary was deployed, and source headers plus
+canonical/robots/SSR/sitemap parity passed. The remaining step is to disable
+compatibility fallbacks after a green observation window while keeping the
+bounded APIs authoritative.
 
-1. Pass all six Stage 2–3 flags through the Cloudflare build workflow.
-2. Deploy with each API flag and its compatibility fallback enabled.
-3. Verify production source headers, canonical/robots/SSR output and sitemap
-   shard parity.
-4. Disable compatibility fallbacks after a green observation window while
-   keeping the bounded APIs authoritative.
+Cloudflare evidence: commit `732d92b`, GitHub Actions run `32419141813`, 506
+tests, successful deploy and production smoke. The root sitemap uses
+`xano_sharded`, taxonomy/catalogue pages use `xano_bounded`, and the German
+listing shard contains the exact 10 localized listing URLs.
 
 No GitHub push, Cloudflare deployment, Xano mutation or production flag change
 was performed in this stage without a separate release confirmation.

@@ -75,8 +75,9 @@ Result: **PASS**.
 
 ## Rollout state
 
-All four Astro rollout flags remain `false`. The three endpoints are safe for
-direct canary, but `PUBLIC_SEO_SITEMAP_SHARDS_ENABLED` must not be enabled until
-the Stage 2 `/public/locale/taxonomies/counts` endpoint is released and
-verified. Publishing the combined Stage 2–3 code with default-off flags does
-not route production traffic to the new authoritative paths.
+Stage 2 counts/page/related endpoints were subsequently released and verified.
+The combined Stage 2–3 Cloudflare canary is active from commit `732d92b`:
+catalogue and sitemap shard APIs are enabled with explicit compatibility
+fallbacks retained for the observation window. The production root sitemap now
+reports `xano_sharded`; German shard parity is 10/10. Repository defaults remain
+`false`, so an unset environment fails safely.
