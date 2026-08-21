@@ -5,7 +5,7 @@ import { normalizeLocale } from "../../../i18n/locale";
 import { getPublicPageMessages } from "../../../i18n/publicRoutes";
 import { isPublicLocaleRouteEnabled } from "../../../i18n/release4";
 import { RELEASE4_FLAGS, SITE_URL } from "../../../lib/config";
-import { setPublicCacheHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
+import { setPublicCacheHeaders, setPublicNoStoreHeaders, setUnavailableHeaders } from "../../../lib/publicCache";
 import SeoTaxonomyLinks from "../../../components/catalog/SeoTaxonomyLinks.astro";
 import { TAXONOMY_PAGE_SIZE } from "../../../lib/seo/taxonomies.ts";
 import { loadLocalizedCatalogPage } from "../../../lib/seo/catalogRoute.ts";
@@ -40,7 +40,11 @@ const queryDuration = Math.max(0, performance.now() - requestStarted).toFixed(1)
 Astro.response.headers.set("Server-Timing", `locale-read;dur=${queryDuration};desc="bounded catalog query"`);
 Astro.response.headers.set("X-SiteCraft-Query-Count", "1");
 Astro.response.headers.set("X-SiteCraft-Catalog-Source", resolution.dataSource);
-setPublicCacheHeaders(Astro.response.headers, "catalog", resolution.noindex, "noindex, follow");
+if (resolution.dataSource === "compatibility_catalog") {
+  setPublicNoStoreHeaders(Astro.response.headers, resolution.noindex, "noindex, follow");
+} else {
+  setPublicCacheHeaders(Astro.response.headers, "catalog", resolution.noindex, "noindex, follow");
+}
 
 const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
 const collectionSchema = {

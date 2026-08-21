@@ -12,7 +12,7 @@ import {
   SITE_URL,
 } from "../../lib/config.ts";
 import { isValidPublicCarSlug } from "../../lib/publicCar.ts";
-import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache.ts";
+import { setPublicCacheHeaders, setPublicNoStoreHeaders, setUnavailableHeaders } from "../../lib/publicCache.ts";
 import { getLocalizedApprovedCars } from "../../lib/xano.ts";
 import { loadLocalizedSeoTaxonomySitemapFacets } from "../../lib/seo/taxonomyRoute.ts";
 import { renderUrlSet } from "../../lib/seo/sitemapXml.ts";
@@ -99,6 +99,7 @@ export const GET: APIRoute = async ({ params }) => {
     "X-SiteCraft-Query-Count": String(queryCount),
     "X-SiteCraft-Sitemap-Source": shardedMode ? "xano_pages_only" : "compatibility_combined",
   });
-  setPublicCacheHeaders(headers, "sitemap");
+  if (shardedMode) setPublicCacheHeaders(headers, "sitemap");
+  else setPublicNoStoreHeaders(headers);
   return new Response(body, { headers });
 };

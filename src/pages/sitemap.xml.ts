@@ -1,6 +1,6 @@
 import { getEnabledPublicLocaleDefinitions } from "../i18n/release4.ts";
 import { RELEASE4_FLAGS, SITE_URL } from "../lib/config.ts";
-import { setPublicCacheHeaders, setUnavailableHeaders } from "../lib/publicCache.ts";
+import { setPublicCacheHeaders, setPublicNoStoreHeaders, setUnavailableHeaders } from "../lib/publicCache.ts";
 import { loadSeoSitemapManifest } from "../lib/seo/sitemapRoute.ts";
 import { renderSitemapIndex } from "../lib/seo/sitemapXml.ts";
 
@@ -36,6 +36,7 @@ export async function GET() {
     "X-SiteCraft-Sitemap-Source": manifest ? "xano_sharded" : "compatibility_combined",
     "X-SiteCraft-Query-Count": manifest ? "1" : "0",
   });
-  setPublicCacheHeaders(headers, "sitemap");
+  if (manifest) setPublicCacheHeaders(headers, "sitemap");
+  else setPublicNoStoreHeaders(headers);
   return new Response(body, { headers });
 }

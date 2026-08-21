@@ -14,9 +14,7 @@ export function setPublicCacheHeaders(
   robots: "noindex, follow" | "noindex, nofollow" = "noindex, nofollow",
 ) {
   if (noindex) {
-    headers.set("Cache-Control", "private, no-store");
-    headers.set("Cloudflare-CDN-Cache-Control", "no-store");
-    headers.set("X-Robots-Tag", robots);
+    setPublicNoStoreHeaders(headers, true, robots);
     return;
   }
 
@@ -29,8 +27,16 @@ export function setPublicCacheHeaders(
   headers.set("X-Robots-Tag", "index, follow");
 }
 
-export function setUnavailableHeaders(headers: Headers) {
+export function setPublicNoStoreHeaders(
+  headers: Headers,
+  noindex = false,
+  robots: "noindex, follow" | "noindex, nofollow" = "noindex, nofollow",
+) {
   headers.set("Cache-Control", "private, no-store");
   headers.set("Cloudflare-CDN-Cache-Control", "no-store");
-  headers.set("X-Robots-Tag", "noindex, nofollow");
+  headers.set("X-Robots-Tag", noindex ? robots : "index, follow");
+}
+
+export function setUnavailableHeaders(headers: Headers) {
+  setPublicNoStoreHeaders(headers, true);
 }

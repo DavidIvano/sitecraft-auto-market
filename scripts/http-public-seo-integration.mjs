@@ -21,6 +21,17 @@ const requireEdgeCache = args.includes("--require-edge-cache");
 const requireAuthoritative = args.includes("--require-authoritative");
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
+// Xano's current production tier allows ten requests per twenty-second
+// window. The authoritative smoke deliberately exercises every sitemap URL,
+// so pace origin misses instead of manufacturing a fallback through the test.
+const minimumRequestIntervalMs = requireAuthoritative ? 2_100 : 0;
+let lastRequestStartedAt = 0;
+async function pacedFetch(input, init) {
+  const waitMs = Math.max(0, minimumRequestIntervalMs - (Date.now() - lastRequestStartedAt));
+  if (waitMs > 0) await sleep(waitMs);
+  lastRequestStartedAt = Date.now();
+  return fetch(input, init);
+}
 const decodeXml = (value) => value
   .replaceAll("&amp;", "&")
   .replaceAll("&lt;", "<")
@@ -41,7 +52,7 @@ async function request(path, expectedStatus = 200) {
   let lastError;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
-      response = await fetch(url, {
+      response = await pacedFetch(url, {
         headers: { Accept: "text/html,application/xml;q=0.9" },
         redirect: "follow",
         signal: AbortSignal.timeout(45_000),
@@ -66,7 +77,7 @@ async function request(path, expectedStatus = 200) {
 
 async function assertDeviceLocalePage(acceptLanguage, expectedLocale) {
   const url = new URL("/", baseUrl);
-  const response = await fetch(url, {
+  const response = await pacedFetch(url, {
     headers: { Accept: "text/html", "Accept-Language": acceptLanguage },
     redirect: "manual",
   });
@@ -80,7 +91,7 @@ async function assertDeviceLocalePage(acceptLanguage, expectedLocale) {
 
 async function assertLegacyInventoryPreserved(path) {
   const url = new URL(path, baseUrl);
-  const response = await fetch(url, {
+  const response = await pacedFetch(url, {
     headers: { Accept: "text/html", "Accept-Language": "de-DE,de;q=0.9" },
     redirect: "manual",
   });
@@ -98,7 +109,7 @@ function assertPublicCacheHeaders(result) {
 async function assertEdgeCacheHit(path) {
   let lastStatus = "";
   for (let attempt = 0; attempt < 5; attempt += 1) {
-    const response = await fetch(new URL(path, baseUrl), { headers: { Accept: "application/xml" } });
+    const response = await pacedFetch(new URL(path, baseUrl), { headers: { Accept: "application/xml" } });
     assert.equal(response.status, 200);
     await response.arrayBuffer();
     lastStatus = response.headers.get("cf-cache-status") || "";
@@ -161,7 +172,13 @@ await assertLegacyInventoryPreserved("/cars/");
 const sitemapIndex = await request(withDeploymentCacheBust("/sitemap.xml"));
 assert.match(sitemapIndex.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapIndex.body, /<sitemapindex/);
-if (requireAuthoritative) assert.equal(sitemapIndex.response.headers.get("x-sitecraft-sitemap-source"), "xano_sharded");
+if (requireAuthoritative) {
+  assert.equal(
+    sitemapIndex.response.headers.get("x-sitecraft-sitemap-source"),
+    "xano_sharded",
+    `${sitemapIndex.url.pathname} did not use the authoritative sharded sitemap source`,
+  );
+}
 const sitemapLocations = [...sitemapIndex.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
 assert.equal(new Set(sitemapLocations).size, sitemapLocations.length, "Sitemap index contains duplicate child sitemaps");
 assert.equal(sitemapLocations.every((value) => new URL(value).origin === canonicalOrigin.origin), true, "Sitemap index contains a non-canonical origin");
@@ -179,7 +196,13 @@ const listingShardLocation = sitemapLocations.find((value) => new RegExp(
 const sitemapResult = await request(withDeploymentCacheBust(new URL(localeSitemapLocation).pathname));
 assert.match(sitemapResult.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapResult.body, /<urlset/);
-if (requireAuthoritative) assert.equal(sitemapResult.response.headers.get("x-sitecraft-sitemap-source"), "xano_pages_only");
+if (requireAuthoritative) {
+  assert.equal(
+    sitemapResult.response.headers.get("x-sitecraft-sitemap-source"),
+    "xano_pages_only",
+    `${sitemapResult.url.pathname} did not use the authoritative page-only sitemap source`,
+  );
+}
 const sitemapUrls = [...sitemapResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
 assert.ok(sitemapUrls.length > 0, "Sitemap has no URLs");
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, "Sitemap contains duplicate URLs");
@@ -196,7 +219,13 @@ if (listingShardLocation) {
   assert.match(shardResult.response.headers.get("content-type") || "", /application\/xml/i);
   assert.match(shardResult.body, /<urlset/);
   assert.doesNotMatch(shardResult.body, /<sitemapindex/);
-  if (requireAuthoritative) assert.equal(shardResult.response.headers.get("x-sitecraft-sitemap-source"), "xano_slug_shard");
+  if (requireAuthoritative) {
+    assert.equal(
+      shardResult.response.headers.get("x-sitecraft-sitemap-source"),
+      "xano_slug_shard",
+      `${listingShardPath} did not use the authoritative listing-shard source`,
+    );
+  }
   const shardUrls = [...shardResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
   assert.ok(shardUrls.length > 0, "Listing sitemap shard has no URLs");
   assert.equal(new Set(shardUrls).size, shardUrls.length, "Listing sitemap shard contains duplicate URLs");
@@ -218,7 +247,13 @@ else assertInclusiveCatalogHtml(home, homePath);
 const catalog = await request(catalogPath);
 if (strictSeoRelease) assertStrictCatalogHtml(catalog, catalogPath, "CollectionPage");
 else assertInclusiveCatalogHtml(catalog, catalogPath);
-if (requireAuthoritative && strictSeoRelease) assert.equal(catalog.response.headers.get("x-sitecraft-catalog-source"), "xano_bounded");
+if (requireAuthoritative && strictSeoRelease) {
+  assert.equal(
+    catalog.response.headers.get("x-sitecraft-catalog-source"),
+    "xano_bounded",
+    `${catalogPath} did not use the authoritative bounded catalogue source`,
+  );
+}
 
 if (strictSeoRelease) {
   for (const result of [home, catalog]) {
@@ -259,7 +294,11 @@ if (strictSeoRelease) {
         : "CollectionPage";
     assertIndexableHtml(result, path, type);
     if (requireAuthoritative && isTaxonomyPath(path)) {
-      assert.equal(result.response.headers.get("x-sitecraft-taxonomy-source"), "xano_bounded");
+      assert.equal(
+        result.response.headers.get("x-sitecraft-taxonomy-source"),
+        "xano_bounded",
+        `${path} did not use the authoritative bounded taxonomy source`,
+      );
     }
     assert.ok(result.body.includes(`hreflang="${requestedLocale}"`), `${path} has no self hreflang`);
     // Taxonomy alternates are intentionally limited to locales where the same
