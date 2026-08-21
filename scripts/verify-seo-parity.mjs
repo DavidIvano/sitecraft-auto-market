@@ -1,4 +1,11 @@
-import { buildSeoParityDiff, listingSlugs, parityIsReady, sitemapVehicleSlugs } from "./lib/seo-parity.mjs";
+import {
+  buildSeoParityDiff,
+  listingSlugs,
+  localeListingShardLocations,
+  parityIsReady,
+  sitemapLocations,
+  sitemapVehicleSlugs,
+} from "./lib/seo-parity.mjs";
 
 const args = process.argv.slice(2);
 const arg = (name, fallback) => {
@@ -6,19 +13,24 @@ const arg = (name, fallback) => {
   return index >= 0 && args[index + 1] ? args[index + 1] : fallback;
 };
 const locale = arg("--locale", "de").trim().toLowerCase();
+const cyrillicTaxonomyLocales = new Set(["ru", "uk", "bg"]);
 const site = new URL(arg("--base-url", "https://automarket.sitecraft.agency"));
 const xano = new URL(arg("--xano-url", "https://x8ki-letl-twmt.n7.xano.io/api:jAAj839u"));
 const allowNotReady = args.includes("--allow-not-ready");
+const requireAuthoritative = args.includes("--require-authoritative");
 const pageLimit = Math.max(1, Number(arg("--limit", "100")) || 100);
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 async function fetchWithRetry(url, init = {}) {
   let response;
-  for (let attempt = 0; attempt < 4; attempt += 1) {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
     response = await fetch(url, { redirect: "follow", ...init });
-    if (![429, 502, 503, 504].includes(response.status) || attempt === 3) return response;
+    if (![429, 502, 503, 504].includes(response.status) || attempt === 5) return response;
     await response.arrayBuffer();
-    await sleep(500 * (attempt + 1));
+    const retryAfter = Number(response.headers.get("retry-after"));
+    await sleep(Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(30_000, retryAfter * 1_000)
+      : 2_500 * (attempt + 1));
   }
   return response;
 }
@@ -28,6 +40,24 @@ async function json(url) {
   const text = await response.text();
   if (!response.ok) throw new Error(`${url.pathname} returned ${response.status}: ${text.slice(0, 180)}`);
   return JSON.parse(text);
+}
+
+async function loadBoundedCatalogSlugs() {
+  const slugs = [];
+  let page = 1;
+  let totalPages = 1;
+  do {
+    const url = new URL("public/locale/catalog", `${xano.toString().replace(/\/+$/, "")}/`);
+    url.searchParams.set("lang", locale);
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("limit", "24");
+    const payload = await json(url);
+    slugs.push(...listingSlugs(payload));
+    totalPages = Math.max(1, Number(payload?.pagination?.total_pages || 1));
+    if (!Number.isSafeInteger(totalPages) || totalPages > 1_000) throw new Error("Bounded catalog pagination is invalid");
+    page += 1;
+  } while (page <= totalPages);
+  return [...new Set(slugs)].sort((left, right) => left.localeCompare(right));
 }
 
 const schemaItems = (html) => [...html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi)]
@@ -60,14 +90,18 @@ async function inspectVehicle(slug) {
   if (!offer) violations.push("Offer");
   if (!breadcrumb) violations.push("BreadcrumbList");
   if (vehicle && offer && offer.itemOffered?.["@id"] !== vehicle["@id"]) violations.push("Offer.itemOffered");
+  const contextLinks = html.match(/<nav[^>]+class=["'][^"']*vehicle-context-links[^"']*["'][^>]*>([\s\S]*?)<\/nav>/i)?.[1] || "";
   if (vehicle) {
     const taxonomy = [vehicle.fuelType, vehicle.vehicleTransmission, vehicle.bodyType, vehicle.color].filter(Boolean).join(" ");
-    if (/[А-Яа-яЁёІіЇїЄє]/u.test(taxonomy)) violations.push("untranslated taxonomy");
-    if (vehicle.brand?.name && !html.includes(`/cars/brand/${encodeURIComponent(vehicle.brand.name)}/`)) violations.push("brand link");
-    if (vehicle.model && vehicle.brand?.name && !html.includes(`/cars/brand/${encodeURIComponent(vehicle.brand.name)}/${encodeURIComponent(vehicle.model)}/`)) violations.push("model link");
+    if (!cyrillicTaxonomyLocales.has(locale) && /[А-Яа-яЁёІіЇїЄє]/u.test(taxonomy)) violations.push("untranslated taxonomy");
+    if (vehicle.brand?.name && !new RegExp(`href=["']/${locale}/cars/brand/[^/]+/["']`).test(contextLinks)) violations.push("brand link");
+    if (vehicle.model && vehicle.brand?.name && !new RegExp(`href=["']/${locale}/cars/brand/[^/]+/[^/]+/["']`).test(contextLinks)) violations.push("model link");
+    if (vehicle.fuelType && !new RegExp(`href=["']/${locale}/cars/fuel/[^/]+/["']`).test(contextLinks)) violations.push("fuel link");
+    if (vehicle.bodyType && !new RegExp(`href=["']/${locale}/cars/body/[^/]+/["']`).test(contextLinks)) violations.push("body link");
   }
   const city = offer?.availableAtOrFrom?.address?.addressLocality;
-  if (city && !html.includes(`/cars/city/${encodeURIComponent(city)}/`)) violations.push("city link");
+  if (city && !new RegExp(`href=["']/${locale}/cars/city/[^/]+/["']`).test(contextLinks)) violations.push("city link");
+  if (!new RegExp(`href=["']/${locale}/cars/price/[^/]+/["']`).test(contextLinks)) violations.push("price link");
 
   const imageUrl = Array.isArray(vehicle?.image) ? vehicle.image[0] : vehicle?.image;
   if (imageUrl) {
@@ -82,36 +116,81 @@ async function inspectVehicle(slug) {
   return { slug, path, status: response.status, violations };
 }
 
-const legacyUrl = new URL("cars", `${xano.toString().replace(/\/+$/, "")}/`);
-legacyUrl.searchParams.set("lang", locale);
 const localizedUrl = new URL("public/locale/cars", `${xano.toString().replace(/\/+$/, "")}/`);
 localizedUrl.searchParams.set("lang", locale);
-const sitemapUrl = new URL(`/sitemaps/${locale}.xml`, site);
+const sitemapIndexUrl = new URL("/sitemap.xml", site);
+const productionCatalogUrl = new URL(`/${locale}/cars/`, site);
+const legacySupportedLocales = new Set(["de", "ru", "uk", "en", "ar", "tr"]);
+const legacyUrl = new URL("cars", `${xano.toString().replace(/\/+$/, "")}/`);
+legacyUrl.searchParams.set("lang", locale);
 
-const [legacyPayload, localizedPayload, sitemapResponse] = await Promise.all([
-  json(legacyUrl),
+const [legacyPayload, localizedPayload, boundedCatalogSlugs, sitemapIndexResponse, productionCatalogResponse] = await Promise.all([
+  legacySupportedLocales.has(locale) ? json(legacyUrl) : null,
   json(localizedUrl),
-  fetchWithRetry(sitemapUrl, { headers: { Accept: "application/xml" } }),
+  loadBoundedCatalogSlugs(),
+  fetchWithRetry(sitemapIndexUrl, { headers: { Accept: "application/xml" } }),
+  fetchWithRetry(productionCatalogUrl, { headers: { Accept: "text/html" } }),
 ]);
+const sitemapIndexXml = await sitemapIndexResponse.text();
+if (!sitemapIndexResponse.ok) throw new Error(`${sitemapIndexUrl.pathname} returned ${sitemapIndexResponse.status}`);
+if (!productionCatalogResponse.ok) throw new Error(`${productionCatalogUrl.pathname} returned ${productionCatalogResponse.status}`);
+await productionCatalogResponse.arrayBuffer();
+const rootLocations = sitemapLocations(sitemapIndexXml);
+const localeSitemapLocation = rootLocations.find((value) => new URL(value).pathname === `/sitemaps/${locale}.xml`);
+if (!localeSitemapLocation) throw new Error(`Sitemap index has no ${locale} locale sitemap`);
+const shardLocations = localeListingShardLocations(sitemapIndexXml, locale);
+const sitemapUrl = new URL(localeSitemapLocation);
+const sitemapResponse = await fetchWithRetry(sitemapUrl, { headers: { Accept: "application/xml" } });
 const sitemapXml = await sitemapResponse.text();
 if (!sitemapResponse.ok) throw new Error(`${sitemapUrl.pathname} returned ${sitemapResponse.status}`);
+const shardResponses = [];
+for (const location of shardLocations) {
+  const response = await fetchWithRetry(new URL(location), { headers: { Accept: "application/xml" } });
+  const xml = await response.text();
+  if (!response.ok) throw new Error(`${new URL(location).pathname} returned ${response.status}`);
+  shardResponses.push({ response, xml });
+}
 
-const publicSlugs = listingSlugs(legacyPayload);
 const localizedSlugs = listingSlugs(localizedPayload);
-const sitemapSlugs = sitemapVehicleSlugs(sitemapXml, locale);
-const diff = buildSeoParityDiff(publicSlugs, localizedSlugs, sitemapSlugs);
+const publicSlugs = legacyPayload ? listingSlugs(legacyPayload) : localizedSlugs;
+const sitemapSlugs = shardResponses.length
+  ? [...new Set(shardResponses.flatMap(({ xml }) => sitemapVehicleSlugs(xml, locale)))].sort((left, right) => left.localeCompare(right))
+  : sitemapVehicleSlugs(sitemapXml, locale);
+// Strict localized readiness is the SEO source of truth. The legacy endpoint
+// intentionally keeps source-language fallbacks visible and may therefore
+// contain more cars than an indexable locale.
+const diff = buildSeoParityDiff(localizedSlugs, localizedSlugs, sitemapSlugs, boundedCatalogSlugs);
+const localizedSet = new Set(localizedSlugs);
+const legacyInventoryOnly = publicSlugs.filter((slug) => !localizedSet.has(slug));
+const sources = {
+  sitemap_index: sitemapIndexResponse.headers.get("x-sitecraft-sitemap-source") || "",
+  locale_sitemap: sitemapResponse.headers.get("x-sitecraft-sitemap-source") || "",
+  listing_shards: shardResponses.map(({ response }) => response.headers.get("x-sitecraft-sitemap-source") || ""),
+  catalog: productionCatalogResponse.headers.get("x-sitecraft-catalog-source") || "",
+};
+const sourceViolations = requireAuthoritative
+  ? [
+      sources.sitemap_index === "xano_sharded" ? "" : "sitemap index is not authoritative",
+      sources.locale_sitemap === "xano_pages_only" ? "" : "locale sitemap is not authoritative",
+      shardResponses.length > 0 && sources.listing_shards.every((source) => source === "xano_slug_shard") ? "" : "listing shards are not authoritative",
+      sources.catalog === "xano_bounded" ? "" : "catalog is not authoritative",
+    ].filter(Boolean)
+  : [];
 const inspected = [];
 for (const slug of sitemapSlugs.slice(0, pageLimit)) inspected.push(await inspectVehicle(slug));
 const pageViolations = inspected.filter((item) => item.violations.length > 0);
-const ready = publicSlugs.length > 0 && parityIsReady(diff) && pageViolations.length === 0;
+const ready = localizedSlugs.length > 0 && parityIsReady(diff) && pageViolations.length === 0 && sourceViolations.length === 0;
 const report = {
   ok: ready,
   locale,
-  counts: { xano_public: publicSlugs.length, xano_localized: localizedSlugs.length, sitemap: sitemapSlugs.length, inspected: inspected.length },
+  counts: { xano_public: legacyPayload ? publicSlugs.length : null, xano_localized: localizedSlugs.length, xano_bounded_catalog: boundedCatalogSlugs.length, sitemap: sitemapSlugs.length, inspected: inspected.length },
   diff,
+  legacy_inventory_only_non_indexable: legacyInventoryOnly,
   page_violations: pageViolations,
+  authoritative_sources: { required: requireAuthoritative, ...sources, violations: sourceViolations },
+  sitemap_architecture: { locale_map: sitemapUrl.toString(), listing_shards: shardLocations.length },
   search_console: {
-    sitemap: sitemapUrl.toString(),
+    sitemap: sitemapIndexUrl.toString(),
     sample_urls: sitemapSlugs.slice(0, 10).map((slug) => new URL(`/${locale}/cars/${encodeURIComponent(slug)}/`, site).toString()),
     note: "Coverage and impressions require a connected Google Search Console property; this audit verifies the crawlable inputs.",
   },

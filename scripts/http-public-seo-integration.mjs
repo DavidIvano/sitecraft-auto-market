@@ -18,6 +18,7 @@ const strictSeoCandidateLocales = [
 const strictSeoRelease = strictSeoCandidateLocales.includes(requestedLocale);
 const expectedDirection = requestedLocale === "ar" ? "rtl" : "ltr";
 const requireEdgeCache = args.includes("--require-edge-cache");
+const requireAuthoritative = args.includes("--require-authoritative");
 
 const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds));
 const decodeXml = (value) => value
@@ -160,6 +161,7 @@ await assertLegacyInventoryPreserved("/cars/");
 const sitemapIndex = await request(withDeploymentCacheBust("/sitemap.xml"));
 assert.match(sitemapIndex.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapIndex.body, /<sitemapindex/);
+if (requireAuthoritative) assert.equal(sitemapIndex.response.headers.get("x-sitecraft-sitemap-source"), "xano_sharded");
 const sitemapLocations = [...sitemapIndex.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
 assert.equal(new Set(sitemapLocations).size, sitemapLocations.length, "Sitemap index contains duplicate child sitemaps");
 assert.equal(sitemapLocations.every((value) => new URL(value).origin === canonicalOrigin.origin), true, "Sitemap index contains a non-canonical origin");
@@ -177,6 +179,7 @@ const listingShardLocation = sitemapLocations.find((value) => new RegExp(
 const sitemapResult = await request(withDeploymentCacheBust(new URL(localeSitemapLocation).pathname));
 assert.match(sitemapResult.response.headers.get("content-type") || "", /application\/xml/i);
 assert.match(sitemapResult.body, /<urlset/);
+if (requireAuthoritative) assert.equal(sitemapResult.response.headers.get("x-sitecraft-sitemap-source"), "xano_pages_only");
 const sitemapUrls = [...sitemapResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
 assert.ok(sitemapUrls.length > 0, "Sitemap has no URLs");
 assert.equal(new Set(sitemapUrls).size, sitemapUrls.length, "Sitemap contains duplicate URLs");
@@ -193,6 +196,7 @@ if (listingShardLocation) {
   assert.match(shardResult.response.headers.get("content-type") || "", /application\/xml/i);
   assert.match(shardResult.body, /<urlset/);
   assert.doesNotMatch(shardResult.body, /<sitemapindex/);
+  if (requireAuthoritative) assert.equal(shardResult.response.headers.get("x-sitecraft-sitemap-source"), "xano_slug_shard");
   const shardUrls = [...shardResult.body.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => decodeXml(match[1]));
   assert.ok(shardUrls.length > 0, "Listing sitemap shard has no URLs");
   assert.equal(new Set(shardUrls).size, shardUrls.length, "Listing sitemap shard contains duplicate URLs");
@@ -214,6 +218,7 @@ else assertInclusiveCatalogHtml(home, homePath);
 const catalog = await request(catalogPath);
 if (strictSeoRelease) assertStrictCatalogHtml(catalog, catalogPath, "CollectionPage");
 else assertInclusiveCatalogHtml(catalog, catalogPath);
+if (requireAuthoritative && strictSeoRelease) assert.equal(catalog.response.headers.get("x-sitecraft-catalog-source"), "xano_bounded");
 
 if (strictSeoRelease) {
   for (const result of [home, catalog]) {
@@ -253,6 +258,9 @@ if (strictSeoRelease) {
         ? "WebPage"
         : "CollectionPage";
     assertIndexableHtml(result, path, type);
+    if (requireAuthoritative && isTaxonomyPath(path)) {
+      assert.equal(result.response.headers.get("x-sitecraft-taxonomy-source"), "xano_bounded");
+    }
     assert.ok(result.body.includes(`hreflang="${requestedLocale}"`), `${path} has no self hreflang`);
     // Taxonomy alternates are intentionally limited to locales where the same
     // normalized entity passes the indexability gate. Static pages remain
@@ -285,6 +293,7 @@ console.log(JSON.stringify({
   listingSitemapShardChecked: Boolean(listingShardPath),
   deviceLocalePagesChecked: ["de-DE", "fr-FR", "ar-SA", "hi-IN"],
   edgeCacheChecked: requireEdgeCache,
+  authoritativeSourcesChecked: requireAuthoritative,
   legacyInventoryPreserved: true,
   requestAuthentication: "none",
 }, null, 2));

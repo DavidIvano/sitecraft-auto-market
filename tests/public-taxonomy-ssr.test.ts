@@ -57,12 +57,18 @@ test("HTTP integration harness is public-only and covers local runtime plus prod
   assert.doesNotMatch(harness, /Authorization|Cookie|authToken|localStorage/);
   assert.match(harness, /\/sitemap\.xml/);
   assert.match(harness, /--deployment-cache-bust/);
+  assert.match(harness, /--require-authoritative/);
+  assert.match(harness, /xano_sharded/);
+  assert.match(harness, /xano_pages_only/);
+  assert.match(harness, /xano_slug_shard/);
+  assert.match(harness, /xano_bounded/);
   assert.match(harness, /withDeploymentCacheBust/);
   assert.match(harness, /assertInclusiveCatalogHtml/);
   assert.match(harness, /deviceLocalePagesChecked/);
   assert.match(runner, /wrangler/);
   assert.match(runner, /pages", "dev"/);
   assert.match(workflow, /--deployment-cache-bust/);
+  assert.match(workflow, /--require-authoritative/);
   assert.match(workflow, /GITHUB_SHA/);
   assert.match(packageJson, /"test:http:local"/);
   assert.match(packageJson, /"test:http:production"/);

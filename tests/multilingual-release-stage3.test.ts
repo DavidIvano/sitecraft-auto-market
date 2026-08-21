@@ -142,4 +142,6 @@ test("HTTP release smoke covers every released strict locale and Arabic directio
   }
   assert.match(source, /requestedLocale === "ar" \? "rtl" : "ltr"/);
   assert.match(source, /publicSitemapLocales/);
+  assert.match(source, /authoritativeSourcesChecked/);
+  assert.match(source, /xano_sharded/);
 });
