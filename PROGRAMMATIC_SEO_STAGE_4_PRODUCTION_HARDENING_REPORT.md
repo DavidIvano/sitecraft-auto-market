@@ -108,8 +108,9 @@ The final German authoritative audit reported:
   `mazda-5-2006-102`.
 
 Representative pre-cutover parity also passed for `ru` (11/11/11), `ar`
-(10/10/10) and `fr` (10/10/10). The deployed HTML exposes build SHA
-`f394055e60094ba0c6f298b76b6e7d98feb70ed1`.
+(10/10/10) and `fr` (10/10/10). The functional fallback-off cutover build was
+`f394055e60094ba0c6f298b76b6e7d98feb70ed1`; later report-only commits do not
+change that runtime implementation.
 
 ## 7. Verification
 
