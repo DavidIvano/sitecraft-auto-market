@@ -2,8 +2,8 @@
 
 Date: 20 August 2026
 Repository state: combined Stage 2–3 implementation plus Xano release validated
-Production bounded Xano endpoints: released; direct and Cloudflare canaries
-passed; compatibility fallbacks remain enabled for the observation window
+Production bounded Xano endpoints: released and authoritative; direct and
+Cloudflare canaries passed; compatibility fallbacks disabled on 21 August 2026
 
 ## 1. State before this stage
 
@@ -131,15 +131,14 @@ and counts are materialized, so page GET does not run per-block or per-card
 queries. Existing Cloudflare catalogue caching remains 120 seconds with 600
 seconds stale-while-revalidate; noindex/filter responses remain `no-store`.
 
-The localized listing sitemap still needs the complete listing index. Before
-inventory approaches sitemap limits, it should move to a separate paged,
-slug-only sitemap feed/shards. This is deliberately not hidden as part of the
-taxonomy optimization.
+Stage 3 subsequently moved listing URLs to immutable, paged slug/lastmod
+sitemap shards. Locale sitemaps now contain static and taxonomy pages only,
+and the root sitemap index links both kinds of child sitemap.
 
 ## 8. Automated verification
 
 - `npm run check`: passed, 0 errors (20 pre-existing hints).
-- `npm test`: passed, 506/506.
+- `npm test`: passed, 508/508 after Stage 4 hardening.
 - `npm run build`: passed in the six-flag canary configuration; Cloudflare
   Advanced Mode Worker compiled and 55 built asset references across 97 SSR
   Worker files were verified.
@@ -188,16 +187,18 @@ generation was inserted inactive, validated, then activated. Direct canary
 passed all seven types, German/Russian/Arabic locales, strict response bounds,
 privacy checks, related parity, thin-facet `noindex` and negative `404` cases.
 
-Production rollout steps 1–3 are complete: all six variables are passed through
-the workflow, the canary was deployed, and source headers plus
-canonical/robots/SSR/sitemap parity passed. The remaining step is to disable
-compatibility fallbacks after a green observation window while keeping the
-bounded APIs authoritative.
+Production rollout is complete. After the observation window, an authoritative
+source gate passed once with fallbacks available and again after all three
+fallback variables were disabled. Bounded API failures now fail closed; a
+transient compatibility response can no longer enter Cloudflare edge cache.
 
-Cloudflare evidence: commit `732d92b`, GitHub Actions run `32419141813`, 506
-tests, successful deploy and production smoke. The root sitemap uses
+Final cutover evidence: commits `d842b2c` and `f394055`, GitHub Actions runs
+`32530014796` and `32530234808`, 508 tests, successful deploy and authoritative
+production smoke. The root sitemap uses
 `xano_sharded`, taxonomy/catalogue pages use `xano_bounded`, and the German
 listing shard contains the exact 10 localized listing URLs.
 
-No GitHub push, Cloudflare deployment, Xano mutation or production flag change
-was performed in this stage without a separate release confirmation.
+The active materialized generation was re-audited against live Xano state
+before cutover: 281 calculated and 281 active readiness rows, with zero
+missing, extra or changed rows. See
+`PROGRAMMATIC_SEO_STAGE_4_PRODUCTION_HARDENING_REPORT.md`.

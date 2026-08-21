@@ -66,9 +66,10 @@ Commit `732d92bb5496f433b630649bcdb2a42c5d680357` was published to `main`.
 GitHub Actions run `32419141813` passed check, 506 tests, build, Cloudflare
 deploy and its complete production smoke test.
 
-The six Stage 2–3 build variables are active. Bounded taxonomy, catalogue and
-sitemap APIs are enabled; compatibility fallbacks remain enabled during the
-observation window.
+The three bounded/sharded API variables remain active. The observation window
+completed on 21 August 2026; all three compatibility fallbacks are disabled.
+Run `32530234808` passed the fallback-off deploy and complete authoritative
+production smoke.
 
 Production evidence:
 
@@ -84,4 +85,4 @@ Production evidence:
 - unknown taxonomy returns `404` with `X-Robots-Tag: noindex`;
 - `robots.txt` references the canonical production sitemap.
 
-Result: **PASS — canary active with rollback fallback**.
+Result: **PASS — authoritative production mode; fallback disabled**.

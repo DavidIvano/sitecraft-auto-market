@@ -4,9 +4,10 @@ Status: **released in Xano production and direct canary passed on 20 August 2026
 
 The additive schema, materialized generation and all three public endpoints are
 live and have passed the repository's strict frontend normalizers. Cloudflare
-production canary is active: bounded taxonomy, catalogue and sitemap paths are
-enabled, with their explicit compatibility fallbacks temporarily retained for
-the observation window. Repository/.env defaults remain fail-safe `false`.
+production now uses bounded taxonomy, catalogue and sharded sitemap paths as
+authoritative sources. The observation window completed on 21 August 2026 and
+all explicit compatibility fallbacks are disabled. Repository/.env defaults
+remain fail-safe `false`.
 
 ## Production release
 
@@ -97,16 +98,19 @@ Every successful route emits `X-SiteCraft-Taxonomy-Source` with either
    production manifest.
 5. **Complete:** canary Astro with both flags `true`; payload bounds, canonical, robots,
    breadcrumbs, pagination, related links and locale readiness.
-6. After the observation window, set compatibility fallback to `false` while
-   keeping the bounded API on.
-7. Only then enable production traffic for all public locales.
+6. **Complete:** after the observation window, compatibility fallback was set
+   to `false` while the bounded API remained on.
+7. **Complete:** the fallback-off deployment passed the full production
+   authoritative-source smoke for every German sitemap URL.
 
 ## Cache contract
 
 The browser URL, Xano request and cache key include locale, type, canonical
 slug, parent slug and page. Public indexable pages retain the existing
 Cloudflare catalogue profile (120 seconds plus 600 seconds stale-while-
-revalidate). Noindex/filter pages remain `no-store`. Materializer completion
+revalidate). Noindex/filter pages remain `no-store`. Any compatibility result
+is also forced to `no-store`, so a transient fallback cannot poison the edge
+cache. Materializer completion
 should purge the affected locale/facet URLs or allow the short TTL to expire;
 never cache a partial generation.
 

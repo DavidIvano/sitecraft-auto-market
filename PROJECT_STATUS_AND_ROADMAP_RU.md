@@ -144,7 +144,9 @@ flowchart LR
 - Управляемый Cloudflare Worker поддерживает все 27 целевых языков перевода (все пользовательские локали кроме исходного `ru`), пакеты до трёх заданий, идемпотентный claim/complete, dry-run и раздельные kill switches для manual и cron. Queue-control запросы безопасно повторяют явный Xano 429; provider-вызов автоматически не дублируется.
 - Защита Xano Worker endpoints `4011152/4011153` повторно проверена: публичная строка-заглушка получает 403, рабочий secret не хранится в репозитории.
 - Техническая миграция языков ЕС завершена; остаётся редакторская вычитка машинных UI/taxonomy и текстов объявлений носителями языков.
-- Frontend-конфигурация 28 публичных локалей пока не считается production до push/deploy и повторного production parity smoke.
+- Frontend-конфигурация 28 публичных локалей опубликована. Authoritative
+  production smoke и parity для bounded catalog/listing shards пройдены;
+  compatibility fallback выключен.
 
 ### Backend-продукты
 
@@ -176,7 +178,8 @@ flowchart LR
 10. `DONE pl/cs/sk/sl`: 40 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
 11. `DONE bg/hr/ro/hu/el`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
 12. `DONE et/lv/lt/mt/ga`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
-13. `NEXT`: deploy frontend из `main`, production parity smoke всех 28 локалей и редакторская вычитка машинных переводов.
+13. `DONE`: frontend опубликован из `main`; production authoritative smoke и
+    representative parity пройдены. `NEXT`: редакторская вычитка машинных переводов.
 
 ### Этап 3 — SEO локалей
 
@@ -185,15 +188,32 @@ flowchart LR
 3. `DONE en`: карточки ведут на locale-prefixed detail, `x-default` указывает на эквивалентный legacy route, `de`/`en` имеют взаимные `hreflang` на общих страницах.
 4. `DONE fr`: полный французский sitemap проверен URL за URL; canonical, JSON-LD, взаимные `en/fr` `hreflang`, `x-default` и 10 detail-страниц прошли smoke.
 5. `DONE de`: немецкие 10/10 добавлены в strict sitemap; detail schema локализует legacy taxonomy, Offer связан с Vehicle и местом, добавлены crawlable brand/model/city связи и R2 `HEAD`.
-6. `NEXT`: после deploy выполнить production parity smoke и отправить обновлённый `/sitemap.xml` в подключённую Search Console.
+6. `DONE`: production parity smoke пройден; root/locale/shard источники
+   подтверждены как `xano_sharded`/`xano_pages_only`/`xano_slug_shard`.
+   `NEXT`: отправить обновлённый `/sitemap.xml` в подключённую Search Console.
 7. `DONE tr/ar/ru/uk`: все четыре локали имеют 10/10 strict data, отдельный sitemap и успешный локальный smoke; `ar` проверен в RTL.
 8. `DONE nl/da/sv/fi`: полный локальный HTTP/SEO smoke проверил sitemap, static/catalog/detail, brand/model/city, canonical, reciprocal `hreflang`, JSON-LD и 10 detail-страниц каждого языка.
 9. `DONE es/pt/it`: тот же полный HTTP/SEO smoke пройден; временный headers timeout при длинном общем прогоне воспроизвёлся как сеть и отдельный повтор `it` завершился без функциональных ошибок.
 10. `DONE`: frontend, taxonomy, strict routes и sitemap подготовлены для оставшихся 14 языков ЕС; Xano catalog/detail подтверждены 10/10 без fallback.
 11. `DONE`: полный локальный HTTP/SEO smoke пройден для `pl/cs/sk/sl/bg/hr/ro/hu/el/et/lv/lt/mt/ga`; ирландский повторён отдельно после сетевого headers timeout длинного общего прогона и завершился без функциональных ошибок.
-12. `NEXT`: выполнить deploy frontend из `main`, затем production parity smoke всех 28 локалей и отправить обновлённый sitemap в Search Console.
+12. `DONE`: frontend deploy и production authoritative smoke завершены;
+    representative parity `de/ru/ar/fr` пройден. `NEXT`: Search Console и
+    редакторская проверка переводов.
 
-### Этап 4 — server-backed функции
+### Этап 4 — production hardening programmatic SEO
+
+1. `DONE`: активная Xano generation сверена с live sources — 281/281 row,
+   zero diff по 28 локалям.
+2. `DONE`: parity audit переведён на bounded catalogue и listing shards.
+3. `DONE`: CI требует только authoritative source headers и соблюдает Xano
+   rate limit 10 запросов за 20 секунд.
+4. `DONE`: transient compatibility responses запрещено кэшировать на edge.
+5. `DONE`: три compatibility fallback выключены; fallback-off deploy и полный
+   production smoke пройдены.
+6. `NEXT`: автоматизировать idempotent materializer, reconciliation,
+   freshness alerts и cache purge после atomic generation activation.
+
+### Этап 5 — server-backed функции
 
 1. Выбрать следующий продукт: commerce/dealer либо Deal Finder collaboration.
 2. Сначала описать Xano schema, auth, idempotency, error contract и тесты.

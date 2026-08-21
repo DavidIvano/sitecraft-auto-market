@@ -76,8 +76,8 @@ Result: **PASS**.
 ## Rollout state
 
 Stage 2 counts/page/related endpoints were subsequently released and verified.
-The combined Stage 2–3 Cloudflare canary is active from commit `732d92b`:
-catalogue and sitemap shard APIs are enabled with explicit compatibility
-fallbacks retained for the observation window. The production root sitemap now
-reports `xano_sharded`; German shard parity is 10/10. Repository defaults remain
-`false`, so an unset environment fails safely.
+The combined Stage 2–3 Cloudflare rollout completed production hardening on
+21 August 2026. Catalogue and sitemap shard APIs are authoritative and all
+explicit compatibility fallbacks are disabled. The production root sitemap
+reports `xano_sharded`; German bounded catalogue and shard parity is 10/10.
+Repository defaults remain `false`, so an unset environment fails safely.
