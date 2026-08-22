@@ -12,6 +12,7 @@ import { getApprovedCars, getLocalizedApprovedCars } from "../../lib/xano";
 import type { CarListing } from "../../lib/types";
 import { getHomepagePromotedCars } from "../../lib/promotions/model";
 import { getMessages } from "../../i18n/messages";
+import { getDefaultLocalizedPath } from "../../i18n/routes";
 
 export const prerender = false;
 
@@ -62,7 +63,7 @@ const pageSchema = {
   noindex={pageNoindex || I18N_PREVIEW_NOINDEX}
   jsonLd={pageSchema}
   alternateLocales={alternateLocales}
-  xDefaultPath="/"
+  xDefaultPath={getDefaultLocalizedPath("/")}
 >
   <section class="section page-hero">
     <div class="container">

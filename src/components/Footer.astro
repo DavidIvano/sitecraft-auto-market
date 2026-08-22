@@ -1,18 +1,21 @@
 ---
 import type { Locale } from "../i18n/locales";
+import { getLocaleFromPath } from "../i18n/locale";
 import { getMessages } from "../i18n/messages";
+import { getLocalizedPath } from "../i18n/routes";
 
 type Props = { locale: Locale };
 const { locale } = Astro.props;
 const messages = getMessages(locale);
+const isLocalizedPublicRoute = Boolean(getLocaleFromPath(Astro.url.pathname));
+const publicHref = (path: string) => isLocalizedPublicRoute ? getLocalizedPath(path, locale) : path;
 const links = [
-  { href: "/cars", label: messages.navCars },
-  { href: "/pricing", label: messages.navPricing },
-  { href: "/sell", label: messages.navSell },
-  { href: "/dashboard", label: messages.navDashboard },
-  { href: "/admin/moderation", label: messages.navModeration },
-  { href: "/privacy", label: messages.navPrivacy },
-  { href: "/impressum", label: "Impressum" },
+  { href: publicHref("/cars/"), label: messages.navCars },
+  { href: publicHref("/pricing/"), label: messages.navPricing },
+  { href: publicHref("/sell/"), label: messages.navSell },
+  { href: publicHref("/support/"), label: messages.navSupport },
+  { href: publicHref("/privacy/"), label: messages.navPrivacy },
+  { href: publicHref("/impressum/"), label: "Impressum" },
 ];
 ---
 

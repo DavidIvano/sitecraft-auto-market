@@ -6,6 +6,7 @@ import { isPublicLocaleRouteEnabled } from "../../i18n/release4";
 import { getPublicStaticPage, isPublicStaticPageCode } from "../../i18n/staticPages";
 import { I18N_PREVIEW_NOINDEX, RELEASE4_FLAGS } from "../../lib/config";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache";
+import { getDefaultLocalizedPath } from "../../i18n/routes";
 
 export const prerender = false;
 
@@ -39,7 +40,7 @@ const schema = { "@context": "https://schema.org", "@type": "WebPage", name: pag
   jsonLd={schema}
   breadcrumbs={[{ href: `/${locale}/`, label: messages.homeTitle }, { label: page.title }]}
   alternateLocales={getRouteAlternates(`/${pageCode}/`)}
-  xDefaultPath={`/${pageCode}/`}
+  xDefaultPath={getDefaultLocalizedPath(`/${pageCode}/`)}
 >
   <section class="section page-hero">
     <div class="container"><p class="eyebrow">SiteCraft Auto Market</p><h1>{page.heading}</h1><p class="lead">{page.lead}</p></div>

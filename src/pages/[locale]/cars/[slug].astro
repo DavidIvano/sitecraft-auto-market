@@ -17,6 +17,7 @@ import { getLocalizedCarBySlug, getLocalizedRelatedCars } from "../../../lib/xan
 import { getCarDetailImagePresentations } from "../../../lib/imageUrls";
 import { buildListingSeoTaxonomyLinks, getTaxonomyGroupLabel } from "../../../lib/seo/taxonomies.ts";
 import type { CarListing } from "../../../lib/types.ts";
+import { getDefaultLocalizedPath } from "../../../i18n/routes";
 
 export const prerender = false;
 
@@ -104,7 +105,7 @@ const mainImage = getCarDetailImagePresentations(car)[0] || {
   jsonLd={[seo.vehicle, seo.offer, seo.breadcrumb]}
   breadcrumbs={seo.breadcrumbs}
   alternateLocales={getRouteAlternates(`/cars/${car.slug}/`, readyLocales)}
-  xDefaultPath={`/cars/${car.slug}/`}
+  xDefaultPath={getDefaultLocalizedPath(`/cars/${car.slug}/`)}
 >
   <section class="section car-detail-section">
     <div class="container detail-container">

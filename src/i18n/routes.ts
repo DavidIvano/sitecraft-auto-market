@@ -1,3 +1,4 @@
+import { DEFAULT_LOCALE } from "./config.ts";
 import { getLocaleFromPath, normalizeLocale } from "./locale.ts";
 
 export function withLocale(path: string, locale: string) {
@@ -20,4 +21,13 @@ export function getLocalizedPath(pathname: string, locale: string) {
   if (!normalized) return pathname;
   const unprefixed = stripLocalePrefix(pathname);
   return `/${normalized}${unprefixed === "/" ? "/" : unprefixed}`;
+}
+
+/**
+ * Stable x-default target for public hreflang clusters. The legacy
+ * unprefixed routes can vary by cookie/query language, so they must not be
+ * advertised to crawlers as a separate canonical member of the cluster.
+ */
+export function getDefaultLocalizedPath(pathname: string) {
+  return getLocalizedPath(pathname, DEFAULT_LOCALE);
 }

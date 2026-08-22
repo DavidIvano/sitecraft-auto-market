@@ -168,25 +168,30 @@ const generatedBreadcrumbs =
           }),
       ];
 const pageBreadcrumbs = breadcrumbs ?? generatedBreadcrumbs;
+const publisherId = new URL("/#publisher", siteUrl).toString();
+const websiteId = new URL("/#website", siteUrl).toString();
 const defaultSchemaItems = [
   {
     "@context": "https://schema.org",
     "@type": "Organization",
+    "@id": publisherId,
     name: "SiteCraft Agency",
     url: "https://sitecraft.agency",
-    logo: new URL("/sitecraft-logo.png", siteUrl).toString(),
+    brand: {
+      "@type": "Brand",
+      name: SITE_NAME,
+      url: new URL("/", siteUrl).toString(),
+      logo: new URL("/sitecraft-logo.png", siteUrl).toString(),
+    },
   },
   {
     "@context": "https://schema.org",
     "@type": "WebSite",
+    "@id": websiteId,
     name: SITE_NAME,
-    url: siteUrl,
+    url: new URL("/", siteUrl).toString(),
     inLanguage: locale,
-    potentialAction: {
-      "@type": "SearchAction",
-      target: `${new URL(`/${pageLocale}/cars/`, siteUrl).toString()}?q={search_term_string}`,
-      "query-input": "required name=search_term_string",
-    },
+    publisher: { "@id": publisherId },
   },
 ];
 const schemaItems = [

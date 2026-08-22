@@ -117,8 +117,8 @@ test("localized cards and x-default links point to their equivalent canonical ro
   const catalog = read("../src/pages/[locale]/cars/index.astro");
   assert.match(cards, /startsWith\("localized_"\)/);
   assert.match(cards, /\`\/\$\{encodeURIComponent\(locale\)\}\/cars\/\$\{encodeURIComponent\(value\)\}\/\`/);
-  assert.match(detail, /xDefaultPath=\{\`\/cars\/\$\{car\.slug\}\/\`\}/);
-  assert.match(catalog, /xDefaultPath=\{resolution\.page === 1[^\n]+"\/cars\/"/);
+  assert.match(detail, /xDefaultPath=\{getDefaultLocalizedPath\(\`\/cars\/\$\{car\.slug\}\/\`\)\}/);
+  assert.match(catalog, /xDefaultPath=\{resolution\.page === 1[^\n]+getDefaultLocalizedPath\("\/cars\/"\)/);
 });
 
 test("Xano locale release is dry-run first and counts current per-locale translations", () => {

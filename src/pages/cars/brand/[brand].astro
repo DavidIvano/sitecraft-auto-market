@@ -1,21 +1,26 @@
 ---
-import CarCard from "../../../components/CarCard.astro";
-import BaseLayout from "../../../layouts/BaseLayout.astro";
-import { SITE_URL } from "../../../lib/config";
 import { isPublicListing } from "../../../lib/listingStatus";
 import type { CarListing } from "../../../lib/types";
 import { getApprovedCars } from "../../../lib/xano";
+import { DEFAULT_LOCALE, getLocaleDefinition } from "../../../i18n/config.ts";
+import { normalizeLocale } from "../../../i18n/locale.ts";
 import {
   buildVehicleTaxonomy,
-  buildVehicleTaxonomySeo,
   findVehicleBrandFacet,
   isValidVehicleFacetSlug,
+  normalizeVehicleFacetSlug,
 } from "../../../lib/seo/vehicleTaxonomy";
 
 export const prerender = false;
 
-const brandSlug = String(Astro.params.brand ?? "").trim();
-if (!isValidVehicleFacetSlug(brandSlug)) {
+let rawBrand = String(Astro.params.brand ?? "").trim();
+try {
+  rawBrand = decodeURIComponent(rawBrand).trim();
+} catch {
+  rawBrand = "";
+}
+const brandSlug = normalizeVehicleFacetSlug(rawBrand);
+if (!rawBrand || rawBrand.length > 100 || !isValidVehicleFacetSlug(brandSlug)) {
   Astro.response.status = 404;
   Astro.response.headers.set("Cache-Control", "no-store");
   Astro.response.headers.set("X-Robots-Tag", "noindex, nofollow");
@@ -41,71 +46,7 @@ if (!brand) {
   return Astro.rewrite("/404");
 }
 
-Astro.response.headers.set("Cache-Control", "public, max-age=0, s-maxage=300, stale-while-revalidate=3600");
-Astro.response.headers.set("X-Robots-Tag", "index, follow");
-const seo = buildVehicleTaxonomySeo({ brand, siteUrl: SITE_URL });
+const requestedLocale = normalizeLocale(Astro.url.searchParams.get("lang") || Astro.url.searchParams.get("locale"), { activeOnly: true });
+const redirectLocale = requestedLocale && getLocaleDefinition(requestedLocale)?.isPublic ? requestedLocale : DEFAULT_LOCALE;
+return Astro.redirect(`/${redirectLocale}/cars/brand/${brand.slug}/`, 308);
 ---
-
-<BaseLayout
-  variant="public"
-  title={seo.title}
-  description={seo.description}
-  canonicalPath={seo.path}
-  jsonLd={[seo.collection, seo.breadcrumb]}
-  breadcrumbs={[
-    { href: "/", label: "Главная" },
-    { href: "/cars", label: "Автомобили" },
-    { label: brand.name },
-  ]}
->
-  <section class="section page-hero taxonomy-hero">
-    <div class="container taxonomy-hero-inner">
-      <div>
-        <p class="eyebrow">Марка автомобиля</p>
-        <h1>{seo.heading}</h1>
-        <p class="lead">{seo.description}</p>
-      </div>
-      <dl class="taxonomy-summary" aria-label={`Сводка по ${brand.name}`}>
-        <div><dt>Объявления</dt><dd>{brand.cars.length}</dd></div>
-        <div><dt>Модели</dt><dd>{brand.models.length}</dd></div>
-        <div><dt>Цена от</dt><dd>{seo.summary.minPrice ? `${seo.summary.minPrice.toLocaleString("ru-RU")} €` : "Уточняется"}</dd></div>
-      </dl>
-    </div>
-  </section>
-
-  {brand.models.length > 0 && (
-    <section class="section taxonomy-navigation-section" aria-labelledby="brand-models-title">
-      <div class="container">
-        <div class="section-heading compact-section-heading">
-          <div>
-            <h2 id="brand-models-title">Модели {brand.name}</h2>
-            <p>Перейдите на страницу конкретной модели.</p>
-          </div>
-        </div>
-        <nav class="taxonomy-link-grid" aria-label={`Модели ${brand.name}`}>
-          {brand.models.map((model) => (
-            <a class="taxonomy-link" href={`/cars/brand/${brand.slug}/${model.slug}`}>
-              <strong>{model.name}</strong>
-              <span>{model.cars.length} объявл.</span>
-            </a>
-          ))}
-        </nav>
-      </div>
-    </section>
-  )}
-
-  <section class="section catalog-results-section" aria-labelledby="brand-listings-title">
-    <div class="container catalog-results-shell">
-      <div class="catalog-results-toolbar">
-        <div>
-          <span>В продаже</span>
-          <strong id="brand-listings-title">{brand.cars.length} авто {brand.name}</strong>
-        </div>
-        <a class="button button-light compact-button" href="/cars">Все автомобили</a>
-      </div>
-      <div class="cards-grid catalog-grid taxonomy-cars-grid">
-        {brand.cars.map((car, index) => <CarCard car={car} priority={index === 0} source="brand_page" />)}
-      </div>
-    </div>
-  </section>
-</BaseLayout>

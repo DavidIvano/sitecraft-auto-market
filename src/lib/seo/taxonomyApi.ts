@@ -27,6 +27,7 @@ import {
   safeDecodeSeoTaxonomyParam,
   type SeoTaxonomyResolution,
 } from "./taxonomyPage.ts";
+import { toSitemapIsoDate } from "./sitemapApi.ts";
 
 const TAXONOMY_TYPES = new Set<SeoTaxonomyType>([
   "brand", "model", "city", "region", "fuel", "body", "price",
@@ -108,6 +109,9 @@ function normalizeFacet(
   if (rawRegionSlug && rawRegionSlug !== regionSlug) return null;
   const rawCode = text(source.code);
   if (["fuel", "body", "price"].includes(type) && rawCode && rawCode !== slug) return null;
+  const rawLastmod = source.lastmod;
+  const lastmod = toSitemapIsoDate(rawLastmod);
+  if (rawLastmod !== null && rawLastmod !== undefined && rawLastmod !== "" && !lastmod) return null;
   const key = type === "model" ? `${parentSlug}/${slug}` : slug;
   return {
     type,
@@ -121,7 +125,7 @@ function normalizeFacet(
     regionSlug: regionSlug || undefined,
     code: rawCode || (["fuel", "body", "price"].includes(type) ? slug : undefined),
     priceBucket,
-    lastmod: optionalText(source.lastmod) || null,
+    lastmod,
   };
 }
 

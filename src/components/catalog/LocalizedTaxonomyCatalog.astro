@@ -4,7 +4,7 @@ import CarCard from "../CarCard.astro";
 import SeoTaxonomyLinks from "./SeoTaxonomyLinks.astro";
 import type { CarListing } from "../../lib/types";
 import type { PublicPageMessages } from "../../i18n/publicRoutes";
-import { DEFAULT_LOCALE } from "../../i18n/config.ts";
+import { getDefaultLocalizedPath } from "../../i18n/routes.ts";
 import { SITE_URL } from "../../lib/config.ts";
 import { TAXONOMY_PAGE_SIZE, type SeoBreadcrumb, type SeoRelatedTaxonomyGroup } from "../../lib/seo/taxonomies.ts";
 
@@ -62,7 +62,7 @@ const breadcrumbSchema = {
     item: new URL(item.href || canonicalPath, siteUrl).toString(),
   })),
 };
-const xDefaultPath = `/${DEFAULT_LOCALE}${canonicalPath.replace(new RegExp(`^/${locale}`), "") || "/"}`;
+const xDefaultPath = getDefaultLocalizedPath(canonicalPath);
 ---
 
 <BaseLayout

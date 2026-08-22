@@ -23,7 +23,7 @@ test("server translation preserves marked backend and seller content", () => {
   assert.match(translated, /<span>Benzin<\/span>/);
 });
 
-test("every Astro page uses the multilingual BaseLayout", () => {
+test("every rendered Astro page uses the multilingual BaseLayout; route-only pages redirect", () => {
   const pagesRoot = new URL("../src/pages/", import.meta.url);
   const pages: string[] = [];
   const visit = (directory: URL) => {
@@ -35,7 +35,7 @@ test("every Astro page uses the multilingual BaseLayout", () => {
   };
   visit(pagesRoot);
   assert.ok(pages.length >= 35);
-  for (const page of pages) assert.match(page, /<(?:BaseLayout|LocalizedTaxonomyCatalog)\b/);
+  for (const page of pages) assert.match(page, /<(?:BaseLayout|LocalizedTaxonomyCatalog)\b|Astro\.redirect\(/);
 });
 
 test("client i18n waits for the body and preserves locale in internal links", () => {

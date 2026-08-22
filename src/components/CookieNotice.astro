@@ -1,10 +1,13 @@
 ---
 import type { Locale } from "../i18n/locales";
+import { getLocaleFromPath } from "../i18n/locale";
 import { getMessages } from "../i18n/messages";
+import { getLocalizedPath } from "../i18n/routes";
 
 type Props = { locale: Locale };
 const { locale } = Astro.props;
 const messages = getMessages(locale);
+const privacyHref = getLocaleFromPath(Astro.url.pathname) ? getLocalizedPath("/privacy/", locale) : "/privacy/";
 ---
 
 <div class="cookie-notice" id="cookie-notice" hidden>
@@ -13,7 +16,7 @@ const messages = getMessages(locale);
     <p>{messages.cookieText}</p>
   </div>
   <div class="cookie-actions">
-    <a class="button button-light" href="/privacy">{messages.cookieMore}</a>
+    <a class="button button-light" href={privacyHref}>{messages.cookieMore}</a>
     <button class="button button-dark" type="button" id="cookie-accept">{messages.cookieAccept}</button>
   </div>
 </div>

@@ -4,7 +4,6 @@ import { projectCatalogForLocale } from "../../i18n/publicListing.ts";
 import { getPublicPageMessages } from "../../i18n/publicRoutes.ts";
 import { isPublicLocaleRouteEnabled } from "../../i18n/release4.ts";
 import { isStrictSeoReleaseLocale } from "../../i18n/releaseStage3.ts";
-import { PUBLIC_STATIC_PAGE_CODES } from "../../i18n/staticPages.ts";
 import {
   RELEASE4_FLAGS,
   SEO_SITEMAP_COMPATIBILITY_FALLBACK_ENABLED,
@@ -17,6 +16,7 @@ import { getLocalizedApprovedCars } from "../../lib/xano.ts";
 import { loadLocalizedSeoTaxonomySitemapFacets } from "../../lib/seo/taxonomyRoute.ts";
 import { renderUrlSet } from "../../lib/seo/sitemapXml.ts";
 import { toSitemapIsoDate } from "../../lib/seo/sitemapApi.ts";
+import { SEO_SITEMAP_SEED_PATHS } from "../../lib/seo/sitemapPolicy.ts";
 import {
   buildSeoTaxonomyGraph,
   getIndexableSeoTaxonomyFacets,
@@ -69,7 +69,6 @@ export const GET: APIRoute = async ({ params }) => {
   const localizedSlugs = new Set(cars.map((car) => car.slug));
   const taxonomyCars = (sourceListings || []).filter((car) => localizedSlugs.has(car.slug));
   const siteUrl = SITE_URL || "https://automarket.sitecraft.agency";
-  const staticPaths = PUBLIC_STATIC_PAGE_CODES.map((page) => `/${page}/`);
   const strictSeoRelease = isStrictSeoReleaseLocale(locale);
   const taxonomyGraph = boundedTaxonomyFacets ? null : buildSeoTaxonomyGraph(taxonomyCars);
   const taxonomyFacets = boundedTaxonomyFacets?.facets
@@ -78,12 +77,10 @@ export const GET: APIRoute = async ({ params }) => {
     .map((facet) => ({ path: getTaxonomyBasePath(facet), lastmod: facet.lastmod }));
   const indexablePagePaths = strictSeoRelease
     ? [
-        { path: "/", lastmod: null },
-        { path: "/cars/", lastmod: null },
-        ...staticPaths.map((path) => ({ path, lastmod: null })),
+        ...SEO_SITEMAP_SEED_PATHS.map((path) => ({ path, lastmod: null })),
         ...taxonomyEntries,
       ]
-    : staticPaths.map((path) => ({ path, lastmod: null }));
+    : [];
 
   const urls = [
     ...indexablePagePaths.map(({ path, lastmod }) => ({ loc: new URL(`/${locale}${path}`, siteUrl).toString(), lastmod })),

@@ -9,6 +9,7 @@ import { setPublicCacheHeaders, setPublicNoStoreHeaders, setUnavailableHeaders }
 import SeoTaxonomyLinks from "../../../components/catalog/SeoTaxonomyLinks.astro";
 import { TAXONOMY_PAGE_SIZE } from "../../../lib/seo/taxonomies.ts";
 import { loadLocalizedCatalogPage } from "../../../lib/seo/catalogRoute.ts";
+import { getDefaultLocalizedPath } from "../../../i18n/routes";
 
 export const prerender = false;
 
@@ -77,7 +78,7 @@ const collectionSchema = {
   jsonLd={collectionSchema}
   breadcrumbs={resolution.breadcrumbs}
   alternateLocales={resolution.alternateLocales}
-  xDefaultPath={resolution.page === 1 && !resolution.noindex ? "/cars/" : undefined}
+  xDefaultPath={resolution.page === 1 && !resolution.noindex ? getDefaultLocalizedPath("/cars/") : undefined}
 >
   <section class="section page-hero catalog-hero">
     <div class="container">
