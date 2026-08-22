@@ -207,9 +207,9 @@ if (isSelectableLocale(explicitLocale)) {
 
   <section class="section homepage-promotions" id="homepage-promotions" hidden={homepagePromotedCars.length === 0} aria-labelledby="homepage-promotions-title">
     <div class="container">
-      <div class="section-heading row-heading">
+      <div class="section-heading row-heading homepage-promotions-heading">
         <div>
-          <p class="eyebrow">{messages.tabPremium}</p>
+          <p class="eyebrow homepage-promotions-eyebrow"><i data-lucide="crown" aria-hidden="true"></i><span>{messages.tabPremium}</span></p>
           <h2 id="homepage-promotions-title">{messages.premiumCars}</h2>
           <p class="section-subtitle">{messages.premiumDisclosure}</p>
         </div>

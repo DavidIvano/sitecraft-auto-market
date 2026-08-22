@@ -10,6 +10,8 @@ import { isPublicListing } from "../../lib/listingStatus";
 import { setPublicCacheHeaders, setUnavailableHeaders } from "../../lib/publicCache";
 import { getApprovedCars, getLocalizedApprovedCars } from "../../lib/xano";
 import type { CarListing } from "../../lib/types";
+import { getHomepagePromotedCars } from "../../lib/promotions/model";
+import { getMessages } from "../../i18n/messages";
 
 export const prerender = false;
 
@@ -21,6 +23,7 @@ if (!locale || !isPublicLocaleRouteEnabled(locale, RELEASE4_FLAGS)) {
 }
 
 const messages = getPublicPageMessages(locale);
+const homeMessages = getMessages(locale);
 let cars: CarListing[] = [];
 const strictSeoRelease = isStrictSeoReleaseLocale(locale);
 try {
@@ -32,6 +35,9 @@ try {
   setUnavailableHeaders(Astro.response.headers);
   return Astro.rewrite("/service-unavailable");
 }
+const homepagePromotedCars = getHomepagePromotedCars(cars);
+const homepagePromotedIds = new Set(homepagePromotedCars.map((car) => car.id));
+const regularCars = cars.filter((car) => !homepagePromotedIds.has(car.id));
 const canonicalPath = `/${locale}/`;
 const alternateLocales = getRouteAlternates("/");
 const pageNoindex = !strictSeoRelease;
@@ -70,6 +76,24 @@ const pageSchema = {
     </div>
   </section>
 
+  {homepagePromotedCars.length > 0 && (
+    <section class="section homepage-promotions" aria-labelledby="localized-homepage-promotions-title">
+      <div class="container">
+        <div class="section-heading row-heading homepage-promotions-heading">
+          <div>
+            <p class="eyebrow homepage-promotions-eyebrow"><i data-lucide="crown" aria-hidden="true"></i><span>{homeMessages.tabPremium}</span></p>
+            <h2 id="localized-homepage-promotions-title">{homeMessages.premiumCars}</h2>
+            <p class="section-subtitle">{homeMessages.premiumDisclosure}</p>
+          </div>
+          <a class="button button-light" href={`/${locale}/cars/`}>{homeMessages.viewCatalog}</a>
+        </div>
+        <div class="cards-grid public-car-grid" data-homepage-promotions-grid>
+          {homepagePromotedCars.map((car, index) => <CarCard car={car} priority={index === 0} source="localized_home_premium" locale={locale} />)}
+        </div>
+      </div>
+    </section>
+  )}
+
   <section class="section catalog-results-section" aria-labelledby="localized-home-cars">
     <div class="container">
       <div class="section-heading">
@@ -80,9 +104,9 @@ const pageSchema = {
         </div>
         <a class="button button-light" href={`/${locale}/cars/`}>{messages.browseCars}</a>
       </div>
-      {cars.length > 0 ? (
+      {regularCars.length > 0 ? (
         <div class="cards-grid catalog-grid">
-          {cars.map((car, index) => <CarCard car={car} priority={index === 0} source="localized_home" locale={locale} />)}
+          {regularCars.map((car, index) => <CarCard car={car} priority={homepagePromotedCars.length === 0 && index === 0} source="localized_home" locale={locale} />)}
         </div>
       ) : (
         <div class="empty-state" role="status"><h2>{messages.emptyTitle}</h2><p>{messages.emptyText}</p></div>

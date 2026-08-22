@@ -49,12 +49,15 @@ test("every active promotion gets the matching plan-card color tier and icon", (
 
 test("homepage premium section is rendered before all regular cars", () => {
   const homepage = readProjectFile("src/pages/index.astro");
+  const localizedHomepage = readProjectFile("src/pages/[locale]/index.astro");
   const premiumSection = homepage.indexOf('id="homepage-promotions"');
   const regularSection = homepage.indexOf('class="section home-all-cars"');
   assert.ok(premiumSection >= 0, "premium section must exist");
   assert.ok(regularSection >= 0, "regular cars section must exist");
   assert.ok(premiumSection < regularSection, "premium cars must be above regular cars");
   assert.match(homepage, /homepagePromotedCars\.map[\s\S]*source="homepage_premium"/);
+  assert.match(localizedHomepage, /getHomepagePromotedCars\(cars\)/);
+  assert.match(localizedHomepage, /source="localized_home_premium"/);
 });
 
 test("premium card modifier uses the shared card and gold visual language", () => {
@@ -70,6 +73,9 @@ test("premium card modifier uses the shared card and gold visual language", () =
   assert.match(systemCss, /\.public-car-card \.car-card-premium-banner \{[\s\S]*?left:\s*12px[\s\S]*?border-radius:\s*var\(--radius-pill\)/);
   assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-premium-marker \{\s*display:\s*none/);
   assert.match(systemCss, /@media \(max-width: 640px\)[\s\S]*?\.public-car-card \.car-card-price-row \{[\s\S]*?flex-direction:\s*row[\s\S]*?justify-content:\s*space-between/);
+  assert.match(systemCss, /\[data-homepage-promotions-grid\] \{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(systemCss, /\.public-car-card:is\(\.is-homepage-premium, \.car-card-premium\)[\s\S]*?color:\s*var\(--premium-bright\)/);
+  assert.match(systemCss, /\.public-car-card:is\(\.is-featured, \.car-card-featured\)[\s\S]*?color:\s*#a9a6ff/);
   assert.match(systemCss, /\.public-car-card \{[\s\S]*?animation:\s*none/);
   assert.match(systemCss, /@media \(min-width: 1024px\)[\s\S]*?\.catalog-grid-list \.public-car-card \{[\s\S]*?--public-card-height:\s*240px/);
   assert.match(systemCss, /\.catalog-grid-list \.public-car-card \.car-card-link \{[\s\S]*?grid-template-columns:\s*minmax\(260px, 38%\) minmax\(0, 1fr\)/);

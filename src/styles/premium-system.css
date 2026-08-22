@@ -688,36 +688,124 @@
     right: 12px;
   }
 
-  /* The promoted placement is the visual lead, not a small card stranded in a
-     four-column grid. On wide screens it becomes a compact editorial feature. */
-  [data-homepage-promotions-grid] {
-    grid-template-columns: minmax(0, min(920px, 100%));
-    justify-content: start;
+  /* Homepage promotion gallery: two compact premium cards per desktop row. */
+  .homepage-promotions {
+    position: relative;
+    isolation: isolate;
   }
 
-  @media (min-width: 700px) {
+  .homepage-promotions::before {
+    position: absolute;
+    z-index: -1;
+    inset: 8% 0;
+    background:
+      radial-gradient(circle at 12% 42%, color-mix(in srgb, var(--premium-bright) 7%, transparent), transparent 28rem),
+      radial-gradient(circle at 88% 62%, color-mix(in srgb, var(--premium) 6%, transparent), transparent 24rem);
+    content: "";
+    pointer-events: none;
+  }
+
+  .homepage-promotions-heading {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--premium-bright) 22%, var(--border-subtle));
+    border-radius: var(--radius-panel);
+    background: color-mix(in srgb, var(--surface-solid) 96%, var(--premium-bright));
+    padding: clamp(18px, 2.4vw, 26px);
+  }
+
+  .homepage-promotions-heading::after {
+    position: absolute;
+    inset: 0 0 auto;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--premium-bright), transparent);
+    content: "";
+    opacity: .78;
+    pointer-events: none;
+  }
+
+  .homepage-promotions-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--premium-bright);
+  }
+
+  .homepage-promotions-eyebrow svg { width: 17px; height: 17px; }
+
+  [data-homepage-promotions-grid] {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    gap: clamp(18px, 2.2vw, 28px);
+    overflow: visible;
+  }
+
+  @media (min-width: 861px) {
     [data-homepage-promotions-grid] .public-car-card {
-      width: min(920px, 100%);
-      min-height: 356px;
+      width: 100%;
+      min-height: 100%;
+      border-radius: clamp(20px, 2vw, 26px);
     }
 
     [data-homepage-promotions-grid] .public-car-card .car-card-link {
+      display: flex;
+      flex-direction: column;
+    }
+
+    [data-homepage-promotions-grid] .public-car-card .car-card-media {
+      height: auto;
+      min-height: 0;
+      aspect-ratio: 16 / 9;
+      border-right: 0;
+      border-bottom: 1px solid color-mix(in srgb, var(--premium-bright) 28%, var(--border-subtle));
+    }
+
+    [data-homepage-promotions-grid] .public-car-card .car-card-body { padding: clamp(18px, 2vw, 24px); }
+    [data-homepage-promotions-grid] .public-car-card .car-card-title { min-height: 0; font-size: clamp(1.2rem, 1.7vw, 1.48rem); }
+    [data-homepage-promotions-grid] .public-car-card .car-price { font-size: clamp(1.55rem, 2.25vw, 1.95rem); }
+  }
+
+  @media (min-width: 641px) and (max-width: 860px) {
+    [data-homepage-promotions-grid] { grid-template-columns: minmax(0, 1fr); }
+
+    [data-homepage-promotions-grid] .public-car-card .car-card-link {
       display: grid;
-      grid-template-columns: minmax(300px, 46%) minmax(0, 1fr);
-      padding-top: 0;
+      grid-template-columns: minmax(260px, 44%) minmax(0, 1fr);
     }
 
     [data-homepage-promotions-grid] .public-car-card .car-card-media {
       height: 100%;
-      min-height: 314px;
+      min-height: 300px;
       aspect-ratio: auto;
       border-right: 1px solid color-mix(in srgb, var(--premium-bright) 28%, var(--border-subtle));
       border-bottom: 0;
     }
+  }
 
-    [data-homepage-promotions-grid] .public-car-card .car-card-body { padding: clamp(22px, 3vw, 32px); }
-    [data-homepage-promotions-grid] .public-car-card .car-card-title { font-size: clamp(1.45rem, 2.4vw, 2rem); }
-    [data-homepage-promotions-grid] .public-car-card .car-price { font-size: clamp(1.8rem, 3vw, 2.45rem); }
+  /* Promotion colors stay visible throughout the card, including after the
+     generic public-card rules later in the cascade. */
+  .public-car-card:is(.is-homepage-premium, .car-card-premium) :where(
+    .favorite-button,
+    .car-card-promotion-icon,
+    .car-card-media-views,
+    .car-card-location,
+    .car-card-specs dd
+  ) svg {
+    color: var(--premium-bright);
+  }
+
+  .public-car-card:is(.is-featured, .car-card-featured) :where(
+    .favorite-button,
+    .car-card-promotion-icon,
+    .car-card-media-views,
+    .car-card-location,
+    .car-card-specs dd
+  ) svg {
+    color: #a9a6ff;
+  }
+
+  .public-car-card:is(.is-homepage-premium, .car-card-premium, .is-featured, .car-card-featured) .favorite-button[aria-pressed="true"] svg {
+    color: #fff;
   }
 
   /* Home content and horizontal discovery */
@@ -1189,6 +1277,13 @@
       right: 12px;
       left: auto;
     }
+
+    .homepage-promotions-heading {
+      align-items: flex-start;
+      padding: 17px;
+    }
+
+    .homepage-promotions-heading .button { width: 100%; }
 
     .car-detail-grid { grid-template-columns: minmax(0, 1fr); }
     .gallery-stage { height: clamp(260px, 76vw, 440px); }
