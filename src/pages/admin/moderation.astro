@@ -89,6 +89,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
     import { fetchCurrentUser, getAuthToken, getAuthUser, isAdminUser, isSessionConfirmedExpired, redirectToLogin as redirectToSharedLogin } from "../../lib/authClient";
     import { buildModerationReason, runModerationFallback } from "../../lib/ai/moderationFallback";
     import { refreshAppIcons } from "../../lib/appIcons";
+    import { getFriendlyErrorMessage } from "../../lib/errorMessages";
     import {
       canRunModerationAction,
       getEffectiveModerationStatus,
@@ -184,6 +185,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       delete: "Удалить",
       sold: "Продано",
     };
+    const actionSuccessLabels: Record<string, string> = {
+      approve: "Объявление одобрено и опубликовано.",
+      reject: "Объявление отклонено.",
+      block: "Объявление заблокировано.",
+      delete: "Объявление удалено.",
+      sold: "Объявление отмечено как проданное.",
+    };
 
     let cars: AdminCar[] = [];
     const aiModerationStates = new Map<string, { loading?: boolean; error?: string; result?: AiModerationCheckResponse; reason?: string }>();
@@ -202,6 +210,31 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       if (accessMessage instanceof HTMLElement) {
         accessMessage.textContent = value;
       }
+    };
+
+    const setAdminMessage = (value: string, state: "neutral" | "success" | "error" = "neutral") => {
+      if (!(message instanceof HTMLElement)) return;
+      message.textContent = value;
+      message.dataset.state = state;
+    };
+
+    const readResponseError = async (response: Response) => {
+      const responseText = await response.text().catch(() => "");
+      let payload: Record<string, any> = {};
+      try {
+        payload = responseText ? JSON.parse(responseText) as Record<string, any> : {};
+      } catch {
+        payload = {};
+      }
+      const detail = [
+        payload?.message,
+        payload?.error,
+        payload?.error_description,
+        payload?.payload?.message,
+        payload?.payload?.error,
+      ].find((value) => typeof value === "string" && value.trim());
+      const safeDetail = String(detail || responseText || response.statusText || "неизвестная ошибка").trim();
+      return new Error(`HTTP ${response.status}: ${safeDetail}`);
     };
 
     const showAdminBoard = () => {
@@ -703,7 +736,7 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       refreshAppIcons(list);
     };
 
-    const loadCars = async () => {
+    const loadCars = async (successMessage = "") => {
       if (!(board instanceof HTMLElement) || !(message instanceof HTMLElement) || !(list instanceof HTMLElement)) {
         return;
       }
@@ -712,11 +745,11 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       const placeholderUrl = board.dataset.placeholderUrl;
 
       if (!apiUrl || apiUrl === placeholderUrl) {
-        message.textContent = "Сервис временно недоступен. Попробуйте позже.";
+        setAdminMessage("Сервис временно недоступен. Попробуйте позже.", "error");
         return;
       }
 
-      message.textContent = "Загружаю объявления...";
+      setAdminMessage("Загружаю объявления...");
 
       try {
         const response = await fetch(`${apiUrl}/admin/moderation?status=all`, {
@@ -737,13 +770,13 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
           return;
         }
         if (!response.ok) {
-          throw new Error(`moderation load failed ${response.status}`);
+          throw await readResponseError(response);
         }
 
         const payload = await response.json();
         cars = normalizeCars(payload);
         renderList();
-        message.textContent = `Загружено объявлений: ${cars.length}.`;
+        setAdminMessage(successMessage || `Загружено объявлений: ${cars.length}.`, successMessage ? "success" : "neutral");
       } catch (error) {
         console.error(error);
         list.innerHTML = `
@@ -751,7 +784,10 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
             Не удалось загрузить список объявлений. Попробуйте обновить страницу.
           </div>
         `;
-        message.textContent = "Не удалось загрузить объявления.";
+        setAdminMessage(
+          getFriendlyErrorMessage(error, `Не удалось загрузить объявления. ${error instanceof Error ? error.message : ""}`.trim()),
+          "error",
+        );
       }
     };
 
@@ -773,23 +809,37 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       }
 
       try {
-        message.textContent = `${actionLabels[action] || "Действие"}...`;
+        setAdminMessage(`${actionLabels[action] || "Действие"}...`);
 
         const response = await fetch(`${apiUrl}/admin/cars/${id}/${endpointAction}`, {
           method: "PATCH",
           headers: {
             Authorization: `Bearer ${adminToken}`,
           },
+          cache: "no-store",
         });
 
+        if (response.status === 401) {
+          if (await isSessionConfirmedExpired(apiUrl, adminToken)) {
+            redirectToLogin();
+            return;
+          }
+          throw new Error("AUTH_STATE_MISMATCH");
+        }
+        if (response.status === 403) {
+          throw new Error("FORBIDDEN");
+        }
         if (!response.ok) {
-          throw new Error(`action failed`);
+          throw await readResponseError(response);
         }
 
-        await loadCars();
+        await loadCars(actionSuccessLabels[action] || "Действие выполнено.");
       } catch (error) {
         console.error(error);
-        message.textContent = "Не удалось выполнить действие. Попробуйте позже.";
+        setAdminMessage(
+          getFriendlyErrorMessage(error, `Не удалось выполнить действие. ${error instanceof Error ? error.message : ""}`.trim()),
+          "error",
+        );
       }
     };
 
@@ -970,7 +1020,9 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
       window.history.replaceState({}, "", url);
       renderList();
     });
-    refresh?.addEventListener("click", loadCars);
+    refresh?.addEventListener("click", () => {
+      void loadCars();
+    });
 
     stats?.addEventListener("click", (event) => {
       const target = event.target;
@@ -1042,9 +1094,19 @@ const placeholderApiUrl = "https://your-xano-api-url.com/api:YOUR_GROUP";
         return;
       }
 
+      const originalLabel = button.textContent || actionLabels[action] || "Действие";
       button.disabled = true;
-      await runAction(action, id);
-      button.disabled = false;
+      button.setAttribute("aria-busy", "true");
+      button.textContent = `${actionLabels[action] || "Действие"}...`;
+      try {
+        await runAction(action, id);
+      } finally {
+        if (button.isConnected) {
+          button.disabled = false;
+          button.removeAttribute("aria-busy");
+          button.textContent = originalLabel;
+        }
+      }
     });
 
     requireAdminAccess().then((hasAccess) => {

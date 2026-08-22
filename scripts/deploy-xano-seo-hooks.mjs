@@ -9,12 +9,12 @@ const credentials = resolve(root, ".xano-cli.credentials.yaml");
 const apply = process.argv.includes("--apply");
 
 const hooks = [
-  { file: "api/sitecraft_auto_market/admin/cars/id/approve_PATCH.xs", event: "listing_approved", record: "$updated" },
-  { file: "api/sitecraft_auto_market/dashboard/listings/id_PATCH.xs", event: "listing_edited", record: "$car" },
-  { file: "api/sitecraft_auto_market/admin/cars/id/delete_PATCH.xs", event: "listing_deleted", record: "$updated" },
-  { file: "api/sitecraft_auto_market/admin/cars/id/sold_PATCH.xs", event: "listing_sold", record: "$updated" },
-  { file: "api/sitecraft_auto_market/admin/cars/id/block_PATCH.xs", event: "listing_blocked", record: "$updated" },
-  { file: "api/sitecraft_auto_market/dashboard/listings/id/delete_PATCH.xs", event: "listing_deleted", record: "$car", condition: "($result.already_deleted != true)" },
+  { file: "api/sitecraft_auto_market/admin/cars/id/approve_PATCH.xs", event: "listing_approved", record: "$updated", requiresUserAuth: true },
+  { file: "api/sitecraft_auto_market/dashboard/listings/id_PATCH.xs", event: "listing_edited", record: "$car", requiresUserAuth: true },
+  { file: "api/sitecraft_auto_market/admin/cars/id/delete_PATCH.xs", event: "listing_deleted", record: "$updated", requiresUserAuth: true },
+  { file: "api/sitecraft_auto_market/admin/cars/id/sold_PATCH.xs", event: "listing_sold", record: "$updated", requiresUserAuth: true },
+  { file: "api/sitecraft_auto_market/admin/cars/id/block_PATCH.xs", event: "listing_blocked", record: "$updated", requiresUserAuth: true },
+  { file: "api/sitecraft_auto_market/dashboard/listings/id/delete_PATCH.xs", event: "listing_deleted", record: "$car", condition: "($result.already_deleted != true)", requiresUserAuth: true },
   { file: "api/sitecraft_auto_market/translations/internal/jobs/id/complete_POST.xs", event: "translation_ready", record: "$car", translation: "$translation", locale: "$job.target_locale" },
 ];
 
@@ -76,6 +76,9 @@ const results = [];
 for (const hook of hooks) {
   const absolute = resolve(liveDir, hook.file);
   const current = await readFile(absolute, "utf8");
+  if (hook.requiresUserAuth && !/^\s*auth\s*=\s*"automarket_users"\s*$/mu.test(current)) {
+    throw new Error(`${hook.file} uses $auth but is not connected to automarket_users`);
+  }
   const patched = inject(current, hook);
   if (patched.changed) {
     await writeFile(absolute, patched.source, "utf8");

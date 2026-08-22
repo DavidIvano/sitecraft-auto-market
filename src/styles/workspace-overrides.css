@@ -19,6 +19,27 @@
   padding: 12px 14px;
 }
 
+#admin-message[data-state="neutral"] {
+  color: var(--text-secondary);
+}
+
+#admin-message[data-state="success"],
+#admin-message[data-state="error"] {
+  border: 1px solid color-mix(in srgb, currentColor 42%, transparent);
+  border-radius: var(--radius-control);
+  padding: 12px 14px;
+}
+
+#admin-message[data-state="success"] {
+  background: color-mix(in srgb, var(--success) 10%, transparent);
+  color: var(--success);
+}
+
+#admin-message[data-state="error"] {
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+}
+
 /* Make the exact invalid listing field unmistakable, including grouped radio fields. */
 .listing-form-enhanced :is(label, fieldset, .photo-uploader).has-field-error > :is(span:first-child, legend) {
   color: var(--danger);
