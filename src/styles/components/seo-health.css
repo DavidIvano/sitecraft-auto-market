@@ -157,7 +157,9 @@
   .seo-health-definition-list div:last-child { border-bottom: 0; }
   .seo-health-definition-list dt { color: var(--text-secondary); }
   .seo-health-definition-list dd { margin: 0; font-weight: 800; text-align: right; }
-  .seo-health-message { min-height: 24px; margin: 0; }
+  .seo-health-message { min-height: 24px; margin: 0; color: var(--text-secondary); }
+  .seo-health-message[data-tone="pass"] { color: var(--success); }
+  .seo-health-message[data-tone="fail"] { color: var(--danger); }
 
   @media (max-width: 1100px) {
     .seo-health-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }

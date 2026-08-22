@@ -204,7 +204,10 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
       }
       refresh.disabled = true;
       refresh.classList.add("is-loading");
-      if (message) message.textContent = "Обновляю production snapshot…";
+      if (message) {
+        message.dataset.tone = "loading";
+        message.textContent = "Обновляю production snapshot…";
+      }
       try {
         const response = await fetch("/api/admin/seo-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
         const payload = await response.json().catch(() => ({})) as HealthPayload;
@@ -215,9 +218,15 @@ const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
         }
         if (!payload.summary) throw new Error(payload.code || `HTTP ${response.status}`);
         render(payload);
-        if (message) message.textContent = response.ok ? "Данные актуальны." : "Snapshot получен, но SEO-контур требует внимания.";
+        if (message) {
+          message.dataset.tone = response.ok ? "pass" : "fail";
+          message.textContent = response.ok ? "Данные актуальны." : "Snapshot получен, но SEO-контур требует внимания.";
+        }
       } catch (error) {
-        if (message) message.textContent = `Не удалось обновить SEO health: ${error instanceof Error ? error.message : "неизвестная ошибка"}`;
+        if (message) {
+          message.dataset.tone = "fail";
+          message.textContent = `Не удалось обновить SEO health: ${error instanceof Error ? error.message : "неизвестная ошибка"}`;
+        }
       } finally {
         refresh.disabled = false;
         refresh.classList.remove("is-loading");
