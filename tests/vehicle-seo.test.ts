@@ -41,14 +41,15 @@ test("vehicle SEO builds title, description, canonical and safe image metadata",
   assert.match(seo.description, /84[\s\u00a0]?500/);
 });
 
-test("Vehicle, Offer and BreadcrumbList contain only real serializable values", () => {
+test("Product + Car, Offer and BreadcrumbList contain only real serializable values", () => {
   const seo = buildVehicleSeo(listing());
-  assert.equal(seo.vehicle["@type"], "Vehicle");
+  assert.deepEqual(seo.vehicle["@type"], ["Product", "Car"]);
   assert.equal(seo.offer["@type"], "Offer");
   assert.equal(seo.breadcrumb["@type"], "BreadcrumbList");
   assert.equal(seo.offer.availability, "https://schema.org/InStock");
   assert.equal(seo.offer.price, 18900);
   assert.equal(seo.vehicle.offers["@id"], seo.offer["@id"]);
+  assert.deepEqual(seo.offer.itemOffered, { "@id": seo.vehicle["@id"] });
   const json = JSON.stringify([seo.vehicle, seo.offer, seo.breadcrumb]);
   assert.doesNotMatch(json, /undefined|NaN|null|owner@example\.com|WBA12345678901234/);
 });

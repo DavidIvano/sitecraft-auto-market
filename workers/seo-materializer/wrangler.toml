@@ -1,0 +1,16 @@
+name = "sitecraft-seo-materializer"
+main = "src/index.ts"
+compatibility_date = "2026-08-01"
+
+[triggers]
+crons = ["10,25,40,55 * * * *"]
+
+[vars]
+XANO_API_BASE_URL = "https://x8ki-letl-twmt.n7.xano.io/api:jAAj839u"
+SEO_MATERIALIZER_ENABLED = "true"
+SEO_MATERIALIZER_DRY_RUN = "false"
+SEO_MATERIALIZER_SCHEDULED_ENABLED = "true"
+SEO_MATERIALIZER_BATCH_SIZE = "100"
+SEO_MATERIALIZER_CONCURRENCY = "1"
+SEO_MATERIALIZER_REQUEST_DELAY_MS = "3200"
+SEO_MATERIALIZER_HTTP_TIMEOUT_MS = "90000"

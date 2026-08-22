@@ -77,8 +77,9 @@ async function inspectVehicle(slug) {
   const html = await response.text();
   const canonical = new URL(path, site).toString();
   const schemas = schemaItems(html);
-  const byType = (type) => schemas.find((item) => item?.["@type"] === type);
-  const vehicle = byType("Vehicle");
+  const hasType = (item, type) => (Array.isArray(item?.["@type"]) ? item["@type"].includes(type) : item?.["@type"] === type);
+  const byType = (type) => schemas.find((item) => hasType(item, type));
+  const vehicle = schemas.find((item) => hasType(item, "Product") && hasType(item, "Car"));
   const offer = byType("Offer");
   const breadcrumb = byType("BreadcrumbList");
   const violations = [];
@@ -86,7 +87,7 @@ async function inspectVehicle(slug) {
   if (response.status !== 200) violations.push(`HTTP ${response.status}`);
   if (!html.includes(`<link rel="canonical" href="${canonical}">`)) violations.push("canonical");
   if (/noindex/i.test(response.headers.get("x-robots-tag") || "")) violations.push("x-robots-tag");
-  if (!vehicle) violations.push("Vehicle");
+  if (!vehicle) violations.push("Product+Car");
   if (!offer) violations.push("Offer");
   if (!breadcrumb) violations.push("BreadcrumbList");
   if (vehicle && offer && offer.itemOffered?.["@id"] !== vehicle["@id"]) violations.push("Offer.itemOffered");
@@ -102,6 +103,7 @@ async function inspectVehicle(slug) {
   const city = offer?.availableAtOrFrom?.address?.addressLocality;
   if (city && !new RegExp(`href=["']/${locale}/cars/city/[^/]+/["']`).test(contextLinks)) violations.push("city link");
   if (!new RegExp(`href=["']/${locale}/cars/price/[^/]+/["']`).test(contextLinks)) violations.push("price link");
+  if (sitemapSlugs.length > 1 && !/localized-related-cars|related-cars-section/.test(html)) violations.push("related cars");
 
   const imageUrl = Array.isArray(vehicle?.image) ? vehicle.image[0] : vehicle?.image;
   if (imageUrl) {

@@ -1,6 +1,6 @@
 # Актуальный реестр Xano endpoints
 
-Обновлено: 21 августа 2026 года
+Обновлено: 22 августа 2026 года
 
 Workspace: `sitecraft.agency` (`115940`)
 
@@ -18,7 +18,7 @@ API group: `sitecraft-auto-market` (`421515`)
 - `MISSING` — frontend-идея или маршрут есть, но production backend не зафиксирован. Такая кнопка не должна показываться пользователю.
 - `UNKNOWN` — числовой ID не был сохранён в репозитории; выдумывать его нельзя.
 
-Числовые ID взяты из production-аудитов и журналов выпуска. 16 августа 2026 года безопасные публичные GET-запросы и strict contract повторно проверены для всех 28 пользовательских локалей: 24 языков ЕС плюс `ru/uk/ar/tr`. Защищённые endpoints очереди вызывались только в ограниченных языковых волнах; секреты в Git не записывались.
+Числовые ID взяты из production-аудитов и журналов выпуска. 22 августа 2026 года materializer snapshot подтвердил 11/11 публичных объявлений для каждой из 28 локалей: 24 языков ЕС плюс `ru/uk/ar/tr`. Секреты Worker/Xano в Git не записываются.
 
 ## Авторизация
 
@@ -42,12 +42,12 @@ API group: `sitecraft-auto-market` (`421515`)
 | 4005565 | GET | `/taxonomies` | WORKING | 11.08.2026: HTTP 200. |
 | 4009274 | GET | `/public/locale/cars?lang={locale}` | WORKING | 16.08.2026: все 28 пользовательских локалей возвращают по 10/10. Source-ветка исправлена: отсутствующие `car_listings.seo_*` больше не читаются. |
 | 4009273 | GET | `/public/locale/cars/{slug}?lang={locale}` | WORKING | Все 28 пользовательских локалей используют актуальный source hash без fallback; русский detail возвращает source, остальные языки — готовый перевод. |
-| 4020327 | GET | `/public/locale/catalog?lang={locale}&page={page}&limit=24` | WORKING | Bounded-каталог является production-authoritative. Проверено: `de=10`, `ru=11`, `ar=10`; 28 ready locales; compatibility fallback выключен. |
+| 4020327 | GET | `/public/locale/catalog?lang={locale}&page={page}&limit=24` | WORKING | Production-authoritative bounded-каталог читает только generation активного manifest pointer. Materializer parity: 11/11 для всех 28 локалей; compatibility fallback выключен. |
 | 4020328 | GET | `/public/locale/sitemap/listings?lang={locale}&generation={generation}&page={page}&limit=10000` | WORKING | 20.08.2026: slug/lastmod-only shard. Slug-наборы совпали с каталогом, приватные поля отсутствуют; invalid generation/page дают 404. |
-| 4020329 | GET | `/public/seo/sitemap/manifest` | WORKING | 20.08.2026: активное поколение `g20260820canary1`, 28 локалей, 281 locale/listing row, по одному shard на локаль. Прямой canary пройден. |
+| 4020329 | GET | `/public/seo/sitemap/manifest` | WORKING | Единственный атомарный указатель активной immutable generation; требует все 28 публичных локалей. |
 | 4020380 | GET | `/public/locale/taxonomies/counts` | WORKING | 20.08.2026: bounded counts для sitemap/navigation. Canary `de`: 30 существующих facets, 24 indexable; Cloudflare production source `xano_pages_only`. |
-| 4020381 | GET | `/public/locale/taxonomy/{type}/{slug}/related` | WORKING | 20.08.2026: precomputed overlap, до 8 ссылок на группу; embedded и отдельный related-контракты совпали для всех 7 типов. |
-| 4020382 | GET | `/public/locale/taxonomy/{type}/{slug}` | WORKING | Bounded page до 24 карточек. Все 7 типов, RU/AR, thin `noindex` и отрицательные 404 пройдены; Cloudflare production source `xano_bounded`, compatibility fallback выключен. |
+| 4020381 | GET | `/public/locale/taxonomy/{type}/{slug}/related` | WORKING | Precomputed overlap из активной generation; materializer сохраняет до трёх разных релевантных направлений на фасет. Embedded и отдельный related-контракты проверены для всех 7 типов. |
+| 4020382 | GET | `/public/locale/taxonomy/{type}/{slug}` | WORKING | Bounded page до 24 карточек читает только активную generation. Все 7 типов, RU/AR, thin `noindex` и отрицательные 404 пройдены; source `xano_bounded`, compatibility fallback выключен. |
 | 3981281 | POST | `/analytics/listing-view` | WORKING | Публичная аналитика просмотра; повторно не вызывалась, чтобы не менять счётчики. |
 | 3981451 | POST | `/ai/search/intent` | PARTIAL | Работает, но не закрыты rate limit и бюджет провайдера. |
 | 3981320 | POST | `/saved-searches` | WORKING | Создание сохранённого поиска с авторизацией. |
@@ -116,6 +116,25 @@ API group: `sitecraft-auto-market` (`421515`)
 | 4011158 | POST | `/translations/internal/sources/{id}` | WORKING | Read-only сверка канонического и сохранённого source hash. |
 | 4011167 | POST | `/translations/internal/locales/prepare` | WORKING | Идемпотентная подготовка registry для всех 28 пользовательских локалей; локаль не публикуется автоматически. |
 | 4011207 | POST | `/translations/internal/locales/release` | WORKING | Dry-run-first release-gate: публикует локаль только при 100% готовности. Все 28 пользовательских локалей выпущены отдельными волнами после проверки 10/10. |
+
+### Production SEO materializer
+
+Защищённые маршруты доступны только Cloudflare Worker. Таблица очереди `seo_refresh_queue` имеет ID `880813`; задания создаются непосредственно в approve/edit/sold/block/delete и translation-complete endpoints, потому что table triggers недоступны на текущем тарифе Xano.
+
+| ID | Метод | Путь | Статус | Назначение |
+| ---: | --- | --- | --- | --- |
+| 4021120 | POST | `/seo/internal/queue/claim` | WORKING | Транзакционный claim до 100 идемпотентных событий. |
+| 4021121 | POST | `/seo/internal/snapshot/page` | WORKING | Privacy-minimized snapshot публичных объявлений, переводов и 28 локалей. |
+| 4021122 | POST | `/seo/internal/generation/facets` | WORKING | Транзакционная staging-запись taxonomy facets пакетами до 100. |
+| 4021123 | POST | `/seo/internal/generation/rows` | WORKING | Staging listing index, edges, stats, related и manifest rows пакетами до 100. |
+| 4021124 | POST | `/seo/internal/generation/activate` | WORKING | Проверяет точные количества и атомарно меняет 28 active manifest pointers. |
+| 4021125 | POST | `/seo/internal/queue/fail` | WORKING | Возвращает retryable job в pending; после лимита переводит в failed. |
+| 4021126 | POST | `/seo/internal/queue/enqueue` | WORKING | Идемпотентный ручной/операционный enqueue по `event_key`. |
+| 4021173 | POST | `/seo/internal/queue/checkpoint` | WORKING | Сохраняет deterministic generation и batch cursor, затем безопасно возвращает задание в pending для следующей фазы без расходования error-attempt. |
+
+Mutation hooks с маркером `SEO_MATERIALIZER_QUEUE_HOOK_V1` выпущены в endpoints `3966703`, `3969714`, `3975051`, `3975107`, `3979595`, `3983598`, `4011156`. Ошибка очереди не блокирует основную пользовательскую мутацию.
+
+22.08.2026 атомарно активирована generation `seo-3f1553ad7f6cae700283c1adf05fb9f3`: 28 manifest pointers, 11 объявлений на локаль, 308 locale/listing rows, 32 facets, 2576 edges, 896 stats и 2688 related rows. Публичные catalog и sitemap shards всех 28 локалей вернули HTTP 200, одинаковый generation и 11/11 без fallback. Materializer выполняет не более 36 batch-запросов за вызов и продолжает через checkpoint, чтобы не превышать лимит внешних subrequest Cloudflare Worker.
 
 ## Deal Finder: Worker API
 

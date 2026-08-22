@@ -127,7 +127,10 @@ function assertIndexableHtml(result, canonicalPath, type = "CollectionPage") {
   assert.ok(result.body.includes(`<link rel="canonical" href="${canonical}">`), `Missing canonical ${canonical}`);
   const heading = result.body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i);
   assert.ok(stripTags(heading?.[1] || ""), `Missing H1 on ${canonicalPath}`);
-  assert.ok(result.body.includes(`"@type":"${type}"`), `Missing ${type} JSON-LD on ${canonicalPath}`);
+  const expectedSchema = type === "Product+Car"
+    ? /"@type":\["Product","Car"\]/
+    : new RegExp(`"@type":"${type}"`);
+  assert.match(result.body, expectedSchema, `Missing ${type} JSON-LD on ${canonicalPath}`);
   assert.match(result.body, new RegExp(`<html[^>]+lang=["']${requestedLocale}["'][^>]+dir=["']${expectedDirection}["']`, "i"));
   assertPublicCacheHeaders(result);
 }
@@ -274,7 +277,7 @@ const checked = ["/sitemap.xml", new URL(localeSitemapLocation).pathname, ...(li
 
 if (vehiclePath) {
   const vehicle = await request(vehiclePath);
-  assertIndexableHtml(vehicle, vehiclePath, "Vehicle");
+  assertIndexableHtml(vehicle, vehiclePath, "Product+Car");
   assert.equal(vehicle.response.headers.get("x-sitecraft-query-count"), "1");
   assert.ok(stripTags(vehicle.body).length > 100, "Vehicle page has no localized content");
   assert.ok(vehicle.body.includes(`hreflang="${requestedLocale}"`), "Vehicle page has no self hreflang");
@@ -288,7 +291,7 @@ if (strictSeoRelease) {
   for (const path of paths.filter((candidate) => !checked.includes(candidate))) {
     const result = await request(path);
     const type = new RegExp(`^/${requestedLocale}/cars/[^/]+/$`).test(path)
-      ? "Vehicle"
+      ? "Product+Car"
       : path === `/${requestedLocale}/` || new RegExp(`^/${requestedLocale}/(?:sell|pricing|support|privacy|impressum)/$`).test(path)
         ? "WebPage"
         : "CollectionPage";

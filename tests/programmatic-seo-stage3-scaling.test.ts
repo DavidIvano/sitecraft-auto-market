@@ -224,17 +224,18 @@ test("Stage 3 routes, flags and Xano drafts stay bounded, additive and privacy-m
   JSON.parse(read("docs/xano/programmatic-seo-stage-3/public-contract.json"));
 });
 
-test("production defaults stay off after the verified Stage 3 endpoint release", () => {
+test("production defaults use authoritative Stage 3 endpoints with fallbacks off", () => {
   const env = read(".env.example");
   const manifest = read("docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md");
-  for (const name of [
-    "PUBLIC_SEO_CATALOG_API_ENABLED",
-    "PUBLIC_SEO_CATALOG_COMPATIBILITY_FALLBACK_ENABLED",
-    "PUBLIC_SEO_SITEMAP_SHARDS_ENABLED",
-    "PUBLIC_SEO_SITEMAP_COMPATIBILITY_FALLBACK_ENABLED",
-  ]) assert.match(env, new RegExp(`${name}=false`));
+  for (const name of ["PUBLIC_SEO_CATALOG_API_ENABLED", "PUBLIC_SEO_SITEMAP_SHARDS_ENABLED"]) {
+    assert.match(env, new RegExp(`${name}=true`));
+  }
+  for (const name of ["PUBLIC_SEO_CATALOG_COMPATIBILITY_FALLBACK_ENABLED", "PUBLIC_SEO_SITEMAP_COMPATIBILITY_FALLBACK_ENABLED"]) {
+    assert.match(env, new RegExp(`${name}=false`));
+  }
   assert.match(manifest, /4020327[\s\S]*public\/locale\/catalog/);
   assert.match(manifest, /4020328[\s\S]*public\/locale\/sitemap\/listings/);
   assert.match(manifest, /4020329[\s\S]*public\/seo\/sitemap\/manifest/);
-  assert.match(manifest, /g20260820canary1/);
+  assert.match(manifest, /4021124[\s\S]*generation\/activate/);
+  assert.match(manifest, /атомарн[а-я]*[\s\S]*manifest pointer/i);
 });

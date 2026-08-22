@@ -31,9 +31,19 @@ export function getTranslationWorkerConfig(env: TranslationWorkerEnv) {
     dryRun: env.TRANSLATION_QUEUE_DRY_RUN !== "false",
     scheduledEnabled: env.TRANSLATION_QUEUE_SCHEDULED_ENABLED === "true",
     maxJobsPerRun: boundedInteger(env.TRANSLATION_MAX_JOBS_PER_RUN, 2, 3),
+    scheduledLocalesPerRun: boundedInteger(env.TRANSLATION_SCHEDULED_LOCALES_PER_RUN, 3, 3),
     timeoutMs: boundedInteger(env.TRANSLATION_HTTP_TIMEOUT_MS, 65_000, 90_000),
     configured: Boolean(env.XANO_API_BASE_URL && env.XANO_TRANSLATION_WORKER_SECRET),
   };
+}
+
+export function scheduledLocales(env: TranslationWorkerEnv, scheduledTime: number): TranslationLocale[] {
+  const locales = allowedLocales(env);
+  if (!locales.length) return [];
+  const count = getTranslationWorkerConfig(env).scheduledLocalesPerRun;
+  const slot = Math.floor(scheduledTime / (15 * 60 * 1_000));
+  const start = (slot * count) % locales.length;
+  return Array.from({ length: Math.min(count, locales.length) }, (_, index) => locales[(start + index) % locales.length]!);
 }
 
 export function constantTimeSecretEqual(provided: string | null, expected: string | undefined) {

@@ -77,10 +77,11 @@ export function buildVehicleSeo(car: CarListing, siteUrl = DEFAULT_SITE_URL) {
     ...(price === null ? {} : { price }),
     priceCurrency: currency,
     availability: sold ? "https://schema.org/SoldOut" : "https://schema.org/InStock",
+    itemOffered: { "@id": `${canonicalUrl}#vehicle` },
   };
   const vehicle = {
     "@context": "https://schema.org",
-    "@type": "Vehicle",
+    "@type": ["Product", "Car"],
     "@id": `${canonicalUrl}#vehicle`,
     url: canonicalUrl,
     name: heading,
@@ -94,6 +95,9 @@ export function buildVehicleSeo(car: CarListing, siteUrl = DEFAULT_SITE_URL) {
     ...(clean(car.transmission) ? { vehicleTransmission: clean(car.transmission) } : {}),
     ...(clean(car.body_type) ? { bodyType: clean(car.body_type) } : {}),
     ...(clean(car.color) ? { color: clean(car.color) } : {}),
+    sku: clean(car.slug),
+    category: "Vehicle",
+    itemCondition: "https://schema.org/UsedCondition",
     offers: { "@id": offerId },
   };
   const breadcrumb = {
@@ -159,7 +163,7 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
   };
   const vehicle = {
     "@context": "https://schema.org",
-    "@type": "Vehicle",
+    "@type": ["Product", "Car"],
     "@id": vehicleId,
     url: canonicalUrl,
     mainEntityOfPage: canonicalUrl,
@@ -167,6 +171,9 @@ export function buildLocalizedVehicleSeo(car: PublicListingDto, locale: string, 
     description,
     inLanguage: locale,
     image: [imageUrl],
+    sku: clean(car.slug),
+    category: "Vehicle",
+    itemCondition: "https://schema.org/UsedCondition",
     brand: car.brand ? { "@type": "Brand", name: car.brand, ...(brandUrl ? { url: brandUrl } : {}) } : undefined,
     model: car.model || undefined,
     vehicleModelDate: car.year ? String(car.year) : undefined,

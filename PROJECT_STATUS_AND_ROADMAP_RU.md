@@ -1,10 +1,10 @@
 # SiteCraft Auto Market: правдивое состояние и roadmap
 
-Обновлено: 16 августа 2026 года
+Обновлено: 22 августа 2026 года
 
 Production: <https://automarket.sitecraft.agency>
 
-Предыдущий production baseline, от которого выполнен аудит: `main`, commit `30e76f7`
+Предыдущий production baseline, от которого выполнен аудит: `main`, commit `d842b2c`
 
 ## Назначение документа
 
@@ -31,6 +31,9 @@ flowchart LR
   PF --> X
   PF --> R2["Cloudflare R2: фотографии"]
   X --> TR["Таблицы и очередь переводов"]
+  TR --> SQ["SEO refresh queue"]
+  SQ --> SM["Cloudflare SEO materializer"]
+  SM --> X
   GH["GitHub main"] --> CI["GitHub Actions"]
   CI --> CF
 ```
@@ -76,6 +79,8 @@ flowchart LR
 - `WORKING`: GitHub Actions → Cloudflare Pages.
 - `WORKING`: фотографии через Cloudflare R2.
 - `WORKING`: device-language resolver на первом посещении.
+- `WORKING`: очередь SEO-обновлений связана с approve/edit/sold/block/delete и готовностью перевода.
+- `WORKING`: Cloudflare SEO materializer строит полную неизменяемую генерацию 28 локалей; активный sitemap manifest служит единственным атомарным указателем версии.
 
 Полный реестр backend: [`docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md`](docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md).
 
@@ -106,12 +111,11 @@ flowchart LR
 
 - В selector настроено 28 локалей: 24 официальных языка ЕС плюс `ru`, `uk`, `ar`, `tr`.
 - Полный структурно проверенный UI/public/static/taxonomy пакет подготовлен для всех 28 пользовательских локалей: 24 официальных языков ЕС плюс `ru`, `uk`, `ar`, `tr`. Словари 21 новой EU-локали машинные, проходят автоматические проверки полноты и placeholders, но требуют последующей лингвистической вычитки.
-- Legacy Xano-данные поддерживают шесть локалей: `de`, `ru`, `uk`, `en`, `ar`, `tr`; отдельный strict SEO contract публично выпущен для всех 28 пользовательских локалей.
-- `GET /cars?lang=` отвечает 200 для этих шести языков и 400 для `fr`.
-- Strict Release 4 endpoint 16 августа вернул 10/10 объявлений для каждой из 28 выпущенных локалей; каждый Xano release-gate подтвердил `ready_listing_count=10`, `data_ready=true`.
+- Legacy `/cars?lang=` не является источником SEO-готовности. Production SEO использует только strict locale endpoints и не переключается на legacy catalog.
+- 22 августа строгий materializer snapshot подтвердил 11/11 публичных объявлений в каждой из 28 локалей, то есть 308 locale/listing rows без языкового fallback. Generation `seo-3f1553ad7f6cae700283c1adf05fb9f3` атомарно активирована в production; catalog и sitemap всех 28 локалей повторно вернули 200 и 11/11.
 - Полный indexable Stage 3 комплект подготовлен для всех 28 locale-prefix: catalog/detail, brand/model/city, canonical, sitemap, reciprocal `hreflang` и JSON-LD. Арабский smoke отдельно подтвердил `lang="ar"`, `dir="rtl"`.
 
-Итог: полный технический контур 28 пользовательских языков готов локально и в Xano. До заявления о финальном production-релизе остаются deploy frontend из `main`, production parity smoke и редакторская вычитка машинных переводов.
+Итог: полный технический контур 28 пользовательских языков готов в Xano и локальной frontend-сборке. Compatibility fallback выключен. После каждого изменения публичного объявления материализатор ждёт готовность переводов, применяет quality gate и только затем атомарно меняет активную генерацию.
 
 ## UI-прототипы и скрытые действия
 
@@ -144,9 +148,7 @@ flowchart LR
 - Управляемый Cloudflare Worker поддерживает все 27 целевых языков перевода (все пользовательские локали кроме исходного `ru`), пакеты до трёх заданий, идемпотентный claim/complete, dry-run и раздельные kill switches для manual и cron. Queue-control запросы безопасно повторяют явный Xano 429; provider-вызов автоматически не дублируется.
 - Защита Xano Worker endpoints `4011152/4011153` повторно проверена: публичная строка-заглушка получает 403, рабочий secret не хранится в репозитории.
 - Техническая миграция языков ЕС завершена; остаётся редакторская вычитка машинных UI/taxonomy и текстов объявлений носителями языков.
-- Frontend-конфигурация 28 публичных локалей опубликована. Authoritative
-  production smoke и parity для bounded catalog/listing shards пройдены;
-  compatibility fallback выключен.
+- Базовая frontend-конфигурация 28 публичных локалей опубликована; authoritative production smoke для bounded catalog/listing shards пройден, compatibility fallback выключен. Новая Xano generation подтверждена 11/11 для всех языков; после текущего Cloudflare Pages deploy выполняется финальный HTML/schema/canonical/hreflang smoke для `Product + Car + Offer` и похожих автомобилей.
 
 ### Backend-продукты
 
@@ -159,7 +161,10 @@ flowchart LR
 
 - Нужны rate limits и бюджеты для публичных/provider-backed AI endpoints.
 - Нужен единый ledger и политика списаний AI-кредитов.
-- `DONE`: добавлена автоматическая сверка `Xano public → Xano localized → sitemap → canonical page` командой `npm run seo:audit:de`; она проверяет Vehicle, Offer, BreadcrumbList, изображения и связи brand/model/city.
+- `DONE`: добавлена автоматическая сверка `Xano public → Xano localized → sitemap → canonical page`; production schema использует Google-совместимую связку `Product + Car + Offer + BreadcrumbList`.
+- `DONE`: quality gate исключает карточки без нормального заголовка/описания, марки, модели, года, цены, города и безопасной HTTPS-фотографии; неполная генерация 28×N не активируется.
+- `DONE`: locale detail получает до шести похожих автомобилей, а taxonomy materializer сохраняет до трёх разных релевантных направлений перелинковки для каждого фасета.
+- `DONE`: SEO compatibility fallbacks выключены в production build; строгие endpoints завершаются контролируемой ошибкой, а не подменой legacy-данными.
 - Защищённые endpoints из реестра нужно периодически проверять отдельным staging/integration suite, а не только статическими тестами frontend.
 
 ## Следующий план
@@ -178,8 +183,9 @@ flowchart LR
 10. `DONE pl/cs/sk/sl`: 40 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
 11. `DONE bg/hr/ro/hu/el`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
 12. `DONE et/lv/lt/mt/ga`: 50 заданий обработаны, dry-run и release-gate подтвердили 10/10 по каждой локали.
-13. `DONE`: frontend опубликован из `main`; production authoritative smoke и
-    representative parity пройдены. `NEXT`: редакторская вычитка машинных переводов.
+13. `DONE`: frontend опубликован из `main`; production authoritative smoke и representative parity пройдены.
+14. `DONE`: materializer snapshot подтвердил 11/11 для всех 28 локалей; approve/edit/sold/block/delete/translation-ready создают идемпотентные задания.
+15. `NEXT`: редакторская вычитка машинных переводов носителями языков остаётся контентной задачей, а не техническим блокером parity.
 
 ### Этап 3 — SEO локалей
 
@@ -196,9 +202,9 @@ flowchart LR
 9. `DONE es/pt/it`: тот же полный HTTP/SEO smoke пройден; временный headers timeout при длинном общем прогоне воспроизвёлся как сеть и отдельный повтор `it` завершился без функциональных ошибок.
 10. `DONE`: frontend, taxonomy, strict routes и sitemap подготовлены для оставшихся 14 языков ЕС; Xano catalog/detail подтверждены 10/10 без fallback.
 11. `DONE`: полный локальный HTTP/SEO smoke пройден для `pl/cs/sk/sl/bg/hr/ro/hu/el/et/lv/lt/mt/ga`; ирландский повторён отдельно после сетевого headers timeout длинного общего прогона и завершился без функциональных ошибок.
-12. `DONE`: frontend deploy и production authoritative smoke завершены;
-    representative parity `de/ru/ar/fr` пройден. `NEXT`: Search Console и
-    редакторская проверка переводов.
+12. `DONE`: frontend deploy и production authoritative smoke завершены; representative parity `de/ru/ar/fr` пройден.
+13. `DONE`: создан production materializer с quality gate, immutable generation и атомарным manifest pointer; strict parity требует ровно 11 объявлений во всех 28 локалях.
+14. `NEXT`: после текущего push в `main` выполнить внешний HTML/schema parity smoke и повторно отправить обновлённый sitemap в Search Console.
 
 ### Этап 4 — production hardening programmatic SEO
 

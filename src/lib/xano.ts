@@ -384,6 +384,36 @@ export async function getLocalizedCarBySlug(slug: string, locale: Locale): Promi
   return listing ? applyListingTranslation(listing, locale) : null;
 }
 
+const localizedRelatedScore = (current: CarListing, candidate: CarListing) => {
+  let score = 0;
+  if (candidate.brand === current.brand) score += 8;
+  if (candidate.model === current.model) score += 5;
+  if (candidate.body_type && candidate.body_type === current.body_type) score += 3;
+  if (candidate.fuel_type && candidate.fuel_type === current.fuel_type) score += 2;
+  if (candidate.city && candidate.city === current.city) score += 2;
+  const currentPrice = Number(current.price);
+  const candidatePrice = Number(candidate.price);
+  if (currentPrice > 0 && candidatePrice > 0 && Math.abs(candidatePrice - currentPrice) / currentPrice <= 0.25) score += 2;
+  return score;
+};
+
+/** Strict locale-only related cars; never falls back to another language. */
+export async function getLocalizedRelatedCars(current: CarListing, locale: Locale): Promise<CarListing[]> {
+  if (!isXanoConfigured(API_URL)) throw new XanoPublicApiError("Xano public API is not configured", 503);
+  const params = new URLSearchParams({ lang: locale, page: "1", limit: "24" });
+  const payload = await fetchPublicJson(`${API_ROUTES.localizedCatalogPage}?${params.toString()}`);
+  const source = payload && typeof payload === "object" && Array.isArray((payload as Record<string, unknown>).items)
+    ? (payload as Record<string, unknown>).items
+    : [];
+  return applyListingTranslations(normalizePublicCarList(source), locale)
+    .filter((candidate) => candidate.slug !== current.slug)
+    .map((candidate) => ({ candidate, score: localizedRelatedScore(current, candidate) }))
+    .filter((item) => item.score > 0)
+    .sort((left, right) => right.score - left.score || Number(right.candidate.updated_at || 0) - Number(left.candidate.updated_at || 0))
+    .slice(0, 6)
+    .map((item) => item.candidate);
+}
+
 export async function getSellerListingsBySlug(slug: string, locale: Locale = DEFAULT_LOCALE): Promise<CarListing[]> {
   if (!isXanoConfigured(API_URL)) return [];
 

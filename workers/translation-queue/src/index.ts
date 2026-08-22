@@ -2,6 +2,7 @@ import {
   constantTimeSecretEqual,
   getTranslationWorkerConfig,
   normalizeTargetLocale,
+  scheduledLocales,
 } from "./env.ts";
 import type { RunOptions, TranslationWorkerEnv } from "./types.ts";
 import {
@@ -116,15 +117,18 @@ export async function handleRequest(request: Request, env: TranslationWorkerEnv)
 
 export default {
   fetch: handleRequest,
-  async scheduled(_event: { cron?: string }, env: TranslationWorkerEnv) {
+  async scheduled(event: { cron?: string; scheduledTime?: number }, env: TranslationWorkerEnv) {
     const config = getTranslationWorkerConfig(env);
-    const targetLocale = normalizeTargetLocale(undefined, env);
-    if (!config.enabled || config.dryRun || !config.scheduledEnabled || !config.configured || !targetLocale) return;
-    await runTranslationBatch(env, {
-      targetLocale,
-      limit: config.maxJobsPerRun,
-      dryRun: false,
-      source: "scheduled",
-    }).then((result) => console.log(JSON.stringify({ service: "sitecraft-translation-queue", event: "batch", ...result })));
+    if (!config.enabled || config.dryRun || !config.scheduledEnabled || !config.configured) return;
+    const results = [];
+    for (const targetLocale of scheduledLocales(env, event.scheduledTime || Date.now())) {
+      results.push(await runTranslationBatch(env, {
+        targetLocale,
+        limit: 1,
+        dryRun: false,
+        source: "scheduled",
+      }));
+    }
+    console.log(JSON.stringify({ service: "sitecraft-translation-queue", event: "scheduled_rotation", results }));
   },
 };

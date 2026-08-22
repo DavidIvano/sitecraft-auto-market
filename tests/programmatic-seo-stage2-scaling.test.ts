@@ -51,13 +51,13 @@ test("additive Xano design materializes canonical facets, locale counts and rela
   assert.doesNotMatch(`${page}\n${counts}\n${related}`, /seller_phone|seller_email|OpenAI|provider key/i);
 });
 
-test("production manifest records released Xano contracts while rollout defaults stay off", () => {
+test("production manifest records released Xano contracts with authoritative bounded defaults", () => {
   const manifest = read("docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md");
   const env = read(".env.example");
   assert.match(manifest, /4020380[\s\S]*public\/locale\/taxonomies\/counts/);
   assert.match(manifest, /4020381[\s\S]*public\/locale\/taxonomy\/\{type\}\/\{slug\}\/related/);
   assert.match(manifest, /4020382[\s\S]*public\/locale\/taxonomy\/\{type\}\/\{slug\}/);
   assert.doesNotMatch(manifest, /Programmatic SEO Stage 2[^\n]*Xano ID ещё не назначены/);
-  assert.match(env, /PUBLIC_SEO_TAXONOMY_API_ENABLED=false/);
+  assert.match(env, /PUBLIC_SEO_TAXONOMY_API_ENABLED=true/);
   assert.match(env, /PUBLIC_SEO_TAXONOMY_COMPATIBILITY_FALLBACK_ENABLED=false/);
 });

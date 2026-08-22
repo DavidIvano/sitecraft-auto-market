@@ -3,7 +3,7 @@ import { readFileSync, readdirSync } from "node:fs";
 import test from "node:test";
 
 import { handleRequest, runTranslationBatch } from "../workers/translation-queue/src/index.ts";
-import { normalizeTargetLocale } from "../workers/translation-queue/src/env.ts";
+import { normalizeTargetLocale, scheduledLocales } from "../workers/translation-queue/src/env.ts";
 import type { TranslationWorkerEnv } from "../workers/translation-queue/src/types.ts";
 
 const baseEnv = (overrides: Partial<TranslationWorkerEnv> = {}): TranslationWorkerEnv => ({
@@ -16,6 +16,7 @@ const baseEnv = (overrides: Partial<TranslationWorkerEnv> = {}): TranslationWork
   TRANSLATION_TARGET_LOCALE: "en",
   TRANSLATION_ALLOWED_LOCALES: "de,en,fr,tr,ar,uk,nl,da,sv,fi,es,pt,it,pl,cs,sk,sl,bg,hr,ro,hu,el,et,lv,lt,mt,ga",
   TRANSLATION_MAX_JOBS_PER_RUN: "2",
+  TRANSLATION_SCHEDULED_LOCALES_PER_RUN: "3",
   TRANSLATION_HTTP_TIMEOUT_MS: "1000",
   ...overrides,
 });
@@ -58,6 +59,14 @@ test("German is an explicit translation Worker target", () => {
   ] as const) {
     assert.equal(normalizeTargetLocale(locale, baseEnv()), locale);
   }
+});
+
+test("scheduled translation rotation is deterministic and bounded to three locales", () => {
+  const first = scheduledLocales(baseEnv(), 0);
+  const second = scheduledLocales(baseEnv(), 15 * 60 * 1_000);
+  assert.deepEqual(first, ["de", "en", "fr"]);
+  assert.deepEqual(second, ["tr", "ar", "uk"]);
+  assert.equal(new Set([...first, ...second]).size, 6);
 });
 
 test("translation Worker health exposes flags but no secrets", async () => {
