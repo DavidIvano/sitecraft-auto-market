@@ -28,7 +28,34 @@ test("new question flow is translated in every reviewed UI locale", () => {
     assert.ok(phrases["Какой автомобиль вы продаёте?"], `${locale} vehicle question`);
     assert.ok(phrases["Как с вами связаться?"], `${locale} contact question`);
     assert.ok(phrases["Марка ограничивает список моделей. Точную модификацию и двигатель сверьте с документами."], `${locale} reference note`);
+    assert.ok(phrases["Основные характеристики"], `${locale} primary attributes`);
+    assert.ok(phrases["Данные из документов"], `${locale} document details`);
+    assert.ok(phrases["Контакты из профиля"], `${locale} profile contacts`);
   }
+});
+
+test("manual seller flow keeps the Xano contract while reducing visible input", async () => {
+  const [source, styles, workspaceEntry] = await Promise.all([
+    read("../src/pages/dashboard/new.astro"),
+    read("../src/styles/components/listing-form.css"),
+    read("../src/styles/entries/workspace.css"),
+  ]);
+
+  assert.match(source, /listing-smart-defaults[\s\S]*name="vehicleType" required[\s\S]*selected=\{item === "Легковой автомобиль"\}/);
+  assert.match(source, /name="country"[\s\S]*value="Германия" required/);
+  assert.match(source, /type="hidden" name="currency" value="EUR"/);
+  assert.match(source, /data-required-details[\s\S]*name="drivetrain" required[\s\S]*name="firstRegistrationDate"[\s\S]*name="hasValidTuv"/);
+  assert.match(source, /data-contact-details open[\s\S]*name="sellerName"[\s\S]*name="preferredContactMethod"/);
+  assert.match(source, /control\.closest\("details"\)[\s\S]*disclosure\.open = true/);
+  assert.match(source, /function updateProgressiveDetails/);
+  assert.match(source, /function updateManualContactDisclosure/);
+  assert.match(source, /data-local-preview=\{String\(import\.meta\.env\.DEV\)\}/);
+  assert.match(source, /isLocalFormPreview = form instanceof HTMLFormElement[\s\S]*dataset\.localPreview === "true"[\s\S]*auth[\s\S]*!== "live"/);
+  assert.match(source, /!getActiveAuthToken\(\) && !isLocalFormPreview/);
+  assert.match(source, /if \(!isLocalFormPreview\) validateAuthToken\(\)/);
+  assert.match(styles, /\.listing-details-disclosure > summary[\s\S]*min-height: 76px/);
+  assert.match(styles, /\.listing-inline-settings > summary[\s\S]*min-height: 44px/);
+  assert.match(workspaceEntry, /@import "\.\.\/components\/listing-form\.css"/);
 });
 
 test("AI seller assistant stays compact and rejects invented inspection claims", async () => {

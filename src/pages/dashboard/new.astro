@@ -401,7 +401,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         </section>
       </section>
 
-      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} data-active-quiz-step="0" novalidate data-mode-panel="manual">
+      <form class="listing-form listing-form-enhanced is-quiz" id="new-listing-form" data-api-url={xanoApiUrl} data-local-preview={String(import.meta.env.DEV)} data-active-quiz-step="0" novalidate data-mode-panel="manual">
         <div class="listing-quiz-progress" aria-label="Шаги добавления объявления">
           <button class="quiz-progress-step is-active" type="button" data-quiz-jump="0">
             <span>1</span>
@@ -469,18 +469,35 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             <span class="section-step">2</span>
             <div>
               <h2>Какой автомобиль вы продаёте?</h2>
-              <p>Отвечайте по порядку. После выбора марки будут показаны только её модели.</p>
+              <p>Сначала укажите главное — марку, модель, год, цену и город.</p>
             </div>
           </div>
+          <div class="listing-smart-defaults" aria-label="Предустановленные данные объявления">
+            <div class="listing-smart-defaults-copy">
+              <span class="listing-smart-defaults-icon" aria-hidden="true"><i data-lucide="sparkles"></i></span>
+              <div>
+                <strong>Уже настроено</strong>
+                <p>Легковой автомобиль · Германия · EUR</p>
+              </div>
+            </div>
+            <details class="listing-inline-settings" data-progressive-details>
+              <summary>Изменить тип или страну</summary>
+              <div class="listing-inline-settings-grid">
+                <label>
+                  <span>Что вы продаёте?</span>
+                  <select name="vehicleType" required>
+                    {vehicleTypes.map((item) => <option value={item} selected={item === "Легковой автомобиль"}>{item}</option>)}
+                  </select>
+                </label>
+                <label>
+                  <span>В какой стране?</span>
+                  <input type="text" name="country" autocomplete="country-name" value="Германия" required />
+                </label>
+              </div>
+            </details>
+            <input type="hidden" name="currency" value="EUR" />
+          </div>
           <div class="form-grid listing-question-grid">
-            <label>
-              <span>Что вы продаёте?</span>
-              <select name="vehicleType" required>
-                <option value="">Выберите тип транспорта</option>
-                {vehicleTypes.map((item) => <option value={item}>{item}</option>)}
-              </select>
-            </label>
-
             <label>
               <span>Какая марка?</span>
               <select name="brand" required data-brand-select>
@@ -518,16 +535,6 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <span>В каком городе находится автомобиль?</span>
               <input type="text" name="location" autocomplete="address-level2" placeholder="Берлин" required />
             </label>
-            <label>
-              <span>В какой стране?</span>
-              <input type="text" name="country" autocomplete="country-name" value="Германия" required />
-            </label>
-            <label>
-              <span>Валюта цены</span>
-              <select name="currency" required>
-                <option value="EUR">EUR — евро</option>
-              </select>
-            </label>
           </div>
           <p class="listing-reference-note" role="status">
             <strong data-vehicle-reference-selection hidden></strong>
@@ -539,11 +546,11 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           <div class="section-heading">
             <span class="section-step section-step-soft">+</span>
             <div>
-              <h2>Ещё несколько ответов</h2>
-              <p>Выбирайте значения из документов. Поля зависят друг от друга и проверяются перед отправкой.</p>
+              <h2>Основные характеристики</h2>
+              <p>Пять ответов, по которым покупатели чаще всего выбирают автомобиль.</p>
             </div>
           </div>
-          <div class="form-grid listing-question-grid listing-question-grid-compact">
+          <div class="form-grid listing-question-grid listing-question-grid-compact listing-primary-attributes">
             <label>
               <span>Какой тип кузова?</span>
               <select name="bodyType" required>
@@ -561,41 +568,10 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Какой двигатель?</span>
-              <select name="engineVolume" data-engine-volume-select disabled>
-                <option value="">Сначала выберите топливо</option>
-              </select>
-            </label>
-
-            <label>
               <span>Какая коробка передач?</span>
               <select name="transmission" required>
                 <option value="">Выберите коробку</option>
                 {transmissions.map((item) => <option value={item}>{item}</option>)}
-              </select>
-            </label>
-
-            <label>
-              <span>Какой привод?</span>
-              <select name="drivetrain" required>
-                <option value="">Выберите привод</option>
-                {drivetrains.map((item) => <option value={item}>{item}</option>)}
-              </select>
-            </label>
-
-            <label>
-              <span>Сколько дверей?</span>
-              <select name="doors" required>
-                <option value="">Выберите двери</option>
-                {doorCounts.map((item) => <option value={item}>{item}</option>)}
-              </select>
-            </label>
-
-            <label>
-              <span>Сколько мест?</span>
-              <select name="seats" required>
-                <option value="">Выберите места</option>
-                {seatCounts.map((item) => <option value={item}>{item}</option>)}
               </select>
             </label>
 
@@ -608,53 +584,97 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             </label>
 
             <label>
-              <span>Сколько было владельцев?</span>
-              <select name="ownerCount" required>
-                <option value="">Выберите количество</option>
-                <option value="1">1 владелец</option>
-                <option value="2">2 владельца</option>
-                <option value="3">3 владельца</option>
-                <option value="4">4 владельца</option>
-                <option value="5">5 и больше</option>
-              </select>
-            </label>
-
-            <label>
-              <span>Когда первая регистрация?</span>
-              <input type="month" name="firstRegistrationDate" min="1950-01" max={currentMonth} required data-first-registration />
-            </label>
-
-            <label>
               <span>В каком состоянии автомобиль?</span>
               <select name="condition" required>
                 <option value="">Выберите состояние</option>
                 {carConditions.map((item) => <option value={item}>{item}</option>)}
               </select>
             </label>
-
-            <fieldset class="tuv-choice-field full-field">
-              <legend>TÜV / HU действует?</legend>
-              <div class="segmented-choice">
-                <label><input type="radio" name="hasValidTuv" value="true" required /> Да</label>
-                <label><input type="radio" name="hasValidTuv" value="false" required /> Нет</label>
-              </div>
-            </fieldset>
-
-            <label data-manual-tuv-until-field>
-              <span>TÜV / HU действует до</span>
-              <input type="month" name="tuvValidUntil" />
-            </label>
-
-            <label>
-              <span>VIN / номер кузова (необязательно)</span>
-              <input type="text" name="vin" minlength="17" maxlength="17" autocomplete="off" placeholder="17 символов" />
-            </label>
-
-            <label class="full-field">
-              <span>Что ещё важно знать покупателю? (необязательно)</span>
-              <textarea name="description" rows="4" placeholder="Состояние, обслуживание, известные особенности"></textarea>
-            </label>
           </div>
+
+          <details class="listing-details-disclosure" data-progressive-details data-required-details>
+            <summary>
+              <span class="listing-details-icon" aria-hidden="true"><i data-lucide="clipboard-check"></i></span>
+              <span class="listing-details-copy">
+                <strong>Данные из документов</strong>
+                <small>Привод, места, регистрация и TÜV / HU</small>
+              </span>
+              <span class="listing-details-progress" data-details-progress aria-label="Заполнено обязательных полей">0 / 6</span>
+              <i class="listing-details-chevron" data-lucide="chevron-down" aria-hidden="true"></i>
+            </summary>
+            <div class="form-grid listing-question-grid listing-question-grid-compact listing-details-grid">
+              <label>
+                <span>Какой двигатель? (необязательно)</span>
+                <select name="engineVolume" data-engine-volume-select disabled>
+                  <option value="">Сначала выберите топливо</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Какой привод?</span>
+                <select name="drivetrain" required>
+                  <option value="">Выберите привод</option>
+                  {drivetrains.map((item) => <option value={item}>{item}</option>)}
+                </select>
+              </label>
+
+              <label>
+                <span>Сколько дверей?</span>
+                <select name="doors" required>
+                  <option value="">Выберите двери</option>
+                  {doorCounts.map((item) => <option value={item}>{item}</option>)}
+                </select>
+              </label>
+
+              <label>
+                <span>Сколько мест?</span>
+                <select name="seats" required>
+                  <option value="">Выберите места</option>
+                  {seatCounts.map((item) => <option value={item}>{item}</option>)}
+                </select>
+              </label>
+
+              <label>
+                <span>Сколько было владельцев?</span>
+                <select name="ownerCount" required>
+                  <option value="">Выберите количество</option>
+                  <option value="1">1 владелец</option>
+                  <option value="2">2 владельца</option>
+                  <option value="3">3 владельца</option>
+                  <option value="4">4 владельца</option>
+                  <option value="5">5 и больше</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Когда первая регистрация?</span>
+                <input type="month" name="firstRegistrationDate" min="1950-01" max={currentMonth} required data-first-registration />
+              </label>
+
+              <fieldset class="tuv-choice-field full-field">
+                <legend>TÜV / HU действует?</legend>
+                <div class="segmented-choice">
+                  <label><input type="radio" name="hasValidTuv" value="true" required /> Да</label>
+                  <label><input type="radio" name="hasValidTuv" value="false" required /> Нет</label>
+                </div>
+              </fieldset>
+
+              <label data-manual-tuv-until-field>
+                <span>TÜV / HU действует до</span>
+                <input type="month" name="tuvValidUntil" />
+              </label>
+
+              <label>
+                <span>VIN / номер кузова (необязательно)</span>
+                <input type="text" name="vin" minlength="17" maxlength="17" autocomplete="off" placeholder="17 символов" />
+              </label>
+
+              <label class="full-field">
+                <span>Что ещё важно знать покупателю? (необязательно)</span>
+                <textarea name="description" rows="4" placeholder="Состояние, обслуживание, известные особенности"></textarea>
+              </label>
+            </div>
+          </details>
         </fieldset>
 
         <fieldset class="form-section listing-question-section" data-quiz-step="2">
@@ -665,7 +685,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
               <p>Контакты уже подставлены из профиля. Проверьте их и выберите, что увидят покупатели.</p>
             </div>
           </div>
-          <div class="form-grid listing-question-grid listing-contact-grid">
+          <div class="listing-contact-primary">
             <label>
               <span>Кто продаёт автомобиль?</span>
               <select name="sellerType" required>
@@ -673,36 +693,48 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
                 {sellerTypes.map((item) => <option value={item}>{item}</option>)}
               </select>
             </label>
-
-            <label>
-              <span>Как вас зовут?</span>
-              <input type="text" name="sellerName" placeholder="Ваше имя" required aria-describedby="manual-contact-error-display_name" />
-              <small id="manual-contact-error-display_name" class="form-field-error" data-manual-contact-error="display_name" hidden></small>
-            </label>
-
-            <InternationalPhoneField
-              canonicalName="sellerPhone"
-              countryName="sellerPhoneCountry"
-              nationalName="sellerPhoneNational"
-              label="Телефон продавца"
-              errorId="manual-contact-error-contact_phone"
-              errorDataAttribute="contact_phone"
-            />
-
-            <label>
-              <span>Ваш email</span>
-              <input type="email" name="sellerEmail" placeholder="name@example.com" aria-describedby="manual-contact-error-contact_email" />
-              <small id="manual-contact-error-contact_email" class="form-field-error" data-manual-contact-error="contact_email" hidden></small>
-            </label>
-            <label class="contact-profile-check"><input name="showPhone" type="checkbox" />Показывать телефон покупателям</label>
-            <label class="contact-profile-check"><input name="showEmail" type="checkbox" />Показывать email покупателям</label>
-            <label>
-              <span>Предпочтительный способ связи</span>
-              <select name="preferredContactMethod" aria-describedby="manual-contact-error-preferred_contact_method"><option value="">Не выбран</option><option value="phone">Телефон</option><option value="email">Email</option></select>
-              <small id="manual-contact-error-preferred_contact_method" class="form-field-error" data-manual-contact-error="preferred_contact_method" hidden></small>
-            </label>
-            <p class="form-field-hint full-field" data-manual-contact-status>Контакты заполняются из профиля. Вы можете изменить их.</p>
           </div>
+          <details class="listing-details-disclosure listing-contact-disclosure" data-progressive-details data-contact-details open>
+            <summary>
+              <span class="listing-details-icon" aria-hidden="true"><i data-lucide="user-round-check"></i></span>
+              <span class="listing-details-copy">
+                <strong>Контакты из профиля</strong>
+                <small data-manual-contact-summary>Проверьте имя и способ связи</small>
+              </span>
+              <span class="listing-details-progress" data-contact-progress>Проверить</span>
+              <i class="listing-details-chevron" data-lucide="chevron-down" aria-hidden="true"></i>
+            </summary>
+            <div class="form-grid listing-question-grid listing-contact-grid listing-details-grid">
+              <label>
+                <span>Как вас зовут?</span>
+                <input type="text" name="sellerName" placeholder="Ваше имя" required aria-describedby="manual-contact-error-display_name" />
+                <small id="manual-contact-error-display_name" class="form-field-error" data-manual-contact-error="display_name" hidden></small>
+              </label>
+
+              <InternationalPhoneField
+                canonicalName="sellerPhone"
+                countryName="sellerPhoneCountry"
+                nationalName="sellerPhoneNational"
+                label="Телефон продавца"
+                errorId="manual-contact-error-contact_phone"
+                errorDataAttribute="contact_phone"
+              />
+
+              <label>
+                <span>Ваш email</span>
+                <input type="email" name="sellerEmail" placeholder="name@example.com" aria-describedby="manual-contact-error-contact_email" />
+                <small id="manual-contact-error-contact_email" class="form-field-error" data-manual-contact-error="contact_email" hidden></small>
+              </label>
+              <label class="contact-profile-check"><input name="showPhone" type="checkbox" />Показывать телефон покупателям</label>
+              <label class="contact-profile-check"><input name="showEmail" type="checkbox" />Показывать email покупателям</label>
+              <label>
+                <span>Предпочтительный способ связи</span>
+                <select name="preferredContactMethod" aria-describedby="manual-contact-error-preferred_contact_method"><option value="">Не выбран</option><option value="phone">Телефон</option><option value="email">Email</option></select>
+                <small id="manual-contact-error-preferred_contact_method" class="form-field-error" data-manual-contact-error="preferred_contact_method" hidden></small>
+              </label>
+              <p class="form-field-hint full-field" data-manual-contact-status>Контакты заполняются из профиля. Вы можете изменить их.</p>
+            </div>
+          </details>
         </fieldset>
 
         <fieldset class="form-section" data-quiz-step="3">
@@ -795,6 +827,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const aiCurrentYear = new Date().getFullYear();
         const getActiveAuthToken = () => String(getAuthToken() || "").trim();
         const form = document.querySelector("#new-listing-form");
+        const isLocalFormPreview = form instanceof HTMLFormElement
+          && form.dataset.localPreview === "true"
+          && new URLSearchParams(window.location.search).get("auth") !== "live";
         const message = document.querySelector("#form-message");
         const photoInput = document.querySelector("#photo-input");
         const aiDraftForm = document.querySelector("#ai-draft-form");
@@ -859,6 +894,9 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         const apiRouteDataElement = document.querySelector("#api-route-data");
         const aiContactStatus = document.querySelector("[data-ai-contact-status]");
         const manualContactStatus = document.querySelector("[data-manual-contact-status]");
+        const manualContactSummary = document.querySelector("[data-manual-contact-summary]");
+        const manualContactProgress = document.querySelector("[data-contact-progress]");
+        const manualContactDetails = document.querySelector("[data-contact-details]");
         const manualContactReturnButton = document.querySelector("[data-return-contact]");
         let currentSellerContactProfile: SellerContactProfile | null = null;
         let lastSavedContactSignature = "";
@@ -918,6 +956,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (aiContactStatus instanceof HTMLElement) aiContactStatus.textContent = "Контакты заполнены из вашего профиля. Вы можете изменить их.";
           if (manualContactStatus instanceof HTMLElement) manualContactStatus.textContent = "Контакты заполнены из вашего профиля. Вы можете изменить их.";
           updateRequiredFieldState(form);
+          updateManualContactDisclosure(true);
           updateRequiredFieldState(aiReviewForm);
         }
 
@@ -979,6 +1018,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           if (!response.ok) {
             if (aiContactStatus instanceof HTMLElement) aiContactStatus.textContent = "Не удалось загрузить контакты профиля. Введите их вручную.";
             if (manualContactStatus instanceof HTMLElement) manualContactStatus.textContent = "Не удалось загрузить контакты профиля. Введите их вручную.";
+            if (manualContactDetails instanceof HTMLDetailsElement) manualContactDetails.open = true;
             return;
           }
           fillSellerContactForms(await readContactProfileApiResponse(response));
@@ -1133,6 +1173,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             updateModelsForBrand();
             for (const [name, value] of Object.entries(fields)) {
               if (name === "tuvValidUntil" && fields.hasValidTuv !== "true") continue;
+              if (["vehicleType", "country", "currency"].includes(name) && !value) continue;
               const control = form.elements.namedItem(name);
               if (control instanceof HTMLInputElement && control.type === "checkbox") {
                 control.checked = value === "true";
@@ -2311,6 +2352,55 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           return control.closest("label, fieldset");
         }
 
+        function updateProgressiveDetails() {
+          if (!(form instanceof HTMLFormElement)) return;
+          form.querySelectorAll<HTMLDetailsElement>("[data-required-details]").forEach((details) => {
+            const progress = details.querySelector<HTMLElement>("[data-details-progress]");
+            const controls = Array.from(details.querySelectorAll<RequiredListingControl>("input[required], select[required], textarea[required]"));
+            const groups = new Map<string, RequiredListingControl[]>();
+            controls.forEach((control, index) => {
+              const key = control.name || `control-${index}`;
+              groups.set(key, [...(groups.get(key) || []), control]);
+            });
+            const completed = Array.from(groups.values()).filter((group) => group.some(isRequiredControlComplete)).length;
+            const total = groups.size;
+            if (progress) {
+              progress.textContent = `${completed} / ${total}`;
+              progress.setAttribute("aria-label", `${completed} / ${total}`);
+            }
+            details.classList.toggle("is-complete", total > 0 && completed === total);
+          });
+        }
+
+        function updateManualContactDisclosure(collapseWhenValid = false) {
+          if (!(form instanceof HTMLFormElement)) return;
+          const data = new FormData(form);
+          const validation = validateSellerContactProfile({
+            display_name: data.get("sellerName"),
+            contact_phone: data.get("sellerPhone"),
+            contact_email: data.get("sellerEmail"),
+            show_phone: data.has("showPhone"),
+            show_email: data.has("showEmail"),
+            preferred_contact_method: data.get("preferredContactMethod"),
+          }, { requirePublicContact: true });
+
+          const visibleContact = [
+            String(data.get("sellerName") || "").trim(),
+            data.has("showPhone") ? String(data.get("sellerPhone") || "").trim() : "",
+            data.has("showEmail") ? String(data.get("sellerEmail") || "").trim() : "",
+          ].filter(Boolean);
+          if (manualContactSummary instanceof HTMLElement && visibleContact.length) {
+            manualContactSummary.textContent = visibleContact.join(" · ");
+          }
+          if (manualContactProgress instanceof HTMLElement) {
+            manualContactProgress.textContent = validation.valid ? "Готово" : "Проверить";
+          }
+          if (manualContactDetails instanceof HTMLDetailsElement) {
+            manualContactDetails.classList.toggle("is-complete", validation.valid);
+            if (collapseWhenValid && validation.valid) manualContactDetails.open = false;
+          }
+        }
+
         function updateRequiredFieldState(target: ParentNode | null) {
           if (!target) return;
           const controls = Array.from(target.querySelectorAll<RequiredListingControl>("input[required], select[required], textarea[required]"));
@@ -2328,6 +2418,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
             const pending = requiredControls.some((control) => !isRequiredControlComplete(control));
             container.classList.toggle("is-required-pending", pending);
           });
+          if (target === form || target instanceof Element && target.closest("#new-listing-form")) updateProgressiveDetails();
         }
 
         function updateQuizStep(nextStep: number) {
@@ -2850,7 +2941,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           input.click();
         }
 
-        if (!getActiveAuthToken()) {
+        if (!getActiveAuthToken() && !isLocalFormPreview) {
           redirectToLogin("/dashboard/new/");
         }
 
@@ -2861,9 +2952,15 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         setListingMode("manual");
         updateQuizStep(activeQuizStep);
         updateRequiredFieldState(form);
+        updateManualContactDisclosure();
         updateRequiredFieldState(aiDraftForm);
         updateRequiredFieldState(aiReviewForm);
-        void loadSellerContactProfile();
+        if (isLocalFormPreview) {
+          if (manualContactStatus instanceof HTMLElement) manualContactStatus.textContent = "Локальный предпросмотр: контакты не загружаются.";
+          if (manualContactDetails instanceof HTMLDetailsElement) manualContactDetails.open = true;
+        } else {
+          void loadSellerContactProfile();
+        }
 
         openAiHelperButton?.addEventListener("click", () => setListingMode("ai"));
         closeAiHelperButton?.addEventListener("click", () => setListingMode("manual"));
@@ -2876,11 +2973,13 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
         form?.addEventListener("input", (event) => {
           queueLocalDraft();
           updateRequiredFieldState(form);
+          updateManualContactDisclosure();
           clearResolvedManualFieldError(event.target);
         });
         form?.addEventListener("change", (event) => {
           queueLocalDraft();
           updateRequiredFieldState(form);
+          updateManualContactDisclosure();
           clearResolvedManualFieldError(event.target);
         });
         aiDraftForm?.addEventListener("input", () => updateRequiredFieldState(aiDraftForm));
@@ -2943,7 +3042,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           }
         }
 
-        validateAuthToken();
+        if (!isLocalFormPreview) validateAuthToken();
 
         async function restoreAiDraftFromUrl() {
           const draftId = Number(new URLSearchParams(window.location.search).get("draft_id") || 0);
@@ -4172,6 +4271,8 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           issues.forEach((issue, index) => {
             const control = manualIssueTarget(issue);
             if (!control) return;
+            const disclosure = control.closest("details");
+            if (disclosure instanceof HTMLDetailsElement) disclosure.open = true;
             control.classList.add("is-invalid");
             control.setAttribute("aria-invalid", "true");
             const container = issue.field === "images" || issue.field === "photos"
@@ -4240,6 +4341,7 @@ const allowLegacyAiGenerate = import.meta.env.PUBLIC_ALLOW_LEGACY_AI_GENERATE ==
           const control = form instanceof HTMLFormElement ? form.elements.namedItem(controlName) : null;
           const errorNode = form?.querySelector<HTMLElement>(`[data-manual-contact-error="${field}"]`);
           updateQuizStep(2);
+          if (manualContactDetails instanceof HTMLDetailsElement) manualContactDetails.open = true;
           if (control instanceof HTMLElement) {
             control.classList.add("is-invalid");
             control.setAttribute("aria-invalid", "true");

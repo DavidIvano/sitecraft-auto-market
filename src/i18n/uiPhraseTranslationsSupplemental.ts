@@ -2,6 +2,61 @@
 import type { Locale } from "./locales.ts";
 
 export const UI_PHRASE_TRANSLATIONS_SUPPLEMENTAL: Record<string, Partial<Record<Locale, string>>> = {
+  "Сначала укажите главное — марку, модель, год, цену и город.": {
+    "ru": "Сначала укажите главное — марку, модель, год, цену и город.", "de": "Geben Sie zuerst das Wichtigste an: Marke, Modell, Baujahr, Preis und Stadt.",
+    "en": "Start with the essentials: make, model, year, price and city.", "uk": "Спочатку вкажіть головне — марку, модель, рік, ціну та місто.",
+    "ar": "ابدأ بالمعلومات الأساسية: العلامة والطراز والسنة والسعر والمدينة.", "tr": "Önce temel bilgileri girin: marka, model, yıl, fiyat ve şehir.",
+    "fr": "Commencez par l’essentiel : marque, modèle, année, prix et ville."
+  },
+  "Предустановленные данные объявления": {
+    "ru": "Предустановленные данные объявления", "de": "Voreingestellte Anzeigendaten", "en": "Preset listing details", "uk": "Попередньо встановлені дані оголошення",
+    "ar": "بيانات الإعلان المضبوطة مسبقاً", "tr": "Önceden ayarlanmış ilan bilgileri", "fr": "Données d’annonce prédéfinies"
+  },
+  "Уже настроено": {
+    "ru": "Уже настроено", "de": "Bereits eingestellt", "en": "Already set", "uk": "Уже налаштовано",
+    "ar": "تم الإعداد", "tr": "Önceden ayarlandı", "fr": "Déjà configuré"
+  },
+  "Изменить тип или страну": {
+    "ru": "Изменить тип или страну", "de": "Typ oder Land ändern", "en": "Change type or country", "uk": "Змінити тип або країну",
+    "ar": "تغيير النوع أو البلد", "tr": "Türü veya ülkeyi değiştir", "fr": "Modifier le type ou le pays"
+  },
+  "Основные характеристики": {
+    "ru": "Основные характеристики", "de": "Wichtigste Merkmale", "en": "Key specifications", "uk": "Основні характеристики",
+    "ar": "المواصفات الأساسية", "tr": "Temel özellikler", "fr": "Caractéristiques principales"
+  },
+  "Пять ответов, по которым покупатели чаще всего выбирают автомобиль.": {
+    "ru": "Пять ответов, по которым покупатели чаще всего выбирают автомобиль.", "de": "Fünf Angaben, nach denen Käufer ein Fahrzeug am häufigsten auswählen.",
+    "en": "Five details buyers use most often when choosing a vehicle.", "uk": "П’ять відповідей, за якими покупці найчастіше обирають автомобіль.",
+    "ar": "خمس معلومات يعتمد عليها المشترون غالباً عند اختيار السيارة.", "tr": "Alıcıların araç seçerken en sık kullandığı beş bilgi.",
+    "fr": "Cinq informations que les acheteurs utilisent le plus souvent pour choisir un véhicule."
+  },
+  "Данные из документов": {
+    "ru": "Данные из документов", "de": "Angaben aus den Fahrzeugpapieren", "en": "Details from the documents", "uk": "Дані з документів",
+    "ar": "بيانات من الوثائق", "tr": "Araç belgelerindeki bilgiler", "fr": "Données des documents"
+  },
+  "Привод, места, регистрация и TÜV / HU": {
+    "ru": "Привод, места, регистрация и TÜV / HU", "de": "Antrieb, Sitzplätze, Zulassung und TÜV / HU", "en": "Drivetrain, seats, registration and TÜV / HU",
+    "uk": "Привід, місця, реєстрація та TÜV / HU", "ar": "نظام الدفع والمقاعد والتسجيل وTÜV / HU", "tr": "Çekiş, koltuklar, tescil ve TÜV / HU",
+    "fr": "Transmission, places, immatriculation et TÜV / HU"
+  },
+  "Какой двигатель? (необязательно)": {
+    "ru": "Какой двигатель? (необязательно)", "de": "Welcher Motor? (optional)", "en": "What engine? (optional)", "uk": "Який двигун? (необов’язково)",
+    "ar": "ما المحرك؟ (اختياري)", "tr": "Motor nedir? (isteğe bağlı)", "fr": "Quel moteur ? (facultatif)"
+  },
+  "Контакты из профиля": {
+    "ru": "Контакты из профиля", "de": "Kontaktdaten aus dem Profil", "en": "Contacts from your profile", "uk": "Контакти з профілю",
+    "ar": "جهات الاتصال من الملف الشخصي", "tr": "Profildeki iletişim bilgileri", "fr": "Coordonnées du profil"
+  },
+  "Проверьте имя и способ связи": {
+    "ru": "Проверьте имя и способ связи", "de": "Prüfen Sie Name und Kontaktweg", "en": "Check your name and contact method", "uk": "Перевірте ім’я та спосіб зв’язку",
+    "ar": "تحقق من الاسم وطريقة التواصل", "tr": "Adınızı ve iletişim yönteminizi kontrol edin", "fr": "Vérifiez le nom et le moyen de contact"
+  },
+  "Проверить": {
+    "ru": "Проверить", "de": "Prüfen", "en": "Review", "uk": "Перевірити", "ar": "مراجعة", "tr": "Kontrol et", "fr": "Vérifier"
+  },
+  "Готово": {
+    "ru": "Готово", "de": "Fertig", "en": "Ready", "uk": "Готово", "ar": "جاهز", "tr": "Hazır", "fr": "Prêt"
+  },
   "Фото → готовое объявление": {
     "ru": "Фото → готовое объявление", "de": "Foto → fertige Anzeige", "en": "Photo → ready listing", "uk": "Фото → готове оголошення",
     "ar": "صورة ← إعلان جاهز", "tr": "Fotoğraf → hazır ilan", "fr": "Photo → annonce prête"
