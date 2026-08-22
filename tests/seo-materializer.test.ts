@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import {
   buildMaterializerGeneration,
@@ -101,4 +102,22 @@ test("manual materializer endpoint uses constant-time protected trigger secret",
     SEO_MATERIALIZER_TRIGGER_SECRET: "expected-secret",
   });
   assert.equal(response.status, 401);
+});
+
+test("queue lifecycle mutates only jobs claimed by the current worker", () => {
+  const root = new URL("..", import.meta.url);
+  for (const file of [
+    "docs/xano/seo-materializer/14_POST_generation_activate.xs",
+    "docs/xano/seo-materializer/15_POST_queue_fail.xs",
+    "docs/xano/seo-materializer/17_POST_queue_checkpoint.xs",
+  ]) {
+    const source = readFileSync(new URL(file, root), "utf8");
+    assert.match(source, /text worker_id/u);
+    assert.match(source, /locked_by == \$input\.worker_id/u);
+    assert.doesNotMatch(source, /foreach \(\$input\.job_ids\)/u);
+  }
+  const worker = readFileSync(new URL("workers/seo-materializer/src/index.ts", root), "utf8");
+  assert.match(worker, /failJobs\(env, workerId,/u);
+  assert.match(worker, /checkpointJobs\(env, workerId,/u);
+  assert.match(worker, /worker_id: workerId/u);
 });

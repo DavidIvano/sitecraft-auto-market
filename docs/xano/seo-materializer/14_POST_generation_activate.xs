@@ -1,6 +1,7 @@
 query "seo/internal/generation/activate" verb=POST {
   api_group = "sitecraft-auto-market"
   input {
+    text worker_id filters=trim|min:8|max:120
     text generation filters=trim|min:8|max:80
     int[] job_ids
     object expected {
@@ -57,6 +58,10 @@ query "seo/internal/generation/activate" verb=POST {
       where = ($db.seo_sitemap_locale_generations.generation == $input.generation)
       return = {type: "list"}
     } as $new_manifests
+    db.query seo_refresh_queue {
+      where = (($db.seo_refresh_queue.status == "processing") && ($db.seo_refresh_queue.locked_by == $input.worker_id))
+      return = {type: "list", paging: {page: 1, per_page: 100, totals: false}}
+    } as $worker_jobs
     db.transaction {
       stack {
         foreach ($old_manifests) {
@@ -77,11 +82,11 @@ query "seo/internal/generation/activate" verb=POST {
             } as $activated_manifest
           }
         }
-        foreach ($input.job_ids) {
-          each as $job_id {
+        foreach ($worker_jobs.items) {
+          each as $job {
             db.edit seo_refresh_queue {
               field_name = "id"
-              field_value = $job_id
+              field_value = $job.id
               data = {
                 status: "completed", completed_generation: $input.generation, completed_at: now,
                 locked_at: null, locked_by: null, last_error_code: null, updated_at: now
@@ -92,6 +97,6 @@ query "seo/internal/generation/activate" verb=POST {
       }
     }
   }
-  response = {ok: true, generation: $input.generation, activated_at: now, jobs_completed: ($input.job_ids|count)}
+  response = {ok: true, generation: $input.generation, activated_at: now, jobs_completed: ($worker_jobs.items|count)}
   tags = ["sitecraft-auto-market", "seo", "internal", "materializer", "atomic"]
 }

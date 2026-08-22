@@ -46,6 +46,7 @@
     "seo:audit:lt": "node scripts/verify-seo-parity.mjs --locale lt --base-url https://automarket.sitecraft.agency",
     "seo:audit:mt": "node scripts/verify-seo-parity.mjs --locale mt --base-url https://automarket.sitecraft.agency",
     "seo:audit:ga": "node scripts/verify-seo-parity.mjs --locale ga --base-url https://automarket.sitecraft.agency",
+    "seo:health": "node --experimental-strip-types scripts/seo-health-audit.mjs --base-url https://automarket.sitecraft.agency",
     "i18n:readiness": "node --experimental-strip-types scripts/report-locale-readiness.mjs",
     "test:module-assets": "node scripts/test-module-assets.mjs",
     "verify:assets": "node scripts/verify-built-assets.mjs",

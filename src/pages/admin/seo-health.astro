@@ -1,0 +1,242 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+
+const xanoApiUrl = import.meta.env.PUBLIC_XANO_API_URL;
+---
+
+<BaseLayout title="SEO Health" variant="workspace" noindex>
+  <section class="section seo-health-page">
+    <div class="container">
+      <header class="seo-health-heading">
+        <div>
+          <p class="eyebrow">SEO Operations</p>
+          <h1>Состояние поискового контура</h1>
+          <p class="lead">Одна панель для очереди обновлений, 28 языков, sitemap и Google Search Console.</p>
+        </div>
+        <div class="seo-health-actions">
+          <a class="button button-light" href="https://search.google.com/search-console?resource_id=https%3A%2F%2Fautomarket.sitecraft.agency%2F" target="_blank" rel="noreferrer">
+            <i data-lucide="external-link" aria-hidden="true"></i><span>Search Console</span>
+          </a>
+          <button class="button button-dark" id="seo-health-refresh" type="button">
+            <i data-lucide="refresh-cw" aria-hidden="true"></i><span>Обновить</span>
+          </button>
+        </div>
+      </header>
+
+      <div class="seo-health-access" id="seo-health-access" role="status">Проверяю доступ администратора…</div>
+
+      <div class="seo-health-dashboard" id="seo-health-dashboard" data-xano-api-url={xanoApiUrl} hidden>
+        <section class="seo-health-overview" aria-labelledby="seo-health-overview-title">
+          <div class="seo-health-overview-copy">
+            <span class="seo-health-status-dot" id="seo-health-status-dot" aria-hidden="true"></span>
+            <div>
+              <p class="eyebrow">Текущий статус</p>
+              <h2 id="seo-health-overview-title">Загрузка данных…</h2>
+              <p id="seo-health-updated">Получаем свежий production snapshot.</p>
+            </div>
+          </div>
+          <div class="seo-health-score" aria-label="Итог проверок">
+            <strong id="seo-health-score">—</strong>
+            <span>проверок пройдено</span>
+          </div>
+        </section>
+
+        <div class="seo-health-metrics" id="seo-health-metrics" aria-live="polite"></div>
+
+        <div class="seo-health-layout">
+          <section class="seo-health-panel" aria-labelledby="seo-health-checks-title">
+            <div class="seo-health-panel-heading">
+              <div>
+                <p class="eyebrow">Автоматический контроль</p>
+                <h2 id="seo-health-checks-title">Проверки production</h2>
+              </div>
+              <span class="seo-health-count" id="seo-health-count">—</span>
+            </div>
+            <div class="seo-health-checks" id="seo-health-checks"></div>
+          </section>
+
+          <aside class="seo-health-panel seo-health-search-console" aria-labelledby="seo-health-gsc-title">
+            <div class="seo-health-panel-heading">
+              <div>
+                <p class="eyebrow">Google</p>
+                <h2 id="seo-health-gsc-title">Search Console</h2>
+              </div>
+              <i data-lucide="search-check" aria-hidden="true"></i>
+            </div>
+            <div id="seo-health-gsc"></div>
+          </aside>
+        </div>
+
+        <p class="form-message seo-health-message" id="seo-health-message" role="status" aria-live="polite"></p>
+      </div>
+    </div>
+  </section>
+
+  <script>
+    import { getAuthToken, requireAdminClient, isSessionConfirmedExpired, redirectToLogin } from "../../lib/authClient";
+    import { refreshAppIcons } from "../../lib/appIcons";
+
+    type Tone = "pass" | "warning" | "fail";
+    type HealthPayload = {
+      ok?: boolean;
+      checked_at?: string;
+      summary?: { status?: "healthy" | "attention" | "critical"; passed?: number; warnings?: number; failed?: number };
+      checks?: Array<{ id?: string; label?: string; tone?: Tone; detail?: string }>;
+      queue?: { pending?: number; actionable_pending?: number; exhausted_pending?: number; processing?: number; failed?: number; oldest_pending_age_minutes?: number | null; last_completed_at?: string | number | null };
+      generation?: { active?: string | null; public_locales?: number; manifest_count?: number; listing_total_per_locale?: { min?: number; max?: number }; listing_index?: number; facets?: number; related?: number };
+      sitemap?: { status?: number; duration_ms?: number; child_sitemaps?: number; locale_maps?: number; listing_shards?: number };
+      search_console?: {
+        configured?: boolean;
+        property?: string;
+        status?: "not_configured" | "connected" | "error";
+        error?: string;
+        sitemap?: { submitted?: boolean; pending?: boolean; last_submitted?: string | null; last_downloaded?: string | null; errors?: number; warnings?: number; submitted_urls?: number; indexed_urls?: number };
+        performance?: { clicks?: number; impressions?: number; ctr?: number; average_position?: number; days_with_data?: number };
+      };
+      code?: string;
+    };
+
+    const dashboard = document.querySelector<HTMLElement>("#seo-health-dashboard");
+    const access = document.querySelector<HTMLElement>("#seo-health-access");
+    const refresh = document.querySelector<HTMLButtonElement>("#seo-health-refresh");
+    const message = document.querySelector<HTMLElement>("#seo-health-message");
+    const metrics = document.querySelector<HTMLElement>("#seo-health-metrics");
+    const checks = document.querySelector<HTMLElement>("#seo-health-checks");
+    const gsc = document.querySelector<HTMLElement>("#seo-health-gsc");
+    const statusDot = document.querySelector<HTMLElement>("#seo-health-status-dot");
+    const overviewTitle = document.querySelector<HTMLElement>("#seo-health-overview-title");
+    const updated = document.querySelector<HTMLElement>("#seo-health-updated");
+    const score = document.querySelector<HTMLElement>("#seo-health-score");
+    const count = document.querySelector<HTMLElement>("#seo-health-count");
+
+    const escapeHtml = (value: unknown) => String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+    const number = (value: unknown) => new Intl.NumberFormat("ru-RU").format(Number(value || 0));
+    const percent = (value: unknown) => new Intl.NumberFormat("ru-RU", { style: "percent", maximumFractionDigits: 1 }).format(Number(value || 0));
+    const dateTime = (value: unknown) => {
+      const numericValue = Number(value);
+      const timestamp = Number.isFinite(numericValue) && numericValue > 0
+        ? numericValue > 10_000_000_000 ? numericValue : numericValue * 1000
+        : Date.parse(String(value || ""));
+      return Number.isFinite(timestamp) ? new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(timestamp) : "Нет данных";
+    };
+
+    const metric = (icon: string, label: string, value: string, detail: string, tone: Tone = "pass") => `
+      <article class="seo-health-metric" data-tone="${tone}">
+        <span class="seo-health-metric-icon"><i data-lucide="${icon}" aria-hidden="true"></i></span>
+        <div><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong><small>${escapeHtml(detail)}</small></div>
+      </article>`;
+
+    function renderSearchConsole(data: HealthPayload["search_console"]) {
+      if (!gsc) return;
+      if (!data?.configured) {
+        gsc.innerHTML = `
+          <div class="seo-health-empty-state">
+            <i data-lucide="link-2-off" aria-hidden="true"></i>
+            <strong>API ещё не подключён</strong>
+            <p>Property можно использовать в интерфейсе Google. Для автоматических метрик нужен service account с правом чтения.</p>
+          </div>`;
+        return;
+      }
+      if (data.status !== "connected") {
+        gsc.innerHTML = `<div class="seo-health-empty-state is-error"><i data-lucide="circle-alert" aria-hidden="true"></i><strong>Подключение требует внимания</strong><p>${escapeHtml(data.error || "Google API не ответил.")}</p></div>`;
+        return;
+      }
+      const sitemap = data.sitemap || {};
+      const performance = data.performance || {};
+      gsc.innerHTML = `
+        <div class="seo-health-gsc-status" data-tone="${sitemap.submitted && !sitemap.errors ? "pass" : "warning"}">
+          <i data-lucide="${sitemap.submitted ? "circle-check" : "circle-alert"}" aria-hidden="true"></i>
+          <div><strong>${sitemap.submitted ? "Sitemap зарегистрирован" : "Sitemap не найден в property"}</strong><span>${escapeHtml(data.property || "")}</span></div>
+        </div>
+        <dl class="seo-health-definition-list">
+          <div><dt>Показы</dt><dd>${number(performance.impressions)}</dd></div>
+          <div><dt>Клики</dt><dd>${number(performance.clicks)}</dd></div>
+          <div><dt>CTR</dt><dd>${percent(performance.ctr)}</dd></div>
+          <div><dt>Средняя позиция</dt><dd>${Number(performance.average_position || 0).toFixed(1)}</dd></div>
+          <div><dt>Последняя загрузка sitemap</dt><dd>${escapeHtml(dateTime(sitemap.last_downloaded))}</dd></div>
+          <div><dt>Ошибки / предупреждения</dt><dd>${number(sitemap.errors)} / ${number(sitemap.warnings)}</dd></div>
+        </dl>`;
+    }
+
+    function render(payload: HealthPayload) {
+      const summary = payload.summary || {};
+      const queue = payload.queue || {};
+      const generation = payload.generation || {};
+      const sitemap = payload.sitemap || {};
+      const status = summary.status || "critical";
+      const statusLabels = { healthy: "SEO-контур работает штатно", attention: "Есть задачи, требующие внимания", critical: "Обнаружена критическая проблема" };
+      if (overviewTitle) overviewTitle.textContent = statusLabels[status];
+      if (statusDot) statusDot.dataset.tone = status;
+      if (updated) updated.textContent = `Проверено: ${dateTime(payload.checked_at)}`;
+      if (score) score.textContent = `${number(summary.passed)} / ${number((payload.checks || []).length)}`;
+      if (count) count.textContent = `${number(summary.failed)} ошибок · ${number(summary.warnings)} предупреждений`;
+
+      const listingMin = Number(generation.listing_total_per_locale?.min || 0);
+      const listingMax = Number(generation.listing_total_per_locale?.max || 0);
+      if (metrics) metrics.innerHTML = [
+        metric("languages", "Языковая parity", `${number(generation.manifest_count)} / 28`, `${listingMin}–${listingMax} объявлений на язык`, generation.manifest_count === 28 && listingMin === listingMax ? "pass" : "fail"),
+        metric("list-checks", "Очередь", `${number(queue.actionable_pending)} ready`, `${number(queue.processing)} processing · ${number(queue.exhausted_pending)} exhausted`, Number(queue.exhausted_pending) > 0 ? "fail" : "pass"),
+        metric("map", "Sitemap", `${number(sitemap.child_sitemaps)} файлов`, `${number(sitemap.locale_maps)} locale · ${number(sitemap.listing_shards)} listing shards`, sitemap.status === 200 ? "pass" : "fail"),
+        metric("network", "Перелинковка", `${number(generation.related)} связей`, `${number(generation.facets)} SEO-фасета`, "pass"),
+      ].join("");
+
+      const list = payload.checks || [];
+      if (checks) checks.innerHTML = list.map((check) => `
+        <article class="seo-health-check" data-tone="${check.tone || "warning"}">
+          <span><i data-lucide="${check.tone === "pass" ? "circle-check" : check.tone === "fail" ? "circle-x" : "triangle-alert"}" aria-hidden="true"></i></span>
+          <div><strong>${escapeHtml(check.label)}</strong><p>${escapeHtml(check.detail)}</p></div>
+        </article>`).join("");
+      renderSearchConsole(payload.search_console);
+      refreshAppIcons();
+    }
+
+    async function loadHealth() {
+      if (!dashboard || !refresh) return;
+      const token = getAuthToken();
+      if (!token) {
+        redirectToLogin("/admin/seo-health/");
+        return;
+      }
+      refresh.disabled = true;
+      refresh.classList.add("is-loading");
+      if (message) message.textContent = "Обновляю production snapshot…";
+      try {
+        const response = await fetch("/api/admin/seo-health", { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" });
+        const payload = await response.json().catch(() => ({})) as HealthPayload;
+        if (response.status === 401 || response.status === 403) {
+          if (await isSessionConfirmedExpired(dashboard.dataset.xanoApiUrl, token)) redirectToLogin("/admin/seo-health/");
+          else window.location.href = "/support?lang=ru";
+          return;
+        }
+        if (!payload.summary) throw new Error(payload.code || `HTTP ${response.status}`);
+        render(payload);
+        if (message) message.textContent = response.ok ? "Данные актуальны." : "Snapshot получен, но SEO-контур требует внимания.";
+      } catch (error) {
+        if (message) message.textContent = `Не удалось обновить SEO health: ${error instanceof Error ? error.message : "неизвестная ошибка"}`;
+      } finally {
+        refresh.disabled = false;
+        refresh.classList.remove("is-loading");
+      }
+    }
+
+    async function initialize() {
+      if (!dashboard || !access) return;
+      const user = await requireAdminClient(dashboard.dataset.xanoApiUrl);
+      if (!user) return;
+      access.hidden = true;
+      dashboard.hidden = false;
+      await loadHealth();
+    }
+
+    refresh?.addEventListener("click", loadHealth);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") loadHealth();
+    });
+    initialize();
+  </script>
+</BaseLayout>

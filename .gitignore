@@ -32,6 +32,7 @@ xano.env.md
 # local audits and recovery snapshots
 .backups/
 artifacts/
+tmp/
 
 # macOS-specific files
 .DS_Store

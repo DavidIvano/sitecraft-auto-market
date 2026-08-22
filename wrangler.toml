@@ -11,6 +11,7 @@ XANO_API_URL = "https://x8ki-letl-twmt.n7.xano.io/api:jAAj839u"
 R2_PUBLIC_BASE_URL = "https://sitecraft-auto-market.pages.dev/api/r2-images"
 ALLOWED_UPLOAD_ORIGINS = "https://sitecraft-auto-market.pages.dev,https://automarket.sitecraft.agency"
 ENVIRONMENT = "production"
+GOOGLE_SEARCH_CONSOLE_SITE_URL = "https://automarket.sitecraft.agency/"
 
 [[env.production.r2_buckets]]
 # Runtime binding consumed by Pages Functions. R2_BUCKET_NAME is not used by the app.

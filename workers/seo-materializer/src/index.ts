@@ -202,7 +202,7 @@ export async function runSeoMaterializer(env: SeoMaterializerEnv, options: { dry
       parity,
     };
     if (options.dryRun) {
-      await failJobs(env, jobIds, "DRY_RUN_RELEASED", config.timeoutMs);
+      await failJobs(env, workerId, jobIds, "DRY_RUN_RELEASED", config.timeoutMs);
       return { ok: true, dry_run: true, processed: jobs.length, ...report };
     }
     if (!parity.release_ready) throw new SeoMaterializerXanoError("LOCALE_LISTING_PARITY_INCOMPLETE", 409);
@@ -218,7 +218,7 @@ export async function runSeoMaterializer(env: SeoMaterializerEnv, options: { dry
       startCursor,
     );
     if (!progress.complete) {
-      await checkpointJobs(env, jobIds, generation, progress.nextCursor, config.timeoutMs);
+      await checkpointJobs(env, workerId, jobIds, generation, progress.nextCursor, config.timeoutMs);
       return {
         ok: true,
         processed: jobs.length,
@@ -228,6 +228,7 @@ export async function runSeoMaterializer(env: SeoMaterializerEnv, options: { dry
       };
     }
     await activateGeneration(env, {
+      worker_id: workerId,
       generation,
       job_ids: jobIds,
       expected: {
@@ -243,7 +244,7 @@ export async function runSeoMaterializer(env: SeoMaterializerEnv, options: { dry
     return { ok: true, processed: jobs.length, outcome: "activated", progress, ...report };
   } catch (error) {
     const code = error instanceof SeoMaterializerXanoError ? error.code : "SEO_MATERIALIZER_ERROR";
-    await failJobs(env, jobIds, code, config.timeoutMs).catch(() => undefined);
+    await failJobs(env, workerId, jobIds, code, config.timeoutMs).catch(() => undefined);
     return { ok: false, code, processed: jobs.length };
   }
 }

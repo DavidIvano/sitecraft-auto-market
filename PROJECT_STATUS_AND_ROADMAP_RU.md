@@ -4,7 +4,7 @@
 
 Production: <https://automarket.sitecraft.agency>
 
-Предыдущий production baseline, от которого выполнен аудит: `main`, commit `d842b2c`
+Предыдущий production baseline, от которого выполнен аудит: `main`, commit `6335c45`
 
 ## Назначение документа
 
@@ -81,6 +81,8 @@ flowchart LR
 - `WORKING`: device-language resolver на первом посещении.
 - `WORKING`: очередь SEO-обновлений связана с approve/edit/sold/block/delete и готовностью перевода.
 - `WORKING`: Cloudflare SEO materializer строит полную неизменяемую генерацию 28 локалей; активный sitemap manifest служит единственным атомарным указателем версии.
+- `WORKING`: защищённая админ-панель `/admin/seo-health/` сводит очередь, parity 28 языков, sitemap, перелинковку и состояние Search Console.
+- `WORKING`: ежедневный GitHub Actions audit проверяет 28 locale sitemap, canonical, self-hreflang, `Product + Car + Offer + BreadcrumbList`; при ошибке сохраняет JSON-отчёт и открывает или обновляет один alert issue.
 
 Полный реестр backend: [`docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md`](docs/xano/CURRENT_ENDPOINT_MANIFEST_RU.md).
 
@@ -165,6 +167,8 @@ flowchart LR
 - `DONE`: quality gate исключает карточки без нормального заголовка/описания, марки, модели, года, цены, города и безопасной HTTPS-фотографии; неполная генерация 28×N не активируется.
 - `DONE`: locale detail получает до шести похожих автомобилей, а taxonomy materializer сохраняет до трёх разных релевантных направлений перелинковки для каждого фасета.
 - `DONE`: SEO compatibility fallbacks выключены в production build; строгие endpoints завершаются контролируемой ошибкой, а не подменой legacy-данными.
+- `DONE`: `/sitemap.xml` зарегистрирован в URL-prefix property Search Console `https://automarket.sitecraft.agency/`; 22 августа Google обработал sitemap index без ошибки и обнаружил 1 282 страницы.
+- `PARTIAL`: автоматическое чтение Search Console API подготовлено в коде, но server-only service account ещё не создан и не добавлен как пользователь property. До этого dashboard показывает Search Console как предупреждение, а не как критическую ошибку.
 - Защищённые endpoints из реестра нужно периодически проверять отдельным staging/integration suite, а не только статическими тестами frontend.
 
 ## Следующий план
@@ -196,7 +200,7 @@ flowchart LR
 5. `DONE de`: немецкие 10/10 добавлены в strict sitemap; detail schema локализует legacy taxonomy, Offer связан с Vehicle и местом, добавлены crawlable brand/model/city связи и R2 `HEAD`.
 6. `DONE`: production parity smoke пройден; root/locale/shard источники
    подтверждены как `xano_sharded`/`xano_pages_only`/`xano_slug_shard`.
-   `NEXT`: отправить обновлённый `/sitemap.xml` в подключённую Search Console.
+   `/sitemap.xml` уже зарегистрирован и успешно обработан Search Console.
 7. `DONE tr/ar/ru/uk`: все четыре локали имеют 10/10 strict data, отдельный sitemap и успешный локальный smoke; `ar` проверен в RTL.
 8. `DONE nl/da/sv/fi`: полный локальный HTTP/SEO smoke проверил sitemap, static/catalog/detail, brand/model/city, canonical, reciprocal `hreflang`, JSON-LD и 10 detail-страниц каждого языка.
 9. `DONE es/pt/it`: тот же полный HTTP/SEO smoke пройден; временный headers timeout при длинном общем прогоне воспроизвёлся как сеть и отдельный повтор `it` завершился без функциональных ошибок.
@@ -204,7 +208,8 @@ flowchart LR
 11. `DONE`: полный локальный HTTP/SEO smoke пройден для `pl/cs/sk/sl/bg/hr/ro/hu/el/et/lv/lt/mt/ga`; ирландский повторён отдельно после сетевого headers timeout длинного общего прогона и завершился без функциональных ошибок.
 12. `DONE`: frontend deploy и production authoritative smoke завершены; representative parity `de/ru/ar/fr` пройден.
 13. `DONE`: создан production materializer с quality gate, immutable generation и атомарным manifest pointer; strict parity требует ровно 11 объявлений во всех 28 локалях.
-14. `DONE`: внешний HTML/schema smoke пройден на `de/ru/ar/fr`; canonical, self-hreflang, `Product + Car + Offer + BreadcrumbList`, `Offer.itemOffered`, indexability и похожие автомобили подтверждены. `NEXT`: повторно отправить обновлённый sitemap в Search Console.
+14. `DONE`: внешний HTML/schema smoke пройден на `de/ru/ar/fr`; canonical, self-hreflang, `Product + Car + Offer + BreadcrumbList`, `Offer.itemOffered`, indexability и похожие автомобили подтверждены.
+15. `DONE`: Search Console обработал production sitemap index; первый зафиксированный baseline за 28 дней — 7 кликов, 40 показов, CTR 17,5%, средняя позиция 23,6.
 
 ### Этап 4 — production hardening programmatic SEO
 
@@ -216,8 +221,11 @@ flowchart LR
 4. `DONE`: transient compatibility responses запрещено кэшировать на edge.
 5. `DONE`: три compatibility fallback выключены; fallback-off deploy и полный
    production smoke пройдены.
-6. `NEXT`: автоматизировать idempotent materializer, reconciliation,
-   freshness alerts и cache purge после atomic generation activation.
+6. `DONE`: idempotent materializer и checkpoint lifecycle исправлены: dry-run не расходует retry budget, пакет завершается по `worker_id`, exhausted/stale queue можно безопасно восстановить и согласовать с активной generation.
+7. `DONE`: защищённый Xano health contract, админский SEO Health dashboard и ежедневный production audit с GitHub issue alerts подготовлены.
+8. `DONE`: внутренний materializer secret ротирован синхронно в Xano, Cloudflare Worker и Pages; в Git секрет не записан.
+9. `NEXT`: создать read-only Google service account, добавить его email в Search Console property и сохранить JSON только в Cloudflare/GitHub secrets. После этого включить обязательный `SEO_HEALTH_REQUIRE_SEARCH_CONSOLE=true`.
+10. `NEXT`: подключить email/Telegram/Slack канал поверх GitHub alert issue и добавить недельный отчёт по запросам, страницам с падением кликов, index coverage и Core Web Vitals.
 
 ### Этап 5 — server-backed функции
 

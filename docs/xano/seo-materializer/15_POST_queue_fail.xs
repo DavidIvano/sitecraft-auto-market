@@ -1,6 +1,7 @@
 query "seo/internal/queue/fail" verb=POST {
   api_group = "sitecraft-auto-market"
   input {
+    text worker_id filters=trim|min:8|max:120
     int[] job_ids
     text error_code filters=trim|max:120
   }
@@ -10,28 +11,25 @@ query "seo/internal/queue/fail" verb=POST {
       error_type = "accessdenied"
       error = "Unauthorized"
     }
-    foreach ($input.job_ids) {
-      each as $job_id {
-        db.get seo_refresh_queue {
+    db.query seo_refresh_queue {
+      where = (($db.seo_refresh_queue.status == "processing") && ($db.seo_refresh_queue.locked_by == $input.worker_id))
+      return = {type: "list", paging: {page: 1, per_page: 100, totals: false}}
+    } as $worker_jobs
+    foreach ($worker_jobs.items) {
+      each as $job {
+        db.edit seo_refresh_queue {
           field_name = "id"
-          field_value = $job_id
-        } as $job
-        conditional {
-          if ($job != null) {
-            db.edit seo_refresh_queue {
-              field_name = "id"
-              field_value = $job_id
-              data = {
-              status: (($input.error_code == "DRY_RUN_RELEASED") || (($job.attempts|first_notnull:0) < 5)) ? "pending" : "failed",
-              available_at: now, locked_at: null, locked_by: null,
-              last_error_code: $input.error_code, updated_at: now
-              }
-            } as $released_job
+          field_value = $job.id
+          data = {
+          status: (($input.error_code == "DRY_RUN_RELEASED") || (($job.attempts|first_notnull:0) < 5)) ? "pending" : "failed",
+          attempts: ($input.error_code == "DRY_RUN_RELEASED") ? 0 : ($job.attempts|first_notnull:0),
+          available_at: now, locked_at: null, locked_by: null,
+          last_error_code: $input.error_code, updated_at: now
           }
         }
       }
     }
   }
-  response = {ok: true, released: ($input.job_ids|count)}
+  response = {ok: true, released: ($worker_jobs.items|count)}
   tags = ["sitecraft-auto-market", "seo", "internal", "queue"]
 }

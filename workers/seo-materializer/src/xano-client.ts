@@ -66,10 +66,11 @@ export const stageRows = (env: SeoMaterializerEnv, generation: string, kind: str
   request<{ inserted: number }>(env, "/seo/internal/generation/rows", { generation, kind, rows }, timeoutMs);
 export const activateGeneration = (env: SeoMaterializerEnv, body: Record<string, unknown>, timeoutMs: number) =>
   request<Record<string, unknown>>(env, "/seo/internal/generation/activate", body, timeoutMs);
-export const failJobs = (env: SeoMaterializerEnv, jobIds: number[], errorCode: string, timeoutMs: number) =>
-  request<Record<string, unknown>>(env, "/seo/internal/queue/fail", { job_ids: jobIds, error_code: errorCode }, timeoutMs);
-export const checkpointJobs = (env: SeoMaterializerEnv, jobIds: number[], generation: string, nextCursor: number, timeoutMs: number) =>
+export const failJobs = (env: SeoMaterializerEnv, workerId: string, jobIds: number[], errorCode: string, timeoutMs: number) =>
+  request<Record<string, unknown>>(env, "/seo/internal/queue/fail", { worker_id: workerId, job_ids: jobIds, error_code: errorCode }, timeoutMs);
+export const checkpointJobs = (env: SeoMaterializerEnv, workerId: string, jobIds: number[], generation: string, nextCursor: number, timeoutMs: number) =>
   request<Record<string, unknown>>(env, "/seo/internal/queue/checkpoint", {
+    worker_id: workerId,
     job_ids: jobIds,
     generation,
     next_cursor: nextCursor,

@@ -131,10 +131,13 @@ API group: `sitecraft-auto-market` (`421515`)
 | 4021125 | POST | `/seo/internal/queue/fail` | WORKING | Возвращает retryable job в pending; после лимита переводит в failed. |
 | 4021126 | POST | `/seo/internal/queue/enqueue` | WORKING | Идемпотентный ручной/операционный enqueue по `event_key`. |
 | 4021173 | POST | `/seo/internal/queue/checkpoint` | WORKING | Сохраняет deterministic generation и batch cursor, затем безопасно возвращает задание в pending для следующей фазы без расходования error-attempt. |
+| 4021547 | GET | `/seo/internal/health` | WORKING | Read-only snapshot очереди, активной generation, 28 manifests, listing index, facets, edges, stats и related; закрыт server secret. |
+| 4021548 | POST | `/seo/internal/queue/recover-exhausted` | WORKING | Идемпотентно возвращает исчерпанные pending jobs в actionable state; повторный запуск ничего не дублирует. |
+| 4021549 | POST | `/seo/internal/queue/reconcile-active` | WORKING | Согласовывает orphaned processing jobs с уже активированной generation; используется как защищённая recovery-операция. |
 
 Mutation hooks с маркером `SEO_MATERIALIZER_QUEUE_HOOK_V1` выпущены в endpoints `3966703`, `3969714`, `3975051`, `3975107`, `3979595`, `3983598`, `4011156`. Ошибка очереди не блокирует основную пользовательскую мутацию.
 
-22.08.2026 атомарно активирована generation `seo-3f1553ad7f6cae700283c1adf05fb9f3`: 28 manifest pointers, 11 объявлений на локаль, 308 locale/listing rows, 32 facets, 2576 edges, 896 stats и 2688 related rows. Публичные catalog и sitemap shards всех 28 локалей вернули HTTP 200, одинаковый generation и 11/11 без fallback. Materializer выполняет не более 36 batch-запросов за вызов и продолжает через checkpoint, чтобы не превышать лимит внешних subrequest Cloudflare Worker.
+22.08.2026 атомарно активирована generation `seo-3f1553ad7f6cae700283c1adf05fb9f3`: 28 manifest pointers, 11 объявлений на локаль, 308 locale/listing rows, 32 facets, 2576 edges, 896 stats и 2688 related rows. Публичные catalog и sitemap shards всех 28 локалей вернули HTTP 200, одинаковый generation и 11/11 без fallback. Materializer выполняет не более 36 batch-запросов за вызов и продолжает через checkpoint, чтобы не превышать лимит внешних subrequest Cloudflare Worker. Lifecycle завершения переведён на `worker_id`, dry-run больше не расходует retry attempts. После recovery и повторной materialization очередь подтверждена как `pending=0`, `processing=0`, `exhausted=0`, `completed=29`; единственная старая failed-запись предшествует последнему успешному completed и не считается текущей аварией.
 
 ## Deal Finder: Worker API
 
