@@ -148,7 +148,7 @@ flowchart LR
 - Управляемый Cloudflare Worker поддерживает все 27 целевых языков перевода (все пользовательские локали кроме исходного `ru`), пакеты до трёх заданий, идемпотентный claim/complete, dry-run и раздельные kill switches для manual и cron. Queue-control запросы безопасно повторяют явный Xano 429; provider-вызов автоматически не дублируется.
 - Защита Xano Worker endpoints `4011152/4011153` повторно проверена: публичная строка-заглушка получает 403, рабочий secret не хранится в репозитории.
 - Техническая миграция языков ЕС завершена; остаётся редакторская вычитка машинных UI/taxonomy и текстов объявлений носителями языков.
-- Базовая frontend-конфигурация 28 публичных локалей опубликована; authoritative production smoke для bounded catalog/listing shards пройден, compatibility fallback выключен. Новая Xano generation подтверждена 11/11 для всех языков; после текущего Cloudflare Pages deploy выполняется финальный HTML/schema/canonical/hreflang smoke для `Product + Car + Offer` и похожих автомобилей.
+- Frontend-конфигурация 28 публичных локалей опубликована; authoritative production smoke для bounded catalog/listing shards пройден, compatibility fallback выключен. Новая Xano generation подтверждена 11/11 для всех языков; финальный HTML/schema/canonical/hreflang smoke для `Product + Car + Offer` и похожих автомобилей пройден на `de/ru/ar/fr` после Cloudflare Pages deploy `40ead69`.
 
 ### Backend-продукты
 
@@ -204,7 +204,7 @@ flowchart LR
 11. `DONE`: полный локальный HTTP/SEO smoke пройден для `pl/cs/sk/sl/bg/hr/ro/hu/el/et/lv/lt/mt/ga`; ирландский повторён отдельно после сетевого headers timeout длинного общего прогона и завершился без функциональных ошибок.
 12. `DONE`: frontend deploy и production authoritative smoke завершены; representative parity `de/ru/ar/fr` пройден.
 13. `DONE`: создан production materializer с quality gate, immutable generation и атомарным manifest pointer; strict parity требует ровно 11 объявлений во всех 28 локалях.
-14. `NEXT`: после текущего push в `main` выполнить внешний HTML/schema parity smoke и повторно отправить обновлённый sitemap в Search Console.
+14. `DONE`: внешний HTML/schema smoke пройден на `de/ru/ar/fr`; canonical, self-hreflang, `Product + Car + Offer + BreadcrumbList`, `Offer.itemOffered`, indexability и похожие автомобили подтверждены. `NEXT`: повторно отправить обновлённый sitemap в Search Console.
 
 ### Этап 4 — production hardening programmatic SEO
 
